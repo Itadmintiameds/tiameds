@@ -84,12 +84,12 @@ const TestTab = () => {
   return (
     <div className="rounded-lg mt-4">
       {/* Tab Navigation */}
-      <div className="flex border-b border-purple-200">
+      <div className="flex border-b border-purple-200 text-sm">
         <button
           className={`flex items-center flex-1 py-3 text-center transition duration-300 ease-in-out ${
             activeTab === 'testOrders'
               ? 'border-b-2 border-purple-600 text-purple-600 font-semibold'
-              : 'text-gray-600 hover:text-purple-600'
+              : 'text-zinc-900 hover:text-purple-600'
           }`}
           onClick={() => setActiveTab('testOrders')}
         >
@@ -100,7 +100,7 @@ const TestTab = () => {
           className={`flex items-center flex-1 py-3 text-center transition duration-300 ease-in-out ${
             activeTab === 'packageOrder'
               ? 'border-b-2 border-purple-600 text-purple-600 font-semibold'
-              : 'text-gray-600 hover:text-purple-600'
+              : 'text-zinc-900  hover:text-purple-600'
           }`}
           onClick={() => setActiveTab('packageOrder')}
         >

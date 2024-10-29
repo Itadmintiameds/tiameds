@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Table from '../_component/PatientTable';
+import { ShoppingCart, FilePlus, ShoppingBag } from 'lucide-react'; // Import the icons you want to use
 
 const Page = () => {
   const [activeTab, setActiveTab] = useState('purchases'); // Default active tab
@@ -13,22 +14,26 @@ const Page = () => {
         <div className="flex space-x-4">
           <button
             onClick={() => setActiveTab('purchases')}
-            className={`pb-2 transition-colors duration-300 border-b-2 font-semibold ${
+            className={`flex items-center pb-2 transition-colors duration-300 border-b-2 font-semibold ${
               activeTab === 'purchases'
                 ? 'border-purple-800 text-purple-800'
                 : 'border-transparent text-zinc-900 hover:text-purple-600'
             }`}
           >
+  
+            <ShoppingBag className="mr-1" />
+          
             Purchases
           </button>
           <button
             onClick={() => setActiveTab('newBill')}
-            className={`pb-2 transition-colors duration-300 border-b-2 font-semibold ${
+            className={`flex items-center pb-2 transition-colors duration-300 border-b-2 font-semibold ${
               activeTab === 'newBill'
                 ? 'border-purple-800 text-purple-800'
                 : 'border-transparent text-zinc-900 hover:text-purple-600'
             }`}
           >
+            <FilePlus className="mr-1" /> {/* Add icon for New Bill */}
             New Bill
           </button>
         </div>
@@ -48,7 +53,6 @@ const Page = () => {
             <p className="text-gray-700">Create a new bill or perform a test here.</p>
           </div>
         )}
-        
       </div>
     </div>
   );
