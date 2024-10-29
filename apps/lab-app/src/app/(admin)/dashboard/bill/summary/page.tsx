@@ -1,8 +1,7 @@
 
 'use client';
+import { Calendar1Icon, EllipsisVertical, EyeIcon, HashIcon, PencilIcon, PrinterCheck, Trash2Icon, User2Icon, UserCircle } from 'lucide-react';
 import Button from "../../../_component/Button";
-import { Calendar1Icon, EclipseIcon, EllipsisVertical, EyeIcon, HashIcon, PencilIcon, PrinterCheck, Trash2Icon, User2Icon, UserCircle } from 'lucide-react';
-import React from 'react';
 
 const Page = () => {
   return (

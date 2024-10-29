@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import { FilePlus, ShoppingBag } from 'lucide-react'; // Import the icons you want to use
+import { useState } from 'react';
 import Table from '../_component/PatientTable';
-import { ShoppingCart, FilePlus, ShoppingBag } from 'lucide-react'; // Import the icons you want to use
 
 const Page = () => {
   const [activeTab, setActiveTab] = useState('purchases'); // Default active tab
@@ -20,9 +20,7 @@ const Page = () => {
                 : 'border-transparent text-zinc-900 hover:text-purple-600'
             }`}
           >
-  
             <ShoppingBag className="mr-1" />
-          
             Purchases
           </button>
           <button

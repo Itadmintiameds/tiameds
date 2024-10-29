@@ -1,8 +1,8 @@
 'use client';
 import React, { useState } from 'react';
-import { FunnelIcon, EllipsisVerticalIcon, BackspaceIcon } from '@heroicons/react/24/outline';
+import {  EllipsisVerticalIcon, BackspaceIcon } from '@heroicons/react/24/outline';
 import { patients, Patient } from './patientsData'; // Adjust the path as needed
-import { PlusIcon, Trash2Icon } from 'lucide-react';
+import { PlusIcon } from 'lucide-react';
 import Link from 'next/link';
 
 const Table = () => {

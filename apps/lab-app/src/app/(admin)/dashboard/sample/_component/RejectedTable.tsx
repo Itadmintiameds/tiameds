@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+
 import React, { useState } from 'react';
 
 // Sample patient data with rejection details

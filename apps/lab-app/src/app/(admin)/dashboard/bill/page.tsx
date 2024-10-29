@@ -1,10 +1,6 @@
 'use client'
-import React, { useState } from 'react'
+import { CheckIcon, CircleXIcon } from 'lucide-react'
 import Button from '../../_component/Button'
-import { CheckIcon, Circle, CircleXIcon, Package } from 'lucide-react'
-import { CheckBadgeIcon } from '@heroicons/react/24/outline'
-import TestOrders from './_component/TestOrders'
-import PackageOrder from './_component/PackageOrder'
 import TestTab from './_component/TestTab'
 
 const page = () => {
