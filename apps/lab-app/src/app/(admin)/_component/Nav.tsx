@@ -320,8 +320,8 @@ const TopNav = () => {
                   <div>
                     <MenuButton className="flex rounded-full bg-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
                       <span className="sr-only">Open user menu</span>
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white">
-                        <span className="text-sm font-medium text-purple-900">A</span>
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-purple-950">
+                        <span className="text-sm font-medium text-zinc-100">A</span>
                       </span>
                     </MenuButton>
                   </div>
