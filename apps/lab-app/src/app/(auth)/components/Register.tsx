@@ -1,76 +1,292 @@
-import React from 'react'
-import Link from 'next/link'
+import React, { useState } from 'react';
+import { FaUser, FaEnvelope, FaLock, FaPhoneAlt, FaHome, FaMapMarkerAlt, FaRegBuilding, FaGlobeAsia } from 'react-icons/fa';
+import Link from 'next/link';
+import Image from 'next/image';
 
-const Register = () => {
+interface FormData {
+  username: string;
+  password: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+  modules: number[]; // Default is [1]
+  verified: boolean; // Default is false
+}
+
+const Register: React.FC = () => {
+  const [formData, setFormData] = useState<FormData>({
+    username: '',
+    password: '',
+    email: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
+    country: '',
+    modules: [1], // Default value
+    verified: false, // Default value
+  });
+
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        alert('Registration successful!');
+      } else {
+        alert('Failed to register. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error during registration:', error);
+      alert('An error occurred. Please try again.');
+    }
+  };
+
   return (
-    <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8 h-screen bg-gray-900">
-      <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-        
-        <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-white">
-          Sign up for an account
-        </h2>
-      </div>
+    <div className="flex h-screen flex-1 flex-col justify-center px-6 py-4 lg:px-8 h-screen">
+      <div className="flex justify-center ">
+          {/* <img
+            src="/tiamed1.svg" // Replace with your logo's path
+            alt="Lab Management System"
+            className="h-16"
+          /> */}
+          <Image src = "/tiamed1.svg" alt="Lab Management System" className="h-16" />
+        </div>
+      <div className="sm:mx-auto sm:w-full sm:max-w-6xl">
+        <form onSubmit={handleSubmit} className="space-y-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Username */}
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                id="username"
+                name="username"
+                type="text"
+                required
+                placeholder="Enter your username"
+                value={formData.username}
+                onChange={handleInputChange}
+                className="block w-full rounded-md border bg-white/5 py-2 px-4 text-zinc-900 pl-10 focus:ring-indigo-500 mt-6"
+              />
+              <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-800" />
+            </div>
+          </div>
 
-      <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-        <form action="#" method="POST" className="space-y-6">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium leading-6 text-white">
-              Email address
-            </label>
-            <div className="mt-2">
+          {/* Email */}
+          <div className="space-y-2">
+            <div className="relative">
               <input
                 id="email"
                 name="email"
                 type="email"
                 required
-                autoComplete="email"
-                className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+                placeholder="Enter your email address"
+                value={formData.email}
+                onChange={handleInputChange}
+                className="block w-full rounded-md border bg-white/5 py-2 px-4 text-indigo-800 pl-10 focus:ring-indigo-500"
               />
+              <FaEnvelope className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-800" />
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between">
-              <label htmlFor="password" className="block text-sm font-medium leading-6 text-white">
-                Password
-              </label>
-              <div className="text-sm">
-                <a href="#" className="font-semibold text-indigo-400 hover:text-indigo-300">
-                  Forgot password?
-                </a>
-              </div>
-            </div>
-            <div className="mt-2">
+          {/* Password */}
+          <div className="space-y-2">
+            <div className="relative">
               <input
                 id="password"
                 name="password"
                 type="password"
                 required
-                autoComplete="current-password"
-                className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={handleInputChange}
+                className="block w-full rounded-md border bg-white/5 py-2 px-4 text-indigo-800 pl-10 focus:ring-indigo-500"
               />
+              <FaLock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-800" />
             </div>
           </div>
 
-          <div>
+          {/* First Name */}
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                required
+                placeholder="Enter your first name"
+                value={formData.firstName}
+                onChange={handleInputChange}
+                className="block w-full rounded-md border bg-white/5 py-2 px-4 text-indigo-800 pl-10 focus:ring-indigo-500"
+              />
+              <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-800" />
+            </div>
+          </div>
+
+          {/* Last Name */}
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                required
+                placeholder="Enter your last name"
+                value={formData.lastName}
+                onChange={handleInputChange}
+                className="block w-full rounded-md border bg-white/5 py-2 px-4 text-indigo-800 pl-10 focus:ring-indigo-500"
+              />
+              <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-800" />
+            </div>
+          </div>
+
+          {/* Phone */}
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                id="phone"
+                name="phone"
+                type="text"
+                required
+                placeholder="Enter your phone number"
+                value={formData.phone}
+                onChange={handleInputChange}
+                className="block w-full rounded-md border bg-white/5 py-2 px-4 text-indigo-800 pl-10 focus:ring-indigo-500"
+              />
+              <FaPhoneAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-800" />
+            </div>
+          </div>
+
+          {/* Address */}
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                id="address"
+                name="address"
+                type="text"
+                required
+                placeholder="Enter your address"
+                value={formData.address}
+                onChange={handleInputChange}
+                className="block w-full rounded-md border bg-white/5 py-2 px-4 text-indigo-800 pl-10 focus:ring-indigo-500"
+              />
+              <FaHome className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-800" />
+            </div>
+          </div>
+
+          {/* City */}
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                id="city"
+                name="city"
+                type="text"
+                required
+                placeholder="Enter your city"
+                value={formData.city}
+                onChange={handleInputChange}
+                className="block w-full rounded-md border bg-white/5 py-2 px-4 text-indigo-800 pl-10 focus:ring-indigo-500"
+              />
+              <FaMapMarkerAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-800" />
+            </div>
+          </div>
+
+          {/* State */}
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                id="state"
+                name="state"
+                type="text"
+                required
+                placeholder="Enter your state"
+                value={formData.state}
+                onChange={handleInputChange}
+                className="block w-full rounded-md border bg-white/5 py-2 px-4 text-indigo-800 pl-10 focus:ring-indigo-500"
+              />
+              <FaRegBuilding className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-800" />
+            </div>
+          </div>
+
+          {/* Zip */}
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                id="zip"
+                name="zip"
+                type="text"
+                required
+                placeholder="Enter your ZIP code"
+                value={formData.zip}
+                onChange={handleInputChange}
+                className="block w-full rounded-md border bg-white/5 py-2 px-4 text-indigo-800 pl-10 focus:ring-indigo-500"
+              />
+              <FaMapMarkerAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-800" />
+            </div>
+          </div>
+
+          {/* Country */}
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                id="country"
+                name="country"
+                type="text"
+                required
+                placeholder="Enter your country"
+                value={formData.country}
+                onChange={handleInputChange}
+                className="block w-full rounded-md border bg-white/5 py-2 px-4 text-indigo-800 pl-10 focus:ring-indigo-500"
+              />
+              <FaGlobeAsia className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-800" />
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <div className="col-span-3 text-center">
             <button
               type="submit"
-              className="flex w-full justify-center rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+              className="w-full py-2 px-4 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              Sign in
+              Register
             </button>
           </div>
-        </form>
 
-        <p className="mt-10 text-center text-sm text-gray-400">
-         have an account?{' '}
-          
-          <Link href="/login" className="font-semibold leading-6 text-indigo-400 hover:text-indigo-300"> Sign in</Link>
-      
-        </p>
+          <div className="col-span-3 text-center">
+            <p className="text-sm text-indigo-600">
+              Already have an account?{' '}
+              <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+                Login
+              </Link>
+            </p>
+          </div>
+        </form>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Register
+export default Register;

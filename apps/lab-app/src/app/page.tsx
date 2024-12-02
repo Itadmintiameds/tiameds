@@ -1,8 +1,21 @@
+
 import React from 'react'
+import {
+  Herosection,FeaturesSection,PricingSection,
+  CTASection,TestimonialsSection,
+  Footer
+}  from './components/Component'
 
 const page = () => {
   return (
-    <div>page</div>
+    <>
+    <Herosection />
+    <FeaturesSection />
+    <PricingSection />
+    <CTASection />
+    <TestimonialsSection />
+    <Footer />
+    </>
   )
 }
 
