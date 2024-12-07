@@ -36,3 +36,14 @@ export interface LoginResponse {
     token: string; // JWT token
     data: LoginResponseData; // User data object
 }
+
+
+
+//data is null
+export interface RegisterResponse {
+    status: string;
+    message: string;
+    data: null;
+}
+
+

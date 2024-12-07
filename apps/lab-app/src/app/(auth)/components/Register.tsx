@@ -1,12 +1,17 @@
-import { FormData } from '@/types/FormData';
+'use client'
+
+
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { useState } from 'react';
 import { FaEnvelope, FaGlobeAsia, FaHome, FaLock, FaMapMarkerAlt, FaPhoneAlt, FaRegBuilding, FaUser } from 'react-icons/fa';
+import { RegisterData } from '@/types/Register';
+import { registerDataSchema } from '@/schema/registerDataSchema';
+import { register } from '@/../services/authService';
+import { toast } from 'react-toastify';
 
 const Register: React.FC = () => {
-
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<RegisterData>({
     username: '',
     password: '',
     email: '',
@@ -18,11 +23,10 @@ const Register: React.FC = () => {
     state: '',
     zip: '',
     country: '',
-    modules: [1], 
+    modules: [1],
     verified: false,
   });
 
-  // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({
@@ -31,32 +35,35 @@ const Register: React.FC = () => {
     }));
   };
 
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        alert('Registration successful!');
+      // Validate the form data
+      registerDataSchema.parse(formData);
+      
+      // Call the register service
+      const response = await register(formData);
+      
+      // Show success or error message based on the response
+      if (response.status === 'OK') {
+        toast.success('Registration successful! Please login to continue.', { autoClose: 3000 , position: "top-right"});
+        // Redirect to the login page (optional)
+        // router.push('/login');
       } else {
-        alert('Failed to register. Please try again.');
+        toast.error(response.message);
       }
     } catch (error) {
-      console.error('Error during registration:', error);
-      alert('An error occurred. Please try again.');
+      if (error instanceof Error) {
+        toast.error(error.message);
+      }
     }
   };
 
   return (
-    <div className="flex h-screen flex-1 flex-col justify-center px-6 py-4 lg:px-8 h-screen">
-      <div className="flex justify-center ">
-          <Image src = "/tiamed1.svg" alt="Lab Management System" width={80} height={80} />
-        </div>
+    <div className="flex h-screen flex-1 flex-col justify-center px-6 py-4 lg:px-8">
+      <div className="flex justify-center">
+        <Image src="/tiamed1.svg" alt="Lab Management System" width={80} height={80} />
+      </div>
       <div className="sm:mx-auto sm:w-full sm:max-w-6xl">
         <form onSubmit={handleSubmit} className="space-y-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Username */}
@@ -247,29 +254,25 @@ const Register: React.FC = () => {
           </div>
 
           {/* Submit Button */}
-          <div className="col-span-3 text-center">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-3">
             <button
               type="submit"
-              className="w-full py-2 px-4 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 py-2 px-4 text-white font-bold rounded-md focus:ring-2 focus:ring-indigo-500"
             >
               Register
             </button>
           </div>
-
-          <div className="col-span-3 text-center">
-            <p className="text-sm text-indigo-600">
-              Already have an account?{' '}
-              <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Login
-              </Link>
-            </p>
-          </div>
         </form>
+
+        <p className="mt-6 text-center text-sm text-indigo-600">
+          Already have an account?{' '}
+          <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+            Sign In
+          </Link>
+        </p>
       </div>
     </div>
   );
 };
 
 export default Register;
-
-

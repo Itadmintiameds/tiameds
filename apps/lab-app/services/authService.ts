@@ -1,5 +1,8 @@
 import api from '@/utils/api';
-import { LoginRequest, LoginResponse ,ErrorResponse } from '@/types/auth';
+import { LoginRequest, LoginResponse ,ErrorResponse,RegisterResponse } from '@/types/auth';
+import {RegisterData } from '@/types/Register';     
+
+
 
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
   try {
@@ -10,6 +13,17 @@ export const login = async (data: LoginRequest): Promise<LoginResponse> => {
     throw new Error(message);
   }
 };
+
+
+export const register = async (data: RegisterData): Promise<RegisterResponse> => {      
+  try {
+    const response = await api.post<RegisterResponse>('/public/register', data);
+    return response.data; 
+  } catch (error: any) {
+    const message = error.response?.data?.message || 'An error occurred during registration.';
+    throw new Error(message);
+  }
+}
 
 
 
