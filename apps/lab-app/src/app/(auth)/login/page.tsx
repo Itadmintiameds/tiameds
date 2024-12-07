@@ -7,6 +7,8 @@ import Login from '../components/Login'
 import Register from '../components/Register'
 import Image from 'next/image'
 
+
+
 const Page: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login')
 
@@ -18,8 +20,8 @@ const Page: React.FC = () => {
     <div className="h-screen flex bg-gradient-to-r from-gray-50 to-indigo-200">
       {/* Left Panel */}
       <div className="w-full sm:w-1/3 bg-white flex flex-col justify-center items-center p-8">
-       
-        <Image src = "/tiamed2.svg" alt="Lab Management System" className="h-16" />
+
+        <Image src="/tiamed2.svg" alt="Lab Management System" width={200} height={200} />
         <h1 className="text-3xl font-bold text-indigo-600 mb-4">Welcome to Tiamed</h1>
         <p className="text-gray-500 text-center mb-6">
           Manage your laboratory seamlessly with our powerful system.
@@ -36,22 +38,20 @@ const Page: React.FC = () => {
         {/* Tab Navigation */}
         <div className="flex justify-center border-b border-gray-200 bg-gray-50 shadow-sm">
           <button
-            className={`flex items-center justify-center w-1/2 py-4 text-lg font-semibold transition-all ${
-              activeTab === 'login'
+            className={`flex items-center justify-center w-1/2 py-4 text-lg font-semibold transition-all ${activeTab === 'login'
                 ? 'text-indigo-600 border-b-4 border-indigo-500 bg-white'
                 : 'text-gray-500 hover:text-indigo-500'
-            }`}
+              }`}
             onClick={() => handleTabSwitch('login')}
           >
             <FaSignInAlt className="mr-2" />
             Log In
           </button>
           <button
-            className={`flex items-center justify-center w-1/2 py-4 text-lg font-semibold transition-all ${
-              activeTab === 'register'
+            className={`flex items-center justify-center w-1/2 py-4 text-lg font-semibold transition-all ${activeTab === 'register'
                 ? 'text-indigo-600 border-b-4 border-indigo-500 bg-white'
                 : 'text-gray-500 hover:text-indigo-500'
-            }`}
+              }`}
             onClick={() => handleTabSwitch('register')}
           >
             <FaUserPlus className="mr-2" />

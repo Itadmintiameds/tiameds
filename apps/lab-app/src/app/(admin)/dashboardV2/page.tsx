@@ -1,12 +1,17 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import { Clipboard, FilePlus, ShoppingBag, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Tooltip } from 'react-tooltip';
-import { motion } from 'framer-motion';
 import Table from '../_component/PatientTable';
 import ResultsTable from '../_component/ResultsTable';
 import TestTable from '../_component/TestTable';
+
+
+
+
+
 
 // Define a custom hook for tab management
 function useTabManager(initialTab: string) {
@@ -86,6 +91,8 @@ const Page: React.FC = () => {
     },
   };
 
+
+
   return (
     <div className="container mx-auto p-4">
       {/* Status Section with Animation */}
@@ -111,9 +118,6 @@ const Page: React.FC = () => {
           </motion.div>
         ))}
       </motion.div>
-
-
-
 
 
       {/* Tooltip */}

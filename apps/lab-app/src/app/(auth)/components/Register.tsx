@@ -1,25 +1,11 @@
-import React, { useState } from 'react';
-import { FaUser, FaEnvelope, FaLock, FaPhoneAlt, FaHome, FaMapMarkerAlt, FaRegBuilding, FaGlobeAsia } from 'react-icons/fa';
-import Link from 'next/link';
+import { FormData } from '@/types/FormData';
 import Image from 'next/image';
-
-interface FormData {
-  username: string;
-  password: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  address: string;
-  city: string;
-  state: string;
-  zip: string;
-  country: string;
-  modules: number[]; // Default is [1]
-  verified: boolean; // Default is false
-}
+import Link from 'next/link';
+import React, { useState } from 'react';
+import { FaEnvelope, FaGlobeAsia, FaHome, FaLock, FaMapMarkerAlt, FaPhoneAlt, FaRegBuilding, FaUser } from 'react-icons/fa';
 
 const Register: React.FC = () => {
+
   const [formData, setFormData] = useState<FormData>({
     username: '',
     password: '',
@@ -32,8 +18,8 @@ const Register: React.FC = () => {
     state: '',
     zip: '',
     country: '',
-    modules: [1], // Default value
-    verified: false, // Default value
+    modules: [1], 
+    verified: false,
   });
 
   // Handle input change
@@ -69,12 +55,7 @@ const Register: React.FC = () => {
   return (
     <div className="flex h-screen flex-1 flex-col justify-center px-6 py-4 lg:px-8 h-screen">
       <div className="flex justify-center ">
-          {/* <img
-            src="/tiamed1.svg" // Replace with your logo's path
-            alt="Lab Management System"
-            className="h-16"
-          /> */}
-          <Image src = "/tiamed1.svg" alt="Lab Management System" className="h-16" />
+          <Image src = "/tiamed1.svg" alt="Lab Management System" width={80} height={80} />
         </div>
       <div className="sm:mx-auto sm:w-full sm:max-w-6xl">
         <form onSubmit={handleSubmit} className="space-y-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -290,3 +271,5 @@ const Register: React.FC = () => {
 };
 
 export default Register;
+
+
