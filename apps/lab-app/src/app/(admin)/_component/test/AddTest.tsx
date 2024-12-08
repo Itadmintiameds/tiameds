@@ -7,7 +7,12 @@ import { FaClipboardList, FaPlusCircle, FaRupeeSign, FaTag } from 'react-icons/f
 import { toast } from 'react-toastify';
 import { z } from 'zod';
 
-const AddTest = () => {
+interface AddTestProps {
+  closeModal: () => void;
+}
+
+
+const AddTest = ({closeModal}: AddTestProps) => {
   const [formData, setFormData] = useState<TestForm>({
     category: '',
     name: '',
@@ -37,6 +42,7 @@ const AddTest = () => {
         await addTest(currentLab.id.toString(), testListData);
         toast.success('Test added successfully!', { autoClose: 2000 });
         setFormData({ category: '', name: '', price: 0 });
+        closeModal();
       } else {
         toast.error('Current lab is not selected.');
       }

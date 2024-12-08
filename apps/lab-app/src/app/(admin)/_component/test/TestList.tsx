@@ -7,8 +7,11 @@ import { FaPlus, FaSortAmountDown, FaSortAmountUp, FaTimes } from 'react-icons/f
 import { FaTrashCan } from "react-icons/fa6";
 import { MdModeEditOutline } from "react-icons/md";
 import { toast } from 'react-toastify';
+import Modal from '../Modal ';
+import AddTest from './AddTest';
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react'
 
-  
+
 
 export const TestLists = () => {
   const [tests, setTests] = useState<TestList[]>([]); // All fetched tests
@@ -18,6 +21,11 @@ export const TestLists = () => {
   const [sortOrder, setSortOrder] = useState<'low' | 'high' | ''>('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20; // Updated to 20 per page
+
+  const [isModalOpen, setModalOpen] = useState(false)
+
+  const closeModal = () => setModalOpen(false)
+  const openModal = () => setModalOpen(true)
 
 
   const { currentLab } = useLabs();
@@ -80,10 +88,26 @@ export const TestLists = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">Tests</h1>
-        <button className="flex items-center gap-2 bg-indigo-800 text-white px-4 py-2 rounded-md text-xs">
+        <button
+          onClick={openModal}
+          className="flex items-center gap-2 bg-indigo-800 text-white px-4 py-2 rounded-md text-xs">
           <FaPlus className="text-xs" /> Add Test
         </button>
       </div>
+
+
+      {/* ------------------------------------ */}
+        <Modal
+         isOpen={isModalOpen} 
+         onClose={closeModal}
+          // title=""
+          footer={null}
+         >
+            <AddTest 
+              closeModal={closeModal}
+             />
+        </Modal>
+      {/* ------------------------------------ */}
 
 
       {/* Small Filter Section */}
@@ -151,18 +175,18 @@ export const TestLists = () => {
                 <td className="border border-gray-300 p-2">{test.createdAt}</td>
                 <td className="border border-gray-300 p-2">{test.updatedAt}</td>
                 <td className="border border-gray-300 p-2 flex justify-around">
-                  <FaTrashCan className="text-red-500 text-xl" 
-                  onClick={() => {
-                    if (currentLab) {
-                      deleteTest(test.id.toString(), currentLab.id.toString())
-                      .then(() => {
-                        setTests((prev) => prev.filter((t) => t.id !== test.id));
-                      })
-                      .catch((error) => console.error(error));
-                      toast.success('Test deleted successfully',{position: "top-right",autoClose: 2000,hideProgressBar: true,closeOnClick: true,pauseOnHover: true,draggable: true,progress: undefined,});
-                    }
-                  }}
-                   />
+                  <FaTrashCan className="text-red-500 text-xl"
+                    onClick={() => {
+                      if (currentLab) {
+                        deleteTest(test.id.toString(), currentLab.id.toString())
+                          .then(() => {
+                            setTests((prev) => prev.filter((t) => t.id !== test.id));
+                          })
+                          .catch((error) => console.error(error));
+                        toast.success('Test deleted successfully', { position: "top-right", autoClose: 2000, hideProgressBar: true, closeOnClick: true, pauseOnHover: true, draggable: true, progress: undefined, });
+                      }
+                    }}
+                  />
                   <MdModeEditOutline className="text-indigo-500 text-xl" />
                 </td>
               </tr>

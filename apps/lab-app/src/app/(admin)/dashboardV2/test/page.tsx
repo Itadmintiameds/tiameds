@@ -27,7 +27,7 @@ const Tabs: FC = () => {
   // Tab data
   const tabs: TabItem[] = [
     { id: 'test', label: 'Test', icon: <RiTestTubeLine className="text-xl" /> },
-    { id: 'create-test', label: 'Test', icon: <FaPlus className="text-xl" /> },
+    // { id: 'create-test', label: 'Test', icon: <FaPlus className="text-xl" /> },
     { id: 'upload', label: 'upload', icon: <MdOutlineCloudUpload className="text-xl" /> },
     { id: 'download', label: 'download', icon: <FaFileDownload className="text-xl" /> },
   ];
@@ -54,7 +54,7 @@ const Tabs: FC = () => {
       {/* Tab content */}
       <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
         {selectedTab === 'test' && <TestLists />}
-        {selectedTab === 'create-test' && <AddTest />}
+        {/* {selectedTab === 'create-test' && <AddTest />} */}
         {selectedTab === 'upload' && <TestUpload />}
         {selectedTab === 'download' && <TestDownload />}
       </div>
