@@ -1,8 +1,8 @@
 'use client'
 
-import { Dialog, DialogBackdrop, DialogPanel } from '@headlessui/react'
-import { IoMdClose } from "react-icons/io";
+import { Dialog, DialogBackdrop } from '@headlessui/react';
 import { motion } from "framer-motion";
+import { IoMdClose } from "react-icons/io";
 
 interface ModalProps {
     isOpen: boolean;
