@@ -11,7 +11,6 @@ import Modal from '../Modal ';
 import AddTest from './AddTest';
 
 
-
 export const TestLists = () => {
   const [tests, setTests] = useState<TestList[]>([]); // All fetched tests
   const [filteredTests, setFilteredTests] = useState<TestList[]>([]); // Tests after filters
