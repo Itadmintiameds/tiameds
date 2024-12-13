@@ -1,4 +1,4 @@
-'use client'; // Marks this as a Client Component
+'use client';
 
 import { useState } from 'react';  // Use state hook
 import { Dialog, DialogPanel } from '@headlessui/react';
@@ -12,15 +12,12 @@ type NavigationItem = {
   href: string;
 };
 
-const navigation: NavigationItem[] = [
-  { name: 'Features', href: '#' },
-  { name: 'Pricing', href: '#' },
-  { name: 'Support', href: '#' },
-  { name: 'Contact', href: '#' },
-];
+interface HeroSectionProps {
+  navigation: NavigationItem[];
+}
 
-const HeroSection: React.FC = () => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);  // Type the state as a boolean
+const HeroSection = ({ navigation }: HeroSectionProps) => {       
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false); 
 
   return (
     <div className="bg-white">

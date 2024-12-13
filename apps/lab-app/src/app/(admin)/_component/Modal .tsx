@@ -1,6 +1,8 @@
 'use client'
 
-import { Dialog, DialogBackdrop } from '@headlessui/react';
+import { Dialog, DialogBackdrop
+    , DialogTitle
+ } from '@headlessui/react';
 import { motion } from "framer-motion";
 import { IoMdClose } from "react-icons/io";
 
@@ -45,12 +47,12 @@ const Modal = ({ isOpen, onClose, children, title, footer }: ModalProps) => {
 
                 {/* Modal Title */}
                 {title && (
-                    <Dialog.Title
+                    <DialogTitle
                         id="modal-title"
                         className="mb-4 text-lg font-semibold text-gray-900"
                     >
                         {title}
-                    </Dialog.Title>
+                    </DialogTitle>
                 )}
 
                 {/* Modal Body */}
