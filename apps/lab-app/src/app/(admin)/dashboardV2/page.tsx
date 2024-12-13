@@ -97,7 +97,7 @@ const Page: React.FC = () => {
     <div className="container mx-auto p-4">
       {/* Status Section with Animation */}
 
-      <motion.div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+      {/* <motion.div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         {Object.keys(statuses).map((key) => (
           <motion.div
             key={key}
@@ -117,7 +117,7 @@ const Page: React.FC = () => {
             <span className={`text-xs text-white`}>{statuses[key].context}</span>
           </motion.div>
         ))}
-      </motion.div>
+      </motion.div> */}
 
 
       {/* Tooltip */}

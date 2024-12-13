@@ -16,6 +16,8 @@ import { toast } from 'react-toastify';
 import { createLab } from '@/../services/labServices';
 
 const Lab = () => {
+
+    
     const [formData, setFormData] = useState<LabFormData>({
         name: '',
         address: '',
@@ -24,6 +26,8 @@ const Lab = () => {
         description: '',
     });
     const [errors, setErrors] = useState<Partial<Record<keyof LabFormData, string>>>({});
+
+    
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -43,6 +47,8 @@ const Lab = () => {
 
             // Success message (move this here to avoid redundancy)
             toast.success('Lab created successfully', { position: 'top-right', autoClose: 3000 });
+            
+            
 
         } catch (error) {
             // Handle Zod validation errors
