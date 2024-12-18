@@ -27,11 +27,13 @@ const navigation: NavigationItem[] = [
     icon: FlaskConical,
     current: false,
     children: [
-      { name: "Experiments", href: "#", current: false, icon: ClipboardListIcon },
-      { name: "Results", href: "#", current: false, icon: ClipboardListIcon },
-      { name: "Observations", href: "#", current: false, icon: FolderIcon },
       { name: "Tests", href: "/dashboardV2/test", current: false, icon: ClipboardListIcon },
-      { name: "Packages", href: "#", current: false, icon: CreditCardIcon },
+      { name: "Packages", href: "/dashboardV2/package", current: false, icon: CreditCardIcon },
+      { name: "Doctors", href: "/dashboardV2/doctor", current: false, icon: UserIcon }, 
+      { name: "Patients", href: "#", current: false, icon: UserIcon },
+      { name: "Appointments", href: "#", current: false, icon: UserIcon },
+      { name: "Reports", href: "#", current: false, icon: DocumentTextIcon },
+      { name: "Sample Collection", href: "/dashboardV2/sample", current: false, icon: ClipboardListIcon },
     ],
   },
   {
@@ -227,7 +229,7 @@ const Layout = ({ children }: LayoutProps) => {
         {/* Top Navigation Bar */}
         <nav className="flex items-center justify-between py-2 px-6 border-b border-gray-200 bg-white shadow-md rounded">
           <div className="flex items-center space-x-4">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-900">
               <span className="text-lg font-bold text-white">{user?.firstName[0].toUpperCase()}</span>
             </span>
             <h1 className="text-sm font-semibold text-gray-800">

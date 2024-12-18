@@ -57,7 +57,7 @@ const AddTest = ({closeModal}: AddTestProps) => {
 
   return (
     <div className="flex justify-center items-center  ">
-      <div className="bg-white shadow-2xl rounded-lg p-8 w-full max-w-lg">
+      <div className=" rounded-lg p-2 w-full max-w-lg">
         <h1 className="text-2xl font-semibold text-gray-800 flex items-center mb-6">
           <FaPlusCircle className="mr-3 text-indigo-800" /> Add New Test
         </h1>

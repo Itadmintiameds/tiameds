@@ -100,6 +100,7 @@ export const TestLists = () => {
          onClose={closeModal}
           // title=""
           footer={null}
+           modalClassName='max-w-sm'
          >
             <AddTest 
               closeModal={closeModal}
