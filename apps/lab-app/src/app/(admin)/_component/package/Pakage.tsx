@@ -7,9 +7,8 @@ import { TestList } from '@/types/test/testlist';
 import { useEffect, useState } from 'react';
 import { FiCheck, FiDollarSign, FiPlusCircle, FiSearch, FiTag, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
-
 import { LuTestTube } from "react-icons/lu";
-
+import Loader from '@/app/(admin)/_component/Loader';
 
 interface Package {
   packageName: string;
@@ -33,9 +32,11 @@ const PackageCreation = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [discount, setDiscount] = useState(0); // Discount in percentage
   const { currentLab } = useLabs();
+  const [loading, setLoading] = useState(false); // Loading state
 
   useEffect(() => {
     const fetchTests = async () => {
+      setLoading(true); // Start loading
       try {
         const testsData = await getTests(currentLab?.id?.toString() || '');
         setTests(testsData);
@@ -45,6 +46,8 @@ const PackageCreation = () => {
         setCategories(['All', ...uniqueCategories]);
       } catch (error) {
         console.error('Error fetching tests:', error);
+      } finally {
+        setLoading(false); // End loading
       }
     };
 
@@ -103,9 +106,8 @@ const PackageCreation = () => {
     return total - (total * discount) / 100;
   };
 
-
-
   const handleSubmit = async () => {
+    setLoading(true); // Start loading
     try {
       // Prepare only the required fields for submission
       const cleanPackageData = {
@@ -133,6 +135,8 @@ const PackageCreation = () => {
     } catch (error) {
       console.error('Error:', error);
       toast.error('Failed to create package. Please check the inputs.');
+    } finally {
+      setLoading(false); // End loading
     }
   };
 
@@ -176,7 +180,6 @@ const PackageCreation = () => {
         </div>
       </div>
 
-
       {/* Categorization Tabs */}
       <div className="flex flex-wrap gap-2 mt-2">
         {categories.map((category) => (
@@ -208,23 +211,27 @@ const PackageCreation = () => {
         </div>
 
         <div className="mt-4 border rounded bg-white p-3 max-h-40 overflow-y-auto">
-          {filteredTests.map((test) => (
-            <div
-              key={test.id}
-              className="flex justify-between items-center py-1 border-b last:border-none text-sm"
-            >
-              <span className='flex items-center gap-2'>
-                <LuTestTube className="text-base text-indigo-900" />
-                {test.name} ({test.category}) - ₹{test.price}
-              </span>
-              <button
-                onClick={() => handleAddTest(test)}
-                className="text-blue-500 hover:text-blue-700"
+          {loading ? (
+            <Loader />
+          ) : (
+            filteredTests.map((test) => (
+              <div
+                key={test.id}
+                className="flex justify-between items-center py-1 border-b last:border-none text-sm"
               >
-                <FiPlusCircle className="text-base" />
-              </button>
-            </div>
-          ))}
+                <span className='flex items-center gap-2'>
+                  <LuTestTube className="text-base text-indigo-900" />
+                  {test.name} ({test.category}) - ₹{test.price}
+                </span>
+                <button
+                  onClick={() => handleAddTest(test)}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  <FiPlusCircle className="text-base" />
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -277,4 +284,3 @@ const PackageCreation = () => {
 };
 
 export default PackageCreation;
-

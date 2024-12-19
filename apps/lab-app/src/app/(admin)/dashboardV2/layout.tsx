@@ -243,17 +243,7 @@ const Layout = ({ children }: LayoutProps) => {
             </h2>
             <h3 className="flex items-center text-xs text-gray-500">
               <UserIcon className="h-4 w-4 mr-1 text-gray-400" aria-hidden="true" />
-              {/* drop down */}
-              {/* {
-                user?.roles.map((role, index) => {
-                  return (
-                    <span key={index} className="text-xs font-semibold text-gray-600 ml-1 bg-gray-200 rounded-full px-2 py-1">
-                      {role}
-                    </span>
-                  );
-                })
-              } */}
-
+          
               <select className="text-xs font-semibold text-gray-600 bg-gray-200 rounded-full px-2 py-1 ml-2">
                 {user?.roles.map((role, index) => (
                   <option key={index} value={role} >

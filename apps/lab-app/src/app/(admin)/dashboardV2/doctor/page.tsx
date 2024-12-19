@@ -1,8 +1,11 @@
 import React from 'react'
+import DoctorList from '@/app/(admin)/_component/doctor/DoctorList'
 
 const page = () => {
   return (
-    <div>page</div>
+    <>
+      <DoctorList />
+    </>
   )
 }
 
