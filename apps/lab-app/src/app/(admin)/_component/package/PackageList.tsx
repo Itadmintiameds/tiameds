@@ -1,9 +1,9 @@
+
 'use client';
 
 import { getPackage, packageDelete, updatePackage } from '@/../services/packageServices';
 import Modal from '@/app/(admin)/_component/Modal ';
 import { useLabs } from '@/context/LabContext';
-import { Package } from "@/types/package/package";
 import { useEffect, useState } from 'react';
 import { FaBoxOpen, FaChevronDown, FaChevronUp, FaEdit, FaSearch, FaTrash } from 'react-icons/fa';
 import { toast } from 'react-toastify';
@@ -11,16 +11,41 @@ import Loader from '../Loader';
 import UpdatePackage from './UpdatePackage';
 import { TestList } from '@/types/test/testlist';  
 
+interface editingPackage {
+  id: number
+  packageName: string;
+  price: number;
+  discount: number;
+  tests: TestList[];
+}
+
+interface Package {
+  id: number;
+  packageName: string;
+  price: number;
+  discount: number;
+  tests: TestList[];
+}
+
+
+interface updatePackage {
+  id: number;
+  packageName: string;
+  discount: number;
+  price: number;
+  tests: TestList[];
+}
+
+
 const PackageList = () => {
-  const [packages, setPackages] = useState<Package[]>([]);       
+  const [packages, setPackages] = useState<Package[]>([]);
   const [filteredPackages, setFilteredPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedPackage, setExpandedPackage] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [editingPackage, setEditingPackage] = useState<Package | null>(null);
-  // const [updatedPackageData, setUpdatedPackageData] = useState<packageData | null>(null);
+  const [editingPackage, setEditingPackage] = useState<editingPackage | null>(null);
   const itemsPerPage = 5;
 
   const { currentLab } = useLabs();
@@ -57,7 +82,8 @@ const PackageList = () => {
     if (searchQuery) {
       const filtered = packages.filter((pkg) =>
         pkg.packageName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        pkg.testIds.some((test: any) => test.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        (Array.isArray(pkg.tests) &&
+          pkg.tests.some((test) => test.name.toLowerCase().includes(searchQuery.toLowerCase())))
       );
       setFilteredPackages(filtered);
     } else {
@@ -90,7 +116,7 @@ const PackageList = () => {
       } else {
         setError('No lab selected');
       }
-      toast.success('Package deleted successfully', { autoClose: 2000 }); 
+      toast.success('Package deleted successfully', { autoClose: 2000 });
     }
   };
 
@@ -101,28 +127,25 @@ const PackageList = () => {
     }
   };
 
-  const handleUpdatePackage = async (updatedPackageData: any) => {
+  const handleUpdatePackage = async (updatedPackageData:updatePackage ) => {
     if (!editingPackage || !updatedPackageData || !currentLab) return;
 
-    // Extract necessary fields and format the update payload
     const { packageName, price, discount, tests } = updatedPackageData;
 
-    // Create the testIds array from the tests
     const testIds = tests.map((test: { id: number }) => test.id);
 
     const updatedData = {
+      id: updatedPackageData.id,
       packageName,
       price,
       discount,
-      testIds, // Sending test ids as per the API requirement
+      testIds,
     };
 
     try {
-      // Call the updatePackage API
       await updatePackage(currentLab.id, updatedPackageData.id, updatedData);
       toast.success('Package updated successfully', { autoClose: 2000 });
 
-      // Re-fetch packages to reflect the updated data
       await fetchPackages();
     } catch (error) {
       toast.error('Failed to update package');
@@ -155,8 +178,8 @@ const PackageList = () => {
       </div>
 
       {paginatedPackages.length > 0 ? (
-        paginatedPackages.map((pkg: any) => (
-          <div key={pkg.id} className="flex flex-col bg-white rounded-lg shadow-sm overflow-hidden">
+        paginatedPackages.map((pkg) => (
+          <div key={pkg.id} className="flex flex-col bg-slate-200 rounded-lg shadow-sm overflow-hidden">
             <div className="p-3 flex items-center justify-between border-b">
               <div className="flex items-center space-x-2">
                 <FaBoxOpen className="text-blue-600 text-xl" />
@@ -177,7 +200,7 @@ const PackageList = () => {
             {expandedPackage === pkg.id && (
               <div className="p-3 space-y-3 border-t">
                 <h3 className="text-sm font-semibold text-gray-700">Tests Included:</h3>
-                {pkg.tests.map((test:TestList) => (
+                {pkg.tests.map((test: TestList) => (
                   <div key={test.id} className="flex justify-between items-center p-2 border-b rounded-md hover:bg-gray-50">
                     <div className="flex items-center space-x-2">
                       <FaChevronDown className="text-green-500" />
@@ -240,7 +263,6 @@ const PackageList = () => {
         >
           <UpdatePackage
             packageData={editingPackage}
-            // onUpdate={(data) => setUpdatedPackageData(data)}
             onClose={() => setEditingPackage(null)}
             handleUpdatePackage={handleUpdatePackage}
           />
@@ -251,3 +273,38 @@ const PackageList = () => {
 };
 
 export default PackageList;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

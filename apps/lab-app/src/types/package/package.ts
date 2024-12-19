@@ -7,15 +7,12 @@ export interface PackageTabItem {
 
 
 export interface Package {
+  id: number;
   packageName: string;
   price: number;
   discount: number; 
   testIds: number[];
 }
-
-
-
-
 
 
 // Type for the individual Test data

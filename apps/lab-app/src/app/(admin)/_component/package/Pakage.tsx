@@ -3,13 +3,20 @@ import { getTests } from '@/../../services/testService';
 import { createPackage } from '@/../services/packageServices';
 import { useLabs } from '@/context/LabContext';
 import { packageDataSchema } from '@/schema/packageDataSchema';
-import { Package } from '@/types/package/package';
 import { TestList } from '@/types/test/testlist';
 import { useEffect, useState } from 'react';
 import { FiCheck, FiDollarSign, FiPlusCircle, FiSearch, FiTag, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 
 import { LuTestTube } from "react-icons/lu";
+
+
+interface Package {
+  packageName: string;
+  price: number;
+  discount: number;
+  testIds: number[];
+}
 
 const PackageCreation = () => {
   const [packageData, setPackageData] = useState<Package>({
@@ -96,42 +103,26 @@ const PackageCreation = () => {
     return total - (total * discount) / 100;
   };
 
-  // const handleSubmit = async () => {
-  //   try {
-  //     packageDataSchema.parse(packageData);
-  //     const finalPrice = calculateFinalPrice();
-  //     if (currentLab) {
-  //       await createPackage(currentLab.id, { ...packageData, price: finalPrice, discount });
-  //     } else {
-  //       toast.error('Current lab is not available.');
-  //     }
-  //     toast.success('Package created successfully!', { autoClose: 2000 , position: "top-right"});    
-  //     setPackageData({ packageName: '', price: 0, testIds: [] , discount: 0});
-  //     setSelectedTests([]);
-  //     setDiscount(0);
-  //   } catch (error) {
-  //     console.error(error);
-  //     toast.error('Failed to create package. Please check the inputs.');
-  //   }
-  // };
-   
+
+
   const handleSubmit = async () => {
     try {
       // Prepare only the required fields for submission
       const cleanPackageData = {
+        id: Date.now(), // Generate a temporary ID
         packageName: packageData.packageName,
         testIds: packageData.testIds,
         price: calculateFinalPrice(),
         discount: discount,
       };
-  
+
       // Validate the package data against the schema
       packageDataSchema.parse(cleanPackageData);
-  
+
       if (currentLab) {
         await createPackage(currentLab.id, cleanPackageData); // Send clean data
         toast.success('Package created successfully!', { autoClose: 2000, position: 'top-right' });
-        
+
         // Reset the form after success
         setPackageData({ packageName: '', price: 0, testIds: [], discount: 0 });
         setSelectedTests([]);
@@ -144,7 +135,7 @@ const PackageCreation = () => {
       toast.error('Failed to create package. Please check the inputs.');
     }
   };
-  
+
   return (
     <div className="p-4 bg-gray-50 rounded shadow">
       <h1 className="text-lg font-bold flex items-center gap-2 mb-4 text-gray-700">
@@ -173,7 +164,10 @@ const PackageCreation = () => {
             <input
               type="number"
               value={discount}
-              onChange={(e) => setDiscount(+e.target.value)}
+              onChange={(e) => {
+                const input = Math.max(0, +e.target.value); // Ensure the discount is non-negative
+                setDiscount(input);
+              }}
               placeholder="Enter discount percentage"
               className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-400"
             />
@@ -182,6 +176,7 @@ const PackageCreation = () => {
         </div>
       </div>
 
+
       {/* Categorization Tabs */}
       <div className="flex flex-wrap gap-2 mt-2">
         {categories.map((category) => (
@@ -189,8 +184,8 @@ const PackageCreation = () => {
             key={category}
             onClick={() => handleCategoryChange(category)}
             className={`px-2 py-1 rounded-full text-xs ${selectedCategory === category
-                ? 'bg-indigo-900 text-white'
-                : 'bg-gray-200 text-gray-700'
+              ? 'bg-indigo-900 text-white'
+              : 'bg-gray-200 text-gray-700'
               }`}
           >
             {category}
@@ -219,7 +214,7 @@ const PackageCreation = () => {
               className="flex justify-between items-center py-1 border-b last:border-none text-sm"
             >
               <span className='flex items-center gap-2'>
-              <LuTestTube className="text-base text-indigo-900" />   
+                <LuTestTube className="text-base text-indigo-900" />
                 {test.name} ({test.category}) - ₹{test.price}
               </span>
               <button

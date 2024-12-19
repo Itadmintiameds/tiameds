@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -5,30 +6,32 @@ import { FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 import { getTests } from '@/../services/testService';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
-import { updatePackage } from '@/types/package/package';
-import { Package } from '@/types/package/package';  
 
 
-
+interface updatePackage {
+    id: number;
+    packageName: string;
+    discount: number;
+    price: number;
+    tests: TestList[];
+}
 
 interface UpdatePackageProps {
     packageData: updatePackage;
-    // onUpdate: (data: any) => void;
     onClose: () => void;
     handleUpdatePackage: (data: updatePackage) => void;
 }
 
-
-
 const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePackageProps) => {
-    const [updatedPackage, setUpdatedPackage] = useState<Package>(packageData);
+    const [updatedPackage, setUpdatedPackage] = useState<updatePackage>(packageData);
     const [tests, setTests] = useState<TestList[]>([]);
-    const [filteredTests, setFilteredTests] = useState<any[]>([]);
+    const [filteredTests, setFilteredTests] = useState<TestList[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const { currentLab } = useLabs();
     const [categories, setCategories] = useState<string[]>([]);
+    const [totalCost, setTotalCost] = useState<number>(0);
 
     useEffect(() => {
         setUpdatedPackage(packageData);
@@ -56,7 +59,6 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
         fetchTests();
     }, [packageData, currentLab]);
 
-    // Filter Tests by Category and Search Query
     useEffect(() => {
         let filtered = tests;
 
@@ -73,25 +75,31 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
         setFilteredTests(filtered);
     }, [selectedCategory, searchQuery, tests]);
 
+    useEffect(() => {
+        const calculateTotalCost = () => {
+            const total = updatedPackage.tests.reduce(
+                (sum, test: TestList) => sum + test.price,
+                0
+            );
+            setTotalCost(total);
+
+            // Update package price based on discount
+            const discountedPrice = total - (total * updatedPackage.discount) / 100;
+            setUpdatedPackage((prev) => ({
+                ...prev,
+                price: parseFloat(discountedPrice.toFixed(2)),
+            }));
+        };
+
+        calculateTotalCost();
+    }, [updatedPackage.tests, updatedPackage.discount]);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setUpdatedPackage((prev) => ({
             ...prev,
-            [name]: value,
+            [name]: name === 'discount' ? parseFloat(value) : value,
         }));
-    };
-
-    const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const discountValue = parseFloat(e.target.value);
-        setUpdatedPackage((prevPackage) => {
-            const updatedPrice = prevPackage.price - (prevPackage.price * discountValue) / 100;
-            const formattedPrice = updatedPrice.toFixed(2);
-            return {
-                ...prevPackage,
-                discount: discountValue,
-                price: parseFloat(formattedPrice),
-            };
-        });
     };
 
     const handleAddTest = (test: TestList) => {
@@ -103,7 +111,7 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
         }
     };
 
-    const handleRemoveTest = (testId: string) => {
+    const handleRemoveTest = (testId: number) => {
         setUpdatedPackage((prev) => ({
             ...prev,
             tests: prev.tests.filter((test: TestList) => test.id !== testId),
@@ -111,8 +119,8 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
     };
 
     const handleSave = () => {
-        onUpdate(updatedPackage); // Calls the onUpdate callback with the updated package
-        handleUpdatePackage(updatedPackage); // Calls the handleUpdatePackage function with the updated package
+        handleUpdatePackage(updatedPackage);
+        onClose();
     };
 
     return (
@@ -120,7 +128,6 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
             {/* Package Details */}
             <div className="p-4 bg-slate-50 rounded-lg shadow-lg w-full md:w-1/2">
                 <div className="space-y-4">
-                    {/* Package Name */}
                     <div>
                         <label className="block text-sm font-medium text-gray-600">Package Name</label>
                         <input
@@ -131,32 +138,16 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
                             className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
-
-                    {/* Price */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-600">Price</label>
-                        <input
-                            type="number"
-                            name="price"
-                            value={updatedPackage.price}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-
-                    {/* Discount */}
                     <div>
                         <label className="block text-sm font-medium text-gray-600">Discount (%)</label>
                         <input
                             type="number"
                             name="discount"
                             value={updatedPackage.discount}
-                            onChange={handleDiscountChange}
+                            onChange={handleInputChange}
                             className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
-
-                    {/* Selected Tests */}
                     <div>
                         <h3 className="text-sm font-medium text-gray-600 mb-2">Selected Tests</h3>
                         <div className="overflow-y-auto max-h-40 border rounded-md p-2">
@@ -176,15 +167,21 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
                             ))}
                         </div>
                     </div>
+
+                    {/* Total Cost and Discounted Price */}
+                    <div className="mt-4 space-y-2">
+                        <div className="text-gray-700 text-sm">
+                            <strong>Total Cost of Tests:</strong> ₹{totalCost.toFixed(2)}
+                        </div>
+                        <div className="text-gray-700 text-sm">
+                            <strong>Discounted Price:</strong> ₹{updatedPackage.price.toFixed(2)}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Save Button */}
                 <div className="flex justify-end mt-4">
                     <button
-                        onClick={() => {
-                            onClose();
-                            handleSave();
-                        }}
+                        onClick={handleSave}
                         className="flex items-center space-x-2 px-4 py-2 bg-indigo-900 text-white rounded-md hover:bg-indigo-700 focus:outline-none"
                     >
                         <FaSave />
@@ -196,8 +193,6 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
             {/* Available Tests */}
             <div className="p-4 bg-slate-50 rounded-lg shadow-lg w-full md:w-1/2">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4">Available Tests</h2>
-
-                {/* Filters */}
                 <div className="flex items-center space-x-2 mb-4">
                     <input
                         type="text"
@@ -218,8 +213,6 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
                         ))}
                     </select>
                 </div>
-
-                {/* Test List */}
                 <div className="overflow-y-auto max-h-80">
                     {loading ? (
                         <p>Loading tests...</p>
@@ -249,8 +242,6 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
 };
 
 export default UpdatePackage;
-
-
 
 
 
