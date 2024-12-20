@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { IoMdEye, IoMdCreate, IoMdTrash } from 'react-icons/io';
 import { toast } from 'react-toastify';
 import Loader from '@/app/(admin)/_component/Loader';
-import Modal from '../Modal ';
+import Modal from '../Model';
 import DocterProfile from '@/app/(admin)/_component/doctor/DocterProfile';
 import UpdateDoctor from '@/app/(admin)/_component/doctor/UpdateDoctor';
 import { getDoctor, updateDoctor, doctorDelete, createDoctor } from '@/../../services/doctorServices';

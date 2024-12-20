@@ -13,10 +13,14 @@ import { ArrowLeft, ArrowRight, ClipboardListIcon, CreditCardIcon, FlaskConical,
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
+import { AiOutlineSafetyCertificate } from "react-icons/ai";
 import { toast } from "react-toastify";
 import useUserStore from "../../../context/userStore";
 import CurrentTime from "../_component/CurrentTime";
 import Lab from "../_component/Lab";
+import { FaUserDoctor } from "react-icons/fa6";
+import { PiPackageFill } from "react-icons/pi";
+
 
 
 
@@ -28,9 +32,9 @@ const navigation: NavigationItem[] = [
     current: false,
     children: [
       { name: "Tests", href: "/dashboard/test", current: false, icon: ClipboardListIcon },
-      { name: "Packages", href: "/dashboard/package", current: false, icon: CreditCardIcon },
-      { name: "Doctors", href: "/dashboard/doctor", current: false, icon: UserIcon }, 
-      { name: "Patients", href: "#", current: false, icon: UserIcon },
+      { name: "Packages", href: "/dashboard/package", current: false, icon:PiPackageFill },
+      { name: "Doctors", href: "/dashboard/doctor", current: false, icon: FaUserDoctor }, 
+      { name: "Insurance", href: "/dashboard/insurance", current: false, icon: AiOutlineSafetyCertificate },
       { name: "Appointments", href: "#", current: false, icon: UserIcon },
       { name: "Reports", href: "#", current: false, icon: DocumentTextIcon },
       { name: "Sample Collection", href: "/dashboard/sample", current: false, icon: ClipboardListIcon },

@@ -7,7 +7,7 @@ import { FaPlus, FaSortAmountDown, FaSortAmountUp, FaTimes } from 'react-icons/f
 import { FaTrashCan } from "react-icons/fa6";
 import { MdModeEditOutline } from "react-icons/md";
 import { toast } from 'react-toastify';
-import Modal from '../Modal ';
+import Modal from '../Model';
 import AddTest from './AddTest';
 import Loader from "@/app/(admin)/_component/Loader";
 
