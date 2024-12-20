@@ -2,12 +2,12 @@
 'use client';
 
 import { getPackage, packageDelete, updatePackage } from '@/../services/packageServices';
-import Modal from '@/app/(admin)/_component/Model';
+import Modal from '@/app/(admin)/_component/common/Model';
 import { useLabs } from '@/context/LabContext';
 import { useEffect, useState } from 'react';
 import { FaBoxOpen, FaChevronDown, FaChevronUp, FaEdit, FaSearch, FaTrash } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import Loader from '../Loader';
+import Loader from '../common/Loader';
 import UpdatePackage from './UpdatePackage';
 import { TestList } from '@/types/test/testlist';  
 

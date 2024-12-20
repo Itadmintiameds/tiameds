@@ -1,5 +1,5 @@
 'use client';
-import Button from '@/app/(admin)/_component/Button';
+import Button from '@/app/(admin)/_component/common/Button';
 import { Trash2Icon } from 'lucide-react';
 import React, { useState } from 'react';
 

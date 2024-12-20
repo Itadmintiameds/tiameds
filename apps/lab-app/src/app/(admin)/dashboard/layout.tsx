@@ -16,8 +16,8 @@ import React, { useEffect, useState } from "react";
 import { AiOutlineSafetyCertificate } from "react-icons/ai";
 import { toast } from "react-toastify";
 import useUserStore from "../../../context/userStore";
-import CurrentTime from "../_component/CurrentTime";
-import Lab from "../_component/Lab";
+import CurrentTime from "../_component/common/CurrentTime";
+import Lab from "../_component/lab/Lab";
 import { FaUserDoctor } from "react-icons/fa6";
 import { PiPackageFill } from "react-icons/pi";
 

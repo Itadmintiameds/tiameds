@@ -1,6 +1,6 @@
 'use client'
 import { CheckIcon, CircleXIcon } from 'lucide-react'
-import Button from '../../_component/Button'
+import Button from '../../_component/common/Button'
 import TestTab from './_component/TestTab'
 
 const page = () => {

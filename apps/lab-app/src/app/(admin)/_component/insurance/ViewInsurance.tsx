@@ -1,7 +1,11 @@
 import React from 'react'
 import { Insurance } from '@/types/insurance/insurance';
 
-const ViewInsurance = () => {
+interface ViewInsuranceProps {
+  insurance: Insurance
+}
+
+const ViewInsurance = ({ insurance }: ViewInsuranceProps) => {
   return (
     <div>ViewInsurance</div>
   )

@@ -6,19 +6,21 @@ import React, { useState } from 'react';
 import { FaClipboardList, FaPlusCircle, FaRupeeSign, FaTag } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { z } from 'zod';
+import Button from '../common/Button';
+import { Plus } from 'lucide-react';
 
 interface AddTestProps {
   closeModal: () => void;
 }
 
 
-const AddTest = ({closeModal}: AddTestProps) => {
+const AddTest = ({ closeModal }: AddTestProps) => {
   const [formData, setFormData] = useState<TestForm>({
     category: '',
     name: '',
     price: 0,
   });
-  const {  currentLab } = useLabs();
+  const { currentLab } = useLabs();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -106,7 +108,7 @@ const AddTest = ({closeModal}: AddTestProps) => {
               Price
             </label>
             <div className="relative">
-            <FaRupeeSign className="absolute top-2.5 left-3 text-gray-400" />
+              <FaRupeeSign className="absolute top-2.5 left-3 text-gray-400" />
               <input
                 id="price"
                 type="number"
@@ -120,12 +122,22 @@ const AddTest = ({closeModal}: AddTestProps) => {
           </div>
 
           {/* Submit Button */}
-          <button
+          {/* <button
             type="submit"
             className="w-full bg-indigo-800 text-white py-3 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition text-sm font-medium"
           >
             Add Test
-          </button>
+          </button> */}
+
+          <Button
+            text="Add Test"
+            onClick={() => { }}
+            type='submit'
+            className="flex items-center justify-center px-4 py-1 w-full text-xs bg-button-tertiary text-white rounded-md hover:bg-button-tertiary focus:outline-none"
+          >
+            <Plus className="h-4" />
+          </Button>
+
         </form>
       </div>
     </div>

@@ -1,6 +1,15 @@
 import React from 'react'
 
-const UpdateInsurance = () => {
+
+import { Insurance } from '@/types/insurance/insurance'
+
+interface UpdateInsuranceProps {
+  insurance: Insurance
+}
+
+
+
+const UpdateInsurance = ({ insurance }: UpdateInsuranceProps) => {  
   return (
     <div>UpdateInsurance</div>
   )

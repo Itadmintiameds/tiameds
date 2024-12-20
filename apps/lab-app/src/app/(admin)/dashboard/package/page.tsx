@@ -1,7 +1,7 @@
 'use client';
 
 import Package from '@/app/(admin)/_component/package/Pakage';
-import Tabs from '@/app/(admin)/_component/TabComponent';
+import Tabs from '@/app/(admin)/_component/common/TabComponent';
 import { PackageTabItem } from '@/types/package/package';
 import React from 'react';
 import { CiViewList } from 'react-icons/ci';

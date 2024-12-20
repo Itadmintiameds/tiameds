@@ -7,9 +7,11 @@ import { FaPlus, FaSortAmountDown, FaSortAmountUp, FaTimes } from 'react-icons/f
 import { FaTrashCan } from "react-icons/fa6";
 import { MdModeEditOutline } from "react-icons/md";
 import { toast } from 'react-toastify';
-import Modal from '../Model';
+import Modal from '../common/Model';
 import AddTest from './AddTest';
-import Loader from "@/app/(admin)/_component/Loader";
+import Loader from "@/app/(admin)/_component/common/Loader";
+import Button from "@/app/(admin)/_component/common/Button";
+import { Plus } from 'lucide-react';
 
 export const TestLists = () => {
   const [tests, setTests] = useState<TestList[]>([]); // All fetched tests
@@ -86,11 +88,20 @@ export const TestLists = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">Tests</h1>
-        <button
+        {/* <button
           onClick={openModal}
           className="flex items-center gap-2 bg-indigo-800 text-white px-4 py-2 rounded-md text-xs">
           <FaPlus className="text-xs" /> Add Test
-        </button>
+        </button> */}
+
+        <Button
+          text="Add Test"
+          onClick={openModal}
+          className="px-4 py-1 text-xs bg-button-tertiary text-white rounded-md hover:bg-button-secondary focus:outline-none rounded"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+
       </div>
 
       {/* Modal */}

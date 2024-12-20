@@ -1,6 +1,13 @@
 import React from 'react'
 
-const AddInsurance = () => {
+import { Insurance } from '@/types/insurance/insurance'
+
+interface AddInsuranceProps {
+  insurance: Insurance
+  handleAddInsurance: (insurance: Insurance) => void
+}
+
+const AddInsurance = ({ insurance, handleAddInsurance }: AddInsuranceProps) => {      
   return (
     <div>AddInsurance</div>
   )

@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { IoMdEye, IoMdCreate, IoMdTrash } from 'react-icons/io';
 import { toast } from 'react-toastify';
-import Loader from '@/app/(admin)/_component/Loader';
-import Modal from '../Model';
+import Loader from '@/app/(admin)/_component/common/Loader';
+import Modal from '../common/Model';
 import DocterProfile from '@/app/(admin)/_component/doctor/DocterProfile';
 import UpdateDoctor from '@/app/(admin)/_component/doctor/UpdateDoctor';
 import { getDoctor, updateDoctor, doctorDelete, createDoctor } from '@/../../services/doctorServices';
 import { useLabs } from '@/context/LabContext';
 import { Doctor } from '@/types/doctor/doctor';
 import AddDoctor from './AddDoctor';
-import Button from '../Button';
+import Button from '../common/Button';
 import { FaSortAmountDown, FaSortAmountUp } from 'react-icons/fa';
 
 
