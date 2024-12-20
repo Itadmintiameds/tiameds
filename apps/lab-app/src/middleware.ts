@@ -21,5 +21,5 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   // Define which routes the middleware should apply to
-  matcher: ['/dashboardV2/:path*', '/admin/:path*'], // Update paths as needed
+  matcher: ['/dashboard/:path*', '/admin/:path*'], // Update paths as needed
 };

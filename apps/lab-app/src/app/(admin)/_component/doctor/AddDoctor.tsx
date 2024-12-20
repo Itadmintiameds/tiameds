@@ -1,0 +1,107 @@
+import React, { useState } from 'react';
+import { Doctor } from '@/types/doctor/doctor';
+import { doctorSchema } from '@/schema/doctorSchemaData';
+
+import {
+    FaUser, FaEnvelope, FaStethoscope, FaUniversity,
+    FaHospital, FaIdCard, FaPhoneAlt, FaMapMarkerAlt
+} from 'react-icons/fa';
+
+interface AddDoctorProps {
+    handleAddDoctor: (doctor: Doctor) => void;
+}
+
+const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
+    const [doctor, setDoctor] = useState<Doctor>({
+        id: undefined,
+        name: '',
+        email: '',
+        speciality: '',
+        qualification: '',
+        hospitalAffiliation: '',
+        licenseNumber: '',
+        phone: 0,
+        address: '',
+        city: '',
+        state: '',
+        country: '',
+    });
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setDoctor((prevState) => ({
+            ...prevState,
+            [name]: name === 'phone' ? parseInt(value) || '' : value,
+        }));
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // Validate using Zod schema
+        const validation = doctorSchema.safeParse(doctor);
+
+        if (!validation.success) {
+            const fieldErrors = validation.error.errors.reduce((acc, error) => {
+                if (error.path[0]) {
+                    acc[error.path[0] as string] = error.message;
+                }
+                return acc;
+            }, {} as Record<string, string>);
+            setErrors(fieldErrors);
+        } else {
+            setErrors({});
+            handleAddDoctor(doctor);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4 bg-gradient-to-r from-white via-gray-100 to-gray-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                    { label: 'Name', name: 'name', icon: FaUser, type: 'text' },
+                    { label: 'Email', name: 'email', icon: FaEnvelope, type: 'email' },
+                    { label: 'Speciality', name: 'speciality', icon: FaStethoscope, type: 'text' },
+                    { label: 'Qualification', name: 'qualification', icon: FaUniversity, type: 'text' },
+                    { label: 'Hospital Affiliation', name: 'hospitalAffiliation', icon: FaHospital, type: 'text' },
+                    { label: 'License Number', name: 'licenseNumber', icon: FaIdCard, type: 'text' },
+                    { label: 'Phone', name: 'phone', icon: FaPhoneAlt, type: 'number' },
+                    { label: 'Address', name: 'address', icon: FaMapMarkerAlt, type: 'text' },
+                    { label: 'City', name: 'city', icon: FaMapMarkerAlt, type: 'text' },
+                    { label: 'State', name: 'state', icon: FaMapMarkerAlt, type: 'text' },
+                    { label: 'Country', name: 'country', icon: FaMapMarkerAlt, type: 'text' },
+                ].map(({ label, name, icon: Icon, type }) => (
+                    <div key={name} className="mb-2">
+                        <label htmlFor={name} className="text-xs font-medium text-gray-700 flex items-center">
+                            <Icon className="mr-2" /> {label}
+                        </label>
+                        <input
+                            type={type}
+                            id={name}
+                            name={name}
+                            value={doctor[name as keyof Doctor]?.toString() || ''}
+                            onChange={handleChange}
+                            className={`mt-1 block w-full p-2 text-xs border ${
+                                errors[name] ? 'border-red-500' : 'border-gray-300'
+                            } rounded-md`}
+                        />
+                        {errors[name] && (
+                            <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            <button
+                type="submit"
+                className="px-4 py-2 bg-blue-500 text-white text-xs rounded-md hover:bg-blue-600 w-full"
+            >
+                Add Doctor
+            </button>
+        </form>
+    );
+};
+
+export default AddDoctor;
+
