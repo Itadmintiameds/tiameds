@@ -19,7 +19,7 @@ const Modal = ({ isOpen, onClose, children, title, footer, modalClassName }: Mod
             open={isOpen}
             onClose={onClose}
             className="fixed inset-0 z-30 flex items-center justify-center "
-            aria-labelledby="modal-title"
+            aria-labelledby="modal-title" 
             aria-describedby="modal-description"
         >
             {/* Backdrop */}
@@ -55,7 +55,7 @@ const Modal = ({ isOpen, onClose, children, title, footer, modalClassName }: Mod
                 {/* Modal Body */}
                 <div
                     id="modal-description"
-                    className="text-gray-700 bg-white rounded-md shadow-sm bg-white"
+                    className=""
                 >
                     {children}
                 </div>

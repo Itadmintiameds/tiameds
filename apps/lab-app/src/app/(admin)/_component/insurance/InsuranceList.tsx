@@ -124,10 +124,10 @@ const InsuranceList = () => {
 
       {showViewInsurance && (
         <Model
-          title="View Insurance"
+          title="Insurance Details" 
           isOpen={showViewInsurance}
           onClose={() => setShowViewInsurance(false)}
-          modalClassName='w-96'
+          modalClassName="max-w-xl"
         >
           {selectedInsurance && <ViewInsurance insurance={selectedInsurance} />}
         </Model>
