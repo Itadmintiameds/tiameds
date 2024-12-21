@@ -6,6 +6,8 @@ import {
     FaUser, FaEnvelope, FaStethoscope, FaUniversity,
     FaHospital, FaIdCard, FaPhoneAlt, FaMapMarkerAlt
 } from 'react-icons/fa';
+import Button from '../common/Button';
+import { Plus } from 'lucide-react';
 
 interface AddDoctorProps {
     handleAddDoctor: (doctor: Doctor) => void;
@@ -57,7 +59,7 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4 bg-gradient-to-r from-white via-gray-100 to-gray-200">
+        <form  className="space-y-4 bg-gradient-to-r from-white via-gray-100 to-gray-200">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
                     { label: 'Name', name: 'name', icon: FaUser, type: 'text' },
@@ -82,9 +84,8 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                             name={name}
                             value={doctor[name as keyof Doctor]?.toString() || ''}
                             onChange={handleChange}
-                            className={`mt-1 block w-full p-2 text-xs border ${
-                                errors[name] ? 'border-red-500' : 'border-gray-300'
-                            } rounded-md`}
+                            className={`mt-1 block w-full p-2 text-xs border ${errors[name] ? 'border-red-500' : 'border-gray-300'
+                                } rounded-md`}
                         />
                         {errors[name] && (
                             <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
@@ -93,12 +94,16 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 ))}
             </div>
 
-            <button
+            <Button
+                text=""
                 type="submit"
-                className="px-4 py-2 bg-blue-500 text-white text-xs rounded-md hover:bg-blue-600 w-full"
+                onClick={() => handleAddDoctor(doctor)}
+                className="w-full px-4 py-1 text-xs bg-button-tertiary text-white rounded-md hover:bg-button-tertiary focus:outline-none flex items-center justify-center space-x-2"
             >
-                Add Doctor
-            </button>
+                <Plus size={20} />
+                <span>Add Doctor</span>
+            </Button>
+
         </form>
     );
 };

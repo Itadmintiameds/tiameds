@@ -18,7 +18,7 @@ interface InsuranceTabItem {
   ];
   
   const Page = () => {
-    const [selectedTab, setSelectedTab] = React.useState<string>('insurance');
+    const [selectedTab, setSelectedTab] = useState<string>('insurance');
       const [loading, setLoading] = React.useState<boolean>(false);
   
     // Update the tab change logic to only set state
@@ -39,7 +39,7 @@ interface InsuranceTabItem {
             <Loader />
           ) : (
             <>
-              {selectedTab === 'insurance' && <InsuranceList />}
+              {selectedTab === 'insurance' && <InsuranceList />}  
               
             </>
           )}

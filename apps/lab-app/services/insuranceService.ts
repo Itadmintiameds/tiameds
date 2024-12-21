@@ -25,7 +25,8 @@ export const createInsurance = async (labId: number, insuranceData: Insurance) =
 
 export const updateInsurance = async (labId: number, insuranceId: number, insuranceData: Insurance) => {
     try {
-        const response = await api.put(`/lab/admin/insurance/${labId}/${insuranceId}`, insuranceData);
+        // lab/admin/insurance/1/insurance/2
+        const response = await api.put(`/lab/admin/insurance/${labId}/insurance/${insuranceId}`, insuranceData);
         return response.data;
     } catch (error: any) {
         const message = error.response?.data?.message || 'An error occurred while updating insurance.';
@@ -36,7 +37,7 @@ export const updateInsurance = async (labId: number, insuranceId: number, insura
 
 export const deleteInsurance = async (labId: number, insuranceId: number) => {
     try {
-        const response = await api.delete(`/lab/admin/insurance/${labId}/${insuranceId}`);
+        const response = await api.delete(`/lab/admin/insurance/${labId}/insurance/${insuranceId}`);    
         return response.data;
     } catch (error: any) {
         const message = error.response?.data?.message || 'An error occurred while deleting insurance.';
