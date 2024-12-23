@@ -7,10 +7,12 @@ import React from 'react';
 import { CiViewList } from 'react-icons/ci';
 import { RiTestTubeLine } from "react-icons/ri";
 import PackageList from '../../_component/package/PackageList';
+import Dashboard from '@/app/(admin)/_component/dashboard/stats/Dashboard';
 
 const tabs: PackageTabItem[] = [
     { id: 'package', label: 'Package', icon: <RiTestTubeLine className="text-xl" /> },
     { id: 'packageList', label: 'Package List', icon: <CiViewList className="text-xl" /> },
+    { id: 'dashboard', label: 'Dashboard', icon: <CiViewList className="text-xl" /> },      
 ];
 
 const Page = () => {
@@ -25,6 +27,7 @@ const Page = () => {
             {/* Render tab-specific content */}
             {selectedTab === 'package' && <Package />}
             {selectedTab === 'packageList' && <PackageList />}
+        
 
         </Tabs>
     );
