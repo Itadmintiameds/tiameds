@@ -11,7 +11,7 @@ import { Doctor } from '@/types/doctor/doctor';
 import AddDoctor from './AddDoctor';
 import Button from '../common/Button';
 import { FaSortAmountDown, FaSortAmountUp } from 'react-icons/fa';
-
+import Pagination from '../common/Pagination';
 
 
 const DoctorSpeciality = [
@@ -263,7 +263,7 @@ const DoctorList = () => {
             </div>
 
             {/* Pagination Controls */}
-            <div className="flex justify-center items-center mt-4">
+            {/* <div className="flex justify-center items-center mt-4">
                 <button
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
@@ -281,7 +281,13 @@ const DoctorList = () => {
                 >
                     Next <FaSortAmountUp className="text-gray-600" />
                 </button>
-            </div>
+            </div> */}
+
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+            />
 
             {selectedDoctor && (
                 <Modal

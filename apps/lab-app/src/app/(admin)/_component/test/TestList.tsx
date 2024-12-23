@@ -12,6 +12,7 @@ import AddTest from './AddTest';
 import Loader from "@/app/(admin)/_component/common/Loader";
 import Button from "@/app/(admin)/_component/common/Button";
 import { Plus } from 'lucide-react';
+import Pagination from '@/app/(admin)/_component/common/Pagination';
 
 export const TestLists = () => {
   const [tests, setTests] = useState<TestList[]>([]); // All fetched tests
@@ -213,7 +214,7 @@ export const TestLists = () => {
           </div>
 
           {/* Pagination */}
-          <div className="flex justify-center items-center mt-4">
+          {/* <div className="flex justify-center items-center mt-4">
             <button
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
@@ -231,7 +232,13 @@ export const TestLists = () => {
             >
               Next <FaSortAmountUp className="text-gray-600" />
             </button>
-          </div>
+          </div> */}
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </>
       )}
     </div>

@@ -238,6 +238,7 @@ import EditInsurance from './UpdateInsurance';
 import ViewInsurance from './ViewInsurance';
 import { toast } from 'react-toastify';
 import { FaSortAmountDown, FaSortAmountUp } from 'react-icons/fa';
+import Pagination from '@/app/(admin)/_component/common/Pagination';
 
 const InsuranceList = () => {
   const [insurance, setInsurance] = useState<Insurance[]>([]);
@@ -393,7 +394,7 @@ const InsuranceList = () => {
 
           <Table data={paginatedInsurance} columns={columns} actions={actions} noDataMessage="No insurance data available" />
 
-          <div className="flex justify-center items-center mt-4">
+          {/* <div className="flex justify-center items-center mt-4">
             <button
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
@@ -411,7 +412,12 @@ const InsuranceList = () => {
             >
               Next <FaSortAmountUp className="text-gray-600" />
             </button>
-          </div>
+          </div> */}
+          <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+            />
         </div>
       )}
 
