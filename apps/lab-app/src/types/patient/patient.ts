@@ -9,13 +9,12 @@ export interface Patient {
     state: string;
     zip: string;
     bloodGroup: string;
-    dateOfBirth: string;
+    dateOfBirth: string;  // Keeping as string because the data is a string in your example
     visit?: Visit;
 }
 
-
 export interface Visit {
-    visitDate: string;
+    visitDate: string;  // Keeping as string to match the provided data format
     visitType: string;
     visitStatus: string;
     visitDescription: string;
@@ -26,13 +25,11 @@ export interface Visit {
     billing: Billing;
 }
 
-
-
 export interface Billing {
     totalAmount: number;
-    paymentStatus: string;
-    paymentMethod: string;
-    paymentDate: string;
+    paymentStatus?: string;  // Optional if payment details are not always present
+    paymentMethod?: string;  // Optional if payment method is not always provided
+    paymentDate?: string;  // Keeping as string to match the provided data format
     discount: number;
     gstRate: number;
     gstAmount: number;
@@ -41,11 +38,15 @@ export interface Billing {
     igstAmount: number;
     netAmount: number;
 }
-
-
-
 export interface PatientTabItem {
     id: string;
     label: string;
     icon: JSX.Element;
 }
+
+
+
+
+
+
+
