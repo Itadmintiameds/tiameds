@@ -125,7 +125,7 @@ const PatientList: React.FC = () => {
   }
 
   return (
-    <div>
+    <div className=''>
       <input
         type="text"
         placeholder="Search Patient"
@@ -137,7 +137,7 @@ const PatientList: React.FC = () => {
         data={paginatedPatients}
         columns={columns}
         actions={(patient) => (
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 ">
             <button className="text-blue-500 hover:text-blue-700" onClick={() => handleView(patient)}>
               <FaEye />
             </button>

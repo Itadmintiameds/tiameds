@@ -40,3 +40,13 @@ export const getAllVisits = async (labId: number) => {
         throw new Error('An error occurred while fetching visits.');
     }
 }
+
+
+export const addPatient = async (labId: number, patient: Patient) => {
+    try {
+        const response = await api.post(`/lab/${labId}/add-patient`, patient);
+        return response.data;
+    } catch (error: unknown) {
+        throw new Error('An error occurred while adding patient.');
+    }
+}

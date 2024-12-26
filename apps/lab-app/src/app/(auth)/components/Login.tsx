@@ -56,8 +56,9 @@ const Login = () => {
       console.log('Current Cookies:', document.cookie);
 
       localStorage.setItem('user', JSON.stringify(response?.data)); // Store user in localStorage
-      toast.success('Logged in successfully!', { autoClose: 1000 });
       router.push('/dashboard');
+      toast.success('Logged in successfully!', { autoClose: 1000 });
+    
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
         toast.error(err?.response?.data?.message || 'Login failed. Please try again.', { autoClose: 1000 });

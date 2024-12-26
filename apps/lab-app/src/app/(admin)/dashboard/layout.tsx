@@ -298,7 +298,7 @@ const Layout = ({ children }: LayoutProps) => {
             </Link>
             <button className="relative flex items-center justify-center w-10 h-10 text-white bg-red-600 rounded-md hover:bg-red-700 transition duration-200"
               onClick={() => {
-                toast.success("Logged out successfully", { position: "top-right", autoClose: 5000 });
+                toast.success("Logged out successfully", { position: "top-right", autoClose: 2000 });
                 localStorage.removeItem("user");
                 //remove token from cookies
                 document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
@@ -326,8 +326,6 @@ const Layout = ({ children }: LayoutProps) => {
           }
 
         </div>
-
-
       </main>
     </div>
   );
