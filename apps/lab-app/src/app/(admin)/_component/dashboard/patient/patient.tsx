@@ -1,13 +1,20 @@
+import React, { useState } from 'react';
 import SubTabComponent from '../../common/SubTabComponent';
 import PatientList from './PatientList';
 import AddPatient from './AddPatient';
-import React, { useState } from 'react';
+import VisitingList from './_components/VisitingList';
+import BillingList from './_components/BillingList';
+
 import { Home } from 'lucide-react';
 import { IoIosMan } from 'react-icons/io';
 
 const tabs = [
   { id: 'AddPatient', icon: <IoIosMan size={16} />, label: 'Add Patient', content: <AddPatient /> },
   { id: 'patients', icon: <Home size={16} />, label: 'Patients', content: <PatientList /> },
+  { id: 'visits', icon: <Home size={16} />, label: 'Visits', content: <VisitingList /> },
+  { id: 'billing', icon: <Home size={16} />, label: 'Billing', content: <BillingList /> },
+  { id: 'reports', icon: <Home size={16} />, label: 'Reports', content: <div>Reports</div> },
+
 ];
 
 const Patient = () => {

@@ -42,6 +42,7 @@ export const getAllVisits = async (labId: number) => {
 }
 
 
+// /lab/2/add-patient
 export const addPatient = async (labId: number, patient: Patient) => {
     try {
         const response = await api.post(`/lab/${labId}/add-patient`, patient);

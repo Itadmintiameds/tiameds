@@ -21,6 +21,9 @@ import PatientBilling from './_components/PatientBilling';
 import PatientFrom from './_components/PatientFrom';
 import PatientTestPackage from './_components/PatientTestPackage';
 import PatientVisit from './_components/PatientVisit';
+import { addPatient } from '@/../services/patientServices';
+import { patientSchema } from '@/schema/patientScheamData';
+
 
 
 const AddPatient = () => {
@@ -74,11 +77,8 @@ const AddPatient = () => {
 
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
-   
-  // ========================================
 
-   const [selectedInsurances, setSelectedInsurances] = useState<string[]>(newPatient.visit?.insuranceIds?.map(String) || []);
-
+  const [selectedInsurances, setSelectedInsurances] = useState<string[]>(newPatient.visit?.insuranceIds?.map(String) || []);
 
 
   useEffect(() => {
@@ -131,48 +131,11 @@ const AddPatient = () => {
     }
   }, [searchTerm, patient]);
 
-
-
-
-  // const handleChange = (
-  //   event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
-  // ) => {
-  //   const { name, value } = 'target' in event ? event.target : { name: '', value: [] };
-
-  //   // If it's related to insurance IDs, we handle it differently
-  //   if (name === 'visit.insuranceIds') {
-  //     // Ensure we are updating the `insuranceIds` within the visit object
-  //     setNewPatient(prevState => ({
-  //       ...prevState,
-  //       visit: {
-  //         ...prevState.visit,
-  //         insuranceIds: Array.isArray(value) ? value.map(Number) : [],  // Update insuranceIds in visit
-  //       },
-  //     }));
-  //   } else if (name.startsWith('visit.')) {
-  //     // For any other fields under the `visit` object (e.g., visitDate, visitType, etc.)
-  //     setNewPatient(prevState => ({
-  //       ...prevState,
-  //       visit: {
-  //         ...prevState.visit,
-  //         [name.split('.')[1]]: value,  // Update the specific visit field
-  //       },
-  //     }));
-  //   } else {
-  //     // For all other fields outside the visit object
-  //     setNewPatient(prevState => ({
-  //       ...prevState,
-  //       [name]: Array.isArray(value) ? value.map(Number) : value,  // Update the main fields (e.g., firstName, lastName, etc.)
-  //     }));
-  //   }
-  // };
-
- 
   const handleChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
   ) => {
     const { name, value } = 'target' in event ? event.target : { name: '', value: [] };
-  
+
     // If it's related to insurance IDs, we handle it differently
     if (name === 'visit.insuranceIds') {
       setNewPatient(prevState => ({
@@ -209,7 +172,7 @@ const AddPatient = () => {
       }));
     }
   };
-  
+
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedCategory(e.target.value);
   };
@@ -405,14 +368,44 @@ const AddPatient = () => {
   };
 
   const handleAddPatient = async () => {
-    console.log(newPatient, 'newPatient');
+    try {
+      console.log(newPatient, 'newPatient');
+      const validationResult = patientSchema.safeParse(newPatient);
+
+      if (!validationResult.success) {
+        const error = validationResult.error;
+        toast.error(error.errors.map((err) => err.message).join(', ')); // Show error messages in a toast
+        return;
+      }
+
+      const labId = currentLab?.id;
+      if (labId === undefined) {
+        toast.error('Lab ID is undefined.');
+        console.error(labId, 'Lab ID is undefined.');
+        return;
+      }
+
+      const response = await addPatient(labId, newPatient);
+      console.log(response, 'response');
+
+      if (response.status === 'success') {
+        toast.success('Patient added successfully.');
+        handleClearPatient();
+        
+      } else {
+        toast.error('An error occurred while adding the patient.');
+      }
+    } catch (error) {
+      console.error('Error adding patient:', error);
+      toast.error('An error occurred while adding the patient.');
+    }
   };
+
 
   if (!tests || !packages || !doctors || !insurances) {
     return <Loader />;
   }
 
-  console.log(newPatient, 'newPatient');
 
   return (
     <div>
@@ -427,7 +420,7 @@ const AddPatient = () => {
           handleClearPatient={handleClearPatient}
         />
 
-         {/* const [selectedInsurances, setSelectedInsurances] = useState<string[]>(newPatient.visit?.insuranceIds?.map(String) || []); */}
+        {/* const [selectedInsurances, setSelectedInsurances] = useState<string[]>(newPatient.visit?.insuranceIds?.map(String) || []); */}
 
         <PatientVisit
           newPatient={newPatient}
@@ -471,7 +464,7 @@ const AddPatient = () => {
           className="flex items-center py-1 px-3 bg-blue-500 text-white rounded-md text-xs"
         >
           <Plus size={16} className="mr-2" /> {/* Check Icon */}
-        
+
         </Button>
 
         {/* Cancel Button */}
@@ -481,7 +474,7 @@ const AddPatient = () => {
           className="flex items-center py-1 px-3 bg-red-500 text-white rounded-md text-xs"
         >
           <XIcon size={16} className="mr-2" /> {/* X Icon */}
-          
+
         </Button>
       </div>
     </div>
