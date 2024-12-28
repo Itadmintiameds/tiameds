@@ -1,18 +1,18 @@
 'use client';
 import { deleteTest, getTests } from '@/../../services/testService';
+import Button from "@/app/(admin)/_component/common/Button";
+import Loader from "@/app/(admin)/_component/common/Loader";
+import Pagination from '@/app/(admin)/_component/common/Pagination';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
+import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { FaPlus, FaSortAmountDown, FaSortAmountUp, FaTimes } from 'react-icons/fa';
+import { FaTimes } from 'react-icons/fa';
 import { FaTrashCan } from "react-icons/fa6";
 import { MdModeEditOutline } from "react-icons/md";
 import { toast } from 'react-toastify';
 import Modal from '../common/Model';
 import AddTest from './AddTest';
-import Loader from "@/app/(admin)/_component/common/Loader";
-import Button from "@/app/(admin)/_component/common/Button";
-import { Plus } from 'lucide-react';
-import Pagination from '@/app/(admin)/_component/common/Pagination';
 
 export const TestLists = () => {
   const [tests, setTests] = useState<TestList[]>([]); // All fetched tests

@@ -7,7 +7,7 @@ import React from 'react';
 import { CiViewList } from 'react-icons/ci';
 import { RiTestTubeLine } from "react-icons/ri";
 import PackageList from '../../_component/package/PackageList';
-import Dashboard from '@/app/(admin)/_component/dashboard/stats/Dashboard';
+
 
 const tabs: PackageTabItem[] = [
     { id: 'package', label: 'Package', icon: <RiTestTubeLine className="text-xl" /> },

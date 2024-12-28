@@ -10,8 +10,8 @@ export interface Package {
   id: number;
   packageName: string;
   price: number;
-  discount: number; 
-  testIds: number[];
+  discount?: number; 
+  testIds?: number[];
 }
 
 

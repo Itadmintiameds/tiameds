@@ -104,6 +104,7 @@ const UpdatePatient: React.FC<PatientProps> = ({ handleUpdate, patient }) => {
             <Button
                 text={isSubmitting ? 'Updating...' : 'Update Patient'}
                 type="submit"
+                onClick={() => null}
                 className="w-full px-4 py-2 text-xs bg-button-tertiary text-white rounded-md hover:bg-button-tertiary-dark focus:outline-none flex items-center justify-center space-x-2"
                 disabled={isSubmitting}
             />

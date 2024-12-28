@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
 import { Doctor } from '@/types/doctor/doctor';
-import { doctorSchema } from '@/schema/doctorSchemaData';
+import React, { useState } from 'react';
 
+import { Plus } from 'lucide-react';
 import {
-    FaUser, FaEnvelope, FaStethoscope, FaUniversity,
-    FaHospital, FaIdCard, FaPhoneAlt, FaMapMarkerAlt
+    FaEnvelope,
+    FaHospital, FaIdCard,
+    FaMapMarkerAlt,
+    FaPhoneAlt,
+    FaStethoscope, FaUniversity,
+    FaUser
 } from 'react-icons/fa';
 import Button from '../common/Button';
-import { Plus } from 'lucide-react';
 
 interface AddDoctorProps {
     handleAddDoctor: (doctor: Doctor) => void;
@@ -28,7 +31,7 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
         state: '',
         country: '',
     });
-    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [errors] = useState<Record<string, string>>({});
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -38,25 +41,25 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    // const handleSubmit = (e: React.FormEvent) => {
+    //     e.preventDefault();
 
-        // Validate using Zod schema
-        const validation = doctorSchema.safeParse(doctor);
+    //     // Validate using Zod schema
+    //     const validation = doctorSchema.safeParse(doctor);
 
-        if (!validation.success) {
-            const fieldErrors = validation.error.errors.reduce((acc, error) => {
-                if (error.path[0]) {
-                    acc[error.path[0] as string] = error.message;
-                }
-                return acc;
-            }, {} as Record<string, string>);
-            setErrors(fieldErrors);
-        } else {
-            setErrors({});
-            handleAddDoctor(doctor);
-        }
-    };
+    //     if (!validation.success) {
+    //         const fieldErrors = validation.error.errors.reduce((acc, error) => {
+    //             if (error.path[0]) {
+    //                 acc[error.path[0] as string] = error.message;
+    //             }
+    //             return acc;
+    //         }, {} as Record<string, string>);
+    //         setErrors(fieldErrors);
+    //     } else {
+    //         setErrors({});
+    //         handleAddDoctor(doctor);
+    //     }
+    // };
 
     return (
         <form  className="space-y-4 bg-gradient-to-r from-white via-gray-100 to-gray-200">

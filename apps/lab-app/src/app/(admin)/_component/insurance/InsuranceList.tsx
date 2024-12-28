@@ -224,21 +224,20 @@
 
 
 
-import React, { useState, useEffect } from 'react';
-import { getInsurance, createInsurance, updateInsurance, deleteInsurance } from '@/../services/insuranceService';
-import { Insurance } from '@/types/insurance/insurance';
+import { createInsurance, deleteInsurance, getInsurance, updateInsurance } from '@/../services/insuranceService';
 import Loader from '@/app/(admin)/_component/common/Loader';
-import { useLabs } from '@/context/LabContext';
-import Button from '../common/Button';
-import { IoMdEye, IoMdCreate, IoMdTrash } from 'react-icons/io';
-import Table from '../common/TableComponent';
 import Model from '@/app/(admin)/_component/common/Model';
+import Pagination from '@/app/(admin)/_component/common/Pagination';
+import { useLabs } from '@/context/LabContext';
+import { Insurance } from '@/types/insurance/insurance';
+import React, { useEffect, useState } from 'react';
+import { IoMdCreate, IoMdEye, IoMdTrash } from 'react-icons/io';
+import { toast } from 'react-toastify';
+import Button from '../common/Button';
+import Table from '../common/TableComponent';
 import AddInsurance from './AddInsurance';
 import EditInsurance from './UpdateInsurance';
 import ViewInsurance from './ViewInsurance';
-import { toast } from 'react-toastify';
-import { FaSortAmountDown, FaSortAmountUp } from 'react-icons/fa';
-import Pagination from '@/app/(admin)/_component/common/Pagination';
 
 const InsuranceList = () => {
   const [insurance, setInsurance] = useState<Insurance[]>([]);
