@@ -140,7 +140,7 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen ">
       <aside
         className={`fixed inset-y-0 left-0 z-30 bg-primary text-white shadow-lg transform transition-transform duration-300 ease-in-out ${isOpen ? "w-64" : "w-20"}`}
       >
@@ -155,7 +155,7 @@ const Layout = ({ children }: LayoutProps) => {
           <button
             onClick={() => setIsOpen(!isOpen)}
             aria-label={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-            className="p-2 hover:bg-indigo-900 rounded-md  bg-indigo-950"
+            className="p-2 hover:bg-secondary rounded-md   bg-primary-light transition-colors duration-200"
           >
             {isOpen ? <ArrowLeft size={12} /> : <ArrowRight size={12} />}
           </button>
@@ -168,7 +168,7 @@ const Layout = ({ children }: LayoutProps) => {
                   <Link
                     href={item.href ?? "#"}
                     className={clsx(
-                      item.current ? "bg-indigo-900" : "hover:bg-indigo-900",
+                      item.current ? "bg-primary-light" : "hover:bg-secondary",
                       "flex items-center gap-x-4 px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200"
                     )}
                   >
@@ -183,7 +183,7 @@ const Layout = ({ children }: LayoutProps) => {
                       <>
                         <DisclosureButton
                           className={clsx(
-                            item.current ? "bg-indigo-900" : "hover:bg-indigo-900",
+                            item.current ? "bg-primary-light" : "hover:bg-primary-light w-full",
                             "flex items-center gap-x-4 px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200"
                           )}
                         >
@@ -206,7 +206,7 @@ const Layout = ({ children }: LayoutProps) => {
                               <li key={subItem.name}>
                                 <Link
                                   href={subItem.href ?? "#"}
-                                  className="flex items-center gap-x-3 px-2 py-1 text-sm font-medium rounded-md hover:bg-indigo-900 transition-colors duration-200"
+                                  className="flex items-center gap-x-3 px-2 py-1 text-sm font-medium rounded-md hover:bg-primary-light transition-colors duration-200"
                                 >
                                   {subItem.icon && (
                                     <subItem.icon className="h-4 w-4" aria-hidden="true" />
@@ -233,7 +233,7 @@ const Layout = ({ children }: LayoutProps) => {
         {/* Top Navigation Bar */}
         <nav className="flex items-center justify-between py-2 px-6 border-b border-gray-200 bg-white shadow-md rounded">
           <div className="flex items-center space-x-4">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-900">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white">
               <span className="text-lg font-bold text-white">{user?.firstName[0].toUpperCase()}</span>
             </span>
             <h1 className="text-sm font-semibold text-gray-800">
@@ -290,7 +290,7 @@ const Layout = ({ children }: LayoutProps) => {
               ) : ('')
             }
 
-            <Link href='/dashboard/profile' className="relative flex items-center text-white justify-center w-10 h-10 text-gray-700 bg-indigo-950 rounded-md hover:bg-indigo-900 transition duration-200">
+            <Link href='/dashboard/profile' className="relative flex items-center text-white justify-center w-10 h-10 text-gray-700 bg-primary rounded-md hover:bg-primary-light transition duration-200">
               <UserIcon className="h-3 w-3" aria-hidden="true" />
               <span className="absolute left-1/2 transform -translate-x-1/2 -translate-y-full bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                 Profile

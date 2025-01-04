@@ -23,6 +23,7 @@ import PatientTestPackage from './_components/PatientTestPackage';
 import PatientVisit from './_components/PatientVisit';
 import { addPatient } from '@/../services/patientServices';
 import { patientSchema } from '@/schema/patientScheamData';
+import { useRouter } from 'next/navigation';
 
 
 
@@ -31,7 +32,7 @@ const AddPatient = () => {
   const [packages, setPackages] = useState<PackageType[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [insurances, setInsurances] = useState<Insurance[]>([]);
-  const { currentLab } = useLabs();
+  const { currentLab,setPatientDetails } = useLabs();
   const [patient, setPatient] = useState<Patient[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -80,7 +81,8 @@ const AddPatient = () => {
 
   const [selectedInsurances, setSelectedInsurances] = useState<string[]>(newPatient.visit?.insuranceIds?.map(String) || []);
 
-
+  const router = useRouter();
+  
   useEffect(() => {
     const labId = currentLab?.id;
 
@@ -387,10 +389,14 @@ const AddPatient = () => {
 
       const response = await addPatient(labId, newPatient);
       console.log(response, 'response');
+      setPatientDetails(response.data);
 
       if (response.status === 'success') {
-        toast.success('Patient added successfully.');
+        toast.success('Patient added successfully.', { autoClose: 2000 , position: 'top-right'});
         handleClearPatient();
+
+    
+        router.push(`/dashboard/bill/`);
         
       } else {
         toast.error('An error occurred while adding the patient.');

@@ -51,3 +51,15 @@ export const addPatient = async (labId: number, patient: Patient) => {
         throw new Error('An error occurred while adding patient.');
     }
 }
+
+
+
+//get patient details by visit id
+export const getPatientByVisitIdAndVisitDetails = async (labId: number, visitId: number) => {
+    try {
+        const response = await api.get(`/lab/${labId}/visit/${visitId}`);
+        return response.data;
+    } catch (error: unknown) {
+        throw new Error('An error occurred while fetching patient details.');
+    }
+}

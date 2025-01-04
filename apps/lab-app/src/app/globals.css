@@ -14,16 +14,9 @@ html {
 
 :root {
 
-  --primary-color: #1e1b4b;
-  --primary-color-light: #312e81;
-  --secondary-color: #3730a3;
-
-  /* purple */
-
-  --primary-purple: #3b0764;
-  --secondary-purple: #4c1d95;
-  --tertiary-purple: #5b21b6;
-  --quaternary-purple: #6d28d9;
+  --primary-color: #4b0b80;
+  --primary-color-light: #681dae;
+  --primary-secondary-color-light: #8e46d1;
 
 
   /* text */

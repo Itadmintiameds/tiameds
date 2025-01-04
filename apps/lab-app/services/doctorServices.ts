@@ -62,7 +62,7 @@ export const doctorDelete = async (labId: number, doctorId: number) => {
 }
 
 // Get Doctor by ID
-export const doctorGetById = async (labId: number, doctorId: number) => {
+export const doctorGetById = async (labId: string, doctorId: number) => {
     try {
         const response = await api.get(`/admin/lab/${labId}/doctors/${doctorId}`);
         return response.data;

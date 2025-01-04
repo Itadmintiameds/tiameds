@@ -15,9 +15,9 @@ const TableComponent = <T,>({ data, columns, actions, noDataMessage = "No data a
     <div className="overflow-x-auto shadow-md rounded-lg bg-white">
       <table className="table-auto w-full text-sm text-gray-700">
         <thead>
-          <tr className="bg-gray-100 text-left">
+          <tr className="bg-primary-light text-left text-white">
             {columns.map((col, index) => (
-              <th key={index} className="px-3 py-1 font-medium text-gray-600">{col.header}</th>
+              <th key={index} className="px-3 py-1 font-medium text-gray-100">{col.header}</th>
             ))}
             {actions && <th className="px-3 py-1 font-medium text-gray-600 text-center">Actions</th>}
           </tr>
@@ -52,3 +52,6 @@ const TableComponent = <T,>({ data, columns, actions, noDataMessage = "No data a
 };
 
 export default TableComponent
+
+
+

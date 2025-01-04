@@ -24,8 +24,8 @@ const TabComponent: React.FC<TabsProps> = ({ tabs, selectedTab, onTabChange, chi
                     <button
                         key={tab.id}
                         className={`flex items-center px-4 py-2 rounded-lg text-xs transition-all duration-300 focus:outline-none ${selectedTab === tab.id
-                            ? 'bg-indigo-800 text-white scale-105'
-                            : 'bg-gray-300 text-gray-600 hover:bg-indigo-200'
+                            ? 'bg-primary-light text-white scale-105 hover:bg-primary-secondary'
+                            : 'bg-gray-200 text-gray-500'
                             }`}
                         onClick={() => onTabChange(tab.id)}
                     >
@@ -43,3 +43,10 @@ const TabComponent: React.FC<TabsProps> = ({ tabs, selectedTab, onTabChange, chi
 };
 
 export default TabComponent;
+
+
+
+
+
+
+

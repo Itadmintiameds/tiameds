@@ -1,8 +1,8 @@
 
 export interface PatientTabItem {
-    id: string;
-    label: string;
-    icon: JSX.Element;
+  id: string;
+  label: string;
+  icon: JSX.Element;
 }
 
 
@@ -22,6 +22,7 @@ export type Patient = {
 };
 
 export type Visit = {
+  visitId?: number;
   visitDate: string;
   visitType: VisitType;
   visitStatus: VisitStatus;
@@ -34,6 +35,7 @@ export type Visit = {
 };
 
 export type Billing = {
+  billingId?: number;
   totalAmount: number;
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
@@ -46,10 +48,10 @@ export type Billing = {
   igstAmount: number;
   netAmount: number;
 };
- 
 
 
-  // Enum for Payment Statuses
+
+// Enum for Payment Statuses
 export enum PaymentStatus {
   PAID = 'PAID',
   UNPAID = 'UNPAID',

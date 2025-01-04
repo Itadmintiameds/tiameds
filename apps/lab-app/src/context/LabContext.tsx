@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { LabResponse } from '@/types/Lab';
 import { LabFormData } from '@/types/LabFormData';
+import { Patient } from '@/types/patient/patient';
 
 interface LabContextType {
     labs: LabResponse[];
@@ -11,6 +12,8 @@ interface LabContextType {
     setCurrentLab: React.Dispatch<React.SetStateAction<LabResponse | null>>;
     formData: LabFormData;
     setFormData: React.Dispatch<React.SetStateAction<LabFormData>>;
+    patientDetails: Patient | undefined;
+    setPatientDetails: React.Dispatch<React.SetStateAction<Patient | undefined>>;
 }
 
 const LabContext = createContext<LabContextType | undefined>(undefined);
@@ -22,6 +25,7 @@ interface LabProviderProps {
 const LabProvider = ({ children }: LabProviderProps) => {
     const [labs, setLabs] = useState<LabResponse[]>([]);
     const [currentLab, setCurrentLab] = useState<LabResponse | null>(null);
+    const [patientDetails, setPatientDetails] = useState<Patient>();
     const [formData, setFormData] = useState<LabFormData>({
         name: '',
         address: '',
@@ -32,7 +36,7 @@ const LabProvider = ({ children }: LabProviderProps) => {
 
 
     return (
-        <LabContext.Provider value={{ labs, setLabs, currentLab, setCurrentLab , formData, setFormData}}>
+        <LabContext.Provider value={{ labs, setLabs, currentLab, setCurrentLab, formData, setFormData, patientDetails, setPatientDetails }}>
             {children}
         </LabContext.Provider>
     );

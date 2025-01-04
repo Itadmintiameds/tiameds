@@ -48,7 +48,7 @@ export const deleteInsurance = async (labId: number, insuranceId: number) => {
 
 export const getInsuranceById = async (labId: number, insuranceId: number) => {
     try {
-        const response = await api.get<Insurance>(`/lab/admin/insurance/${labId}/${insuranceId}`);
+        const response = await api.get<Insurance>(`/lab/admin/insurance/${labId}/insurance/${insuranceId}`);
         return response.data;
     } catch (error: any) {
         const message = error.response?.data?.message || 'An error occurred while fetching insurance.';

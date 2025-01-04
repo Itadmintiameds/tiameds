@@ -49,7 +49,7 @@ const config: Config = {
 			colors: {
 				'primary': 'var(--primary-color)',
 				'primary-light': 'var(--primary-color-light)',
-				'secondary': 'var(--secondary-color)',
+				'secondary': 'var(--primary-secondary-color-light)',
 
 				'primary-purple': 'var(--primary-purple)',
 				'secondary-purple': 'var(--secondary-purple)',

@@ -114,3 +114,24 @@ export const downloadTestCsv = async (labId: string): Promise<void> => {
     throw new Error(errorMessage);
   }
 };
+
+
+
+//get test by id
+export const getTestById = async (labId: string, testId: Number): Promise<TestList> => {
+  try {
+    // admin/lab/2/test/6
+    const response = await api.get<{ data: TestList; message: string; status: string }>(`admin/lab/${labId}/test/${testId}`);
+    return response.data.data; // Extract the test object from the response
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while fetching test details.';
+
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      errorMessage = (error as any).response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};

@@ -44,7 +44,7 @@ export const packageDelete = async (labId: number, packageId: number) => {
 }
 
 
-export const packgeGetById = async (labId: number, packageId: number) => {
+export const getHealthPackageById= async (labId: number, packageId: number) => {
     try {
         const response = await api.get(`/admin/lab/${labId}/package/${packageId}`);
         return response.data;
