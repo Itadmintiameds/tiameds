@@ -3,8 +3,8 @@ const nextConfig = {
     async rewrites() {
       return [
         {
-            source: '/lab/:path*',
-            destination: 'https://tiameds-lab-app.vercel.app/:path*',
+            source: '/lab',
+            destination: 'https://tiameds-lab-q3ta6zvgv-abhishek-kumars-projects-7cc8d4a1.vercel.app/',
           },
       ];
     },
