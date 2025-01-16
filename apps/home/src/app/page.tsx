@@ -1,9 +1,32 @@
+import React from 'react'
+import Herosection from './components/Herosection'
+import HeaderNav from './components/HeaderNav'
+import About from './components/AboutSection'
+import ProductFeatures from './components/ProductFeatures'
+import SolutionsSection from './components/SolutionsSection'
+import TestimonialsSection from './components/TestimonialsSection'
+import CaseStudiesSection from './components/CaseStudiesSection'
+import DemoTrialSection from './components/DemoTrialSection'
+import BlogInsightsSection from './components/BlogInsightsSection'
+import ContactUsSection from './components/ContactUsSection'
+import FooterSection from './components/FooterSection'
 
-
-export default function Home() {
+const page = () => {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <h1 className="text-4xl font-bold text-center">landing page</h1>
-    </div>
-  );
+    <>
+      <HeaderNav />
+      <Herosection />
+      <About />
+      <ProductFeatures />
+      <SolutionsSection />
+      <TestimonialsSection />
+      <CaseStudiesSection />
+      <DemoTrialSection />
+      <BlogInsightsSection />
+      <ContactUsSection />
+      <FooterSection />
+    </>
+  )
 }
+
+export default page
