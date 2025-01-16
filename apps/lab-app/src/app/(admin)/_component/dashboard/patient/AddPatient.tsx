@@ -54,7 +54,7 @@ const AddPatient = () => {
     visit: {
       visitDate: new Date().toISOString().split('T')[0], // Ensure default date format
       visitType: VisitType.UNKNOWN,
-      visitStatus: VisitStatus.UNKNOWN,
+      visitStatus: VisitStatus.PENDING,
       visitDescription: '',
       doctorId: 0,
       testIds: [],
@@ -339,7 +339,7 @@ const AddPatient = () => {
       visit: {
         visitDate: new Date().toISOString().split('T')[0],
         visitType: VisitType.UNKNOWN,
-        visitStatus: VisitStatus.UNKNOWN,
+        visitStatus: VisitStatus.PENDING,
         visitDescription: '',
         doctorId: 0,
         testIds: [],
@@ -371,7 +371,7 @@ const AddPatient = () => {
 
   const handleAddPatient = async () => {
     try {
-      console.log(newPatient, 'newPatient');
+      // console.log(newPatient, 'newPatient');
       const validationResult = patientSchema.safeParse(newPatient);
 
       if (!validationResult.success) {

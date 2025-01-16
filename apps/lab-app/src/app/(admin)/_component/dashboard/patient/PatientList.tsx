@@ -22,6 +22,7 @@ const PatientList: React.FC = () => {
   const [isViewing, setIsViewing] = useState<boolean>(false);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
+
   const { currentLab } = useLabs();
 
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
@@ -188,5 +189,4 @@ const PatientList: React.FC = () => {
     </div>
   );
 };
-
 export default PatientList;

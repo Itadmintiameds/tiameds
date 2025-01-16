@@ -29,7 +29,7 @@ const TestUpload = () => {
       <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-md text-center -mt-40">
         {/* Upload Icon */}
         <div className="text-blue-500 mb-4">
-          <FaCloudUploadAlt size={48} />
+          <FaCloudUploadAlt size={48} className='bg-primary text-slate-100 p-2' />
         </div>
 
         {/* Title */}
@@ -45,7 +45,9 @@ const TestUpload = () => {
         {/* Upload Button */}
         <label
           htmlFor="file-upload"
-          className="cursor-pointer inline-block bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 px-6 rounded-md hover:from-blue-600 hover:to-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm font-medium"
+          className="cursor-pointer inline-block bg-gradient-to-r from-primary to-primary-light text-white py-2 px-6 rounded-md
+           hover:from-primary-dark hover:to-primary
+           focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm font-medium"
         >
           <FaCloudUploadAlt className="inline-block mr-2" />
           Choose File

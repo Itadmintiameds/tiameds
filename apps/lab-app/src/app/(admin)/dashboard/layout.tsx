@@ -92,12 +92,12 @@ const navigation: NavigationItem[] = [
     icon: UserIcon,
     current: false,
     children: [
-      { name: "Edit Profile", href: "/profile", current: false, icon: UserIcon },
+      { name: "Edit Profile", href: "/dashboard/profile", current: false, icon: UserIcon },
       { name: "Logout", href: "#", current: false, icon: ArrowRight }
     ],
   },
 
-  { name: "Logout", href: "#", icon: ArrowRight, current: false },
+  // { name: "Logout", href: "#", icon: ArrowRight, current: false },
 
 ];
 
@@ -240,15 +240,15 @@ const Layout = ({ children }: LayoutProps) => {
               {user?.firstName.toUpperCase()} {user?.lastName.toUpperCase()}
             </h1>
             <h2 className="flex items-center text-sm text-gray-500">
-              <MailIcon className="h-4 w-4 mr-1 text-gray-400" aria-hidden="true" />
-              <span className="text-xs font-semibold text-gray-600 ml-2 bg-gray-200 rounded-full px-2 py-1">
+              <MailIcon className="h-4 w-4 mr-1 text-primary" aria-hidden="true" />
+              <span className="text-xs font-semibold text-gray-100 ml-2 bg-primary rounded-full px-2 py-1">
                 {user?.email}
               </span>
             </h2>
             <h3 className="flex items-center text-xs text-gray-500">
-              <UserIcon className="h-4 w-4 mr-1 text-gray-400" aria-hidden="true" />
+              <UserIcon className="h-4 w-4 mr-1 text-primary" aria-hidden="true" />
           
-              <select className="text-xs font-semibold text-gray-600 bg-gray-200 rounded-full px-2 py-1 ml-2">
+              <select className="text-xs font-semibold text-gray-100 bg-primary rounded-full px-2 py-1 ml-2">
                 {user?.roles.map((role, index) => (
                   <option key={index} value={role} >
                     {role}
@@ -257,12 +257,12 @@ const Layout = ({ children }: LayoutProps) => {
               </select>
 
               {/* current lab */}
-              <span className="text-xs font-semibold text-gray-600 ml-2 bg-gray-200 rounded-full px-2 py-1">
+              <span className="text-xs font-semibold text-gray-100 ml-2 bg-primary rounded-full px-2 py-1">
                 {currentLab?.name}
               </span>
 
               {/* current date */}
-              <span className="text-xs font-semibold text-gray-600 ml-2 bg-gray-200 rounded-full px-2 py-1">
+              <span className="text-xs font-semibold text-gray-100 ml-2 bg-primary rounded-full px-2 py-1">
                 {new Date().toDateString()}
               </span>
 
@@ -274,28 +274,30 @@ const Layout = ({ children }: LayoutProps) => {
             {
               labs ? (
                 <select
-                  className="text-xs text-gray-600 bg-gray-200 rounded-full px-6 py-1"
-                  onChange={handleChange}
-                  defaultValue="" // Placeholder option
-                >
-                  <option value="" disabled>
-                    Select a Lab
+                className="text-sm text-gray-100 bg-primary border px-4 rounded-lg shadow-sm focus:ring-2 focus:ring-primary focus:outline-none transition duration-200 ease-in-out px-4 py-2 hover:bg-opacity-80"
+                onChange={handleChange}
+                defaultValue="" // Placeholder option
+              >
+                <option value="" disabled>
+                  Select a Lab
+                </option>
+                {labs.map((lab) => (
+                  <option key={lab.id} value={lab.name}>
+                    {lab.name}
                   </option>
-                  {labs.map((lab) => (
-                    <option key={lab.id} value={lab.name}>
-                      {lab.name}
-                    </option>
-                  ))}
-                </select>
+                ))}
+              </select>
+              
+
               ) : ('')
             }
 
-            <Link href='/dashboard/profile' className="relative flex items-center text-white justify-center w-10 h-10 text-gray-700 bg-primary rounded-md hover:bg-primary-light transition duration-200">
+            {/* <Link href='/dashboard/profile' className="relative flex items-center text-white justify-center w-10 h-10 text-gray-700 bg-primary rounded-md hover:bg-primary-light transition duration-200">
               <UserIcon className="h-3 w-3" aria-hidden="true" />
               <span className="absolute left-1/2 transform -translate-x-1/2 -translate-y-full bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                 Profile
               </span>
-            </Link>
+            </Link> */}
             <button className="relative flex items-center justify-center w-10 h-10 text-white bg-red-600 rounded-md hover:bg-red-700 transition duration-200"
               onClick={() => {
                 toast.success("Logged out successfully", { position: "top-right", autoClose: 2000 });

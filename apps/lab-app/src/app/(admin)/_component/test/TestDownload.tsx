@@ -26,7 +26,7 @@ const TestDownload = () => {
       <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-md text-center -mt-40">
         {/* Download Icon */}
         <div className="text-blue-500 mb-4">
-          <FaCloudDownloadAlt size={48} />
+          <FaCloudDownloadAlt size={48} className='bg-primary text-slate-100 p-2' />
         </div>
 
         {/* Title */}
@@ -42,7 +42,12 @@ const TestDownload = () => {
         {/* Download Button */}
         <button
           onClick={handleDownload}
-          className="cursor-pointer inline-block bg-gradient-to-r from-green-500 to-green-600 text-white py-2 px-6 rounded-md hover:from-green-600 hover:to-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 text-sm font-medium"
+          className="cursor-pointer inline-block 
+          bg-gradient-to-r from-primary to-primary-light
+           text-white 
+          py-2 px-6 rounded-md 
+          hover:from-primary-dark hover:to-primary
+          focus:ring-2 focus:ring-green-500 focus:ring-offset-2 text-sm font-medium"
         >
           <FaCloudDownloadAlt className="inline-block mr-2" />
           Download File

@@ -19,7 +19,7 @@ const CurrentTime = () => {
   }, []);
 
   return (
-    <span className="text-xs font-semibold text-gray-600 ml-2 bg-gray-200 rounded-full px-2 py-1">
+    <span className="text-xs font-semibold text-gray-100 ml-2 bg-primary rounded-full px-2 py-1">
       {time}
     </span>
   );
