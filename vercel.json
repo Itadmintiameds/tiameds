@@ -1,0 +1,26 @@
+{
+    "projects": [
+      {
+        "name": "home",
+        "path": "apps/home",
+        "domain": "tiameds.ai",
+        "routes": [
+          { "src": "/", "dest": "/" },
+          { "src": "/lab", "dest": "/lab-app" }
+        ]
+      },
+      {
+        "name": "lab",
+        "path": "apps/lab-app"
+      },
+      {
+        "name": "admin",
+        "path": "apps/admin"
+      },
+      {
+        "name": "billing",
+        "path": "apps/billing-app"
+      }
+    ]
+  }
+  

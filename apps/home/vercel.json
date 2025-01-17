@@ -1,9 +1,6 @@
 {
     "rewrites": [
-      {
-        "source": "/lab/:path*",
-        "destination": "https://tiameds-lab-app.vercel.app/lab:path*"
-      }
+      { "source": "/lab", "destination": "https://tiameds-lab-app.vercel.app/" }
     ]
   }
   

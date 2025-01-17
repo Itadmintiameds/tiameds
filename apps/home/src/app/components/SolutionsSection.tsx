@@ -43,7 +43,7 @@ const SolutionsSection = () => {
   ];
 
   return (
-    <section className="relative py-20 px-6 lg:py-28 lg:px-8">
+    <section className="relative py-20 px-6 lg:py-28 lg:px-8 ">
       {/* Background Gradient */}
       <div
         aria-hidden="true"
@@ -91,6 +91,7 @@ const SolutionsSection = () => {
 };
 
 export default SolutionsSection;
+
 
 
 
