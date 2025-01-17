@@ -5,7 +5,7 @@ import Patient from '@/app/(admin)/_component/dashboard/patient/patient';
 import { PatientTabItem } from '@/types/patient/patient';
 import { useState } from 'react';
 import { FaPerson } from "react-icons/fa6";
-import Loader from '../_component/common/Loader';
+// import Loader from '../_component/common/Loader';
 import { MdOutlineDashboard } from "react-icons/md";
 
 

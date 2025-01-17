@@ -10,12 +10,12 @@ enum VisitType {
     OUTPATIENT = 'Out-Patient',
 }
 
-enum VisitStatus {
-    UNKNOWN = 'Unknown',
-    PENDING = 'Pending',
-    COMPLETED = 'Completed',
-    CANCELLED = 'Cancelled',
-}
+// enum VisitStatus {
+//     UNKNOWN = 'Unknown',
+//     PENDING = 'Pending',
+//     COMPLETED = 'Completed',
+//     CANCELLED = 'Cancelled',
+// }
 
 interface PatientVisitProps {
     newPatient: Patient;

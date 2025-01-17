@@ -1,9 +1,0 @@
-{
-    "rewrites": [
-      {
-        "source": "/lab",
-        "destination": "https://tiameds-lab-app.vercel.app/"
-      }
-    ]
-  }
-  

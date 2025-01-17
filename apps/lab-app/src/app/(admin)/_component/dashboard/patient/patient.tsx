@@ -1,4 +1,4 @@
-// import React, { useState } from 'react';
+// import React, { useState, useEffect } from 'react';
 // import SubTabComponent from '../../common/SubTabComponent';
 // import PatientList from './PatientList';
 // import AddPatient from './AddPatient';
@@ -14,26 +14,38 @@
 //   { id: 'visits', icon: <Home size={16} />, label: 'Visits', content: <VisitingList /> },
 //   { id: 'billing', icon: <Home size={16} />, label: 'Billing', content: <BillingList /> },
 //   { id: 'reports', icon: <Home size={16} />, label: 'Reports', content: <div>Reports</div> },
-
 // ];
 
 // const Patient = () => {
-//   const [activeTab, setActiveTab] = useState<string>('patients');
+//   const [activeTab, setActiveTab] = useState<string>(() => {
+//     const savedTab = localStorage.getItem('activeTab');
+//     console.log(`Retrieved from localStorage: ${savedTab}`); // Debug
+//     return savedTab || 'patients';
+//   });
 
-//   // Handle tab change
+//   useEffect(() => {
+//     console.log(`Saving activeTab to localStorage: ${activeTab}`); // Debug
+//     localStorage.setItem('activeTab', activeTab);
+//   }, [activeTab]);
+
 //   const handleTabChange = (tabId: string) => {
+//     console.log(`Tab changed to: ${tabId}`); // Debug
 //     setActiveTab(tabId);
 //   };
 
 //   return (
 //     <SubTabComponent tabs={tabs} selectedTab={activeTab} onTabChange={handleTabChange}>
-//       {/* Display the content for the selected tab */}
+      
 //       {tabs.find((tab) => tab.id === activeTab)?.content}
 //     </SubTabComponent>
 //   );
 // };
 
 // export default Patient;
+
+
+
+
 
 
 import React, { useState, useEffect } from 'react';
@@ -55,28 +67,33 @@ const tabs = [
 ];
 
 const Patient = () => {
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const savedTab = localStorage.getItem('activeTab');
-    console.log(`Retrieved from localStorage: ${savedTab}`); // Debug
-    return savedTab || 'patients';
-  });
+  const [activeTab, setActiveTab] = useState('patients'); // Initialize with a default value
 
   useEffect(() => {
-    console.log(`Saving activeTab to localStorage: ${activeTab}`); // Debug
-    localStorage.setItem('activeTab', activeTab);
+    if (typeof window !== 'undefined') {
+      const savedTab = localStorage.getItem('activeTab');
+      if (savedTab) {
+        setActiveTab(savedTab);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('activeTab', activeTab);
+    }
   }, [activeTab]);
 
   const handleTabChange = (tabId: string) => {
-    console.log(`Tab changed to: ${tabId}`); // Debug
     setActiveTab(tabId);
   };
 
   return (
     <SubTabComponent tabs={tabs} selectedTab={activeTab} onTabChange={handleTabChange}>
-      
       {tabs.find((tab) => tab.id === activeTab)?.content}
     </SubTabComponent>
   );
 };
 
 export default Patient;
+
