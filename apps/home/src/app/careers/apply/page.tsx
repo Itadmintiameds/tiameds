@@ -759,7 +759,7 @@ const ApplyPage = () => {
             </div>
             <button
               onClick={handleCloseModal}
-              className="absolute top-4 right-4 text-2xl font-semibold text-gray-500"
+              className="absolute top-28 right-56 text-4xl font-semibold text-primary"
             >
               &times;
             </button>
