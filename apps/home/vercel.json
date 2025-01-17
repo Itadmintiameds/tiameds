@@ -1,0 +1,8 @@
+{
+    "rewrites": [
+      { "source": "/lab/:path*", "destination": "/apps/lab-app/:path*" },
+      { "source": "/billing-app/:path*", "destination": "/apps/billing-app/:path*" },
+      { "source": "/admin/:path*", "destination": "/apps/admin/:path*" }
+    ]
+  }
+  
