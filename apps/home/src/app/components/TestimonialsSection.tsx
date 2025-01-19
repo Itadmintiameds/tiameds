@@ -185,7 +185,7 @@ const TestimonialsSection = () => {
           What Our Clients Say
         </h2>
         <p className="mt-4 sm:mt-6 text-base sm:text-lg text-textmuted animate-fade-in">
-          Hear from our satisfied clients who have experienced the transformation with Tiameds' cutting-edge healthcare solutions.
+          Hear from our satisfied clients who have experienced the transformation with Tiameds&apos; cutting-edge healthcare solutions.
         </p>
       </div>
 

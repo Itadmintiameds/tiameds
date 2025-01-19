@@ -1,6 +1,5 @@
 'use client'
 
-// import { useState } from 'react'
 import FooterSection from '../components/FooterSection'
 
 
@@ -11,43 +10,44 @@ const stats = [
 ]
 const values = [
   {
-    name: 'Be world-class',
+    name: 'Innovation',
     description:
-      'Aut illo quae. Ut et harum ea animi natus. Culpa maiores et sed sint et magnam exercitationem quia. Ullam voluptas nihil vitae dicta molestiae et. Aliquid velit porro vero.',
+      'We are committed to pushing the boundaries of technology to deliver innovative solutions that transform healthcare.',
   },
   {
-    name: 'Share everything you know',
+    name: 'Integrity',
     description:
-      'Mollitia delectus a omnis. Quae velit aliquid. Qui nulla maxime adipisci illo id molestiae. Cumque cum ut minus rerum architecto magnam consequatur. Quia quaerat minima.',
+      'We uphold the highest ethical standards in everything we do, ensuring trust and transparency in all our interactions.',
   },
   {
-    name: 'Always learning',
+    name: 'Collaboration',
     description:
-      'Aut repellendus et officiis dolor possimus. Deserunt velit quasi sunt fuga error labore quia ipsum. Commodi autem voluptatem nam. Quos voluptatem totam.',
+      'We believe in the power of teamwork and collaboration to drive success, fostering a culture of respect and diversity.',
   },
   {
-    name: 'Be supportive',
+    name: 'Excellence',
     description:
-      'Magnam provident veritatis odit. Vitae eligendi repellat non. Eum fugit impedit veritatis ducimus. Non qui aspernatur laudantium modi. Praesentium rerum error deserunt harum.',
+      'We strive for excellence in all aspects of our work, delivering exceptional results that exceed expectations.',
   },
   {
-    name: 'Take responsibility',
+    name: 'Customer focus',
     description:
-      'Sit minus expedita quam in ullam molestiae dignissimos in harum. Tenetur dolorem iure. Non nesciunt dolorem veniam necessitatibus laboriosam voluptas perspiciatis error.',
+      'We are dedicated to our clients, putting their needs first and providing exceptional service that drives success.',
   },
   {
-    name: 'Enjoy downtime',
+    name: 'Inclusivity',
     description:
-      'Ipsa in earum deserunt aut. Quos minus aut animi et soluta. Ipsum dicta ut quia eius. Possimus reprehenderit iste aspernatur ut est velit consequatur distinctio.',
+      'We embrace diversity and inclusivity, creating an environment where everyone is valued and respected.',
   },
 ]
 const team = [
   {
-    name: 'Michael Foster',
+    name: 'Dr. ARJUN SACHIDANAND',
     role: 'Co-Founder / CTO',
     imageUrl:
-      'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=8&w=1024&h=1024&q=80',
+      '',
   },
+
   // More people...
 ]
 const blogPosts = [
@@ -145,13 +145,13 @@ const blogPosts = [
 //   ],
 // }
 
-const page =() =>{
+const page = () => {
   // const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
     <div className="bg-white">
       {/* Header */}
-     
+
 
       <main className="isolate">
         {/* Hero section */}
@@ -197,15 +197,13 @@ const page =() =>{
               <div className="mx-auto max-w-2xl gap-x-14 lg:mx-0 lg:flex lg:max-w-none lg:items-center">
                 <div className="relative w-full lg:max-w-xl lg:shrink-0 xl:max-w-2xl">
                   <h1 className="text-pretty text-5xl font-semibold tracking-tight text-gray-900 sm:text-7xl">
-                    We’re changing the way people connect
+                    Revolutionizing Healthcare through Innovation
                   </h1>
                   <p className="mt-8 text-pretty text-lg font-medium text-gray-500 sm:max-w-md sm:text-xl/8 lg:max-w-none">
-                    Cupidatat minim id magna ipsum sint dolor qui. Sunt sit in quis cupidatat mollit aute velit. Et
-                    labore commodo nulla aliqua proident mollit ullamco exercitation tempor. Sint aliqua anim nulla sunt
-                    mollit id pariatur in voluptate cillum. Eu voluptate tempor esse minim amet fugiat veniam occaecat
-                    aliqua.
+                    At Tiameds Technology, we deliver secure, scalable, and efficient SaaS solutions for the healthcare industry—helping you achieve better outcomes for patients and providers. Our innovative technology simplifies medical operations, enhances data security with HIPAA compliance, and leverages AI-powered insights for optimized care and improved patient experiences.
                   </p>
                 </div>
+
                 <div className="mt-14 flex justify-end gap-8 sm:-mt-44 sm:justify-start sm:pl-20 lg:mt-0 lg:pl-0">
                   <div className="ml-auto w-44 flex-none space-y-8 pt-32 sm:ml-0 sm:pt-80 lg:order-last lg:pt-36 xl:order-none xl:pt-80">
                     <div className="relative">
@@ -266,17 +264,14 @@ const page =() =>{
             <div className="mt-6 flex flex-col gap-x-8 gap-y-20 lg:flex-row">
               <div className="lg:w-full lg:max-w-2xl lg:flex-auto">
                 <p className="text-xl/8 text-gray-600">
-                  Aliquet nec orci mattis amet quisque ullamcorper neque, nibh sem. At arcu, sit dui mi, nibh dui, diam
-                  eget aliquam. Quisque id at vitae feugiat egestas ac. Diam nulla orci at in viverra scelerisque eget.
-                  Eleifend egestas fringilla sapien.
+                  At Tiameds Technology, we revolutionize healthcare by crafting innovative software and SaaS solutions tailored to the medical industry. With a focus on cutting-edge technologies, we empower healthcare providers to deliver exceptional care, streamline workflows, and enhance patient outcomes through intelligent tools and seamless user experiences.
                 </p>
                 <p className="mt-10 max-w-xl text-base/7 text-gray-700">
-                  Faucibus commodo massa rhoncus, volutpat. Dignissim sed eget risus enim. Mattis mauris semper sed amet
-                  vitae sed turpis id. Id dolor praesent donec est. Odio penatibus risus viverra tellus varius sit neque
-                  erat velit. Faucibus commodo massa rhoncus, volutpat. Dignissim sed eget risus enim. Mattis mauris
-                  semper sed amet vitae sed turpis id.
+                  Our solutions are designed to tackle real-world healthcare challenges by delivering secure, scalable, and compliant systems that protect sensitive data. We provide AI-powered insights, cloud scalability, and 24/7 support to ensure healthcare professionals have the tools they need to succeed. Whether you&apos;re looking to simplify operations or integrate with existing systems, Tiameds offers customized solutions that grow with your organization.
                 </p>
               </div>
+
+
               <div className="lg:flex lg:flex-auto lg:justify-center">
                 <dl className="w-64 space-y-8 xl:w-80">
                   {stats.map((stat) => (
@@ -305,8 +300,7 @@ const page =() =>{
           <div className="mx-auto max-w-2xl lg:mx-0">
             <h2 className="text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">Our values</h2>
             <p className="mt-6 text-lg/8 text-gray-600">
-              Lorem ipsum dolor sit amet consect adipisicing elit. Possimus magnam voluptatum cupiditate veritatis in
-              accusamus quisquam.
+              At Tiameds Technology, our values are the foundation of our success. We believe in creating a culture of innovation, collaboration, and excellence that drives our team to deliver exceptional results for our clients. Our values guide our decisions, inspire our work, and define our commitment to transforming the future of healthcare through technology.
             </p>
           </div>
           <dl className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 text-base/7 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-3">
@@ -344,7 +338,7 @@ const page =() =>{
           </div>
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <h2 className="text-center text-lg/8 font-semibold text-gray-900">
-              Trusted by the world’s most innovative teams
+              Trusted by leading healthcare organizations
             </h2>
             <div className="mx-auto mt-10 grid max-w-lg grid-cols-4 items-center gap-x-8 gap-y-10 sm:max-w-xl sm:grid-cols-6 sm:gap-x-10 lg:mx-0 lg:max-w-none lg:grid-cols-5">
               <img
@@ -391,8 +385,7 @@ const page =() =>{
           <div className="mx-auto max-w-2xl lg:mx-0">
             <h2 className="text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">Our team</h2>
             <p className="mt-6 text-lg/8 text-gray-600">
-              We’re a dynamic group of individuals who are passionate about what we do and dedicated to delivering the
-              best results for our clients.
+              Meet the talented individuals who make Tiameds Technology a leader in healthcare innovation. Our team is dedicated to delivering exceptional results for our clients and transforming the future of healthcare.
             </p>
           </div>
           <ul
@@ -410,7 +403,7 @@ const page =() =>{
         </div>
 
         {/* Blog section */}
-        <div className="mx-auto mt-32 max-w-7xl px-6 sm:mt-40 lg:px-8">
+        <div className="mx-auto mt-32 max-w-7xl px-6 sm:mt-40 lg:px-8 my-12">
           <div className="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
             <h2 className="text-balance text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
               From the blog
@@ -454,30 +447,13 @@ const page =() =>{
       </main>
 
       {/* Footer */}
-      {/* <footer className="mt-16 sm:mt-32">
-        <div className="mx-auto max-w-7xl overflow-hidden px-6 py-20 sm:py-24 lg:px-8">
-          <nav aria-label="Footer" className="-mb-6 flex flex-wrap justify-center gap-x-12 gap-y-3 text-sm/6">
-            {footerNavigation.main.map((item) => (
-              <a key={item.name} href={item.href} className="text-gray-600 hover:text-gray-900">
-                {item.name}
-              </a>
-            ))}
-          </nav>
-          <div className="mt-16 flex justify-center gap-x-10">
-            {footerNavigation.social.map((item) => (
-              <a key={item.name} href={item.href} className="text-gray-600 hover:text-gray-800">
-                <span className="sr-only">{item.name}</span>
-                <item.icon aria-hidden="true" className="size-6" />
-              </a>
-            ))}
-          </div>
-          <p className="mt-10 text-center text-sm/6 text-gray-600">
-            &copy; 2024 Your Company, Inc. All rights reserved.
-          </p>
-        </div>
-      </footer> */}
+
+
       <FooterSection />
     </div>
+
+
+
   )
 }
 

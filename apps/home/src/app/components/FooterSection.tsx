@@ -30,13 +30,13 @@ const FooterSection = () => {
 
           {/* Right Side - Social Links */}
           <div className="flex space-x-6 text-gray-600">
-            <Link href="#" className="hover:text-tertiary text-primary">
+            <Link href="#" className="hover:text-tertiary text-gray-600">
               <svg className="w-6 h-6" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.655-2.828.774 1.016-.61 1.794-1.573 2.165-2.723-.951.564-2.007.975-3.127 1.199C19.818 2.318 18.235.5 16.268.5c-3.1 0-5.613 2.515-5.613 5.613 0 .44.051.872.14 1.285-4.67-.233-8.8-2.47-11.58-5.87C.637 2.628.191 4.068.191 5.567c0 1.944 1.055 3.649 2.656 4.657-1.378-.042-2.679-.419-3.818-1.049-.001.035-.001.068-.001.101 0 2.72 1.933 5.005 4.487 5.52-1.774 1.396-4.017 2.236-6.507 2.236-.423 0-.84-.025-1.25-.073 2.333 1.495 5.11 2.362 8.062 2.362 9.674 0 15.017-8.017 15.017-14.973 0-.23-.004-.461-.014-.69A10.786 10.786 0 0 0 24 4.557z"/></svg>
             </Link>
-            <Link href="#" className="hover:text-tertiary text-primary">
+            <Link href="#" className="hover:text-tertiary text-gray-600">
               <svg className="w-6 h-6" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.478 2 2 6.478 2 12s4.478 10 10 10 10-4.478 10-10S17.522 2 12 2zm-1 14.93v-4.69h2v4.69c0 .49-.39.89-.88.89s-.88-.39-.88-.89zM13 8.93c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2z"/></svg>
             </Link>
-            <Link href="#" className="hover:text-tertiary text-primary">
+            <Link href="#" className="hover:text-tertiary text-gray-600">
               <svg className="w-6 h-6" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 4h-2V2h-4v2H7v2h6v12H7v2h6v2h4v-2h2z"/></svg>
             </Link>
           </div>
@@ -69,10 +69,10 @@ const FooterSection = () => {
             <p className="text-gray-600">123 Health St, Suite 100</p>
             <p className="text-gray-600">City, Country</p>
             <p className="text-gray-600">
-              Email: <a href="mailto:support@tiameds.com" className="text-primary">support@tiameds.com</a>
+              Email: <a href="mailto:support@tiameds.com" className="text-gray-600">support@tiameds.ai</a>
             </p>
             <p className="text-gray-600">
-              Phone: <a href="tel:+1234567890" className="text-primary">+123-456-7890</a>
+              Phone: <a href="tel:+1234567890" className="text-gray-600">+123-456-7890</a>
             </p>
           </div>
         </div>
