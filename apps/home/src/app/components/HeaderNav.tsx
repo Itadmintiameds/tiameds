@@ -10,6 +10,7 @@ const navigation = [
   { name: 'Careers', href: '/careers' },
   { name: 'About Us', href: '/about' },
   { name: 'Contact Us', href: '/contact' },
+  { name: 'Blog', href: '/blog' },
 ];
 
 const HeaderNav = () => {

@@ -168,24 +168,24 @@ const ContactUsSection = () => {
                   type="checkbox"
                   required
                   value="Basic"
-                  checked={formData.product.includes('Basic')}
+                  checked={formData.product.includes('Lab Managment System')}
                   onChange={handleChange}
                   className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
                 />
-                <label htmlFor="basic" className="ml-2 text-sm text-gray-900">Basic</label>
+                <label htmlFor="basic" className="ml-2 text-sm text-gray-900">Lab Managment System</label>
               </div>
               <div className="flex items-center">
                 <input
-                  id="pro"
+                  id="Billing Management System"
                   name="product"
                   type="checkbox"
                   required
                   value="Pro"
-                  checked={formData.product.includes('Pro')}
+                  checked={formData.product.includes('Billing Management System')}
                   onChange={handleChange}
                   className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
                 />
-                <label htmlFor="pro" className="ml-2 text-sm text-gray-900">Pro</label>
+                <label htmlFor="pro" className="ml-2 text-sm text-gray-900">Billing Management System</label>
               </div>
               <div className="flex items-center">
                 <input
@@ -194,11 +194,11 @@ const ContactUsSection = () => {
                   required
                   type="checkbox"
                   value="Enterprise"
-                  checked={formData.product.includes('Enterprise')}
+                  checked={formData.product.includes('Ecommerce System')}
                   onChange={handleChange}
                   className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
                 />
-                <label htmlFor="enterprise" className="ml-2 text-sm text-gray-900">Enterprise</label>
+                <label htmlFor="enterprise" className="ml-2 text-sm text-gray-900">Ecommerce System</label>
               </div>
             </div>
           </div>

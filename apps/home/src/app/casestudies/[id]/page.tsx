@@ -1,11 +1,8 @@
 import React from 'react'
-// import { blog } from '@/app/data/blog'
 
 interface IParams {
     id: string
 }
-
-// const posts = blog;
 
 const page = ({ params }: { params: IParams }) => {
     return (

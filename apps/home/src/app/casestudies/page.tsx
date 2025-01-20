@@ -3,13 +3,62 @@
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
 import { useState } from 'react';
-import { blog } from '../data/blog';
-import { Posttype } from '../types/post';
 
+interface Post {
+  id: number;
+  title: string;
+  href: string;
+  description: string;
+  date: string;
+  datetime: string;
+  category: { title: string; href: string };
+  author: {
+    name: string;
+    role: string;
+    href: string;
+    imageUrl: string;
+  };
+}
 
-const posts: Posttype[] = blog;
-  
-const Page = () => {
+const posts: Post[] = [
+  {
+    id: 1,
+    title: 'Empowering the future of healthcare',
+    href: '/product',
+    description:
+      'At Tiameds Technology, we deliver secure, scalable, and efficient SaaS solutions for the healthcare industry—helping you achieve better outcomes for patients and providers.',
+    date: 'Mar 16, 2020',
+    datetime: '2020-03-16',
+    category: { title: 'Healthcare Innovation', href: '/product' },
+    author: {
+      name: 'Michael Foster',
+      role: 'Co-Founder / CTO',
+      href: '#',
+      imageUrl:
+        'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    },
+  },
+  {
+    id: 2,
+    title: 'Healthcare Innovation at its Best',
+    href: '/innovation',
+    description:
+      'Discover cutting-edge solutions transforming the healthcare industry with our advanced technology.',
+    date: 'Apr 10, 2021',
+    datetime: '2021-04-10',
+    category: { title: 'Innovation Insights', href: '/innovation' },
+    author: {
+      name: 'Sarah Connor',
+      role: 'Lead Developer',
+      href: '#',
+      imageUrl:
+        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    },
+  },
+  // More posts...
+];
+
+export default function Page() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 5;
@@ -40,7 +89,7 @@ const Page = () => {
 
   const handleViewPost = (id: number) => {
     console.log(`View post with ID: ${id}`);
-    router.push(`/blog/${id}`); // Redirects to the post page
+    router.push(`/casestudies/${id}`); // Redirects to the post page
     
   };
 
@@ -60,8 +109,8 @@ const Page = () => {
       </div>
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl">
-          <h2 className="text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">From the blog</h2>
-          <p className="mt-2 text-lg/8 text-gray-600">Learn more about our latest insights and innovations in healthcare technology.</p>
+          <h2 className="text-pretty text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">From the Case Studies</h2>
+          <p className="mt-2 text-lg/8 text-gray-600">Learn how we help businesses grow</p>
 
           <input
             type="text"
@@ -134,5 +183,3 @@ const Page = () => {
     </div>
   );
 }
-
-export default Page;

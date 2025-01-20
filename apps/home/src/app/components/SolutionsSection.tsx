@@ -1,25 +1,26 @@
 'use client';
 
-import { FaUsers, FaPhoneAlt, FaHeartbeat, FaBriefcaseMedical, FaMedkit, FaClipboardList } from 'react-icons/fa';
+import { FaUsers, FaPhoneAlt, FaHeartbeat, FaBriefcaseMedical, FaMedkit, FaClipboardList,FaShoppingCart } from 'react-icons/fa';
 
 const SolutionsSection = () => {
+ 
   const solutions = [
     {
-      title: 'Patient Management System',
+      title: 'Lab Management System',
       description:
-        'Seamlessly manage patient records with real-time access, efficient workflows, and secure storage, empowering healthcare professionals.',
+        'Our lab management software streamlines lab operations, from sample collection to reporting, ensuring accuracy and efficiency.',
       icon: <FaUsers />,
     },
     {
-      title: 'Telemedicine Platform',
+      title: 'Billing and Payment Solutions',
       description:
-        'Our telemedicine solution allows healthcare providers to offer consultations remotely, reducing patient wait times and improving convenience.',
+        'Automate billing and payment processes, reducing errors and improving cash flow for healthcare providers and patients.',
       icon: <FaPhoneAlt />,
     },
     {
-      title: 'Electronic Health Records (EHR)',
+      title: 'Ecommerce Medical Store',
       description:
-        'Our EHR solution enables seamless electronic documentation, enhancing accuracy and allowing for faster treatment and diagnosis.',
+        'Create an online store for medical supplies, equipment, and pharmaceuticals, with secure payment gateways and inventory management.',
       icon: <FaHeartbeat />,
     },
     {
@@ -40,7 +41,13 @@ const SolutionsSection = () => {
         'Manage medical supplies with real-time tracking and automated reordering to ensure you never run out of essential items.',
       icon: <FaClipboardList />,
     },
-  ];
+    {
+      title: 'Medical Ecommerce Platform',
+      description:
+        'Connect buyers and sellers in the medical industry, facilitating transactions for medical products with a secure and user-friendly interface.',
+      icon: <FaShoppingCart />,
+    },
+];
 
   return (
     <section className="relative py-20 px-6 lg:py-28 lg:px-8 ">

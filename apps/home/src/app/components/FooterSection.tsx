@@ -62,12 +62,13 @@ const FooterSection = () => {
               <li><Link href="#" className="text-gray-600 hover:text-primary">Data Security</Link></li>
             </ul>
           </div>
-
+          {/* SAS health care INDIa, #4754, Shivaji Road, NR Mohalla, Mysore-570007, Mysuru, Karnataka, India 570007 */}
           {/* Contact Information */}
           <div className="text-left">
-            <h3 className="text-xl font-semibold text-textdark mb-4">Contact Info</h3>
-            <p className="text-gray-600">123 Health St, Suite 100</p>
-            <p className="text-gray-600">City, Country</p>
+            <h3 className="text-xl font-semibold text-textdark mb-4">Contact Information</h3>
+            <p className="text-gray-600">Tiameds Technology</p>
+            <p className="text-gray-600">4754, Shivaji Road, NR Mohalla</p>
+            <p className="text-gray-600">Mysore-570007, Mysuru, Karnataka, India 570007</p>
             <p className="text-gray-600">
               Email: <a href="mailto:support@tiameds.com" className="text-gray-600">support@tiameds.ai</a>
             </p>
