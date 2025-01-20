@@ -3,7 +3,7 @@ export const blog = [
     id: 1,
     title: 'Empowering the Future of Healthcare',
     href: '/product',
-    image: 'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=60',
+    image: '#',
     description:
       'At Tiameds Technology, we deliver secure, scalable, and efficient SaaS solutions for the healthcare industry—helping you achieve better outcomes for patients and providers.',
     date: 'March 16, 2020',
@@ -17,7 +17,7 @@ export const blog = [
       role: 'Co-Founder / CTO',
       href: '#',
       imageUrl:
-        'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+        '#',
     },
   },
   {
