@@ -98,7 +98,7 @@ export const TestLists = () => {
         <Button
           text="Add Test"
           onClick={openModal}
-          className="px-4 py-1 text-xs bg-button-tertiary text-white rounded-md hover:bg-button-secondary focus:outline-none rounded"
+          className="px-4 py-1 text-xs bg-primary text-white rounded-md hover:bg-secondary focus:outline-none rounded"
         >
           <Plus className="h-4 w-4" />
         </Button>

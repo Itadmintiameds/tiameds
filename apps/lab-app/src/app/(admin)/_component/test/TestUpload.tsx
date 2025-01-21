@@ -45,8 +45,8 @@ const TestUpload = () => {
         {/* Upload Button */}
         <label
           htmlFor="file-upload"
-          className="cursor-pointer inline-block bg-gradient-to-r from-primary to-primary-light text-white py-2 px-6 rounded-md
-           hover:from-primary-dark hover:to-primary
+          className="cursor-pointer inline-block bg-gradient-to-r from-primary to-primarylight text-white py-2 px-6 rounded-md
+           hover:from-primary hover:to-secondary
            focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm font-medium"
         >
           <FaCloudUploadAlt className="inline-block mr-2" />

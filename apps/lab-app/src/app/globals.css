@@ -11,35 +11,39 @@ html {
 }
 
 /*  color set */
-
 :root {
+  /* Primary branding colors for consistency across the UI */
+  /* --PRIMARY: #6b21a8; Main brand color for navigation and pro minent elements */
+  --PRIMARY:  #4b0b80; /* Main brand color for navigation and pro minent elements */
+  --PRIMARY-LIGHT: #5c1d8f; /* Lighter shade of primary color for hover states */
+  --SECONDARY: #9333ea; /* Accent color for highlights and secondary actions */
+  --TERTIARY: #a855f7; /* Tertiary color for subtle highlights or background accents */
+  
 
-  --primary-color: #4b0b80;
-  --primary-color-light: #681dae;
-  --primary-secondary-color-light: #8e46d1;
+  
 
+  /* Background colors for different sections of the website */
+  --BACKGROUND: #f3f4f6; /* Default page background for content areas */
+  --CARD-BACKGROUND: #ffffff; /* White background for cards, panels, and modals */
+  --CARD-HOVER: #f9fafb; /* Hover state for cards and panels */
 
-  /* text */
-  --primary-text: #09090b;
-  --secondary-text: #111827;
-  --tertiary-text: #1e293b;
+  /* Text colors for improved readability and emphasis */
+  --TEXT-DARK: #1e1b4b; /* Primary text color for headings and important information */
+  --TEXT-LIGHT: #71717a; /* Secondary text for body content */
+  --TEXT-MUTED: #9ca3af; /* Muted text for captions and less critical information */
+  --TEXT-WHITE: #ffffff; /* White text for dark backgrounds */
+  --TEXT-ZINC :#09090b; /* Black text for white backgrounds */
 
-
-  /* grident background for component*/
-  /* --gradient-background: linear-gradient(bg-gradient-to-r from-white via-gray-100 to-gray-200) */
-
-
-  /* button */
-  --button-primary: #3b0764;
-  --button-secondary: #4c1d95;
-  --button-tertiary: #5b21b6;
-  --button-quaternary: #6d28d9;
-  --button-danger: #dc2626;
-  --button-success: #10b981;
-  --button-warning: #f59e0b;
-  --button-info: #3b82f6;
-  --button-saved: #059669;
-  --button-cancel: #ef4444;
-
-
+  /* Button colors for different actions */
+  --SAVE-BUTTON: #8b5cf6; /* Save button background */
+  --SAVE-HOVER: #7c3aed; /* Hover state for save button */
+  --DELETE-BUTTON: #dc2626; /* Delete button background for destructive actions */
+  --DELETE-HOVER: #b91c1c; /* Hover state for delete button */
+  --UPDATE-BUTTON: #4f46e5; /* Update button background for modifications */
+  --UPDATE-HOVER: #4338ca; /* Hover state for update button */
 }
+
+
+
+
+

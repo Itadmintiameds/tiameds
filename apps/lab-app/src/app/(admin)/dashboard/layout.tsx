@@ -24,6 +24,7 @@ import { PiPackageFill } from "react-icons/pi";
 
 
 
+
 const navigation: NavigationItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon, current: true },
   {
@@ -32,8 +33,8 @@ const navigation: NavigationItem[] = [
     current: false,
     children: [
       { name: "Tests", href: "/dashboard/test", current: false, icon: ClipboardListIcon },
-      { name: "Packages", href: "/dashboard/package", current: false, icon:PiPackageFill },
-      { name: "Doctors", href: "/dashboard/doctor", current: false, icon: FaUserDoctor }, 
+      { name: "Packages", href: "/dashboard/package", current: false, icon: PiPackageFill },
+      { name: "Doctors", href: "/dashboard/doctor", current: false, icon: FaUserDoctor },
       { name: "Insurance", href: "/dashboard/insurance", current: false, icon: AiOutlineSafetyCertificate },
       { name: "Appointments", href: "#", current: false, icon: UserIcon },
       { name: "Reports", href: "#", current: false, icon: DocumentTextIcon },
@@ -116,6 +117,8 @@ const Layout = ({ children }: LayoutProps) => {
 
     const fetchLabs = async () => {
       try {
+        // const labs = await getLabs();
+        // setLabs(labs);
         const data = await getUsersLab();
         setLabs(data);
         //by default set the first lab as current lab
@@ -155,7 +158,7 @@ const Layout = ({ children }: LayoutProps) => {
           <button
             onClick={() => setIsOpen(!isOpen)}
             aria-label={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-            className="p-2 hover:bg-secondary rounded-md   bg-primary-light transition-colors duration-200"
+            className="p-2 hover:bg-secondary rounded-md bg-primarylight transition-colors duration-200"
           >
             {isOpen ? <ArrowLeft size={12} /> : <ArrowRight size={12} />}
           </button>
@@ -168,7 +171,7 @@ const Layout = ({ children }: LayoutProps) => {
                   <Link
                     href={item.href ?? "#"}
                     className={clsx(
-                      item.current ? "bg-primary-light" : "hover:bg-secondary",
+                      item.current ? "bg-primarylight" : "hover:bg-tertiary",
                       "flex items-center gap-x-4 px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200"
                     )}
                   >
@@ -183,7 +186,7 @@ const Layout = ({ children }: LayoutProps) => {
                       <>
                         <DisclosureButton
                           className={clsx(
-                            item.current ? "bg-primary-light" : "hover:bg-primary-light w-full",
+                            item.current ? "bg-primary" : "hover:bg-primarylight w-full",
                             "flex items-center gap-x-4 px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200"
                           )}
                         >
@@ -206,7 +209,7 @@ const Layout = ({ children }: LayoutProps) => {
                               <li key={subItem.name}>
                                 <Link
                                   href={subItem.href ?? "#"}
-                                  className="flex items-center gap-x-3 px-2 py-1 text-sm font-medium rounded-md hover:bg-primary-light transition-colors duration-200"
+                                  className="flex items-center gap-x-3 px-2 py-1 text-sm font-medium rounded-md hover:bg-primarylight transition-colors duration-200"
                                 >
                                   {subItem.icon && (
                                     <subItem.icon className="h-4 w-4" aria-hidden="true" />
@@ -247,7 +250,7 @@ const Layout = ({ children }: LayoutProps) => {
             </h2>
             <h3 className="flex items-center text-xs text-gray-500">
               <UserIcon className="h-4 w-4 mr-1 text-primary" aria-hidden="true" />
-          
+
               <select className="text-xs font-semibold text-gray-100 bg-primary rounded-full px-2 py-1 ml-2">
                 {user?.roles.map((role, index) => (
                   <option key={index} value={role} >
@@ -270,16 +273,16 @@ const Layout = ({ children }: LayoutProps) => {
               <CurrentTime />
             </h3>
           </div>
-          <div className="flex space-x-4 ml-auto">
-            {
-              labs ? (
-                <select
-                className="text-sm text-gray-100 bg-primary border px-4 rounded-lg shadow-sm focus:ring-2 focus:ring-primary focus:outline-none transition duration-200 ease-in-out px-4 py-2 hover:bg-opacity-80"
+
+          <div className="flex items-center space-x-2 ml-auto">
+            {labs && (
+              <select
+                className="text-sm text-gray-100 bg-primary border border-gray-700 px-12 py-1.5 rounded-md shadow-sm focus:ring-2 focus:ring-primary focus:outline-none transition duration-200 hover:bg-opacity-90"
                 onChange={handleChange}
-                defaultValue="" // Placeholder option
+                defaultValue=""
               >
                 <option value="" disabled>
-                  Select a Lab
+                  Select Lab
                 </option>
                 {labs.map((lab) => (
                   <option key={lab.id} value={lab.name}>
@@ -287,44 +290,53 @@ const Layout = ({ children }: LayoutProps) => {
                   </option>
                 ))}
               </select>
-              
-
-              ) : ('')
-            }
-
-            {/* <Link href='/dashboard/profile' className="relative flex items-center text-white justify-center w-10 h-10 text-gray-700 bg-primary rounded-md hover:bg-primary-light transition duration-200">
-              <UserIcon className="h-3 w-3" aria-hidden="true" />
-              <span className="absolute left-1/2 transform -translate-x-1/2 -translate-y-full bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                Profile
-              </span>
-            </Link> */}
-            <button className="relative flex items-center justify-center w-10 h-10 text-white bg-red-600 rounded-md hover:bg-red-700 transition duration-200"
+            )}
+            <button
+              className="relative group flex items-center justify-center w-10 h-10 text-white bg-red-500 rounded-full shadow-md hover:bg-red-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2"
               onClick={() => {
-                toast.success("Logged out successfully", { position: "top-right", autoClose: 2000 });
+                toast.success("Logged out successfully", {
+                  position: "top-right",
+                  autoClose: 2000,
+                });
                 localStorage.removeItem("user");
-                //remove token from cookies
                 document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                 window.location.href = "/login";
               }}
+              aria-label="Logout"
             >
-              <PowerIcon className="h-3 w-3" aria-hidden="true" />
-              <span className="absolute left-1/2 transform -translate-x-1/2 -translate-y-full bg-gray-800 text-white text-xs rounded px-2 py-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+              <PowerIcon className="w-5 h-5" aria-hidden="true" />
+              <span className="absolute left-1/2 bottom-full mb-1 transform -translate-x-1/2 whitespace-nowrap bg-gray-800 text-white text-xs rounded px-1.5 py-0.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100 shadow">
                 Logout
-
               </span>
             </button>
           </div>
-        </nav>
 
-        {/* Main Content Area */}
-        {/* <div className="p-6 overflow-y-auto" style={{ maxHeight: "calc(100vh - 64px)" }}>
-          {children}
-          
-        </div> */}
+
+        </nav>
 
         <div className="p-6 overflow-y-auto" style={{ maxHeight: "calc(100vh - 64px)" }}>
           {
-            labs == null ? (<Lab />) : (<div>{children}</div>)
+            labs == null ? (<Lab />)
+              :
+              (
+                <div className="relative isolate bg-white ">
+                <div
+                    aria-hidden="true"
+                    className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80 animate-gradient-flow"
+                >
+                    <div
+                        style={{
+                            clipPath:
+                                'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
+                        }}
+                        className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-30 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"
+                    />
+                </div>
+                <div className="relative z-10 max-w-full mx-auto ">
+                   {children}
+                </div>
+            </div>
+              )
           }
 
         </div>

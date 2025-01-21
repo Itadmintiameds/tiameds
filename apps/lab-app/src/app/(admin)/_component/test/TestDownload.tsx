@@ -43,10 +43,10 @@ const TestDownload = () => {
         <button
           onClick={handleDownload}
           className="cursor-pointer inline-block 
-          bg-gradient-to-r from-primary to-primary-light
+          bg-gradient-to-r from-primary to-primarylight
            text-white 
           py-2 px-6 rounded-md 
-          hover:from-primary-dark hover:to-primary
+          hover:from-primary hover:to-primary
           focus:ring-2 focus:ring-green-500 focus:ring-offset-2 text-sm font-medium"
         >
           <FaCloudDownloadAlt className="inline-block mr-2" />

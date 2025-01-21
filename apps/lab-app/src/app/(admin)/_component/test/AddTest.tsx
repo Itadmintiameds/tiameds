@@ -60,8 +60,8 @@ const AddTest = ({ closeModal }: AddTestProps) => {
   return (
     <div className="flex justify-center items-center  ">
       <div className=" rounded-lg p-2 w-full max-w-lg">
-        <h1 className="text-2xl font-semibold text-gray-800 flex items-center mb-6">
-          <FaPlusCircle className="mr-3 text-indigo-800" /> Add New Test
+        <h1 className="text-2xl font-semibold text-textzinc flex items-center mb-6">
+          <FaPlusCircle className="mr-3 text-primary" /> Add New Test
         </h1>
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Category Input */}
@@ -133,7 +133,7 @@ const AddTest = ({ closeModal }: AddTestProps) => {
             text="Add Test"
             onClick={() => { }}
             type='submit'
-            className="flex items-center justify-center px-4 py-1 w-full text-xs bg-button-tertiary text-white rounded-md hover:bg-button-tertiary focus:outline-none"
+            className="flex items-center justify-center px-4 py-1 w-full text-xs bg-primary text-white rounded-md hover:bg-secondary focus:outline-none"
           >
             <Plus className="h-4" />
           </Button>

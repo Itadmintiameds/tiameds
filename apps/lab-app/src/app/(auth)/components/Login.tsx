@@ -78,18 +78,18 @@ const Login = () => {
           <Image src="/tiamed1.svg" alt="Lab Management System" width={80} height={80} />
         </div>
 
-        <h2 className="text-center text-2xl font-bold text-indigo-800">Welcome Back!</h2>
-        <p className="mt-2 text-center text-sm text-gray-500">
+        <h2 className="text-center text-2xl font-bold text-primary">Welcome Back!</h2>
+        <p className="mt-2 text-center text-sm text-primary">
           Sign in to your Lab Management System account
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="username" className="block text-sm font-medium text-primary">
               Username
             </label>
             <div className="relative mt-1">
-              <FaUser className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" />
+              <FaUser className="absolute top-1/2 left-3 -translate-y-1/2 text-primary" />
               <input
                 id="username"
                 name="username"
@@ -105,11 +105,11 @@ const Login = () => {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="block text-sm font-medium text-primary">
               Password
             </label>
             <div className="relative mt-1">
-              <FaLock className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" />
+              <FaLock className="absolute top-1/2 left-3 -translate-y-1/2 text-primary" />
               <input
                 id="password"
                 name="password"
@@ -131,11 +131,11 @@ const Login = () => {
             </div>
           </div>
 
-          <div>
+          <div className=' animate-bounce'>
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`w-full flex justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+              className={`w-full className="rounded-md bg-gradient-to-r from-primary to-secondary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gradient-to-r hover:from-secondary hover:to-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
             >
               {isSubmitting ? 'Signing In...' : 'Sign In'}
@@ -143,9 +143,9 @@ const Login = () => {
           </div>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-primary">
           Forgot your password?{' '}
-          <Link href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <Link href="#" className="font-medium text-secondary hover:text-indigo-500">
             Reset here
           </Link>
         </p>
