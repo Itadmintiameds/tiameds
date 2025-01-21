@@ -19,6 +19,7 @@
   --TEXT-LIGHT: #71717a; /* Secondary text for body content */
   --TEXT-MUTED: #9ca3af; /* Muted text for captions and less critical information */
   --TEXT-WHITE: #ffffff; /* White text for dark backgrounds */
+  --TEXT-ZINC :#09090b;  /* Zinc text for dark backgrounds */
 
   /* Button colors for different actions */
   --SAVE-BUTTON: #8b5cf6; /* Save button background */

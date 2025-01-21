@@ -6,11 +6,12 @@ import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import Link from "next/link";
 
 const navigation = [
+  { name: 'About Us', href: '/about' },
   { name: 'Product', href: '/product' },
   { name: 'Careers', href: '/careers' },
-  { name: 'About Us', href: '/about' },
-  { name: 'Contact Us', href: '/contact' },
+  { name: 'Events', href: '/events' },
   { name: 'Blog', href: '/blog' },
+  { name: 'Contact Us', href: '/contact' },
 ];
 
 const HeaderNav = () => {
@@ -66,7 +67,7 @@ const HeaderNav = () => {
               <Link 
                 key={item.name}
                 href={item.href}
-                className="text-sm font-semibold text-gray-900 hover:text-indigo-600 transition-colors duration-200 hover:underline hover:animate-bounce"
+                className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors duration-200 hover:underline hover:animate-bounce"
               >
                 {item.name}
               </Link>

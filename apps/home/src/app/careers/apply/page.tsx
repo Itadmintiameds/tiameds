@@ -598,7 +598,7 @@ const ApplyPage = () => {
   const currentJobs = jobListings.slice(indexOfFirstJob, indexOfLastJob)
 
   const handleApplyClick = (job: JobListing) => {
-    
+
     setSelectedJob(job)
     setShowModal(true)
   }
@@ -714,37 +714,129 @@ const ApplyPage = () => {
       </div>
 
       {showModal && selectedJob && (
+        // <div className="fixed inset-0 flex items-center justify-center z-50 bg-gray-500 bg-opacity-75">
+        //   <div className="bg-white rounded-lg shadow-xl w-10/12 md:w-3/4 p-8">
+        //     <div className="flex">
+        //       <div className="w-1/2 pr-4">
+        //         <h2 className="text-2xl font-semibold">{selectedJob.title}</h2>
+        //         <p className="mt-2 text-gray-700">{selectedJob.description}</p>
+        //         <p className="mt-4"><strong>Location:</strong> {selectedJob.location}</p>
+        //         <p><strong>Type:</strong> {selectedJob.type}</p>
+        //         <p><strong>Tech Stack:</strong> {selectedJob.techStack}</p>
+        //         <p><strong>Salary:</strong> {selectedJob.salary}</p>
+        //         <p><strong>Experience:</strong> {selectedJob.experience}</p>
+        //       </div>
+
+        //       <div className="w-1/2 pl-4">
+        //         <h3 className="text-xl font-medium mb-4">Apply for {selectedJob.title}</h3>
+        //         <form className="space-y-4">
+        //           <div>
+        //             <label className="block text-sm font-medium text-gray-700">Full Name</label>
+        //             <input type="text" className="w-full p-3 border rounded-md" placeholder="Your full name" required />
+        //           </div>
+        //           <div>
+        //             <label className="block text-sm font-medium text-gray-700">Email Address</label>
+        //             <input type="email" className="w-full p-3 border rounded-md" placeholder="Your email" required />
+        //           </div>
+        //           <div>
+        //             <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+        //             <input type="text" className="w-full p-3 border rounded-md" placeholder="Your phone number" required />
+        //           </div>
+        //           <div>
+        //             <label className="block text-sm font-medium text-gray-700">Upload Resume</label>
+        //             <input type="file" className="w-full p-3 border rounded-md" required />
+        //           </div>
+        //           <div className="mt-4 flex justify-end">
+        //             <button
+        //               type="submit"
+        //               className="bg-gradient-to-r from-primary to-secondary text-white px-6 py-2 rounded-md"
+        //             >
+        //               Submit Application
+        //             </button>
+        //           </div>
+        //         </form>
+        //       </div>
+        //     </div>
+        //     <button
+        //       onClick={handleCloseModal}
+        //       className="absolute top-28 right-56 text-4xl font-semibold text-primary"
+        //     >
+        //       &times;
+        //     </button>
+        //   </div>
+        // </div>
+
+
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-gray-500 bg-opacity-75">
-          <div className="bg-white rounded-lg shadow-xl w-10/12 md:w-3/4 p-8">
-            <div className="flex">
-              <div className="w-1/2 pr-4">
-                <h2 className="text-2xl font-semibold">{selectedJob.title}</h2>
+          <div className="bg-white rounded-lg shadow-xl w-11/12 sm:w-10/12 md:w-3/4 p-6 sm:p-8">
+            <div className="flex flex-col sm:flex-row">
+              <div className="w-full sm:w-1/2 sm:pr-4">
+                <h2 className="text-xl sm:text-2xl font-semibold">{selectedJob.title}</h2>
                 <p className="mt-2 text-gray-700">{selectedJob.description}</p>
-                <p className="mt-4"><strong>Location:</strong> {selectedJob.location}</p>
-                <p><strong>Type:</strong> {selectedJob.type}</p>
-                <p><strong>Tech Stack:</strong> {selectedJob.techStack}</p>
-                <p><strong>Salary:</strong> {selectedJob.salary}</p>
-                <p><strong>Experience:</strong> {selectedJob.experience}</p>
+                <p className="mt-4">
+                  <strong>Location:</strong> {selectedJob.location}
+                </p>
+                <p>
+                  <strong>Type:</strong> {selectedJob.type}
+                </p>
+                <p>
+                  <strong>Tech Stack:</strong> {selectedJob.techStack}
+                </p>
+                <p>
+                  <strong>Salary:</strong> {selectedJob.salary}
+                </p>
+                <p>
+                  <strong>Experience:</strong> {selectedJob.experience}
+                </p>
               </div>
 
-              <div className="w-1/2 pl-4">
-                <h3 className="text-xl font-medium mb-4">Apply for {selectedJob.title}</h3>
+              <div className="w-full sm:w-1/2 sm:pl-4 mt-6 sm:mt-0">
+                <h3 className="text-lg sm:text-xl font-medium mb-4">
+                  Apply for {selectedJob.title}
+                </h3>
                 <form className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                    <input type="text" className="w-full p-3 border rounded-md" placeholder="Your full name" required />
+                    <label className="block text-sm font-medium text-gray-700">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full p-3 border rounded-md"
+                      placeholder="Your full name"
+                      required
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Email Address</label>
-                    <input type="email" className="w-full p-3 border rounded-md" placeholder="Your email" required />
+                    <label className="block text-sm font-medium text-gray-700">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      className="w-full p-3 border rounded-md"
+                      placeholder="Your email"
+                      required
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                    <input type="text" className="w-full p-3 border rounded-md" placeholder="Your phone number" required />
+                    <label className="block text-sm font-medium text-gray-700">
+                      Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full p-3 border rounded-md"
+                      placeholder="Your phone number"
+                      required
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Upload Resume</label>
-                    <input type="file" className="w-full p-3 border rounded-md" required />
+                    <label className="block text-sm font-medium text-gray-700">
+                      Upload Resume
+                    </label>
+                    <input
+                      type="file"
+                      className="w-full p-3 border rounded-md"
+                      required
+                    />
                   </div>
                   <div className="mt-4 flex justify-end">
                     <button
@@ -759,12 +851,13 @@ const ApplyPage = () => {
             </div>
             <button
               onClick={handleCloseModal}
-              className="absolute top-28 right-56 text-4xl font-semibold text-primary"
+              className="absolute top-4 sm:top-6 right-6 mt-4 md:right-52 md:mt-20 sm:right-6 text-4xl sm:text-4xl font-semibold text-primary"
             >
               &times;
             </button>
           </div>
         </div>
+
       )}
     </div>
   )
