@@ -51,6 +51,7 @@ const AddPatient = () => {
     zip: '',
     bloodGroup: '',
     dateOfBirth: '',
+    gender: '',
     visit: {
       visitDate: new Date().toISOString().split('T')[0], // Ensure default date format
       visitType: VisitType.UNKNOWN,
@@ -336,6 +337,7 @@ const AddPatient = () => {
       zip: '',
       bloodGroup: '',
       dateOfBirth: '',
+      gender: '',
       visit: {
         visitDate: new Date().toISOString().split('T')[0],
         visitType: VisitType.UNKNOWN,

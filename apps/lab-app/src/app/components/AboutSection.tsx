@@ -1,3 +1,5 @@
+// import Image from "next/image";
+
 export default function AboutSection() {
     return (
       <div className="bg-white py-20 sm:py-24 lg:py-32">
@@ -13,12 +15,14 @@ export default function AboutSection() {
   
           <div className="mt-12 grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-2">
             <div className="flex items-center justify-center sm:justify-start">
-              <img
+              {/* <Image
                 alt="About Us"
-                src="about-image.png" // Update with your actual image
+                src="/about-us.png"
                 className="w-full rounded-xl shadow-lg object-cover"
-                style={{ height: "400px" }} // You can adjust this based on your preference
-              />
+                style={{ height: "400px", 
+                  width: "400px"
+                }} // You can adjust this based on your preference
+              /> */}
             </div>
             <div className="text-center sm:text-left">
               <h3 className="text-2xl font-semibold text-gray-900">Why Choose Our Solution?</h3>

@@ -1,7 +1,7 @@
 import { createDoctor, doctorDelete, getDoctor, updateDoctor } from '@/../../services/doctorServices';
-import Loader from '@/app/(admin)/_component/common/Loader';
-import DocterProfile from '@/app/(admin)/_component/doctor/DocterProfile';
-import UpdateDoctor from '@/app/(admin)/_component/doctor/UpdateDoctor';
+import Loader from '@/app/(admin)/component/common/Loader';
+import DocterProfile from '@/app/(admin)/component/doctor/DocterProfile';
+import UpdateDoctor from '@/app/(admin)/component/doctor/UpdateDoctor';
 import { useLabs } from '@/context/LabContext';
 import { Doctor } from '@/types/doctor/doctor';
 import React, { useEffect, useState } from 'react';

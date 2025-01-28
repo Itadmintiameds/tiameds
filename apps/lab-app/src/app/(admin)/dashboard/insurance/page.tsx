@@ -1,9 +1,9 @@
 'use client';
 
 import React,{useState} from 'react'
-import InsuranceList from '@/app/(admin)/_component/insurance/InsuranceList'    
-import Loader from '@/app/(admin)/_component/common/Loader'
-import Tabs from '@/app/(admin)/_component/common/TabComponent';
+import InsuranceList from '@/app/(admin)/component/insurance/InsuranceList'    
+import Loader from '@/app/(admin)/component/common/Loader'
+import Tabs from '@/app/(admin)/component/common/TabComponent';
 import { AiOutlineSafetyCertificate } from "react-icons/ai";
 
 

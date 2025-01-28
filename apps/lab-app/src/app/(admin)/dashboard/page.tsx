@@ -1,7 +1,7 @@
 'use client';
 
-import Tabs from '@/app/(admin)/_component/common/TabComponent';
-import Patient from '@/app/(admin)/_component/dashboard/patient/patient';
+import Tabs from '@/app/(admin)/component/common/TabComponent';
+import Patient from '@/app/(admin)/component/dashboard/patient/patient';
 import { PatientTabItem } from '@/types/patient/patient';
 import { useState } from 'react';
 import { FaPerson } from "react-icons/fa6";

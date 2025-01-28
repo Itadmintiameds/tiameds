@@ -31,7 +31,7 @@ import {
 
 import { useLabs } from '@/context/LabContext';
 import { GrStatusInfoSmall } from "react-icons/gr";
-import Button from '../../_component/common/Button';
+import Button from '../../component/common/Button';
 
 import { Doctor } from '@/types/doctor/doctor';
 import { Packages } from '@/types/package/package';

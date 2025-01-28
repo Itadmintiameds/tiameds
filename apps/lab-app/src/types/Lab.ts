@@ -1,6 +1,7 @@
 export interface LabResponse {
     id: number;
     name: string;
+    logo: string;
     address: string;
     city: string;
     state: string;

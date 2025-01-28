@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { FiCheck, FiDollarSign, FiPlusCircle, FiSearch, FiTag, FiTrash2 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { LuTestTube } from "react-icons/lu";
-import Loader from '@/app/(admin)/_component/common/Loader';
+import Loader from '@/app/(admin)/component/common/Loader';
 
 interface Package {
   packageName: string;

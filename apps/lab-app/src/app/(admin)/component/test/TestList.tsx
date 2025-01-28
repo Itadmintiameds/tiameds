@@ -1,8 +1,8 @@
 'use client';
 import { deleteTest, getTests } from '@/../../services/testService';
-import Button from "@/app/(admin)/_component/common/Button";
-import Loader from "@/app/(admin)/_component/common/Loader";
-import Pagination from '@/app/(admin)/_component/common/Pagination';
+import Button from "@/app/(admin)/component/common/Button";
+import Loader from "@/app/(admin)/component/common/Loader";
+import Pagination from '@/app/(admin)/component/common/Pagination';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
 import { Plus } from 'lucide-react';

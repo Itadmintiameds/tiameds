@@ -77,7 +77,7 @@ const HealthPackageDetails: React.FC<HealthPackageDetailsProps> = ({ healthPacka
     <View style={healthPackageStyles.healthPackageDetails}>
       <Text style={healthPackageStyles.healthPackageSubHeader}>Health Package Details</Text>
       <View style={healthPackageStyles.divider} />
-      {healthPackages.map((pkg, index) => (
+      {healthPackages?.map((pkg, index) => (
         <View key={index}>
           <View style={healthPackageStyles.table}>
             <View style={healthPackageStyles.tableRow}>
@@ -87,10 +87,10 @@ const HealthPackageDetails: React.FC<HealthPackageDetailsProps> = ({ healthPacka
               <Text style={healthPackageStyles.tableHeaderCell}>Net Price</Text>
             </View>
             <View style={healthPackageStyles.tableRow}>
-              <Text style={healthPackageStyles.tableCell}>{pkg.packageName}</Text>
-              <Text style={healthPackageStyles.tableCell}>₹{pkg.price}</Text>
-              <Text style={healthPackageStyles.tableCell}>₹{pkg.discount}</Text>
-              <Text style={healthPackageStyles.tableCell}>₹{pkg.netPrice}</Text>
+              <Text style={healthPackageStyles.tableCell}>{pkg?.packageName}</Text>
+              <Text style={healthPackageStyles.tableCell}>₹{pkg?.price}</Text>
+              <Text style={healthPackageStyles.tableCell}>₹{pkg?.discount}</Text>
+              <Text style={healthPackageStyles.tableCell}>₹{pkg?.netPrice}</Text>
             </View>
           </View>
           <View style={healthPackageStyles.divider} />
@@ -102,9 +102,9 @@ const HealthPackageDetails: React.FC<HealthPackageDetailsProps> = ({ healthPacka
             </View>
             {pkg.tests.map((test, testIndex) => (
               <View style={healthPackageStyles.tableRow} key={testIndex}>
-                <Text style={healthPackageStyles.tableCell}>{test.name}</Text>
-                <Text style={healthPackageStyles.tableCell}>{test.category}</Text>
-                <Text style={healthPackageStyles.tableCell}>₹{test.price}</Text>
+                <Text style={healthPackageStyles.tableCell}>{test?.name}</Text>
+                <Text style={healthPackageStyles.tableCell}>{test?.category}</Text>
+                <Text style={healthPackageStyles.tableCell}>₹{test?.price}</Text>
               </View>
             ))}
           </View>

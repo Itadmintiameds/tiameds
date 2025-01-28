@@ -7,7 +7,7 @@ export default function PricingSection() {
               Simple Pricing, Powerful Features
             </h2>
             <p className="mt-4 text-lg text-gray-600">
-              Choose a plan that fits your lab's needs. All plans include free updates and access to our 24/7 support.
+              Choose a plan that fits your lab&apos;s needs. All plans include free updates and access to our 24/7 support.
             </p>
           </div>
   

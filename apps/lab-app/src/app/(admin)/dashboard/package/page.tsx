@@ -1,12 +1,12 @@
 'use client';
 
-import Package from '@/app/(admin)/_component/package/Pakage';
-import Tabs from '@/app/(admin)/_component/common/TabComponent';
+import Package from '@/app/(admin)/component/package/Pakage';
+import Tabs from '@/app/(admin)/component/common/TabComponent';
 import { PackageTabItem } from '@/types/package/package';
 import React from 'react';
 import { CiViewList } from 'react-icons/ci';
 import { RiTestTubeLine } from "react-icons/ri";
-import PackageList from '../../_component/package/PackageList';
+import PackageList from '../../component/package/PackageList';
 
 
 const tabs: PackageTabItem[] = [

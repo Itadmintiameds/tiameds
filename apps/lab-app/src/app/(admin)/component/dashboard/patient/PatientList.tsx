@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Patient } from '@/types/patient/patient';
-import { toast } from 'react-toastify';
+import { deletePatient, getPatient, updatePatient } from '@/../services/patientServices';
+import Model from '@/app/(admin)/component/common/Model';
+import Pagination from '@/app/(admin)/component/common/Pagination';
+import UpdatePatient from '@/app/(admin)/component/dashboard/patient/UpdatePatient';
 import { useLabs } from '@/context/LabContext';
+import { Patient } from '@/types/patient/patient';
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from 'react';
+import { FaEdit, FaEye, FaTrash } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import Loader from '../../common/Loader';
 import TableComponent from '../../common/TableComponent';
-import { getPatient, updatePatient, deletePatient } from '@/../services/patientServices';
-import { FaEye, FaEdit, FaTrash } from 'react-icons/fa';
-import Model from '@/app/(admin)/_component/common/Model';
-import UpdatePatient from '@/app/(admin)/_component/dashboard/patient/UpdatePatient';
-import ViewPatientDetails from '@/app/(admin)/_component/dashboard/patient/ViewPatientDetails';
-import Pagination from '@/app/(admin)/_component/common/Pagination';
 
 const PatientList: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -17,11 +17,12 @@ const PatientList: React.FC = () => {
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(10);
-  const [viewPatient, setViewPatient] = useState<Patient | null>(null);
+  // const [viewPatient, setViewPatient] = useState<Patient | null>(null);
   const [updatePatientDetails, setUpdatePatientDetails] = useState<Patient | null>(null);
-  const [isViewing, setIsViewing] = useState<boolean>(false);
+ 
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
+  const router = useRouter(); 
 
   const { currentLab } = useLabs();
 
@@ -56,14 +57,7 @@ const PatientList: React.FC = () => {
     setCurrentPage(1); // Reset to first page on new search
   }, [searchQuery, patients]);
 
-  // Handle View Patient
-  const handleView = (patient: Patient) => {
-    setViewPatient(patient);
-    setIsViewing(true);
-  };
-
-
-
+ 
 
   // Handle Update Patient
   const handleUpdate = async (updatedPatient: Patient) => {
@@ -110,6 +104,11 @@ const PatientList: React.FC = () => {
     }
   };
 
+  //rendering  the page get all data of particular patient visits
+  const handleVisits = (patient: Patient) => {
+    router.push(`/dashboard/patients/${patient.id}`);
+  };
+
   const columns = [
     { header: 'First Name', accessor: 'firstName' as keyof Patient },
     { header: 'Last Name', accessor: 'lastName' as keyof Patient },
@@ -128,7 +127,6 @@ const PatientList: React.FC = () => {
   if (!currentLab?.id || !patients) {
     return <Loader />;
   }
-
   return (
     <div className=''>
       <input
@@ -143,7 +141,7 @@ const PatientList: React.FC = () => {
         columns={columns}
         actions={(patient) => (
           <div className="flex space-x-2 ">
-            <button className="text-blue-500 hover:text-blue-700" onClick={() => handleView(patient)}>
+            <button className="text-blue-500 hover:text-blue-700" onClick={() => handleVisits(patient)}>
               <FaEye />
             </button>
             <button
@@ -158,6 +156,9 @@ const PatientList: React.FC = () => {
             <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(patient)}>
               <FaTrash />
             </button>
+            {/* <button className="text-blue-500 hover:text-blue-700" onClick={() => handleVisits(patient)}>
+              Visits
+            </button> */}
           </div>
         )}
         noDataMessage="No patients found"
@@ -169,7 +170,7 @@ const PatientList: React.FC = () => {
         onPageChange={setCurrentPage}
       />
 
-      {isViewing && viewPatient && (
+      {/* {isViewing && viewPatient && (
         <Model
           isOpen={isViewing}
           onClose={() => setIsViewing(false)}
@@ -178,7 +179,7 @@ const PatientList: React.FC = () => {
         >
           <ViewPatientDetails patient={viewPatient} />
         </Model>
-      )}
+      )} */}
 
       {isUpdating && updatePatientDetails && (
         <Model

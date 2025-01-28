@@ -50,7 +50,7 @@ export default function TestimonialsSection() {
                 {testimonial.name}
               </h3>
               <p className="text-gray-500">{testimonial.role}</p>
-              <p className="mt-4 text-gray-600 italic">"{testimonial.feedback}"</p>
+              <p className="mt-4 text-gray-600 italic">&quot;{testimonial.feedback}&quot;</p>
             </div>
           ))}
         </div>

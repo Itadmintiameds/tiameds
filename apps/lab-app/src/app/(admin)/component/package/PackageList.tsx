@@ -2,7 +2,7 @@
 'use client';
 
 import { getPackage, packageDelete, updatePackage } from '@/../services/packageServices';
-import Modal from '@/app/(admin)/_component/common/Model';
+import Modal from '@/app/(admin)/component/common/Model';
 import { useLabs } from '@/context/LabContext';
 import { useEffect, useState } from 'react';
 import { FaBoxOpen, FaChevronDown, FaChevronUp, FaEdit, FaSearch, FaTrash } from 'react-icons/fa';

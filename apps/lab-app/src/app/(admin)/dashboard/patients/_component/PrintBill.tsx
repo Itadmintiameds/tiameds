@@ -8,9 +8,64 @@ import TestDetails from "./TestDetails";
 
 
 
+interface Test {
+  name: string;
+  category: string;
+  price: number;
+}
+// Type for a single health package
+interface HealthPackage {
+  packageName: string;
+  price: number;
+  discount: number;
+  netPrice: number;
+  tests: Test[];
+}
+
+// Type for lab details
+interface LabDetails {
+  logo: string;
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  gstn: string;
+  invoiceId: string;
+}
+
+// Type for patient details
+interface PatientDetails {
+  name: string;
+  age: number;
+  email: string;
+  phone: string;
+  address: string;
+  bloodGroup: string;
+  patientId: string;
+  Gender: string;
+}
+
+// Type for the bill object
+interface Bill {
+  lab: LabDetails;
+  totalAmount: number;
+  discount: number;
+  gstRate: number;
+  gstAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  netAmount: number;
+  paymentStatus: string;
+  paymentMethod: string;
+  paymentDate: string;
+  tests: Test[];
+  healthPackages: HealthPackage[] | undefined; // Since `healthPackage` may be undefined
+  patient: PatientDetails;
+}
 
 
-const PrintBill: React.FC<{ billingData }> = ({ billingData }) => {
+
+const PrintBill: React.FC<{ billingData: Bill }> = ({ billingData }) => {
   console.log(billingData, "billingData");
   return (
     <Document>
@@ -18,7 +73,9 @@ const PrintBill: React.FC<{ billingData }> = ({ billingData }) => {
         <Header lab={billingData.lab} />
         <PatientDetails patient={billingData.patient} />
         <TestDetails tests={billingData.tests} />
-        <HealthPackageDetails healthPackages={billingData.healthPackages} />
+        {billingData.healthPackages && (
+          <HealthPackageDetails healthPackages={billingData.healthPackages} />
+        )}
         <BillingSummary billingData={billingData} />
       </Page>
     </Document>

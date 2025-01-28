@@ -1,5 +1,5 @@
 import React from 'react'
-import Lab from '../../_component/lab/Lab'
+import Lab from '../../component/lab/Lab'
 
 const page = () => {
   return (

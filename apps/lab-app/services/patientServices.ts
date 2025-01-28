@@ -63,3 +63,24 @@ export const getPatientByVisitIdAndVisitDetails = async (labId: number, visitId:
         throw new Error('An error occurred while fetching patient details.');
     }
 }
+
+
+
+export const getVisitsByPatientId = async (labId: number, patientId: number) => {
+    try {
+        const response = await api.get(`/lab/${labId}/patient/${patientId}/visit`); 
+        return response.data;
+    } catch (error: unknown) {
+        throw new Error('An error occurred while fetching patient visits.');
+    }
+}
+
+// getPatientById 
+export const getPatientById = async (labId: number, patientId: number) => {
+    try {
+        const response = await api.get(`/lab/${labId}/patient/${patientId}`);
+        return response.data;
+    } catch (error: unknown) {
+        throw new Error('An error occurred while fetching patient details.');
+    }
+}

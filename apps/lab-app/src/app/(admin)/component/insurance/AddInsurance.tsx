@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Insurance } from '@/types/insurance/insurance';
 import { FaRegMoneyBillAlt, FaUser, FaRegFileAlt, FaShieldAlt, FaCalendarAlt } from 'react-icons/fa';
-import Button from '@/app/(admin)/_component/common/Button';
+import Button from '@/app/(admin)/component/common/Button';
 import { insuranceSchema } from '@/schema/insuranceSchema';
 import { Plus } from 'lucide-react';
 

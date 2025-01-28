@@ -14,6 +14,11 @@ interface FormData {
   message: string
 }
 
+interface NavigationItem {
+  name: string
+  href: string
+}
+
 
 
 const navigation: NavigationItem[] = [

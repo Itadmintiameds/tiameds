@@ -1,10 +1,10 @@
 'use client';
 
-import Tabs from '@/app/(admin)/_component/common/TabComponent';
+import Tabs from '@/app/(admin)/component/common/TabComponent';
 import React from 'react';
 import { FaUserDoctor } from "react-icons/fa6";
-import DoctorList from '@/app/(admin)/_component/doctor/DoctorList';
-import Loader from '@/app/(admin)/_component/common/Loader';
+import DoctorList from '@/app/(admin)/component/doctor/DoctorList';
+import Loader from '@/app/(admin)/component/common/Loader';
 
 interface DoctorTabItem {
   id: string;

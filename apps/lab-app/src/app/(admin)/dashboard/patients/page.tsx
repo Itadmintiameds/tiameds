@@ -30,7 +30,7 @@ import {
 
 import { useLabs } from '@/context/LabContext';
 import { GrStatusInfoSmall } from "react-icons/gr";
-import Button from '../../_component/common/Button';
+import Button from '../../component/common/Button';
 
 import { Doctor } from '@/types/doctor/doctor';
 import { Packages } from '@/types/package/package';
@@ -41,34 +41,27 @@ import { doctorGetById } from '@/../services/doctorServices';
 import { getHealthPackageById } from '@/../services/packageServices';
 import { getTestById } from '@/../services/testService';
 import { FaUserDoctor } from "react-icons/fa6";
-import Modal from '../../_component/common/Model';
+import Modal from '../../component/common/Model';
 import PrintBill from './_component/PrintBill';
 
 
-// ============================================
-
-
-// Type for a single test
 interface Test {
   name: string;
-  price: string;
+  category: string;
+  price: number;
 }
-
 // Type for a single health package
 interface HealthPackage {
   packageName: string;
-  price: string;
-  discount: string;
-  netPrice: string;
-  tests: {
-    name: string;
-    category: string;
-    price: string;
-  }[];
+  price: number;
+  discount: number;
+  netPrice: number;
+  tests: Test[];
 }
 
 // Type for lab details
 interface LabDetails {
+  logo: string;
   name: string;
   address: string;
   phone: string;
@@ -80,7 +73,7 @@ interface LabDetails {
 // Type for patient details
 interface PatientDetails {
   name: string;
-  age: string | number;
+  age: number;
   email: string;
   phone: string;
   address: string;
@@ -92,26 +85,22 @@ interface PatientDetails {
 // Type for the bill object
 interface Bill {
   lab: LabDetails;
-  billingId: string;
+  totalAmount: number;
+  discount: number;
+  gstRate: number;
+  gstAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  netAmount: number;
   paymentStatus: string;
   paymentMethod: string;
   paymentDate: string;
-  discount: string;
-  gstRate: string;
-  gstAmount: string;
-  cgstAmount: string;
-  sgstAmount: string;
-  igstAmount: string;
-  netAmount: string;
-  totalAmount: string;
   tests: Test[];
   healthPackages: HealthPackage[] | undefined; // Since `healthPackage` may be undefined
   patient: PatientDetails;
 }
 
 
-
-// ============================================
 
 const Page = () => {
   const { currentLab, patientDetails } = useLabs();
@@ -185,70 +174,115 @@ const Page = () => {
     return age;
   };
 
-  const bill = {
-    // Lab Details
-    lab: {
-      name: currentLab?.name || 'N/A',
-      address: `${currentLab?.address || 'N/A'}, ${currentLab?.city || 'N/A'}, ${currentLab?.state || 'N/A'}`,
-      //hardcoded value 
-      phone: 'N/A',
-      email: 'N/A',
-      gstn: 'N/A',
-      invoiceId: patientDetails?.visit?.visitId || 'N/A',
-    },
+  // const bill = {
+  //   // Lab Details
+  //   lab: {
+  //     logo: currentLab?.logo ?? 'N/A',
+  //     name: currentLab?.name || 'N/A',
+  //     address: `${currentLab?.address || 'N/A'}, ${currentLab?.city || 'N/A'}, ${currentLab?.state || 'N/A'}`,
+  //     //hardcoded value 
+  //     phone: 'N/A',
+  //     email: 'N/A',
+  //     gstn: 'N/A',
+  //     invoiceId: (patientDetails?.visit?.visitId || 'N/A').toString(),
+  //   },
 
-    // Billing Details
-    billingId: patientDetails?.visit?.billing?.billingId || 'N/A',
-    paymentStatus: patientDetails?.visit?.billing?.paymentStatus || 'N/A',
-    paymentMethod: patientDetails?.visit?.billing?.paymentMethod || 'N/A',
-    paymentDate: patientDetails?.visit?.billing?.paymentDate || 'N/A',
-    discount: patientDetails?.visit?.billing?.discount || '0%',
-    gstRate: patientDetails?.visit?.billing?.gstRate || 'N/A',
-    gstAmount: patientDetails?.visit?.billing?.gstAmount || '₹0.00',
-    cgstAmount: patientDetails?.visit?.billing?.cgstAmount || '₹0.00',
-    sgstAmount: patientDetails?.visit?.billing?.sgstAmount || '₹0.00',
-    igstAmount: patientDetails?.visit?.billing?.igstAmount || '₹0.00',
-    netAmount: patientDetails?.visit?.billing?.netAmount || '₹0.00',
-    totalAmount: patientDetails?.visit?.billing?.totalAmount || '₹0.00',
+  //   // Billing Details
+  //   billingId: patientDetails?.visit?.billing?.billingId || 'N/A',
+  //   paymentStatus: patientDetails?.visit?.billing?.paymentStatus || 'N/A',
+  //   paymentMethod: patientDetails?.visit?.billing?.paymentMethod || 'N/A',
+  //   paymentDate: patientDetails?.visit?.billing?.paymentDate || 'N/A',
+  //   discount: patientDetails?.visit?.billing?.discount || '0%',
+  //   gstRate: patientDetails?.visit?.billing?.gstRate || 'N/A',
+  //   gstAmount: patientDetails?.visit?.billing?.gstAmount || '₹0.00',
+  //   cgstAmount: patientDetails?.visit?.billing?.cgstAmount || '₹0.00',
+  //   sgstAmount: patientDetails?.visit?.billing?.sgstAmount || '₹0.00',
+  //   igstAmount: patientDetails?.visit?.billing?.igstAmount || '₹0.00',
+  //   netAmount: patientDetails?.visit?.billing?.netAmount || '₹0.00',
+  //   totalAmount: patientDetails?.visit?.billing?.totalAmount || '₹0.00',
 
-    // Tests
-    tests: tests.map((test) => ({
-      name: test.name,
-      price: test.price.toFixed(2),
-    })),
+  //   // Tests
+  //   tests: tests.map((test) => ({
+  //     name: test.name,
+  //     price: test.price.toFixed(2),
+  //   })),
 
-    // Health Packages
-    healthPackages: healthPackage?.map((pkg) => ({
-      packageName: pkg.packageName,
-      price: pkg.price.toFixed(2),
-      discount: pkg.discount.toFixed(2),
-      netPrice: (pkg.price - pkg.discount).toFixed(2),
-      tests: pkg.tests.map((test) => ({
-        name: test.name,
-        category: test.category,
-        price: test.price.toFixed(2),
-      })),
-    })),
+  //   // Health Packages
+  //   healthPackages: healthPackage?.map((pkg) => ({
+  //     packageName: pkg.packageName,
+  //     price: pkg.price.toFixed(2),
+  //     discount: pkg.discount.toFixed(2),
+  //     netPrice: (pkg.price - pkg.discount).toFixed(2),
+  //     tests: pkg.tests.map((test) => ({
+  //       name: test.name,
+  //       category: test.category,
+  //       price: test.price.toFixed(2),
+  //     })),
+  //   })),
 
-    // Patient Details
-    patient: {
-      name: `${patientDetails?.firstName || ''} ${patientDetails?.lastName || ''}`,
-      age: calculateAge(patientDetails?.dateOfBirth || ''),
-      email: patientDetails?.email || 'N/A',
-      phone: patientDetails?.phone || 'N/A',
-      address: `${patientDetails?.address || 'N/A'}, ${patientDetails?.city || 'N/A'}, ${patientDetails?.state || 'N/A'}, ${patientDetails?.zip || 'N/A'}`,
-      bloodGroup: patientDetails?.bloodGroup || 'N/A',
-      patientId: patientDetails?.id || 'N/A',
-      Gender: patientDetails?.gender || 'N/A',
-    },
-  };
+  //   // Patient Details
+  //   patient: {
+  //     name: `${patientDetails?.firstName || ''} ${patientDetails?.lastName || ''}`,
+  //     age: calculateAge(patientDetails?.dateOfBirth || ''),
+  //     email: patientDetails?.email || 'N/A',
+  //     phone: patientDetails?.phone || 'N/A',
+  //     address: `${patientDetails?.address || 'N/A'}, ${patientDetails?.city || 'N/A'}, ${patientDetails?.state || 'N/A'}, ${patientDetails?.zip || 'N/A'}`,
+  //     bloodGroup: patientDetails?.bloodGroup || 'N/A',
+  //     patientId: (patientDetails?.id || 'N/A').toString(),
+  //     Gender: patientDetails?.gender || 'N/A',
+  //   },
+  // };
 
   const handlePrint = () => {
-    setBillingData(bill);
-  }
+    setBillingData({
+      lab: {
+        name: currentLab?.name || 'N/A',
+        address: `${currentLab?.address || 'N/A'}, ${currentLab?.city || 'N/A'}, ${currentLab?.state || 'N/A'}`,
+        phone: 'N/A',
+        email: 'N/A',
+        gstn: 'N/A',
+        invoiceId: (patientDetails?.visit?.visitId || 'N/A').toString(),
+        logo: currentLab?.logo || 'N/A',
+      },
+      totalAmount: patientDetails?.visit?.billing?.totalAmount || 0,
+      discount: patientDetails?.visit?.billing?.discount || 0,
+      gstRate: patientDetails?.visit?.billing?.gstRate || 0,
+      gstAmount: patientDetails?.visit?.billing?.gstAmount || 0,
+      cgstAmount: patientDetails?.visit?.billing?.cgstAmount || 0,
+      sgstAmount: patientDetails?.visit?.billing?.sgstAmount || 0,
+      netAmount: patientDetails?.visit?.billing?.netAmount || 0,
+      paymentStatus: patientDetails?.visit?.billing?.paymentStatus || 'N/A',
+      paymentMethod: patientDetails?.visit?.billing?.paymentMethod || 'N/A',
+      paymentDate: patientDetails?.visit?.billing?.paymentDate || 'N/A',
+      tests: tests.map((test) => ({
+        name: test.name,
+        price: test.price,
+        category: test.category,
 
-  console.log(patientDetails,"patientDetails")
-
+      })),
+      healthPackages: healthPackage?.map((pkg) => ({
+        packageName: pkg.packageName,
+        price: pkg.price,
+        discount: pkg.discount,
+        netPrice: pkg.price - pkg.discount,
+        tests: pkg.tests.map((test) => ({
+          name: test.name,
+          category: test.category,
+          price: test.price,
+        })),
+      })),
+      patient: {
+        name: `${patientDetails?.firstName || ''} ${patientDetails?.lastName || ''}`,
+        age: calculateAge(patientDetails?.dateOfBirth || ''),
+        email: patientDetails?.email || 'N/A',
+        phone: patientDetails?.phone || 'N/A',
+        address: `${patientDetails?.address || 'N/A'}, ${patientDetails?.city || 'N/A'}, ${patientDetails?.state || 'N/A'}, ${patientDetails?.zip || 'N/A'}`,
+        bloodGroup: patientDetails?.bloodGroup || 'N/A',
+        patientId: (patientDetails?.id || 'N/A').toString(),
+        Gender: patientDetails?.gender || 'N/A',
+    }
+    });
+  };
   return (
     <>
       <div className="flex justify-end items-center sticky top-0 z-10 ">
@@ -257,7 +291,6 @@ const Page = () => {
           onClick={() => window.history.back()}
         />
       </div>
-      {/* ================================= Patient Information ==================================================*/}
       <section className="container mx-auto py-8 px-6">
         <section className="container mx-auto my-2  rounded-lg shadow-lg">
           <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200">

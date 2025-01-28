@@ -27,7 +27,7 @@ const ProfilePage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-10">
+        <div className="min-h-screen">
             <motion.div 
                 className="max-w-7xl mx-auto bg-white p-8 rounded-lg shadow-xl"
                 initial={{ opacity: 0 }}
@@ -38,7 +38,7 @@ const ProfilePage = () => {
                 <div className="flex items-center space-x-6">
                     {/* Profile Picture */}
                     <motion.div
-                        className="w-32 h-32 rounded-full bg-blue-500 text-white text-4xl flex items-center justify-center"
+                        className="w-32 h-32 rounded-full bg-primary text-white text-4xl flex items-center justify-center"
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: 'spring', stiffness: 200 }}
@@ -68,9 +68,9 @@ const ProfilePage = () => {
                     >
                         <h2 className="text-2xl font-semibold text-gray-700">Contact Information</h2>
                         <div className="text-gray-600 mt-4 space-y-3">
-                            <p className="flex items-center"><FaPhoneAlt className="mr-3 text-blue-500" /> {user?.phone}</p>
-                            <p className="flex items-center"><FaEnvelope className="mr-3 text-blue-500" /> {user?.email}</p>
-                            <p className="flex items-center"><FaMapMarkerAlt className="mr-3 text-blue-500" /> {user?.address}, {user?.city}, {user?.state}, {user?.zip}, {user?.country}</p>
+                            <p className="flex items-center"><FaPhoneAlt className="mr-3 text-primary" /> {user?.phone}</p>
+                            <p className="flex items-center"><FaEnvelope className="mr-3 text-primary" /> {user?.email}</p>
+                            <p className="flex items-center"><FaMapMarkerAlt className="mr-3 text-primary" /> {user?.address}, {user?.city}, {user?.state}, {user?.zip}, {user?.country}</p>
                         </div>
                     </motion.div>
 
@@ -141,7 +141,7 @@ const ProfilePage = () => {
                 {/* Edit Profile Button */}
                 <div className="mt-8 flex justify-end">
                     <motion.button 
-                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-semibold"
+                        className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-semibold"
                         whileHover={{ scale: 1.1 }}
                         transition={{ type: 'spring', stiffness: 300 }}
                     >

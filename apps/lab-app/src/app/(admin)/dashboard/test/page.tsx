@@ -1,15 +1,15 @@
 'use client';
 
-import TestDownload from '@/app/(admin)/_component/test/TestDownload';
-import TestUpload from '@/app/(admin)/_component/test/TestUpload';
-import TestLists from '@/app/(admin)/_component/test/TestList';
-import Tabs from '@/app/(admin)/_component/common/TabComponent';
+import TestDownload from '@/app/(admin)/component/test/TestDownload';
+import TestUpload from '@/app/(admin)/component/test/TestUpload';
+import TestLists from '@/app/(admin)/component/test/TestList';
+import Tabs from '@/app/(admin)/component/common/TabComponent';
 import { PackageTabItem } from '@/types/package/package';
 import React from 'react';
 import { RiTestTubeLine } from "react-icons/ri";
 import { FaFileDownload } from 'react-icons/fa';
 import { MdOutlineCloudUpload } from "react-icons/md";
-import Loader from '../../_component/common/Loader';
+import Loader from '../../component/common/Loader';
 
 const tabs: PackageTabItem[] = [
   { id: 'test', label: 'Test', icon: <RiTestTubeLine className="text-xl" /> },

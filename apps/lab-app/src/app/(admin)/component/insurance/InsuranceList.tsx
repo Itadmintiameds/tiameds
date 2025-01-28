@@ -1,7 +1,7 @@
 import { createInsurance, deleteInsurance, getInsurance, updateInsurance } from '@/../services/insuranceService';
-import Loader from '@/app/(admin)/_component/common/Loader';
-import Model from '@/app/(admin)/_component/common/Model';
-import Pagination from '@/app/(admin)/_component/common/Pagination';
+import Loader from '@/app/(admin)/component/common/Loader';
+import Model from '@/app/(admin)/component/common/Model';
+import Pagination from '@/app/(admin)/component/common/Pagination';
 import { useLabs } from '@/context/LabContext';
 import { Insurance } from '@/types/insurance/insurance';
 import React, { useEffect, useState } from 'react';
