@@ -14,7 +14,7 @@ export default function CTASection() {
         <div className="mt-10 flex justify-center gap-x-6">
           <Link
             href="/onboarding"
-            className="inline-block rounded-md bg-white px-12 py-3 text-sm font-semibold text-primary shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="inline-block rounded-md bg-white px-12 py-3 text-sm font-semibold text-primary shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 animated animate-bounce"
           >
             Get Started
           </Link>

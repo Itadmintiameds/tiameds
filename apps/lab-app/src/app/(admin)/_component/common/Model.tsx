@@ -68,3 +68,4 @@ const Modal = ({ isOpen, onClose, children, title, footer, modalClassName }: Mod
 };
 
 export default Modal;
+

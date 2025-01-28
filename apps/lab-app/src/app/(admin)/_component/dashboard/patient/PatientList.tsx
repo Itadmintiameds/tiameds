@@ -62,6 +62,9 @@ const PatientList: React.FC = () => {
     setIsViewing(true);
   };
 
+
+
+
   // Handle Update Patient
   const handleUpdate = async (updatedPatient: Patient) => {
     if (!currentLab?.id || !updatePatientDetails) return;
@@ -110,6 +113,7 @@ const PatientList: React.FC = () => {
   const columns = [
     { header: 'First Name', accessor: 'firstName' as keyof Patient },
     { header: 'Last Name', accessor: 'lastName' as keyof Patient },
+    { header: 'Gender', accessor: 'gender' as keyof Patient },
     { header: 'Email', accessor: 'email' as keyof Patient },
     { header: 'Phone', accessor: 'phone' as keyof Patient },
     { header: 'City', accessor: 'city' as keyof Patient },

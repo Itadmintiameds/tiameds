@@ -67,6 +67,7 @@ const UpdatePatient: React.FC<PatientProps> = ({ handleUpdate, patient }) => {
                 {[
                     { label: 'First Name', name: 'firstName', icon: FaUser, type: 'text' },
                     { label: 'Last Name', name: 'lastName', icon: FaUser, type: 'text' },
+                    {label:'gender',name:'gender',icon:FaUser,type:'text'}, 
                     { label: 'Email', name: 'email', icon: FaEnvelope, type: 'email' },
                     { label: 'Phone', name: 'phone', icon: FaPhone, type: 'text' },
                     { label: 'Address', name: 'address', icon: FaMapMarkedAlt, type: 'text' },

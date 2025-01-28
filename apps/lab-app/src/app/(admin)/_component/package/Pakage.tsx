@@ -187,7 +187,7 @@ const PackageCreation = () => {
             key={category}
             onClick={() => handleCategoryChange(category)}
             className={`px-2 py-1 rounded-full text-xs ${selectedCategory === category
-              ? 'bg-indigo-900 text-white'
+              ? 'bg-primary text-white'
               : 'bg-gray-200 text-gray-700'
               }`}
           >
@@ -274,7 +274,7 @@ const PackageCreation = () => {
       <div className="mt-6">
         <button
           onClick={handleSubmit}
-          className="w-full bg-indigo-900 text-white px-4 py-2 rounded text-sm shadow hover:bg-green-600 flex items-center justify-center gap-1"
+          className="w-full bg-primary text-white px-4 py-2 rounded text-sm shadow hover:bg-green-600 flex items-center justify-center gap-1"
         >
           <FiCheck className="text-base" /> Add Package
         </button>

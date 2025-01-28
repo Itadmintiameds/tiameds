@@ -1,7 +1,6 @@
 'use client';
 import {
-  CalendarIcon,
-  HashIcon,
+  CalendarIcon, HashIcon,
   MailIcon,
   MapPinIcon,
   PencilIcon,
@@ -11,6 +10,7 @@ import {
   UserIcon
 } from 'lucide-react';
 
+import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 
 import {
   FaCalendarAlt,
@@ -41,25 +41,84 @@ import { doctorGetById } from '@/../services/doctorServices';
 import { getHealthPackageById } from '@/../services/packageServices';
 import { getTestById } from '@/../services/testService';
 import { FaUserDoctor } from "react-icons/fa6";
-import PrintBill from './_component/PrintBill';
 import Modal from '../../_component/common/Model';
+import PrintBill from './_component/PrintBill';
 
 
+// ============================================
 
-interface billingData {
-  
 
+// Type for a single test
+interface Test {
+  name: string;
+  price: string;
 }
+
+// Type for a single health package
+interface HealthPackage {
+  packageName: string;
+  price: string;
+  discount: string;
+  netPrice: string;
+  tests: {
+    name: string;
+    category: string;
+    price: string;
+  }[];
+}
+
+// Type for lab details
+interface LabDetails {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  gstn: string;
+  invoiceId: string;
+}
+
+// Type for patient details
+interface PatientDetails {
+  name: string;
+  age: string | number;
+  email: string;
+  phone: string;
+  address: string;
+  bloodGroup: string;
+  patientId: string;
+  Gender: string;
+}
+
+// Type for the bill object
+interface Bill {
+  lab: LabDetails;
+  billingId: string;
+  paymentStatus: string;
+  paymentMethod: string;
+  paymentDate: string;
+  discount: string;
+  gstRate: string;
+  gstAmount: string;
+  cgstAmount: string;
+  sgstAmount: string;
+  igstAmount: string;
+  netAmount: string;
+  totalAmount: string;
+  tests: Test[];
+  healthPackages: HealthPackage[] | undefined; // Since `healthPackage` may be undefined
+  patient: PatientDetails;
+}
+
+
+
+// ============================================
 
 const Page = () => {
   const { currentLab, patientDetails } = useLabs();
   const [tests, setTests] = useState<TestList[]>([]);
   const [doctor, setDoctor] = useState<Doctor>();
   const [healthPackage, setHealthPackage] = useState<Packages[]>();
-  const [billingData, setBillingData] = useState<any>();
-
-
-  console.log(patientDetails, "patientDetails")
+  const [billingData, setBillingData] = useState<Bill | null>(null);
 
   useEffect(() => {
     const fetchTests = async () => {
@@ -135,6 +194,7 @@ const Page = () => {
       phone: 'N/A',
       email: 'N/A',
       gstn: 'N/A',
+      invoiceId: patientDetails?.visit?.visitId || 'N/A',
     },
 
     // Billing Details
@@ -179,21 +239,25 @@ const Page = () => {
       address: `${patientDetails?.address || 'N/A'}, ${patientDetails?.city || 'N/A'}, ${patientDetails?.state || 'N/A'}, ${patientDetails?.zip || 'N/A'}`,
       bloodGroup: patientDetails?.bloodGroup || 'N/A',
       patientId: patientDetails?.id || 'N/A',
-      Gender: 'N/A',
+      Gender: patientDetails?.gender || 'N/A',
     },
   };
 
-
-
- 
-
-  const handlePrint = (data: any) => {
+  const handlePrint = () => {
     setBillingData(bill);
   }
 
+  console.log(patientDetails,"patientDetails")
+
   return (
     <>
-      {/* // Patient Information */}
+      <div className="flex justify-end items-center sticky top-0 z-10 ">
+        <ArrowLeftIcon
+          className="h-5 w-5 text-textwhite font-bold animate-bounce text-xl cursor-pointer bg-primary rounded-full p-1"
+          onClick={() => window.history.back()}
+        />
+      </div>
+      {/* ================================= Patient Information ==================================================*/}
       <section className="container mx-auto py-8 px-6">
         <section className="container mx-auto my-2  rounded-lg shadow-lg">
           <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200">
@@ -206,6 +270,7 @@ const Page = () => {
                 </div>
                 <div>
                   <h1 className="text-sm font-semibold text-gray-800">Lab Details</h1>
+
                   <p className="text-xs text-gray-600">Receipt</p>
                 </div>
               </div>
@@ -281,7 +346,7 @@ const Page = () => {
             <UserIcon size={24} className="text-pink-600" />
             <div>
               <p className="text-xs font-semibold text-gray-600">Gender</p>
-              <p className="text-sm font-medium text-gray-900">Male</p>
+              <p className="text-sm font-medium text-gray-900">{patientDetails?.gender}</p>
             </div>
           </div>
 
@@ -330,7 +395,6 @@ const Page = () => {
             </div>
           </div>
         </section>
-
 
         {/* Visit Details */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 bg-white p-6 rounded-lg shadow-lg my-2">
@@ -405,7 +469,7 @@ const Page = () => {
             <h2 className="text-sm font-semibold text-gray-600 border-b pb-2 mb-4">Tests</h2>
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-primary-light text-slate-100">
+                <tr className="bg-primary text-slate-100">
                   <th className="p-3 text-left font-medium">Test Name</th>
                   <th className="p-3 text-right font-medium">Price (₹)</th>
                 </tr>
@@ -422,11 +486,11 @@ const Page = () => {
           </div>
 
           {/* Health Packages Section */}
-          <div>
+          <div className=''>
             <h2 className="text-sm font-semibold text-gray-600 border-b pb-2 mb-4">Health Packages</h2>
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-primary-light text-slate-100">
+                <tr className="bg-primary text-slate-100">
                   <th className="p-3 text-left font-medium">Package Name</th>
                   <th className="p-3 text-right font-medium">Price (₹)</th>
                   <th className="p-3 text-right font-medium">Discount (₹)</th>
@@ -469,7 +533,7 @@ const Page = () => {
         </section>
 
         {/* Payment Summary */}
-        <section className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+        <section className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 my-4">
           {/* Billing Details Title */}
           <h2 className="text-sm font-semibold text-gray-600 mb-4 border-b pb-2">Billing Details</h2>
 
@@ -567,19 +631,19 @@ const Page = () => {
             <PencilIcon size={16} className="mr-2" />
           </Button>
           <Button text="Print Bill"
-            onClick={() => handlePrint(bill)}
-            className="bg-blue-500 hover:bg-blue-600 text-white">
+            onClick={() => handlePrint()}
+            className="bg-primary hover:bg-secondary text-white">
             <PrinterIcon size={16} className="mr-2" />
           </Button>
         </section>
         {billingData &&
-         <Modal
-         isOpen={true}
-         title="Print Bill"
-         modalClassName='max-w-4xl'
-          onClose={() => setBillingData(undefined)}>
-          <PrintBill billingData={billingData} />
-        </Modal>}
+          <Modal
+            isOpen={true}
+            title="Print Bill"
+            modalClassName='max-w-4xl h-[90vh] overflow-y-auto'
+            onClose={() => setBillingData(null)}>
+            <PrintBill billingData={billingData} />
+          </Modal>}
       </section>
     </>
   );

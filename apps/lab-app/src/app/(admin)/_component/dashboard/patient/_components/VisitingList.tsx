@@ -12,12 +12,26 @@ const VisitingList: React.FC = () => {
   const [patientList, setPatientList] = useState<Patient[]>([]);
   const router = useRouter();
 
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage] = useState<number>(10);
+
+  // Pagination Logic
+  const totalPages = Math.ceil(patientList.length / itemsPerPage);
+
+  // Paginated visits (slice the list based on the current page)
+  const paginatedPatients = patientList.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   useEffect(() => {
     const fetchVisits = async () => {
       try {
         if (currentLab?.id) {
           const response = await getAllVisits(currentLab.id);
-          setPatientList(response?.data);
+          setPatientList(response?.data || []);
+
+          console.log('Visits:', response?.data);
         }
       } catch (error: any) {
         toast.error(error.message || 'An error occurred while fetching visits', { autoClose: 2000 });
@@ -29,8 +43,8 @@ const VisitingList: React.FC = () => {
   const handleView = (visit: any) => () => {
     setPatientDetails(visit);
     router.push('/dashboard/patients');
+  };
 
-  }
   const handleUpdate = (visit: any) => toast.info(`Updating visit ID: ${visit.visitId}`);
   const handleDelete = (visitId: number) => toast.info(`Deleting visit ID: ${visitId}`);
 
@@ -76,8 +90,8 @@ const VisitingList: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {patientList.length > 0 ? (
-              patientList.map((visit, index) => (
+            {paginatedPatients.length > 0 ? (
+              paginatedPatients.map((visit, index) => (
                 <tr key={index} className="hover:bg-gray-50">
                   {columns.map((col, colIndex) => (
                     <td key={colIndex} className="px-4 py-2 border border-gray-300" onClick={handleView(visit)}>
@@ -95,12 +109,16 @@ const VisitingList: React.FC = () => {
             )}
           </tbody>
         </table>
+
+        {/* Pagination Controls */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   );
 };
 
 export default VisitingList;
-
-
-

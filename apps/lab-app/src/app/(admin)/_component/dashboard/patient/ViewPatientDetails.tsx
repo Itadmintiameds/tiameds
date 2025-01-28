@@ -6,6 +6,9 @@ import {
   FaMapMarkerAlt,
   FaBirthdayCake,
   FaTint,
+  FaMars,
+  FaVenus,
+  FaGenderless,
 } from "react-icons/fa";
 
 interface PatientProps {
@@ -15,6 +18,19 @@ interface PatientProps {
 const ViewPatientDetails = ({ patient }: PatientProps) => {
   const getAvatarInitials = (firstName: string, lastName: string) =>
     `${firstName.charAt(0).toUpperCase()}${lastName.charAt(0).toUpperCase()}`;
+
+  const getGenderIcon = (gender: string) => {
+    if (!gender) return <FaGenderless className="text-gray-500" />; // Default icon for null/undefined gender
+
+    switch (gender.toLowerCase()) {
+      case "male":
+        return <FaMars className="text-blue-500" />;
+      case "female":
+        return <FaVenus className="text-pink-500" />;
+      default:
+        return <FaGenderless className="text-gray-500" />;
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -41,7 +57,6 @@ const ViewPatientDetails = ({ patient }: PatientProps) => {
             <span className="font-medium text-gray-600">Email:</span>
             <span className="text-gray-800">{patient.email}</span>
           </div>
-
           {/* Phone */}
           <div className="flex items-center space-x-2">
             <FaPhoneAlt className="text-green-500" />
@@ -64,7 +79,6 @@ const ViewPatientDetails = ({ patient }: PatientProps) => {
             <FaMapMarkerAlt className="text-red-500" />
             <span className="font-medium text-gray-600">Address:</span>
             <span className="text-gray-800">
-              {/* {`${patient.address}, ${patient.city}, ${patient.state}, ${patient.zip}`} */}
               {`${patient.address}, ${patient.city}, ${patient.state}`}
             </span>
           </div>
@@ -76,6 +90,13 @@ const ViewPatientDetails = ({ patient }: PatientProps) => {
             <span className="text-gray-800">
               {new Date(patient.dateOfBirth).toLocaleDateString()}
             </span>
+          </div>
+
+          {/* Gender */}
+          <div className="flex items-center space-x-2">
+            {getGenderIcon(patient.gender)}
+            <span className="font-medium text-gray-600">Gender:</span>
+            <span className="text-gray-800 capitalize">{patient.gender}</span>
           </div>
         </div>
       </div>

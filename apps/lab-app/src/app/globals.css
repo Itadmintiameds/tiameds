@@ -20,7 +20,6 @@ html {
   --TERTIARY: #a855f7; /* Tertiary color for subtle highlights or background accents */
   
 
-  
 
   /* Background colors for different sections of the website */
   --BACKGROUND: #f3f4f6; /* Default page background for content areas */
@@ -42,6 +41,11 @@ html {
   --UPDATE-BUTTON: #4f46e5; /* Update button background for modifications */
   --UPDATE-HOVER: #4338ca; /* Hover state for update button */
 }
+
+
+/* ---------------------- */
+
+
 
 
 
