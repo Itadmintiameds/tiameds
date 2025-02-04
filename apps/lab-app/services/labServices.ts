@@ -1,8 +1,8 @@
 import api from '@/utils/api';
 
-import { LabResponse} from '@/types/Lab';
+import { LabResponse } from '@/types/Lab';
 import { LabFormData } from '@/types/LabFormData';
-import {toast} from 'react-toastify';
+import { toast } from 'react-toastify';
 
 
 

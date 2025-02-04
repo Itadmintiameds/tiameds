@@ -56,8 +56,7 @@ export type Billing = {
 export enum PaymentStatus {
   PAID = 'PAID',
   UNPAID = 'UNPAID',
-  PENDING = 'PENDING',
-  UNKNOWN = 'UNKNOWN', // Represents an unknown payment status
+  PENDING = 'PENDING',// Represents an unknown payment status
 }
 
 // Enum for Payment Methods
@@ -67,17 +66,13 @@ export enum PaymentMethod {
   PHONEPE = 'PhonePe',
   UPI = 'UPI',
   OTHER = 'Other',
-  UNKNOWN = 'Unknown', // Represents an unknown payment method
+  // Represents an unknown payment method
 }
 
 // Enum for Visit Types
 export enum VisitType {
-  OPD = 'OPD',
-  EMERGENCY = 'Emergency',
-  FOLLOW_UP = 'Follow-up',
-  HOME_VISIT = 'Home Visit',
-  OTHER = 'Other',
-  UNKNOWN = 'Unknown', // Represents an unknown visit type
+  IN_PATIENT = 'In-Patient',
+  OUT_PATIENT = 'Out-Patient',
 }
 
 // Enum for Visit Statuses
@@ -85,8 +80,7 @@ export enum VisitStatus {
   COMPLETED = 'Completed',
   PENDING = 'Pending',
   CANCELLED = 'Cancelled',
-  IN_PROGRESS = 'In Progress',
-  UNKNOWN = 'Unknown', // Represents an unknown visit status
+  IN_PROGRESS = 'In-Progress',
 }
 
 // Enum for Blood Groups

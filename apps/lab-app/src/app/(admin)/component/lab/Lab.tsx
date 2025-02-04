@@ -43,10 +43,6 @@ const Lab = () => {
 
             // Success message (move this here to avoid redundancy)
             toast.success('Lab created successfully', { position: 'top-right', autoClose: 3000 });
-
-        
-            
-            
         } catch (error) {
             // Handle Zod validation errors
             if (error instanceof z.ZodError) {

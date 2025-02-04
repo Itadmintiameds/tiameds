@@ -11,6 +11,8 @@ interface PatientProps {
     patient: Patient;
 }
 
+
+
 const UpdatePatient: React.FC<PatientProps> = ({ handleUpdate, patient }) => {
     const [formData, setFormData] = useState<Patient>(patient);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -67,7 +69,7 @@ const UpdatePatient: React.FC<PatientProps> = ({ handleUpdate, patient }) => {
                 {[
                     { label: 'First Name', name: 'firstName', icon: FaUser, type: 'text' },
                     { label: 'Last Name', name: 'lastName', icon: FaUser, type: 'text' },
-                    {label:'gender',name:'gender',icon:FaUser,type:'text'}, 
+                    { label: 'gender', name: 'gender', icon: FaUser, type: 'text' },
                     { label: 'Email', name: 'email', icon: FaEnvelope, type: 'email' },
                     { label: 'Phone', name: 'phone', icon: FaPhone, type: 'text' },
                     { label: 'Address', name: 'address', icon: FaMapMarkedAlt, type: 'text' },
@@ -87,9 +89,8 @@ const UpdatePatient: React.FC<PatientProps> = ({ handleUpdate, patient }) => {
                             name={name}
                             value={formData[name as keyof Patient]?.toString() || ''}
                             onChange={handleChange}
-                            className={`mt-1 block w-full p-2 text-xs border ${
-                                errors[name] ? 'border-red-500' : 'border-gray-300'
-                            } rounded-md`}
+                            className={`mt-1 block w-full p-2 text-xs border ${errors[name] ? 'border-red-500' : 'border-gray-300'
+                                } rounded-md`}
                         />
                         {errors[name] && (
                             <p className="text-xs text-red-500 mt-1">{errors[name]}</p>

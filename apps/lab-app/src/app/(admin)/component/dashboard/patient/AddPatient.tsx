@@ -13,9 +13,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import Button from '../../common/Button';
 import Loader from '../../common/Loader';
-
 import { PaymentMethod, PaymentStatus, VisitStatus, VisitType } from '@/types/patient/patient';
-
 import { Plus, XIcon } from 'lucide-react';
 import PatientBilling from './_components/PatientBilling';
 import PatientFrom from './_components/PatientFrom';
@@ -27,35 +25,53 @@ import { useRouter } from 'next/navigation';
 
 
 
+enum BloodGroup {
+  A_POSITIVE = 'A+',
+  A_NEGATIVE = 'A-',
+  B_POSITIVE = 'B+',
+  B_NEGATIVE = 'B-',
+  AB_POSITIVE = 'AB+',
+  AB_NEGATIVE = 'AB-',
+  O_POSITIVE = 'O+',
+  O_NEGATIVE = 'O-',
+}
+
+enum Gender {
+  Male = 'male',
+  Female = 'female',
+  Other = 'other',
+}
+
+
 const AddPatient = () => {
   const [tests, setTests] = useState<TestList[]>([]);
   const [packages, setPackages] = useState<PackageType[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [insurances, setInsurances] = useState<Insurance[]>([]);
-  const { currentLab,setPatientDetails } = useLabs();
   const [patient, setPatient] = useState<Patient[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchTestTerm, setSearchTestTerm] = useState<string>('');
   const [selectedTests, setSelectedTests] = useState<TestList[]>([]);
   const [selectedPackages, setSelectedPackages] = useState<PackageType[]>([]);
-
+  const [loading, setLoading] = useState<boolean>(false);
   const [newPatient, setNewPatient] = useState<Patient>({
     firstName: '',
     lastName: '',
     email: '',
+    //phone number comes from the user selected patient
     phone: '',
     address: '',
     city: '',
     state: '',
     zip: '',
-    bloodGroup: '',
+    bloodGroup: BloodGroup.O_POSITIVE,
     dateOfBirth: '',
-    gender: '',
+    gender: Gender.Female,
     visit: {
       visitDate: new Date().toISOString().split('T')[0], // Ensure default date format
-      visitType: VisitType.UNKNOWN,
-      visitStatus: VisitStatus.PENDING,
+      visitType: VisitType.OUT_PATIENT,
+      visitStatus: VisitStatus.IN_PROGRESS,
       visitDescription: '',
       doctorId: 0,
       testIds: [],
@@ -63,8 +79,8 @@ const AddPatient = () => {
       insuranceIds: [],
       billing: {
         totalAmount: 0,
-        paymentStatus: PaymentStatus.UNKNOWN,
-        paymentMethod: PaymentMethod.UNKNOWN,
+        paymentStatus: PaymentStatus.PENDING,
+        paymentMethod: PaymentMethod.CASH,
         paymentDate: new Date().toISOString().split('T')[0],
         discount: 0,
         gstRate: 0,
@@ -80,51 +96,47 @@ const AddPatient = () => {
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  const [selectedInsurances, setSelectedInsurances] = useState<string[]>(newPatient.visit?.insuranceIds?.map(String) || []);
+  // const [selectedInsurances, setSelectedInsurances] = useState<string[]>(newPatient.visit?.insuranceIds?.map(String) || []);
 
   const router = useRouter();
-  
+  const { currentLab, setPatientDetails } = useLabs();
+
   useEffect(() => {
-    const labId = currentLab?.id;
+    if (!currentLab || !currentLab.id) {
+      <Loader />;
+      return;
+    }
 
     const fetchData = async () => {
-      if (labId === undefined) {
-        toast.error('Lab ID is undefined.');
-        console.error(labId, 'Lab ID is undefined.');
-        return;
-      }
-
       try {
+        // console.log("Fetching data for Lab ID:", currentLab.id);
+
         const [testData, packageData, doctorData, insuranceData, patientData] = await Promise.all([
-          getTests(labId.toString()),
-          getPackage(labId),
-          getDoctor(labId),
-          getInsurance(labId),
-          getPatient(labId),
+          getTests(currentLab.id.toString()),
+          getPackage(currentLab.id),
+          getDoctor(currentLab.id),
+          getInsurance(currentLab.id),
+          getPatient(currentLab.id),
         ]);
 
-        const uniqueCategories = Array.from(new Set((testData || []).map((test) => test.category)));
-        setCategories(uniqueCategories);
-
+        setCategories(Array.from(new Set((testData || []).map((test) => test.category))));
         setTests(testData || []);
         setPackages(packageData?.data || []);
         setDoctors(doctorData?.data || []);
         setInsurances(insuranceData?.data || []);
         setPatient(patientData?.data || []);
       } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error('An error occurred while fetching data.');
+        // console.error("Error fetching data:", error);
+        toast.error("An error occurred while fetching data.");
       }
     };
 
     fetchData();
-  }, [currentLab]);
+  }, [currentLab]); // Ensure it only runs when currentLab is set
 
   useEffect(() => {
     if (searchTerm) {
       const filtered = patient.filter(p =>
-        p.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.phone.includes(searchTerm)
       );
@@ -285,7 +297,7 @@ const AddPatient = () => {
 
   }, [selectedTests, selectedPackages, newPatient.visit?.billing.discount, newPatient.visit?.billing.gstRate]);
 
-
+  
   useEffect(() => {
     // Filter patients based on the search term (name, email, or phone)
     if (searchTerm) {
@@ -320,6 +332,7 @@ const AddPatient = () => {
       zip: selectedPatient.zip,
       bloodGroup: selectedPatient.bloodGroup,
       dateOfBirth: selectedPatient.dateOfBirth,
+      gender: selectedPatient.gender,
     });
     setSearchTerm(''); // Clear search term after selecting a patient
     setFilteredPatients([]); // Clear filtered list
@@ -340,7 +353,7 @@ const AddPatient = () => {
       gender: '',
       visit: {
         visitDate: new Date().toISOString().split('T')[0],
-        visitType: VisitType.UNKNOWN,
+        visitType: VisitType.OUT_PATIENT,
         visitStatus: VisitStatus.PENDING,
         visitDescription: '',
         doctorId: 0,
@@ -349,8 +362,8 @@ const AddPatient = () => {
         insuranceIds: [],
         billing: {
           totalAmount: 0,
-          paymentStatus: PaymentStatus.UNKNOWN,
-          paymentMethod: PaymentMethod.UNKNOWN,
+          paymentStatus: PaymentStatus.PENDING,
+          paymentMethod: PaymentMethod.CASH,
           paymentDate: new Date().toISOString().split('T')[0],
           discount: 0,
           gstRate: 0,
@@ -367,53 +380,54 @@ const AddPatient = () => {
     setSelectedTests([]); // Reset the selected tests
     setSelectedPackages([]); // Reset the selected packages
     setSelectedCategory(''); // Reset the selected category
-    setSelectedInsurances([]); // Reset the selected insurances
+    // setSelectedInsurances([]); // Reset the selected insurances
 
   };
 
   const handleAddPatient = async () => {
     try {
-      // console.log(newPatient, 'newPatient');
-      const validationResult = patientSchema.safeParse(newPatient);
+      setLoading(true);
 
+      const validationResult = patientSchema.safeParse(newPatient);
       if (!validationResult.success) {
         const error = validationResult.error;
-        toast.error(error.errors.map((err) => err.message).join(', ')); // Show error messages in a toast
+        toast.error(error.errors.map((err) => err.message).join(', '));
         return;
       }
 
       const labId = currentLab?.id;
       if (labId === undefined) {
         toast.error('Lab ID is undefined.');
-        console.error(labId, 'Lab ID is undefined.');
         return;
       }
 
       const response = await addPatient(labId, newPatient);
-      console.log(response, 'response');
       setPatientDetails(response.data);
 
       if (response.status === 'success') {
-        toast.success('Patient added successfully.', { autoClose: 2000 , position: 'top-right'});
+        toast.success('Patient added successfully.', { autoClose: 2000, position: 'top-right' });
         handleClearPatient();
-
-    
         router.push(`/dashboard/bill/`);
-        
       } else {
         toast.error('An error occurred while adding the patient.');
       }
     } catch (error) {
       console.error('Error adding patient:', error);
       toast.error('An error occurred while adding the patient.');
+    } finally {
+      setLoading(false); // Ensures loading state is always reset
     }
   };
 
 
-  if (!tests || !packages || !doctors || !insurances) {
+
+  if (!tests || !packages || !doctors || !insurances || !currentLab?.id) {
     return <Loader />;
   }
 
+  if (loading) {
+    return <Loader />
+  }
 
   return (
     <div>
@@ -428,15 +442,13 @@ const AddPatient = () => {
           handleClearPatient={handleClearPatient}
         />
 
-        {/* const [selectedInsurances, setSelectedInsurances] = useState<string[]>(newPatient.visit?.insuranceIds?.map(String) || []); */}
-
         <PatientVisit
           newPatient={newPatient}
           handleChange={handleChange}
           doctors={doctors}
-          insurances={insurances}
-          selectedInsurances={selectedInsurances}
-          setSelectedInsurances={setSelectedInsurances}
+        // insurances={insurances}
+        // selectedInsurances={selectedInsurances}
+        // setSelectedInsurances={setSelectedInsurances}
         />
       </div>
 
@@ -469,7 +481,7 @@ const AddPatient = () => {
         <Button
           text='Patient'
           onClick={handleAddPatient}
-          className="flex items-center py-1 px-3 bg-blue-500 text-white rounded-md text-xs"
+          className="flex items-center py-1 px-3 bg-primary text-white rounded-md text-xs hover:bg-primarylight"
         >
           <Plus size={16} className="mr-2" /> {/* Check Icon */}
 

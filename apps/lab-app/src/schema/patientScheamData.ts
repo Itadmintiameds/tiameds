@@ -9,17 +9,18 @@ export const patientSchema = z.object({
   city: z.string().min(2).max(50),
   state: z.string().min(2).max(50),
   zip: z.string().min(5).max(10),
-  bloodGroup: z.string().min(2).max(5),
+  bloodGroup: z.string().min(1).max(5),
   dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date of birth must be in YYYY-MM-DD format" }),
   visit: z.object({
     visitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Visit date must be in YYYY-MM-DD format" }),
     visitType: z.string().transform((val) => val.toLowerCase()), // Normalize to lowercase
     visitStatus: z.string().transform((val) => val.toLowerCase()), // Normalize to lowercase
-    visitDescription: z.string().min(5).max(255),
-    doctorId: z.coerce.number().min(0), // Coerce string to number
+    visitDescription: z.string().min(0).max(255).optional(),
+    // doctorId: z.string().min(0).optional(),
+    doctorId: z.union([z.string().min(0), z.number().min(0)]).optional(),
     testIds: z.array(z.number().min(0)),
     packageIds: z.array(z.number().min(0)),
-    insuranceIds: z.array(z.number().min(0)),
+    // insuranceIds: z.array(z.number().min(0)),
     billing: z.object({
       totalAmount: z.number().min(0).max(100000),
       paymentStatus: z.string().transform((val) => val.toLowerCase()), // Normalize to lowercase

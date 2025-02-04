@@ -7,6 +7,18 @@ interface PatientBillingProps {
   handleChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
 }
 
+
+enum PaymentStatus {
+  Paid = 'paid',
+  Pending = 'pending',
+}
+
+enum PaymentMethod {
+  Cash = 'cash',
+  Card = 'card',
+  Online = 'online',
+}
+
 const PatientBilling = ({ newPatient, handleChange }: PatientBillingProps) => {
   return (
     <div className="mt-6 p-4 border rounded-xl shadow-lg bg-white">
@@ -67,10 +79,13 @@ const PatientBilling = ({ newPatient, handleChange }: PatientBillingProps) => {
             value={newPatient.visit?.billing?.paymentStatus ?? ''}
             onChange={handleChange}
             className="w-full border border-gray-300 p-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           >
-            <option value="">Select</option>
-            <option value="paid">Paid</option>
-            <option value="pending">Pending</option>
+            {
+              Object.values(PaymentStatus).map((status) => (
+                <option key={status} value={status}>{status}</option>
+              ))
+            }
           </select>
         </div>
         <div className="flex flex-col">
@@ -80,11 +95,13 @@ const PatientBilling = ({ newPatient, handleChange }: PatientBillingProps) => {
             value={newPatient.visit?.billing?.paymentMethod ?? ''}
             onChange={handleChange}
             className="w-full border border-gray-300 p-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           >
-            <option value="">Select</option>
-            <option value="cash">Cash</option>
-            <option value="card">Card</option>
-            <option value="online">Online</option>
+            {
+              Object.values(PaymentMethod).map((method) => (
+                <option key={method} value={method}>{method}</option>
+              ))
+            }
           </select>
         </div>
       </div>
@@ -98,6 +115,7 @@ const PatientBilling = ({ newPatient, handleChange }: PatientBillingProps) => {
           value={newPatient.visit?.billing?.paymentDate ?? ''}
           onChange={handleChange}
           className="w-full border border-gray-300 p-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
         />
       </div>
 

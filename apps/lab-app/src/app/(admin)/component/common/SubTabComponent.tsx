@@ -16,7 +16,7 @@ interface TabsProps {
 
 const SubTabComponent: React.FC<TabsProps> = ({ tabs, selectedTab, onTabChange, children }) => {
     return (
-        <div className="flex flex-col items-start p-4 bg-gray-50 shadow-md rounded-lg">
+        <div className="flex flex-col items-start p-4 bg-cardbackground shadow-md rounded-lg">
             {/* Scrollable Tab Buttons */}
             <div className="flex overflow-x-auto space-x-2 mb-4 w-full pb-2 border-b border-gray-200 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
                 {tabs.map((tab) => (
@@ -37,7 +37,7 @@ const SubTabComponent: React.FC<TabsProps> = ({ tabs, selectedTab, onTabChange, 
                 ))}
             </div>
             {/* Tab Content */}
-            <div className="w-full bg-white p-4 rounded-md shadow-sm">
+            <div className="w-full">
                 {children}
             </div>
         </div>
