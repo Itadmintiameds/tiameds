@@ -1,0 +1,173 @@
+.navbar_dropdown{
+    @apply hidden group-hover:flex absolute top-full left-2 bg-white shadow-lg rounded-lg text-sm border border-gray-200 flex-col whitespace-nowrap
+}
+
+.dropdown_list{
+    @apply px-4 py-2 hover:bg-buttonPurple hover:text-white cursor-pointer rounded-lg 
+}
+
+/* .navbar_dropdown {
+    @apply hidden group-hover:flex absolute top-full left-[-20px] bg-white shadow-lg rounded-lg text-sm border border-gray-200 flex-col whitespace-nowrap;
+  }
+  
+  .dropdown_list {
+    @apply px-4 py-2 hover:bg-gray-100 cursor-pointer;
+  }
+
+   */
+.supplier_item_input{
+    @apply h-11 w-72 p-2 rounded-lg focus:ring-2 focus:ring-inputBorder focus:border-transparent outline-none
+}
+
+.supplier_item_select{
+    @apply supplier_item_input pr-8 
+}
+
+.supplier_textarea{
+    @apply p-2 rounded-lg focus:ring-2 focus:ring-inputBorder focus:border-transparent outline-none 
+}
+
+.outer_card{
+    @apply rounded-3xl border bg-customWhite p-10 space-y-6 
+}
+
+.supplier_item_header{
+    @apply flex items-center justify-between
+}
+
+.supplier_item_main{
+    @apply h-27 rounded-2xl border border-gray-400 p-6 gap-6 text-sm font-normal
+}
+
+.gray_purple_button{
+    @apply w-36 h-11 bg-buttonGray rounded-md text-gray-200 text-sm font-medium hover:bg-buttonPurple
+}
+
+.purple_button{
+    @apply w-36 h-11 bg-buttonPurple rounded-md text-gray-200 text-sm font-medium}
+
+.heading_text{
+    @apply font-medium text-2xl
+    
+}
+
+main{
+    @apply px-10 py-6 space-y-5 
+
+}
+
+.card_1{
+    @apply border border-tableBorder h-96 w-47 rounded-2xl px-10 py-6
+}
+
+.sub_heading_text{
+    @apply font-normal text-lg
+}
+
+.small_text{
+    @apply text-sm font-normal
+}
+
+.medium_text{
+    @apply font-medium text-sm
+}
+
+.medium_text2{
+    @apply text-base font-light
+}
+.procurement_input{
+    @apply h-11 w-80 border rounded-lg border-textField focus:ring-2 focus:ring-inputBorder focus:border-transparent outline-none
+}
+
+.procurement_input1{
+    @apply border rounded-lg border-textField focus:ring-2 focus:ring-inputBorder focus:border-transparent outline-none
+}
+
+.space_two{
+    @apply space-y-2
+}
+
+.table_td_spacing{
+    @apply px-4 py-2
+}
+
+.card_2{
+    @apply border border-tableBorder h-64 w-35 rounded-2xl px-10 py-6 space-y-4 text-base font-normal
+}
+
+.card_2_input{
+    @apply w-24 h-9 bg-lightGray outline-none border-none text-right px-2 rounded-lg
+}
+
+.card_2_div{
+    @apply flex justify-between items-center
+}
+
+.purchase_table{
+    @apply w-full border-separate border-spacing-y-4
+}
+
+.purchase_table_tr{
+    @apply bg-tableHeader text-white h-14 font-medium text-sm
+}
+
+.procurement_footer{
+    @apply flex px-10 gap-6
+}
+
+.button{
+    @apply w-28 h-11 border rounded-lg border-buttonBorder text-base font-normal
+
+}
+
+.button_red{
+    @apply button bg-buttonRed text-white
+}
+
+.button_purple{
+    @apply button bg-buttonPurple text-white
+}
+
+.input_search{
+    @apply h-10 w-80 rounded-lg text-center procurement_input1
+}
+
+.search{
+    @apply py-3 flex justify-between
+}
+
+.button_filter{
+    @apply w-20 h-10 border border-textField rounded-3xl
+}
+
+.button_log{
+    @apply bg-buttonPurple text-white w-56 h-10 rounded-lg medium_text
+}
+
+.order_part1{
+    @apply h-72 w-full flex gap-10 my-4
+}
+
+.order_card{
+    @apply h-64 border rounded-2xl p-6 border-tableBorder space-y-4 text-base
+}
+
+.order_card1{
+    @apply w-19 h-72 p-6 space-y-14
+}
+
+.order_table{
+    @apply border border-tableBorder rounded-2xl overflow-hidden w-full
+}
+
+.order_card2{
+    @apply w-25 h-60 border border-tableBorder rounded-2xl ml-auto py-6 px-4 space-y-6 text-lg font-normal
+}
+
+.order_card2_div{
+    @apply ml-auto font-bold
+}
+
+.dropdown_styling{
+    @apply text-buttonPurple font-semibold
+}
