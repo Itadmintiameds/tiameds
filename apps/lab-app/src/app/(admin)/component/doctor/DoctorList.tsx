@@ -188,7 +188,7 @@ const DoctorList = () => {
                 <Button
                     text="Add Doctor"
                     onClick={() => setAddDoctor({} as Doctor)}
-                    className="px-4 py-1 text-xs bg-button-tertiary text-white rounded-md hover:bg-button-tertiary focus:outline-none rounded"
+                    className="px-4 py-1 text-xs bg-primary text-white rounded-md hover:bg-button-tertiary focus:outline-none rounded "
                 />
             </div>
 
