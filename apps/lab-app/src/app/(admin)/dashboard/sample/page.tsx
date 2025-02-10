@@ -6,6 +6,7 @@ import CollectionTable from './_component/CollectionTable';
 import PendingTable from './_component/PendingTable';
 import RecivedTable from './_component/RecivedTable';
 import RejectedTable from './_component/RejectedTable';
+import Button from '../../component/common/Button';
 
 const Page = () => {
   const [activeTab, setActiveTab] = useState('Pending'); 
@@ -15,7 +16,8 @@ const Page = () => {
       {/* Tab Navigation */}
       <div className="border-b border-gray-300 mb-4 text-sm font-thin">
         <div className="flex space-x-4">
-          <button
+          <Button
+           text=''
             onClick={() => setActiveTab('Pending')}
             className={`pb-2 transition-colors duration-300 border-b-2 font-semibold ${
               activeTab === 'Pending'
@@ -25,8 +27,9 @@ const Page = () => {
           >
             <ClipboardList className="inline-block mr-1" /> {/* Icon for Pending */}
             Pending
-          </button>
-          <button
+          </Button>
+          <Button
+            text=''
             onClick={() => setActiveTab('Collected')}
             className={`pb-2 transition-colors duration-300 border-b-2 font-semibold ${
               activeTab === 'Collected'
@@ -36,9 +39,10 @@ const Page = () => {
           >
             <CheckCircle className="inline-block mr-1" /> {/* Icon for Collected */}
             Collected
-          </button>
+          </Button>
           {/* Received and Rejected */}
-          <button
+          <Button
+            text=''
             onClick={() => setActiveTab('Recived')}
             className={`pb-2 transition-colors duration-300 border-b-2 font-semibold ${
               activeTab === 'Recived'
@@ -48,8 +52,9 @@ const Page = () => {
           >
             <HandCoinsIcon className="inline-block mr-1" /> {/* Icon for Recived */}  
             Recived
-          </button>
-          <button
+          </Button>
+          <Button
+            text=''
             onClick={() => setActiveTab('Rejected')}
             className={`pb-2 transition-colors duration-300 border-b-2 font-semibold ${
               activeTab === 'Rejected'
@@ -59,12 +64,12 @@ const Page = () => {
           >
             <XCircle className="inline-block mr-1" /> {/* Icon for Rejected */}
             Rejected
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white shadow-sm rounded-md">
+      <div className="bg-white shadow-sm rounded-md p-4">
         {activeTab === 'Pending' && <PendingTable />}
         {activeTab === 'Collected' && <CollectionTable />}
         {activeTab === 'Recived' && <RecivedTable />}

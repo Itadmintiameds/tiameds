@@ -11,6 +11,7 @@ import Button from '../common/Button';
 import Modal from '../common/Model';
 import Pagination from '../common/Pagination';
 import AddDoctor from './AddDoctor';
+import { PlusIcon } from 'lucide-react';
 
 
 const DoctorSpeciality = [
@@ -186,10 +187,12 @@ const DoctorList = () => {
                     ))}
                 </select>
                 <Button
-                    text="Add Doctor"
+                    text="Doctor"
                     onClick={() => setAddDoctor({} as Doctor)}
-                    className="px-4 py-1 text-xs bg-primary text-white rounded-md hover:bg-button-tertiary focus:outline-none rounded "
-                />
+                    className="px-4 py-1 flex text-xs bg-primary text-white rounded-md hover:bg-button-tertiary focus:outline-none rounded "
+                >
+                    <PlusIcon className='mr-2' />
+                </Button>
             </div>
 
 

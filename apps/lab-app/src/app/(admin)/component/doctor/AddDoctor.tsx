@@ -65,17 +65,17 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
         <form  className="space-y-4 bg-gradient-to-r from-white via-gray-100 to-gray-200">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                    { label: 'Name', name: 'name', icon: FaUser, type: 'text' },
-                    { label: 'Email', name: 'email', icon: FaEnvelope, type: 'email' },
-                    { label: 'Speciality', name: 'speciality', icon: FaStethoscope, type: 'text' },
-                    { label: 'Qualification', name: 'qualification', icon: FaUniversity, type: 'text' },
-                    { label: 'Hospital Affiliation', name: 'hospitalAffiliation', icon: FaHospital, type: 'text' },
-                    { label: 'License Number', name: 'licenseNumber', icon: FaIdCard, type: 'text' },
-                    { label: 'Phone', name: 'phone', icon: FaPhoneAlt, type: 'number' },
-                    { label: 'Address', name: 'address', icon: FaMapMarkerAlt, type: 'text' },
-                    { label: 'City', name: 'city', icon: FaMapMarkerAlt, type: 'text' },
-                    { label: 'State', name: 'state', icon: FaMapMarkerAlt, type: 'text' },
-                    { label: 'Country', name: 'country', icon: FaMapMarkerAlt, type: 'text' },
+                    { label: 'Name', name: 'name', icon: FaUser, type: 'text' ,placeholder:'Enter Doctor Name'},
+                    { label: 'Email', name: 'email', icon: FaEnvelope, type: 'email' ,placeholder:'Enter Doctor Email'},
+                    { label: 'Speciality', name: 'speciality', icon: FaStethoscope, type: 'text' ,placeholder:'Enter Doctor Speciality'},
+                    { label: 'Qualification', name: 'qualification', icon: FaUniversity, type: 'text',placeholder:'Enter Doctor Qualification' },
+                    { label: 'Hospital Affiliation', name: 'hospitalAffiliation', icon: FaHospital, type: 'text' ,placeholder:'Enter Hospital Affiliation'},
+                    { label: 'License Number', name: 'licenseNumber', icon: FaIdCard, type: 'text' ,placeholder:'Enter License Number'},
+                    { label: 'Phone', name: 'phone', icon: FaPhoneAlt, type: 'number' ,placeholder:'Enter Doctor Phone Number'},
+                    { label: 'Address', name: 'address', icon: FaMapMarkerAlt, type: 'text' ,placeholder:'Enter Doctor Address'},
+                    { label: 'City', name: 'city', icon: FaMapMarkerAlt, type: 'text' ,placeholder:'Enter Doctor City'},
+                    { label: 'State', name: 'state', icon: FaMapMarkerAlt, type: 'text' ,placeholder:'Enter Doctor State'},
+                    { label: 'Country', name: 'country', icon: FaMapMarkerAlt, type: 'text' ,placeholder:'Enter Doctor Country'},
                 ].map(({ label, name, icon: Icon, type }) => (
                     <div key={name} className="mb-2">
                         <label htmlFor={name} className="text-xs font-medium text-gray-700 flex items-center">
@@ -85,6 +85,7 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                             type={type}
                             id={name}
                             name={name}
+                            placeholder={label}
                             value={doctor[name as keyof Doctor]?.toString() || ''}
                             onChange={handleChange}
                             className={`mt-1 block w-full p-2 text-xs border ${errors[name] ? 'border-red-500' : 'border-gray-300'
@@ -101,7 +102,7 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 text=""
                 type="submit"
                 onClick={() => handleAddDoctor(doctor)}
-                className="w-full px-4 py-1 text-xs bg-button-tertiary text-white rounded-md hover:bg-button-tertiary focus:outline-none flex items-center justify-center space-x-2"
+                className="w-full px-4 py-1 text-xs bg-primary text-white rounded-md hover:bg-button-tertiary focus:outline-none flex items-center justify-center space-x-2"
             >
                 <Plus size={20} />
                 <span>Add Doctor</span>
