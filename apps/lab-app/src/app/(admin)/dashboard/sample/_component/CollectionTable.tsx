@@ -2,6 +2,7 @@ import { getHealthPackageById } from '@/../services/packageServices';
 import { getAllVisits } from '@/../services/patientServices';
 import { getTestById } from '@/../services/testService';
 import Button from '@/app/(admin)/component/common/Button';
+import Loader from '@/app/(admin)/component/common/Loader';
 import Modal from '@/app/(admin)/component/common/Model';
 import Pagination from '@/app/(admin)/component/common/Pagination';
 import TableComponent from '@/app/(admin)/component/common/TableComponent';
@@ -11,12 +12,9 @@ import { TestList } from '@/types/test/testlist';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { FaEye } from 'react-icons/fa';
-import { PiTestTubeFill } from 'react-icons/pi';
-import { toast } from 'react-toastify';
-import SampleCollect from './SampleCollect';
-import Loader from '@/app/(admin)/component/common/Loader';
-import PatientReportDataFill from './Report/PatientReportDataFill';
 import { TbReport } from "react-icons/tb";
+import { toast } from 'react-toastify';
+import PatientReportDataFill from './Report/PatientReportDataFill';
 
 interface Test {
   name: string;

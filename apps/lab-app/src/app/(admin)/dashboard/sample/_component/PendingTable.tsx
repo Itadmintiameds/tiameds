@@ -2,6 +2,7 @@ import { getHealthPackageById } from '@/../services/packageServices';
 import { getAllVisits } from '@/../services/patientServices';
 import { getTestById } from '@/../services/testService';
 import Button from '@/app/(admin)/component/common/Button';
+import Loader from '@/app/(admin)/component/common/Loader';
 import Modal from '@/app/(admin)/component/common/Model';
 import Pagination from '@/app/(admin)/component/common/Pagination';
 import TableComponent from '@/app/(admin)/component/common/TableComponent';
@@ -14,8 +15,6 @@ import { FaEye } from 'react-icons/fa';
 import { PiTestTubeFill } from 'react-icons/pi';
 import { toast } from 'react-toastify';
 import SampleCollect from './SampleCollect';
-import Loader from '@/app/(admin)/component/common/Loader';
-import { headers } from 'next/headers';
 
 interface Test {
   name: string;
