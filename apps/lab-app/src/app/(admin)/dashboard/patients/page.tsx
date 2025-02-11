@@ -657,15 +657,15 @@ const Page = () => {
 
         {/* Action Buttons */}
         <section className="mt-6 flex gap-4 text-xs">
-          <Button text="Delete" onClick={() => alert('Deleted!')} className="bg-red-500 hover:bg-red-600 text-white">
+          <Button text="Delete" onClick={() => alert('Deleted!')} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2">
             <TrashIcon size={16} className="mr-2" />
           </Button>
-          <Button text="Edit" onClick={() => alert('Edit Order!')} className="bg-yellow-500 hover:bg-yellow-600 text-white">
+          <Button text="Edit" onClick={() => alert('Edit Order!')} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2">
             <PencilIcon size={16} className="mr-2" />
           </Button>
           <Button text="Print Bill"
             onClick={() => handlePrint()}
-            className="bg-primary hover:bg-secondary text-white">
+            className="bg-primary hover:bg-secondary text-white px-4 py-2">
             <PrinterIcon size={16} className="mr-2" />
           </Button>
         </section>

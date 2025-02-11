@@ -39,7 +39,7 @@ const Page = () => {
           ))}
         </div>
       </div>
-      <div className="bg-white shadow-sm rounded-md p-4">
+      <div className="bg-white shadow-sm ">
         {activeTab === 'Pending' && <PendingTable />}
         {activeTab === 'Collected' && <CollectionTable />}
         {activeTab === 'Received' && <p>Received</p>}
