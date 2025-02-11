@@ -1,79 +1,48 @@
 'use client';
 
-import { CheckCircle, ClipboardList, HandCoinsIcon, XCircle } from 'lucide-react'; // Importing icons from lucide-react
+import { CheckCircle, ClipboardList, HandCoinsIcon } from 'lucide-react';
 import { useState } from 'react';
 import CollectionTable from './_component/CollectionTable';
 import PendingTable from './_component/PendingTable';
-import RecivedTable from './_component/RecivedTable';
-import RejectedTable from './_component/RejectedTable';
 import Button from '../../component/common/Button';
 
+const collectionTab = [
+  { name: 'Pending', icon: ClipboardList },
+  { name: 'Collected', icon: CheckCircle },
+  { name: 'Received', icon: HandCoinsIcon },
+];
+
 const Page = () => {
-  const [activeTab, setActiveTab] = useState('Pending'); 
+  const [activeTab, setActiveTab] = useState('Pending');
 
   return (
-    <div className="container mx-auto p-4 ">
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-300 mb-4 text-sm font-thin">
+    <div className="container mx-auto p-4">
+      <div className="border-b border-gray-300 mb-4 text-sm font-medium">
         <div className="flex space-x-4">
-          <Button
-           text=''
-            onClick={() => setActiveTab('Pending')}
-            className={`pb-2 transition-colors duration-300 border-b-2 font-semibold ${
-              activeTab === 'Pending'
-                ? 'border-purple-800 text-purple-800'
-                : 'border-transparent text-zinc-900 hover:text-purple-600'
-            }`}
-          >
-            <ClipboardList className="inline-block mr-1" /> {/* Icon for Pending */}
-            Pending
-          </Button>
-          <Button
-            text=''
-            onClick={() => setActiveTab('Collected')}
-            className={`pb-2 transition-colors duration-300 border-b-2 font-semibold ${
-              activeTab === 'Collected'
-                ? 'border-purple-800 text-purple-800'
-                : 'border-transparent text-zinc-900 hover:text-purple-600'
-            }`}
-          >
-            <CheckCircle className="inline-block mr-1" /> {/* Icon for Collected */}
-            Collected
-          </Button>
-          {/* Received and Rejected */}
-          <Button
-            text=''
-            onClick={() => setActiveTab('Recived')}
-            className={`pb-2 transition-colors duration-300 border-b-2 font-semibold ${
-              activeTab === 'Recived'
-                ? 'border-purple-800 text-purple-800'
-                : 'border-transparent text-zinc-900 hover:text-purple-600'
-            }`}
-          >
-            <HandCoinsIcon className="inline-block mr-1" /> {/* Icon for Recived */}  
-            Recived
-          </Button>
-          <Button
-            text=''
-            onClick={() => setActiveTab('Rejected')}
-            className={`pb-2 transition-colors duration-300 border-b-2 font-semibold ${
-              activeTab === 'Rejected'
-                ? 'border-purple-800 text-purple-800'
-                : 'border-transparent text-zinc-900 hover:text-purple-600'
-            }`}
-          >
-            <XCircle className="inline-block mr-1" /> {/* Icon for Rejected */}
-            Rejected
-          </Button>
+          {collectionTab.map((tab) => (
+            <Button
+              key={tab.name}
+              text={''}
+              onClick={() => setActiveTab(tab.name)}
+              className={`pb-2 px-4 transition-all duration-300 border-b-2 font-semibold flex items-center gap-1
+                ${activeTab === tab.name
+                  ? 'border-primary text-primary' // Active tab styles
+                  : 'border-transparent text-gray-500 hover:text-primary hover:border-primarylight' // Inactive tab styles
+                }
+              `}
+            >
+              <tab.icon
+                className={`w-4 h-4 ${activeTab === tab.name ? 'text-primary' : 'text-gray-400'}`} // Adjusting icon color to match text color
+              />
+              <span className={`${activeTab === tab.name ? 'text-primary' : 'text-gray-500'}`}>{tab.name}</span> {/* Ensure text color updates */}
+            </Button>
+          ))}
         </div>
       </div>
-
-      {/* Tab Content */}
       <div className="bg-white shadow-sm rounded-md p-4">
         {activeTab === 'Pending' && <PendingTable />}
         {activeTab === 'Collected' && <CollectionTable />}
-        {activeTab === 'Recived' && <RecivedTable />}
-        {activeTab === 'Rejected' && <RejectedTable />}        
+        {activeTab === 'Received' && <p>Received</p>}
       </div>
     </div>
   );

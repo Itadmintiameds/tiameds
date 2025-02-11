@@ -80,7 +80,7 @@ export enum VisitStatus {
   COMPLETED = 'Completed',
   PENDING = 'Pending',
   CANCELLED = 'Cancelled',
-  IN_PROGRESS = 'In-Progress',
+  Collected = 'Collected',
 }
 
 // Enum for Blood Groups

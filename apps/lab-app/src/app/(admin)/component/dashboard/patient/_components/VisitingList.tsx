@@ -13,7 +13,7 @@ enum VisitStatus {
   PENDING = 'Pending',
   COMPLETED = 'Completed',
   CANCELLED = 'Cancelled',
-  IN_PROGRESS = 'In-Progress',
+  COLLECTED = 'Collected',
 }
 
 
@@ -131,7 +131,7 @@ const VisitingList: React.FC = () => {
         return 'bg-green-500'; // Green background for completed status
       case VisitStatus.CANCELLED:
         return 'bg-red-500'; // Red background for cancelled status
-      case VisitStatus.IN_PROGRESS:
+      case VisitStatus.COLLECTED: 
         return 'bg-blue-500'; // Blue background for active status
       default:
         return 'bg-gray-500'; // Default color for other cases

@@ -12,7 +12,7 @@ interface TableProps<T> {
 
 const TableComponent = <T,>({ data, columns, actions, noDataMessage = "No data available" }: TableProps<T>) => {
   return (
-    <div className="overflow-x-auto shadow-md rounded-lg bg-white">
+    <div className="overflow-x-auto shadow-md rounded-sm bg-white">
       <table className="table-auto w-full text-sm text-gray-700">
         <thead>
           <tr className="bg-primary text-left text-white">

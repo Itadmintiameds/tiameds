@@ -1,168 +1,121 @@
-import { Check, X } from 'lucide-react';
-import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { getAllVisits } from '@/../services/patientServices';
+import { useLabs } from '@/context/LabContext';
+import { Patient } from '@/types/patient/patient';
+import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { FaEye } from 'react-icons/fa';
+import { toast } from 'react-toastify';
+import Pagination from '@/app/(admin)/component/common/Pagination';
+import TableComponent from '@/app/(admin)/component/common/TableComponent';
+import Button from '@/app/(admin)/component/common/Button';
+import Modal from '@/app/(admin)/component/common/Model';
+import PatientReportDataFill from './Report/PatientReportDataFill';
+import { TbReport } from "react-icons/tb";
 
-// Sample patient data with additional fields for Collection Center and Time
-const TableData = [
-  {
-    patinetname: "Jane Cooper",
-    gender: "Male",
-    age: "25",
-    contact: "1234567890",
-    lab_name: "Dr. Arjun",
-    tests: "Differential Blood Count",
-    sample: "EDTA Whole Body",
-    collection_center: "Center A",
-    collection_time: "10:00 AM",
-  },
-  {
-    patinetname: "John Doe",
-    gender: "Male",
-    age: "30",
-    contact: "0987654321",
-    lab_name: "Dr. Smith",
-    tests: "Lipid Profile",
-    sample: "Serum",
-    collection_center: "Center B",
-    collection_time: "11:30 AM",
-  }
-  
-];
+const CollectionTable: React.FC = () => {
+  const { currentLab, setPatientDetails } = useLabs();
+  const [patientList, setPatientList] = useState<Patient[]>([]);
+  const router = useRouter();
+  const [showModal, setShowModal] = useState(false);
 
-const CollectionTable = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [genderFilter, setGenderFilter] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage] = useState<number>(10);
 
-  // Search and filter logic
-  const filteredData = TableData.filter((patient) => {
-    const searchMatch = patient.patinetname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.contact.includes(searchTerm);
-    const genderMatch = genderFilter === 'all' || patient.gender === genderFilter;
-    return searchMatch && genderMatch;
-  });
+  useEffect(() => {
+    const fetchVisits = async () => {
+      try {
+        if (currentLab?.id) {
+          const response = await getAllVisits(currentLab.id);
+          const visits = response?.data || [];
 
-  // Pagination logic
-  const totalItems = filteredData.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+          // Filter visits where visitStatus is "Collected"
+          const pendingVisits = visits.filter((visit: Patient) => visit.visit.visitStatus === "Collected");
+
+          setPatientList(pendingVisits);
+        }
+      } catch (error: unknown) {
+        toast.error((error as Error).message || 'An error occurred while fetching visits', { autoClose: 2000 });
+      }
+    };
+    fetchVisits();
+  }, [currentLab]);
+
+  // Pagination Logic
+  const totalPages = Math.ceil(patientList.length / itemsPerPage);
+  const paginatedPatients = patientList.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handleView = (visit: Patient) => () => {
+    setPatientDetails(visit);
+    router.push('/dashboard/patients');
+  };
+
+  const columns = [
+    { header: 'Visit ID', accessor: (row: Patient) => row.visit.visitId },
+    { header: 'Name', accessor: (row: Patient) => `${row.firstName} ${row.lastName}` },
+    { header: 'Visit Date', accessor: (row: Patient) => row.visit.visitDate },
+    { header: 'Visit Type', accessor: (row: Patient) => row.visit.visitType },
+    {
+      header: 'Visit Status',
+      accessor: (row: Patient) => (
+        <span
+          className={`
+            px-2 py-1 rounded text-white text-xs 
+            ${row.visit.visitStatus === 'Collected' ? 'bg-green-500' : ''}
+          `}
+        >
+          {row.visit.visitStatus}
+        </span>
+      )
+    },
+    { header: 'Total Amount', accessor: (row: Patient) => row.visit.billing.totalAmount },
+  ];
 
   return (
-    <div className="px-1 sm:px-2 lg:px-4">
-      {/* Header with Search and Filters */}
-      <div className="sm:flex sm:items-center justify-between mb-4">
-        <div className="sm:flex-auto">
-          <h1 className="text-base font-semibold leading-6 text-gray-900">Collection Table</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            A list of all the collections, including name, tests, collection center, and time.
-          </p>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="flex space-x-4 items-center mt-4 sm:mt-0">
-          {/* Search Input */}
-          <input
-            type="text"
-            placeholder="Search by name or contact"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="p-2 border border-gray-300 rounded-md text-xs focus:ring-indigo-600 focus:outline-none"
-          />
-
-          {/* Gender Filter */}
-          <select
-            value={genderFilter}
-            onChange={(e) => setGenderFilter(e.target.value)}
-            className="p-2 px-6 border border-gray-300 rounded-md text-xs focus:ring-purple-600 focus:outline-none"
-          >
-            <option value="all">All Genders</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-          <button
-            type="button"
-            className="bg-purple-900 px-3 py-2 text-white text-xs font-semibold rounded-md hover:bg-purple-500"
-          >
-            <Plus size={16} className="inline-block mr-1 -mt-1" />
-            New Collection Center
-          </button>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="mt-8 overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-300">
-          <thead className="bg-purple-950">
-            <tr>
-              <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-xs font-semibold text-slate-50 sm:pl-6">Name</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-slate-50">Gender</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-slate-50">Age</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-slate-50">Contact</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-slate-50">Lab Name</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-slate-50">Tests</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-slate-50">Sample</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-slate-50">Collection Center</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-slate-50">Collection Time</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-slate-50">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {paginatedData.map((patient, index) => (
-              <tr key={index}>
-                <td className="py-4 pl-4 pr-3 text-xs font-medium text-gray-900 sm:pl-6">{patient.patinetname}</td>
-                <td className="px-3 py-4 text-xs text-gray-500">{patient.gender}</td>
-                <td className="px-3 py-4 text-xs text-gray-500">{patient.age}</td>
-                <td className="px-3 py-4 text-xs text-gray-500">{patient.contact}</td>
-                <td className="px-3 py-4 text-xs text-gray-500">{patient.lab_name}</td>
-                <td className="px-3 py-4 text-xs text-gray-500">{patient.tests}</td>
-                <td className="px-3 py-4 text-xs text-gray-500">{patient.sample}</td>
-                <td className="px-3 py-4 text-xs text-gray-500">{patient.collection_center}</td>
-                <td className="px-3 py-4 text-xs text-gray-500">{patient.collection_time}</td>
-                <td className="px-3 py-4 text-xs">
-                  <button
-                    type="button"
-                    className="mr-2 rounded bg-green-600 px-2 py-1 text-xs font-semibold text-white shadow-sm hover:bg-green-500"
-                  >
-                    <Check size={16} className="inline-block mr-1 -mt-1" />
-                    Accept
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white shadow-sm hover:bg-red-500"
-                  >
-                    <X size={16} className="inline-block mr-1 -mt-1" />
-                    Reject
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Pagination */}
-        <div className="mt-4 flex justify-between items-center">
-          <p className="text-xs text-gray-500">Showing {currentPage} of {totalPages} pages</p>
-          <div className="flex space-x-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
-              className={`px-2 py-1 text-xs ${currentPage === 1 ? 'text-gray-400' : 'text-indigo-600'} rounded-md`}
+    <div className="text-xs p-4">
+      <TableComponent
+        data={paginatedPatients}
+        columns={columns}
+        actions={(row: Patient) => (
+          <>
+            <Button
+              text=""
+              className="px-1 py-0.5 text-white bg-green-500 rounded text-xs hover:bg-primary-light"
+              onClick={handleView(row)}
             >
-              Previous
-            </button>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
-              className={`px-2 py-1 text-xs ${currentPage === totalPages ? 'text-gray-400' : 'text-indigo-600'} rounded-md`}
+              <FaEye className="text-sm" />
+            </Button>
+            <Button
+              text="Report"
+              onClick={() => setShowModal(true)}
+              className="flex items-center px-1 py-0.5 text-white bg-primary rounded text-xs hover:bg-primary-light flex justify-around"
             >
-              Next
-            </button>
-          </div>
-        </div>
-      </div>
+              <TbReport className="text-sm mr-1" /> {/* Adding margin-right for spacing */}
+            </Button>
+          </>
+        )}
+      />
+      {
+        showModal && (
+          <Modal
+            isOpen={showModal}
+            title="Collect Sample"
+            onClose={() => setShowModal(false)}
+            modalClassName='max-w-xl'
+          >
+            <PatientReportDataFill />
+          </Modal>
+        )
+      }
+      <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
     </div>
   );
 };
 
 export default CollectionTable;
+
+
+

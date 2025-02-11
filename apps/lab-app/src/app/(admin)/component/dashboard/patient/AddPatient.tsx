@@ -71,7 +71,7 @@ const AddPatient = () => {
     visit: {
       visitDate: new Date().toISOString().split('T')[0], // Ensure default date format
       visitType: VisitType.OUT_PATIENT,
-      visitStatus: VisitStatus.IN_PROGRESS,
+      visitStatus: VisitStatus.PENDING,
       visitDescription: '',
       doctorId: 0,
       testIds: [],

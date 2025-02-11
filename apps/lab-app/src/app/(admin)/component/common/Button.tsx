@@ -14,7 +14,7 @@ const Button = ({ text, onClick, className = '', type = 'button', disabled = fal
     <button
       type={type}
       onClick={onClick}
-      className={`flex items-center  px-4 py-2  text-white   disabled:cursor-not-allowed ${className}`}
+      className={`flex items-center p-1 disabled:cursor-not-allowed ${className}`}
       disabled={disabled}
     >
       {children}
