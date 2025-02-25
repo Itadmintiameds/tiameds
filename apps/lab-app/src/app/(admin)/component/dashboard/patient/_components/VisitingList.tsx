@@ -16,8 +16,6 @@ enum VisitStatus {
   COLLECTED = 'Collected',
 }
 
-
-
 enum VisitType {
   IN_PATIENT = 'In-Patient',
   OUT_PATIENT = 'Out-Patient',
@@ -78,6 +76,7 @@ const VisitingList: React.FC = () => {
         if (currentLab?.id) {
           const response = await getAllVisits(currentLab.id);
           setPatientList(response?.data || []);
+          
         }
       } catch (error: unknown) {
         toast.error((error as Error).message || 'An error occurred while fetching visits', { autoClose: 2000 });
@@ -91,6 +90,10 @@ const VisitingList: React.FC = () => {
     router.push('/dashboard/patients');
   };
 
+
+
+
+
   const handleUpdate = (visit: Patient) => toast.info(`Updating visit ID: ${visit.visit.visitId}`);
 
   const columns = [
@@ -99,7 +102,7 @@ const VisitingList: React.FC = () => {
     { header: 'Visit Date', accessor: (row: Patient) => row.visit.visitDate },
     { header: 'Visit Type', accessor: (row: Patient) => row.visit.visitType },
     {
-      header: 'Visit Status',
+      header: 'Sample Status',
       accessor: (row: Patient) => (
         <span className={`px-2 py-1 rounded ${getStatusBgColor(row.visit.visitStatus)}`}>
           {row.visit.visitStatus}

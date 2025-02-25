@@ -1,4 +1,4 @@
-import { MailIcon, PowerIcon, UserIcon } from "lucide-react";
+import { PowerIcon, UserIcon } from "lucide-react";
 import { toast } from "react-toastify";
 import Button from "../common/Button";
 import CurrentTime from "../common/CurrentTime";
@@ -30,62 +30,79 @@ interface TopNavProps {
 }
 
 const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange }) => {
+  const handleLogout = () => {
+    toast.success("Logged out successfully", {
+      position: "top-right",
+      autoClose: 2000,
+    });
+    localStorage.removeItem("user");
+    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    window.location.replace("/login");
+  };
+
   return (
-    <nav className="flex items-center justify-between py-2 px-6 border-b border-gray-200 bg-white shadow-md rounded">
-      <div className="flex items-center space-x-4">
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white">
-          <span className="text-lg font-bold text-white">{user.firstName[0].toUpperCase()}</span>
+    <nav className="flex items-center justify-between py-2 px-6 border-b border-gray-200 bg-white shadow-sm rounded-md">
+      {/* User Information */}
+      <div className="flex items-center space-x-4 truncate">
+        <span
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white text-sm font-bold"
+          title={`${user.firstName} ${user.lastName}`}
+        >
+          {user.firstName[0].toUpperCase()}
         </span>
-        <h1 className="text-sm font-semibold text-gray-800">
-          {user.firstName.toUpperCase()} {user.lastName.toUpperCase()}
-        </h1>
-        <h2 className="flex items-center text-sm text-gray-500">
-          <MailIcon className="h-4 w-4 mr-1 text-primary" aria-hidden="true" />
-          <span className="text-xs font-semibold text-gray-100 ml-2 bg-primary rounded-full px-2 py-1">
-            {user.email}
-          </span>
-        </h2>
-        <h3 className="flex items-center text-xs text-gray-500">
-          <UserIcon className="h-4 w-4 mr-1 text-primary" aria-hidden="true" />
-          <select className="text-xs font-semibold text-gray-100 bg-primary rounded-full px-2 py-1 ml-2">
-            {user.roles.map((role, index) => (
-              <option key={index} value={role}>{role}</option>
-            ))}
-          </select>
-          <span className="text-xs font-semibold text-gray-100 ml-2 bg-primary rounded-full px-2 py-1">
-            {new Date().toDateString()}
-          </span>
-          <CurrentTime />
-        </h3>
+        <div className="leading-tight truncate">
+          <h1 className="text-sm font-semibold text-gray-800 truncate">
+            {user.firstName.toUpperCase()} {user.lastName.toUpperCase()}
+          </h1>
+          <div className="flex items-center gap-2 text-xs text-gray-500 truncate">
+            <UserIcon className="h-4 w-4 text-primary" aria-hidden="true" />
+            <select
+              className="bg-primary text-white rounded-md px-2 py-1 text-xs focus:outline-none focus:ring focus:ring-primary/50 transition"
+              title="Select Role"
+            >
+              {user.roles.map((role, index) => (
+                <option key={index} value={role}>
+                  {role}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
-      <div className="flex items-center space-x-3 ml-auto">
+
+      {/* Actions and Controls */}
+      <div className="flex items-center space-x-3">
+        <span className="bg-primary text-white text-xs rounded-full px-2 py-0.5">
+          {new Date().toLocaleDateString()}
+        </span>
+        <CurrentTime />
+
         {labs.length > 0 && (
           <select
-            className="text-xs text-white bg-primary border border-gray-600 px-10 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-primary focus:outline-none transition duration-200 hover:bg-opacity-90"
+            className="text-xs bg-primary text-white rounded-md px-3 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50 hover:bg-primary/90 transition"
             onChange={handleChange}
             defaultValue=""
+            title="Select Lab"
           >
-            <option value="" disabled>{currentLab?.name || "Select a Lab"}</option>
+            <option value="" disabled>
+              {currentLab?.name || "Select a Lab"}
+            </option>
             {labs.map((lab) => (
-              <option key={lab.id} value={lab.name}>{lab.name}</option>
+              <option key={lab.id} value={lab.name}>
+                {lab.name}
+              </option>
             ))}
           </select>
         )}
+
+        {/* Logout Button */}
         <Button
           text=""
-          className="relative flex items-center justify-center bg-primary text-white px-1 flex item-center jutify-center hover:bg-primarylight rounded-md"
-          onClick={() => {
-            toast.success("Logged out successfully", {
-              position: "top-right",
-              autoClose: 2000,
-            });
-            localStorage.removeItem("user");
-            document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-            window.location.href = "/login";
-          }}
+          className="bg-red-500 hover:bg-red-600 rounded-md p-1 text-white transition"
+          onClick={handleLogout}
           aria-label="Logout"
         >
-          <PowerIcon className="h-4 w-4 text-white mr-2" aria-hidden="true" /> {/* Adjust icon size */}
+          <PowerIcon className="h-5 w-5" aria-hidden="true" />
         </Button>
       </div>
     </nav>

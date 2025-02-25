@@ -6,6 +6,7 @@ import { PatientTabItem } from '@/types/patient/patient';
 import { useState } from 'react';
 import { FaPerson } from "react-icons/fa6";
 import { MdOutlineDashboard } from "react-icons/md";
+import Statistics from '../component/dashboard/statistics/Statistics';
 
 
 const tabs: PatientTabItem[] = [
@@ -24,7 +25,7 @@ const Page = () => {
             onTabChange={setSelectedTab}
         >
             {selectedTab === 'patient' && <Patient />}
-            {selectedTab === 'dashboard' && <div>Dashboard content goes here</div>}
+            {selectedTab === 'dashboard' && <Statistics />}
         </Tabs>
        </>
     );

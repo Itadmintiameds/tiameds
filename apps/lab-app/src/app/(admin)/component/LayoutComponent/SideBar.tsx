@@ -29,7 +29,7 @@ const SideBar = ({isOpen,setIsOpen}: SideBarProps) => {
         text=''
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-        className="p-1 hover:bg-secondary rounded-md bg-primarylight transition-colors duration-200 "
+        className="p-2 hover:bg-secondary rounded-md bg-primarylight transition-colors duration-200 "
       >
         {isOpen ? <ArrowLeft size={8} /> : <ArrowRight size={8} />}
       </Button>

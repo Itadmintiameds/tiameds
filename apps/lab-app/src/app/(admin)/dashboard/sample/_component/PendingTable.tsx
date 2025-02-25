@@ -15,6 +15,7 @@ import { FaEye } from 'react-icons/fa';
 import { PiTestTubeFill } from 'react-icons/pi';
 import { toast } from 'react-toastify';
 import SampleCollect from './SampleCollect';
+import { addSampleToVisit } from "../../../../../../services/sampleServices";
 
 interface Test {
   name: string;
@@ -23,7 +24,7 @@ interface Test {
 }
 
 interface HealthPackage {
-  id : number;
+  id: number;
   packageName: string;
   price: number;
   discount: number;
@@ -34,10 +35,16 @@ interface HealthPackage {
 const PendingTable: React.FC = () => {
   const { currentLab, setPatientDetails } = useLabs();
   const [patientList, setPatientList] = useState<Patient[]>([]);
-  const router = useRouter();
   const [showModal, setShowModal] = useState(false);
+  const [selectedVisitId, setSelectedVisitId] = useState<number | null>(null); // Store the selected visitId
   const [tests, setTests] = useState<TestList[]>([]);
   const [healthPackages, setHealthPackages] = useState<HealthPackage[]>([]);
+
+  const [samples, setSamples] = useState<string[]>([]); 
+  const [loading, setLoading] = useState<boolean>(false);
+  // const [isTableVisible, setIsTableVisible] = useState(true); // Manage visibility of the table
+
+  const router = useRouter();
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -77,7 +84,7 @@ const PendingTable: React.FC = () => {
       }
     };
     fetchVisits();
-  }, [currentLab]);
+  }, [currentLab, loading]);
 
   // Pagination Logic
   const totalPages = Math.ceil(patientList.length / itemsPerPage);
@@ -91,15 +98,44 @@ const PendingTable: React.FC = () => {
     router.push('/dashboard/patients');
   };
 
+  const handleSampleCollect = (visitId: number) => {
+    setSelectedVisitId(visitId); // Set selected visitId when button is clicked
+    setShowModal(true);
+  };
+
+  const handleVititSample = async () => {
+    try {
+        if (samples.length === 0) {
+            return toast.error("Please add samples to the visit.");
+        }
+        setLoading(true);
+        if (selectedVisitId !== null) {
+          await addSampleToVisit(selectedVisitId, samples); // Use selectedVisitId and samples array
+        } else {
+          toast.error("Visit ID is not available.");
+        }
+
+        toast.success("Samples added to the visit successfully.");
+        setSamples([]); 
+        setLoading(false);
+        setShowModal(false);
+
+    } catch (error) {
+        console.error("Error adding samples to visit:", error);
+        setLoading(false);
+    }
+  };
+
   const columns = [
     { header: 'ID', accessor: (row: Patient) => row.visit.visitId },
     { header: 'Name', accessor: (row: Patient) => `${row.firstName} ${row.lastName}` },
-    { header: 'Date', accessor: (row: Patient) => 
-      <span>{new Date(row.visit.visitDate).toLocaleDateString()}</span>
+    {
+      header: 'Date', accessor: (row: Patient) =>
+        <span>{new Date(row.visit.visitDate).toLocaleDateString()}</span>
     },
     {
       header: 'Status', accessor: (row: Patient) =>
-         <span className='bg-yellow-300 p-1 rounded'>{row.visit.visitStatus}</span>
+        <span className='bg-yellow-300 p-1 rounded'>{row.visit.visitStatus}</span>
     },
     {
       header: 'Tests',
@@ -120,21 +156,20 @@ const PendingTable: React.FC = () => {
         );
       },
     },
-    
+
     {
-      header: 'Package',  // Updated header to "Health Package Name"
+      header: 'Package',
       accessor: (row: Patient) => {
         return (
           <div className="flex flex-wrap gap-2">
             {row.visit.packageIds
               .map((packageId) => {
                 const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-    
-                // Render package name if found, otherwise show fallback message
+
                 if (packageDetails) {
                   return (
                     <span key={packageDetails.id} className="bg-blue-100 text-textdark shadow-xl p-0.5 rounded text-textsize">
-                      {packageDetails.packageName}  {/* Display package name */}
+                      {packageDetails.packageName}
                     </span>
                   );
                 } else {
@@ -150,7 +185,6 @@ const PendingTable: React.FC = () => {
         );
       },
     },
-    
   ];
 
   if (!patientList.length) {
@@ -159,36 +193,42 @@ const PendingTable: React.FC = () => {
 
   return (
     <div className="text-xs p-4">
-      <TableComponent
-        data={paginatedPatients}
-        columns={columns}
-        actions={(row: Patient) => (
+       <TableComponent
+          data={paginatedPatients}
+          columns={columns}
+          actions={(row: Patient) => (
           <>
             <Button
-              text=""
+              text="View"
               className="p-1 text-white bg-green-500 rounded text-xs hover:bg-primary-light flex items-center justify-center"
               onClick={handleView(row)}
             >
               <FaEye className="text-sm" />
             </Button>
             <Button
-              text="sample"
-              onClick={() => setShowModal(true)}
+              text="Sample"
+              onClick={() => row.visit.visitId !== undefined && handleSampleCollect(row.visit.visitId)} // Pass visitId to the function
               className="flex items-center px-2 py-1 text-white bg-primary rounded text-xs hover:bg-primary-light"
             >
               <PiTestTubeFill className="text-sm mr-2" />
             </Button>
           </>
-        )}
-      />
-      {showModal && (
+          )}
+        />
+      {showModal && selectedVisitId && (  // Ensure that visitId is available
         <Modal
           isOpen={showModal}
           title="Collect Sample"
           onClose={() => setShowModal(false)}
           modalClassName="max-w-xl"
         >
-          <SampleCollect />
+          <SampleCollect
+            visitId={selectedVisitId}
+            samples={samples}
+            setSamples={setSamples}
+            handleVititSample={handleVititSample}
+            loading={loading}
+          />
         </Modal>
       )}
       <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
@@ -197,3 +237,5 @@ const PendingTable: React.FC = () => {
 };
 
 export default PendingTable;
+
+
