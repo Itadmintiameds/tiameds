@@ -6,14 +6,13 @@ import useUserStore from '@/context/userStore';
 import { motion } from 'framer-motion'; // Import Framer Motion
 import { FaChalkboardTeacher, FaCheckCircle, FaEnvelope, FaMapMarkerAlt, FaPhoneAlt, FaTimesCircle, FaUserAlt, FaUserEdit } from 'react-icons/fa';
 import { IoIosArrowForward } from 'react-icons/io';
+import Loader from '../../component/common/Loader';
 
 
 const ProfilePage = () => {
     const { user, initializeUser } = useUserStore();
-   
-
     useEffect(() => {
-        initializeUser(); // Initialize user data after the initial render on the client side
+        initializeUser();
     }, []);
 
     useEffect(() => {
@@ -22,21 +21,17 @@ const ProfilePage = () => {
         }
     }, [user]);
 
-    if (!user) {
-        return <div>Loading...</div>; // Optionally show a loading state
-    }
+    if (!user) return <Loader />;
 
     return (
         <div className="min-h-screen">
-            <motion.div 
+            <motion.div
                 className="max-w-7xl mx-auto bg-white p-8 rounded-lg shadow-xl"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
             >
-                {/* Profile Header */}
                 <div className="flex items-center space-x-6">
-                    {/* Profile Picture */}
                     <motion.div
                         className="w-32 h-32 rounded-full bg-primary text-white text-4xl flex items-center justify-center"
                         initial={{ scale: 0 }}
@@ -46,7 +41,6 @@ const ProfilePage = () => {
                         {user?.firstName[0].toUpperCase()}{user?.lastName[0].toUpperCase()}
                     </motion.div>
 
-                    {/* User Info */}
                     <div>
                         <h1 className="text-4xl font-semibold text-gray-800">{user?.firstName} {user?.lastName}</h1>
                         <p className="text-lg text-gray-600 mt-2">{user?.email}</p>
@@ -55,12 +49,8 @@ const ProfilePage = () => {
                         </p>
                     </div>
                 </div>
-
-                {/* {JSON.stringify(labs)} */}
-
-                {/* Contact Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-                    <motion.div 
+                    <motion.div
                         className="bg-white p-6 rounded-lg shadow-md"
                         initial={{ x: -100 }}
                         animate={{ x: 0 }}
@@ -73,9 +63,7 @@ const ProfilePage = () => {
                             <p className="flex items-center"><FaMapMarkerAlt className="mr-3 text-primary" /> {user?.address}, {user?.city}, {user?.state}, {user?.zip}, {user?.country}</p>
                         </div>
                     </motion.div>
-
-                    {/* Additional Information */}
-                    <motion.div 
+                    <motion.div
                         className="bg-white p-6 rounded-lg shadow-md"
                         initial={{ x: 100 }}
                         animate={{ x: 0 }}
@@ -88,8 +76,6 @@ const ProfilePage = () => {
                         </div>
                     </motion.div>
                 </div>
-
-                {/* Dynamic Roles & Modules */}
                 <div className="mt-8">
                     <div className="mb-6">
                         <h2 className="text-2xl font-semibold text-gray-700">Roles</h2>
@@ -100,7 +86,7 @@ const ProfilePage = () => {
                             transition={{ duration: 1 }}
                         >
                             {user?.roles?.map((role, index) => (
-                                <motion.span 
+                                <motion.span
                                     key={index}
                                     className="bg-blue-100 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center"
                                     whileHover={{ scale: 1.1 }}
@@ -121,7 +107,7 @@ const ProfilePage = () => {
                             transition={{ duration: 1 }}
                         >
                             {user?.modules?.map((module, index) => (
-                                <motion.div 
+                                <motion.div
                                     key={index}
                                     className="bg-blue-50 p-4 rounded-lg shadow-md hover:bg-blue-100 transition-all"
                                     whileHover={{ scale: 1.05 }}
@@ -137,10 +123,8 @@ const ProfilePage = () => {
                         </motion.div>
                     </div>
                 </div>
-
-                {/* Edit Profile Button */}
                 <div className="mt-8 flex justify-end">
-                    <motion.button 
+                    <motion.button
                         className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-semibold"
                         whileHover={{ scale: 1.1 }}
                         transition={{ type: 'spring', stiffness: 300 }}

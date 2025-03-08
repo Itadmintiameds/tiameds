@@ -15,14 +15,9 @@ import { z } from 'zod';
 import { toast } from 'react-toastify';
 import { createLab } from '@/../services/labServices';
 import { useLabs } from '@/context/LabContext';
-// import { useRouter } from 'next/navigation'
 
 const Lab = () => {
-
-     const {formData ,setFormData} = useLabs();
-
-    //  const router = useRouter();
- 
+    const { formData, setFormData } = useLabs();
     const [errors, setErrors] = useState<Partial<Record<keyof LabFormData, string>>>({});
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -30,21 +25,14 @@ const Lab = () => {
         setFormData((prev) => ({ ...prev, [name]: value }));
         setErrors((prev) => ({ ...prev, [name]: '' })); // Clear errors for the field
     };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            // Validate formData using Zod schema
             labFormDataSchema.parse(formData);
             console.log('Validated Lab Data:', formData);
-
-            // Call API to create lab
             await createLab(formData);
-
-            // Success message (move this here to avoid redundancy)
             toast.success('Lab created successfully', { position: 'top-right', autoClose: 3000 });
         } catch (error) {
-            // Handle Zod validation errors
             if (error instanceof z.ZodError) {
                 const fieldErrors = error.errors.reduce(
                     (acc, curr) => ({ ...acc, [curr.path[0] as keyof LabFormData]: curr.message }),
@@ -52,7 +40,6 @@ const Lab = () => {
                 );
                 setErrors(fieldErrors);
             }
-            // Handle other errors (e.g., API errors)
             else {
                 toast.error('An unexpected error occurred');
             }
@@ -60,7 +47,7 @@ const Lab = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-950 to-indigo-800 flex items-center justify-center px-4">
+        <div className="min-h-screen  flex items-center justify-center px-4">
             <div className="bg-white shadow-lg rounded-lg w-full max-w-md">
                 {/* Header */}
                 <div className="bg-indigo-950 text-white rounded-t-lg py-4 px-6">
@@ -90,8 +77,8 @@ const Lab = () => {
                                     value={formData[id as keyof LabFormData]}
                                     onChange={handleInputChange}
                                     className={`block w-full pl-10 pr-3 py-2 text-sm border ${errors[id as keyof LabFormData]
-                                            ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                                            : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                                        : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
                                         } rounded-md shadow-sm text-gray-800`}
                                     placeholder={placeholder}
                                 />
@@ -115,8 +102,8 @@ const Lab = () => {
                                 value={formData.description}
                                 onChange={handleInputChange}
                                 className={`block w-full pl-10 pr-3 py-2 text-sm border ${errors.description
-                                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                                        : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
                                     } rounded-md shadow-sm text-gray-800`}
                                 placeholder="Provide a brief description"
                                 rows={3}

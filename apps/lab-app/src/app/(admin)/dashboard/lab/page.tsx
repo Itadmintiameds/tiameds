@@ -1,10 +1,45 @@
-import React from 'react'
-import Lab from '../../component/lab/Lab'
+'use client';
 
-const page = () => {
-  return (
-    <Lab />
-  )
+import Tabs from '@/app/(admin)/component/common/TabComponent';
+import { useState } from 'react';
+
+
+import { FaDatabase, FaDownload, FaFlask } from "react-icons/fa6";
+import { MdDataset, MdLibraryBooks } from "react-icons/md";
+import Lab from '../../component/lab/Lab';
+
+interface Lab {
+  id: string;
+  label: string;
+  icon: JSX.Element;
 }
 
-export default page
+const tabs: Lab[] = [
+  { id: 'Lab Create', label: 'Create New Lab', icon: <FaFlask className="text-xl" /> },
+  { id: 'Download Test', label: 'Download Test', icon: <FaDownload className="text-xl" /> },
+  { id: 'Test Reference Parameters', label: 'Test Reference Parameters', icon: <MdLibraryBooks className="text-xl" /> },
+  { id: 'Dump Test On Lab', label: 'Dump Test On Lab', icon: <MdDataset className="text-xl" /> },
+  { id: 'Dump Test Reference On Lab', label: 'Dump Test Reference On Lab', icon: <FaDatabase className="text-xl" /> }
+];
+
+const Page = () => {
+  const [selectedTab, setSelectedTab] = useState<string>('Lab Create');
+
+  return (
+    <>
+      <Tabs
+        tabs={tabs}
+        selectedTab={selectedTab}
+        onTabChange={setSelectedTab}
+      >
+        {selectedTab === 'Lab Create' && <Lab />}
+        {selectedTab === 'Download Test' && "Download Test Content"}
+        {selectedTab === 'Test Reference Parameters' && "Test Reference Parameters Content"}
+        {selectedTab === 'Dump Test On Lab' && "Dump Test On Lab Content"}
+        {selectedTab === 'Dump Test Reference On Lab' && "Dump Test Reference On Lab Content"}
+      </Tabs>
+    </>
+  );
+};
+
+export default Page;

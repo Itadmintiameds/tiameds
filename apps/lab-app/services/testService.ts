@@ -1,5 +1,5 @@
 import api from '@/utils/api';
-import { TestList } from '@/types/test/testlist';
+import { TestList ,TestReferancePoint} from '@/types/test/testlist';
 
 
 export const getTests = async (labId: string): Promise<TestList[]> => {
@@ -116,6 +116,27 @@ export const downloadTestCsv = async (labId: string): Promise<void> => {
 };
 
 
+export const downloadTestCsvExcel = async (labId: string): Promise<string> => {
+  try {
+      const response = await api.get(`/admin/lab/${labId}/download`, {
+          responseType: 'blob',
+      });
+
+      return response.data.text(); // Convert Blob to text and return
+  } catch (error: unknown) {
+      let errorMessage = 'An error occurred while fetching the test reference range.';
+
+      if (error instanceof Error && (error as any).response?.data?.message) {
+          errorMessage = (error as any).response.data.message;
+      } else if (error instanceof Error) {
+          errorMessage = error.message;
+      }
+
+      throw new Error(errorMessage);
+  }
+};
+
+
 
 //get test by id
 export const getTestById = async (labId: string, testId: Number): Promise<TestList> => {
@@ -135,3 +156,147 @@ export const getTestById = async (labId: string, testId: Number): Promise<TestLi
     throw new Error(errorMessage);
   }
 };
+
+
+
+//get all refrensh range of test of lab
+// /lab/test-reference/2
+
+export const getTestReferanceRange = async (labId: string): Promise<TestReferancePoint[]> => {
+  try {
+    const response = await api.get<{ data: TestReferancePoint[]; message: string; status: string }>(`lab/test-reference/${labId}`);
+    return response.data.data; // Extract the tests array from the response
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while fetching tests referance range.';
+
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      errorMessage = (error as any).response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+}
+
+// update test referance range
+// /{labId}/{testReferenceId}
+export const updateTestReferanceRange = async (labId: string, testReferenceId: string, testref: TestReferancePoint): Promise<void> => {
+  try {
+    await api.put(`lab/test-reference/${labId}/${testReferenceId}`, testref);
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while updating test referance range.';
+
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      errorMessage = (error as any).response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+}
+
+
+
+//delete test referance range
+// /lab/test-reference/{labId}/{testReferenceId}
+export const deleteTestReferanceRange = async (labId: string, testReferenceId: string): Promise<void> => {
+  try {
+    await api.delete(`lab/test-reference/${labId}/${testReferenceId}`);
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while deleting test referance range.';
+
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      errorMessage = (error as any).response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+}
+
+
+//add test referance range
+// /lab/test-reference/{labId}/add
+export const addTestReferanceRange = async (labId: string, testref: TestReferancePoint): Promise<void> => {
+  try {
+    await api.post(`lab/test-reference/${labId}/add`, testref);
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while adding test referance range.';
+
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      errorMessage = (error as any).response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+}
+
+export const fetchTestReferenceRangeCsv = async (labId: string): Promise<string> => {
+  try {
+      const response = await api.get(`/lab/test-reference/${labId}/download`, {
+          responseType: 'blob',
+      });
+
+      return response.data.text(); // Convert Blob to text and return
+  } catch (error: unknown) {
+      let errorMessage = 'An error occurred while fetching the test reference range.';
+
+      if (error instanceof Error && (error as any).response?.data?.message) {
+          errorMessage = (error as any).response.data.message;
+      } else if (error instanceof Error) {
+          errorMessage = error.message;
+      }
+
+      throw new Error(errorMessage);
+  }
+};
+
+export const uploadTestReferanceRangeCsv = async (labId: string, file: File): Promise<void> => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    await api.post(`/lab/test-reference/${labId}/csv/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while uploading test referance range.';
+
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      errorMessage = (error as any).response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error (errorMessage);
+
+  }
+}
+  
+
+// http://localhost:8080/api/v1/lab/test-reference/2/test/COMPLETE BLOOD COUNT (CBC)
+
+
+export const getTestReferanceRangeByTestName = async (labId: string, testName: string): Promise<TestReferancePoint> => {
+  try {
+    const response = await api.get<{ data: TestReferancePoint; message: string; status: string }>(`lab/test-reference/${labId}/test/${testName}`);
+    return response.data.data; // Extract the tests array from the response
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while fetching tests referance range by test name.';
+
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      errorMessage = (error as any).response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+}

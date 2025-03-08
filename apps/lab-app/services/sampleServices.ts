@@ -1,6 +1,6 @@
 import api from '@/utils/api';
 import { SampleList ,Sample} from '@/types/sample/sample'; 
-import { VisitSampleList } from '@/types/sample/sample';
+import { VisitSampleList ,PatientData} from '@/types/sample/sample';
 
 interface ApiResponse<T> {
     data: T;
@@ -74,9 +74,9 @@ export const addSampleToVisit = async (visitId: number, sampleNames: string[]): 
 };
 
 
-export const getAllVisitssamples = async (labId: number): Promise<VisitSampleList[]> => {
+export const getAllVisitssamples = async (labId: number): Promise<PatientData[]> => {
     try {
-        const response = await api.get<ApiResponse<VisitSampleList[]>>(`/lab/${labId}/get-visit-samples`);
+        const response = await api.get<ApiResponse<PatientData[]>>(`/lab/${labId}/get-visit-samples`);
         return response.data.data;
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'An error occurred while fetching samples.');

@@ -13,3 +13,22 @@ export interface TestForm {
     name: string;
     price: number;
 }
+
+
+
+export interface TestReferancePoint {
+    id: number;
+    category: string;
+    testName: string;
+    testDescription: string;
+    units: string;
+    gender: string;
+    minReferenceRange: number;
+    maxReferenceRange: number;
+    ageMin: number;
+    ageMax: number;
+    createdBy: string;
+    updatedBy: string;
+    createdAt: string;
+    updatedAt: string;
+}

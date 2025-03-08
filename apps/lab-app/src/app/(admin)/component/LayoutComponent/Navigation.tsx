@@ -1,10 +1,9 @@
 import { NavigationItem } from "@/types/NavigationItem";
 import { CogIcon, DocumentTextIcon, FolderIcon, HomeIcon, ShoppingCartIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { ArrowRight, ClipboardListIcon, CreditCardIcon, FlaskConical, UserIcon } from "lucide-react";
-import { AiOutlineSafetyCertificate } from "react-icons/ai";
+import { FaPeriscope } from "react-icons/fa";
 import { FaUserDoctor } from "react-icons/fa6";
 import { PiPackageFill } from "react-icons/pi";
-import { FaPeriscope } from "react-icons/fa";
 
 
 
@@ -18,9 +17,9 @@ export const navigation: NavigationItem[] = [
       { name: "Tests", href: "/dashboard/test", current: false, icon: ClipboardListIcon },
       { name: "Packages", href: "/dashboard/package", current: false, icon: PiPackageFill },
       { name: "Doctors", href: "/dashboard/doctor", current: false, icon: FaUserDoctor },
-      { name: "Insurance", href: "/dashboard/insurance", current: false, icon: AiOutlineSafetyCertificate },
-      { name: "Appointments", href: "#", current: false, icon: UserIcon },
-      { name: "Reports", href: "#", current: false, icon: DocumentTextIcon },
+      // { name: "Insurance", href: "/dashboard/insurance", current: false, icon: AiOutlineSafetyCertificate },
+      // { name: "Appointments", href: "#", current: false, icon: UserIcon },
+      // { name: "Reports", href: "#", current: false, icon: DocumentTextIcon },
       { name: "Add Sample", href: "/dashboard/sample/add", current: false, icon: FaPeriscope },
       { name: "Sample Collection", href: "/dashboard/sample", current: false, icon: ClipboardListIcon },
     ],
@@ -30,8 +29,8 @@ export const navigation: NavigationItem[] = [
     icon: UserGroupIcon,
     current: false,
     children: [
-      { name: "Add Technician", href: "#", current: false, icon: UserIcon },
-      { name: "Manage Technicians", href: "#", current: false, icon: ClipboardListIcon },
+      // { name: "Add Technician", href: "/dashboard/technicians", current: false, icon: UserIcon },
+      { name: "Manage Technicians", href: "/dashboard/technicians", current: false, icon: ClipboardListIcon },
     ],
   },
   {
@@ -67,8 +66,8 @@ export const navigation: NavigationItem[] = [
     icon: CogIcon,
     current: false,
     children: [
-      { name: "Profile", href: "dashboard/profile", current: false, icon: UserIcon },
-      { name: "Preferences", href: "#", current: false, icon: ClipboardListIcon },
+      { name: "Profile", href: "/dashboard/profile", current: false, icon: UserIcon },
+      // { name: "Preferences", href: "#", current: false, icon: ClipboardListIcon },
       { name: "Lab", href: "/dashboard/lab", current: false, icon: FlaskConical },
     ],
   },

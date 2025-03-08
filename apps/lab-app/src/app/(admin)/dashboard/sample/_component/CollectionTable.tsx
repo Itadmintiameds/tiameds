@@ -10,15 +10,16 @@ import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
 import { Edit } from 'lucide-react';
 import { MdCancelPresentation } from 'react-icons/md';
-import { TbReport } from 'react-icons/tb';
 import { toast } from 'react-toastify';
 import { deleteVisitSample, getAllVisitssamples } from '../../../../../../services/sampleServices';
 import PatientReportDataFill from './Report/PatientReportDataFill';
 import UpdateSample from './UpdateSample';
 import Barcode from 'react-barcode';
-import html2canvas from 'html2canvas'; 
+import html2canvas from 'html2canvas';
+import { PlusIcon } from '@heroicons/react/20/solid';
+import { PatientData } from '@/types/sample/sample';
 
-interface Patient {
+interface Patient extends PatientData {
   visitId: number;
   patientname: string;
   visitDate: string;
@@ -40,8 +41,7 @@ interface UpdateSample {
 
 const CollectionTable: React.FC = () => {
   const { currentLab } = useLabs();
-  const [patientList, setPatientList] = useState<Patient[]>([]);
-  const [showModal, setShowModal] = useState(false);
+  const [patientList, setPatientList] = useState<PatientData[]>([]);
   const [tests, setTests] = useState<TestList[]>([]);
   const [healthPackages, setHealthPackages] = useState<HealthPackage[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,21 +49,26 @@ const CollectionTable: React.FC = () => {
   const [updatedPopUp, setUpdatedPopUp] = useState(false);
   const [updateSample, setUpdateSample] = useState<UpdateSample | null>(null);
   const barcodeRef = useRef<HTMLDivElement>(null);
-
+  const [showModal, setShowModal] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [updateCollectionTable, setUpdateCollectionTable] = useState(false);
 
   const fetchVisits = async () => {
     try {
       if (currentLab?.id) {
-        const response: Patient[] = await getAllVisitssamples(currentLab.id);
-        const collectedVisits = response.filter((visit) => visit.visitStatus === 'Collected');
+        const response: PatientData[] = await getAllVisitssamples(currentLab.id);
+        const collectedVisits = response
+          .filter((visit) => visit.visitStatus === 'Collected')
+          .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()); // Sorting by date in descending order
+  
         setPatientList(collectedVisits);
-
+  
         const uniqueTestIds = Array.from(new Set(collectedVisits.flatMap((visit) => visit.testIds)));
         const fetchedTests = await Promise.all(
           uniqueTestIds.map((testId) => getTestById(currentLab.id.toString(), testId))
         );
         setTests(fetchedTests);
-
+  
         const uniquePackageIds = Array.from(new Set(collectedVisits.flatMap((visit) => visit.packageIds)));
         const fetchedPackages = await Promise.all(
           uniquePackageIds.map((packageId) => getHealthPackageById(currentLab.id, packageId))
@@ -74,10 +79,10 @@ const CollectionTable: React.FC = () => {
       toast.error((error as Error).message || 'Error fetching visits', { autoClose: 2000 });
     }
   };
-
+  
   useEffect(() => {
     fetchVisits();
-  }, [currentLab, updatedPopUp]);
+  }, [currentLab, updatedPopUp, updateCollectionTable]);
 
   const totalPages = Math.ceil(patientList.length / itemsPerPage);
   const paginatedPatients = patientList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -107,12 +112,16 @@ const CollectionTable: React.FC = () => {
     }
   };
 
+  const handleOpenReportModal = (patient: Patient) => {
+    setSelectedPatient(patient);
+    setShowModal(true);
+  };
+
   const columns = [
     { header: 'ID', accessor: (row: Patient) => row.visitId },
     { header: 'Name', accessor: (row: Patient) => row.patientname },
     { header: 'Date', accessor: (row: Patient) => <span>{new Date(row.visitDate).toLocaleDateString()}</span> },
     { header: 'Status', accessor: (row: Patient) => <span className="bg-blue-300 p-1 rounded">{row.visitStatus}</span> },
-
     {
       header: 'Tests',
       accessor: (row: Patient) => (
@@ -145,7 +154,7 @@ const CollectionTable: React.FC = () => {
         </div>
       )
     },
-    
+
     {
       header: 'Samples',
       accessor: (row: Patient) => (
@@ -178,6 +187,21 @@ const CollectionTable: React.FC = () => {
         </div>
       ),
     },
+    //actions
+    {
+      header: 'Actions',
+      accessor: (row: Patient) => (
+        <Button
+          text="Reference"
+          onClick={() => handleOpenReportModal(row)}
+          className="flex items-center px-1 py-0.5 text-white bg-primary rounded text-xs hover:bg-primary-light"
+        >
+          <PlusIcon
+            className="text-sm mr-1" />
+        </Button>
+      ),
+
+    }
   ];
 
   if (!patientList.length) return <Loader />;
@@ -187,19 +211,15 @@ const CollectionTable: React.FC = () => {
       <TableComponent
         data={paginatedPatients}
         columns={columns}
-        actions={( ) => (
-          <Button
-            text="Report"
-            onClick={() => setShowModal(true)}
-            className="flex items-center px-1 py-0.5 text-white bg-primary rounded text-xs hover:bg-primary-light"
-          >
-            <TbReport className="text-sm mr-1" />
-          </Button>
-        )}
       />
       {showModal && (
-        <Modal isOpen={showModal} title="Collect Sample" onClose={() => setShowModal(false)} modalClassName="max-w-xl">
-          <PatientReportDataFill />
+        <Modal isOpen={showModal} title="Enter Report Data" onClose={() => setShowModal(false)} modalClassName="max-w-5xl">
+          <PatientReportDataFill patientList={selectedPatient ? [selectedPatient] : []}
+            updateCollectionTable={updateCollectionTable}
+            setUpdateCollectionTable={setUpdateCollectionTable}
+            // model close
+            setShowModal={setShowModal}
+          />
         </Modal>
       )}
       <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />

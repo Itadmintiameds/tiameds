@@ -11,25 +11,6 @@ export interface Sample {
     sampleNames: string[];
 }
 
-
-// {
-//     "visitId": 49,
-//     "patientname": "Jon Doe",
-//     "visitDate": "2024-12-28",
-//     "visitStatus": "Collected",
-//     "sampleNames": [
-//         "Sweat",
-//         "Blood"
-//     ],
-//     "testIds": [
-//         2,
-//         1
-//     ],
-//     "packageIds": [
-//         21
-//     ]
-// },
-
 export interface VisitSampleList {
     visitId: number;
     patientname: string;
@@ -40,6 +21,20 @@ export interface VisitSampleList {
     packageIds: number[];
 }
 
+export interface PatientData {
+    visitId: number;
+    patientname: string;
+    gender: string;
+    contactNumber: string;
+    email: string;
+    visitDate: string;
+    visitStatus: string;
+    sampleNames: string[];
+    testIds: number[];
+    packageIds: number[];
+    dateOfBirth: string;
+  }
+  
 export interface ApiResponse<T> {
     status: string;
     message: string;

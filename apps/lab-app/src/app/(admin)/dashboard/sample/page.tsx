@@ -5,6 +5,7 @@ import { useState } from 'react';
 import CollectionTable from './_component/CollectionTable';
 import PendingTable from './_component/PendingTable';
 import Button from '../../component/common/Button';
+import CompletedTable from './_component/CompletedTable';
 
 const collectionTab = [
   { name: 'Pending', icon: ClipboardList },
@@ -42,7 +43,7 @@ const Page = () => {
       <div className="bg-white shadow-sm ">
         {activeTab === 'Pending' && <PendingTable />}
         {activeTab === 'Collected' && <CollectionTable />}
-        {activeTab === 'Received' && <p>Received</p>}
+        {activeTab === 'Received' && <CompletedTable />}
       </div>
     </div>
   );

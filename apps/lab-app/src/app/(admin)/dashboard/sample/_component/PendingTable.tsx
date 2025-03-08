@@ -56,33 +56,32 @@ const PendingTable: React.FC = () => {
         if (currentLab?.id) {
           const response = await getAllVisits(currentLab.id);
           const visits = response?.data || [];
-
-          // Filter visits where visitStatus is "Pending"
           const pendingVisits = visits.filter((visit: Patient) => visit.visit.visitStatus === 'Pending');
+    
+          pendingVisits.sort((a: Patient, b: Patient) => 
+            new Date(b.visit.visitDate).getTime() - new Date(a.visit.visitDate).getTime()
+          );
           setPatientList(pendingVisits);
-
-          // Fetch test details for the visit
           const testIds = pendingVisits.flatMap((visit: Patient) => visit.visit.testIds);
-          const uniqueTestIds = Array.from(new Set(testIds)); // Removing duplicates
+          const uniqueTestIds = Array.from(new Set(testIds));
           const fetchedTests = await Promise.all(
             uniqueTestIds.map((testId) => getTestById(currentLab.id.toString(), testId as number))
           );
           setTests(fetchedTests);
-
-          // Fetch health package details for the visit
           const packageIds = pendingVisits.flatMap((visit: Patient) => visit.visit.packageIds);
-          const uniquePackageIds = Array.from(new Set(packageIds)); // Removing duplicates
+          const uniquePackageIds = Array.from(new Set(packageIds));
           const fetchedPackages = await Promise.all(
             uniquePackageIds.map((packageId) => getHealthPackageById(currentLab.id, packageId as number))
           );
-
-          // Set the health packages state to fetched data
-          setHealthPackages(fetchedPackages.map((pkg) => pkg.data));  // Extract 'data' from each response
+    
+          setHealthPackages(fetchedPackages.map((pkg) => pkg.data));
         }
       } catch (error: unknown) {
         toast.error((error as Error).message || 'An error occurred while fetching visits', { autoClose: 2000 });
       }
     };
+    
+    
     fetchVisits();
   }, [currentLab, loading]);
 
