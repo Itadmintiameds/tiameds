@@ -17,18 +17,12 @@ const PatientList: React.FC = () => {
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(10);
-  // const [viewPatient, setViewPatient] = useState<Patient | null>(null);
   const [updatePatientDetails, setUpdatePatientDetails] = useState<Patient | null>(null);
- 
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
-
   const router = useRouter(); 
-
   const { currentLab } = useLabs();
-
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
 
-  // Fetch Patients
   useEffect(() => {
     if (currentLab?.id) {
       getPatient(currentLab.id)
@@ -45,7 +39,6 @@ const PatientList: React.FC = () => {
     }
   }, [currentLab?.id]);
 
-  // Filter Patients by Search Query
   useEffect(() => {
     const results = patients.filter((patient) =>
       Object.values(patient)

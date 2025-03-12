@@ -88,7 +88,14 @@ const VisitingList: React.FC = () => {
     { header: 'Name', accessor: (row: Patient) => `${row.firstName} ${row.lastName}` },
     { header: 'Visit Date', accessor: (row: Patient) => row.visit.visitDate },
     { header: 'Visit Type', accessor: (row: Patient) => row.visit.visitType },
-    { header: 'Sample Status', accessor: (row: Patient) => row.visit.visitStatus },
+    {
+      header: 'Sample Status',
+      accessor: (row: Patient) => (
+        <span className={`p-1 rounded ${row.visit.visitStatus === 'Pending' ? 'bg-yellow-300' : 'bg-green-300'}`}>
+          {row.visit.visitStatus}
+        </span>
+      )
+    },
     { header: 'Total Amount', accessor: (row: Patient) => row.visit.billing.totalAmount },
     {
       header: 'Actions',

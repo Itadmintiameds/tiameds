@@ -44,4 +44,17 @@ export const createLab = async (formData: LabFormData): Promise<LabResponse> => 
 }
 
 
+// /lab/admin/get-labs
+
+export const getLabList = async (): Promise<LabResponse[]> => {
+  try {
+    const response = await api.get<{ data: LabResponse[]; message: string; status: string }>('lab/admin/get-labs');
+    return response.data.data;
+  } catch (error: any) {
+    const message = error.response?.data?.message || 'An error occurred while fetching labs.';
+    toast.error(message);
+    throw new Error(message);
+  }
+}
+
 

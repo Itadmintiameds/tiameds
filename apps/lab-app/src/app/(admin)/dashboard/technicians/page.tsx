@@ -2,6 +2,8 @@
 import Tabs from '@/app/(admin)/component/common/TabComponent';
 import { useState } from 'react';
 import { FaPersonChalkboard, FaPersonCirclePlus } from "react-icons/fa6";
+import  ListOfMemberOfLab  from './_component/ListOfMemberOfLab';
+import AddMemberOnLab from './_component/AddMemberOnLab';
 
 
 interface TechnicianTab {
@@ -25,8 +27,8 @@ const Page = () => {
                 selectedTab={selectedTab}
                 onTabChange={setSelectedTab}
             >
-                {selectedTab === 'Add Technician' && "Add Technician Content"}
-                {selectedTab === 'Manage Technicians' && "Manage Technicians Content"}
+                {selectedTab === 'Add Technician' && <AddMemberOnLab />}
+                {selectedTab === 'Manage Technicians' && <ListOfMemberOfLab />}
 
             </Tabs>
         </>

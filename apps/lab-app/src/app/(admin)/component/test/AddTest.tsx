@@ -11,10 +11,11 @@ import { Plus } from 'lucide-react';
 
 interface AddTestProps {
   closeModal: () => void;
+  updateList: boolean;
+  setUpdateList: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-
-const AddTest = ({ closeModal }: AddTestProps) => {
+const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
   const [formData, setFormData] = useState<TestForm>({
     category: '',
     name: '',
@@ -42,9 +43,11 @@ const AddTest = ({ closeModal }: AddTestProps) => {
       };
       if (currentLab) {
         await addTest(currentLab.id.toString(), testListData);
+        setUpdateList(!updateList);
         toast.success('Test added successfully!', { autoClose: 2000 });
         setFormData({ category: '', name: '', price: 0 });
         closeModal();
+
       } else {
         toast.error('Current lab is not selected.');
       }
@@ -56,7 +59,6 @@ const AddTest = ({ closeModal }: AddTestProps) => {
       }
     }
   };
-
   return (
     <div className="flex justify-center items-center  ">
       <div className=" rounded-lg p-2 w-full max-w-lg">

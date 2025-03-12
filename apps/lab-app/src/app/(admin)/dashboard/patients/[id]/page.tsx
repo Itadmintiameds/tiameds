@@ -103,12 +103,9 @@ const Page = ({ params }: { params: IParams }) => {
           onClick={() => window.history.back()}
         />
       </div>
-      {/* Patient Info Section */}
       {patient && (
         <PatientInformation patient={patient} />
       )}
-
-      {/* Visits Table */}
       <PatientVisitData visits={visits} handlePrint={handlePrint} />
     </div>
   );

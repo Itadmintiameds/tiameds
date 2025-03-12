@@ -1,5 +1,6 @@
 import api from '@/utils/api';
 import { TestList ,TestReferancePoint} from '@/types/test/testlist';
+import { AxiosError } from 'axios';
 
 
 export const getTests = async (labId: string): Promise<TestList[]> => {
@@ -19,7 +20,6 @@ export const getTests = async (labId: string): Promise<TestList[]> => {
   }
 };
 
-
 //delete test
 export const deleteTest = async (testId: string, labId: string): Promise<void> => {
   try {
@@ -37,7 +37,6 @@ export const deleteTest = async (testId: string, labId: string): Promise<void> =
   }
 };
 
-
 //add test 
 export const addTest = async (labId: string, test: TestList): Promise<void> => {
   try {
@@ -54,7 +53,6 @@ export const addTest = async (labId: string, test: TestList): Promise<void> => {
     throw new Error(errorMessage);
   }
 };
-
 
 //upload test csv
 export const uploadTestCsv = async (labId: string, file: File): Promise<void> => {
@@ -79,7 +77,6 @@ export const uploadTestCsv = async (labId: string, file: File): Promise<void> =>
     throw new Error(errorMessage);
   }
 };
-
 
 //download test csv
 export const downloadTestCsv = async (labId: string): Promise<void> => {
@@ -115,7 +112,6 @@ export const downloadTestCsv = async (labId: string): Promise<void> => {
   }
 };
 
-
 export const downloadTestCsvExcel = async (labId: string): Promise<string> => {
   try {
       const response = await api.get(`/admin/lab/${labId}/download`, {
@@ -136,8 +132,6 @@ export const downloadTestCsvExcel = async (labId: string): Promise<string> => {
   }
 };
 
-
-
 //get test by id
 export const getTestById = async (labId: string, testId: Number): Promise<TestList> => {
   try {
@@ -157,10 +151,23 @@ export const getTestById = async (labId: string, testId: Number): Promise<TestLi
   }
 };
 
+// /lab/3/update/2
+export const updateTest = async (labId: string, testId: string, test: TestList): Promise<void> => {
+  try {
+    await api.put(`/admin/lab/${labId}/update/${testId}`, test);
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while updating test details.';
 
+    if (error instanceof AxiosError && error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
 
-//get all refrensh range of test of lab
-// /lab/test-reference/2
+    throw new Error(errorMessage);
+  }
+};
+// ======================================================== test referance range ========================================================
 
 export const getTestReferanceRange = async (labId: string): Promise<TestReferancePoint[]> => {
   try {
@@ -179,8 +186,6 @@ export const getTestReferanceRange = async (labId: string): Promise<TestReferanc
   }
 }
 
-// update test referance range
-// /{labId}/{testReferenceId}
 export const updateTestReferanceRange = async (labId: string, testReferenceId: string, testref: TestReferancePoint): Promise<void> => {
   try {
     await api.put(`lab/test-reference/${labId}/${testReferenceId}`, testref);
@@ -197,10 +202,6 @@ export const updateTestReferanceRange = async (labId: string, testReferenceId: s
   }
 }
 
-
-
-//delete test referance range
-// /lab/test-reference/{labId}/{testReferenceId}
 export const deleteTestReferanceRange = async (labId: string, testReferenceId: string): Promise<void> => {
   try {
     await api.delete(`lab/test-reference/${labId}/${testReferenceId}`);
@@ -217,9 +218,6 @@ export const deleteTestReferanceRange = async (labId: string, testReferenceId: s
   }
 }
 
-
-//add test referance range
-// /lab/test-reference/{labId}/add
 export const addTestReferanceRange = async (labId: string, testref: TestReferancePoint): Promise<void> => {
   try {
     await api.post(`lab/test-reference/${labId}/add`, testref);
@@ -280,9 +278,6 @@ export const uploadTestReferanceRangeCsv = async (labId: string, file: File): Pr
   }
 }
   
-
-// http://localhost:8080/api/v1/lab/test-reference/2/test/COMPLETE BLOOD COUNT (CBC)
-
 
 export const getTestReferanceRangeByTestName = async (labId: string, testName: string): Promise<TestReferancePoint> => {
   try {

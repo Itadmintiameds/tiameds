@@ -1,5 +1,4 @@
 'use client';
-
 import TestDownload from '@/app/(admin)/component/test/TestDownload';
 import TestUpload from '@/app/(admin)/component/test/TestUpload';
 import TestLists from '@/app/(admin)/component/test/TestList';
@@ -22,19 +21,15 @@ const tabs: PackageTabItem[] = [
   { id:'test-referance-point', label: 'Test Referance range', icon: <VscReferences className="text-xl" />},
   { id: 'upload-referance', label: 'Upload Referance', icon: <MdOutlineCloudUpload className="text-xl" /> },
   { id: 'download-referance', label: 'Download Referance', icon: <FaFileDownload className="text-xl" /> },
-  
-
 ];
 
 const Page = () => {
-  const [selectedTab, setSelectedTab] = React.useState<string>('test'); // Default selected tab
-  const [loading, setLoading] = React.useState<boolean>(false); // State for loader
+  const [selectedTab, setSelectedTab] = React.useState<string>('test'); 
+  const [loading, setLoading] = React.useState<boolean>(false); 
 
   const handleTabChange = (tabId: string) => {
     setLoading(true); // Show loader
     setSelectedTab(tabId);
-
-    // Immediately hide loader after updating tab
     setLoading(false);
   };
 
@@ -43,7 +38,7 @@ const Page = () => {
       <Tabs
         tabs={tabs}
         selectedTab={selectedTab}
-        onTabChange={handleTabChange} // Pass tab change handler
+        onTabChange={handleTabChange}
       >
         {loading ? (
           <Loader />
@@ -61,5 +56,4 @@ const Page = () => {
     </div>
   );
 };
-
 export default Page;

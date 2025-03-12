@@ -1,6 +1,6 @@
 import { NavigationItem } from "@/types/NavigationItem";
 import { CogIcon, DocumentTextIcon, FolderIcon, HomeIcon, ShoppingCartIcon, UserGroupIcon } from "@heroicons/react/24/outline";
-import { ArrowRight, ClipboardListIcon, CreditCardIcon, FlaskConical, UserIcon } from "lucide-react";
+import { ClipboardListIcon, CreditCardIcon, FlaskConical, UserIcon } from "lucide-react";
 import { FaPeriscope } from "react-icons/fa";
 import { FaUserDoctor } from "react-icons/fa6";
 import { PiPackageFill } from "react-icons/pi";
@@ -71,15 +71,15 @@ export const navigation: NavigationItem[] = [
       { name: "Lab", href: "/dashboard/lab", current: false, icon: FlaskConical },
     ],
   },
-  {
-    name: "Profile",
-    icon: UserIcon,
-    current: false,
-    children: [
-      { name: "Edit Profile", href: "/dashboard/profile", current: false, icon: UserIcon },
-      { name: "Logout", href: "#", current: false, icon: ArrowRight }
-    ],
-  },
+  // {
+  //   name: "Profile",
+  //   icon: UserIcon,
+  //   current: false,
+  //   children: [
+  //     { name: "Edit Profile", href: "/dashboard/profile", current: false, icon: UserIcon },
+  //     { name: "Logout", href: "#", current: false, icon: ArrowRight }
+  //   ],
+  // },
 
   // { name: "Logout", href: "#", icon: ArrowRight, current: false },
 
