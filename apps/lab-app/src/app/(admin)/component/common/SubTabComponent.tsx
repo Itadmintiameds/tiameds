@@ -24,7 +24,7 @@ const SubTabComponent: React.FC<TabsProps> = ({ tabs, selectedTab, onTabChange, 
                         key={tab.id}
                         className={`flex items-center justify-center min-w-[80px] px-3 py-2 rounded-md text-xs font-medium transition-all duration-200 
                             ${selectedTab === tab.id
-                                ? 'bg-primary text-white shadow-md hover:bg-primarylight'
+                                ? 'bg-primary text-textzinc shadow-md hover:bg-primarylight'
                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                         onClick={() => onTabChange(tab.id)}

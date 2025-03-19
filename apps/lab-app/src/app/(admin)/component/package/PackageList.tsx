@@ -10,6 +10,8 @@ import { toast } from 'react-toastify';
 import Loader from '../common/Loader';
 import UpdatePackage from './UpdatePackage';
 import { TestList } from '@/types/test/testlist';  
+import Button from '@/app/(admin)/component/common/Button';
+import Pagination from '../common/Pagination';
 
 interface editingPackage {
   id: number
@@ -176,10 +178,9 @@ const PackageList = () => {
           className="w-full p-2 border rounded-md text-sm focus:outline-none"
         />
       </div>
-
       {paginatedPackages.length > 0 ? (
         paginatedPackages.map((pkg) => (
-          <div key={pkg.id} className="flex flex-col bg-slate-200 rounded-lg shadow-sm overflow-hidden">
+          <div key={pkg.id} className="flex flex-col bg-gray-100 rounded-lg shadow-lg overflow-hidden">
             <div className="p-3 flex items-center justify-between border-b">
               <div className="flex items-center space-x-2">
                 <FaBoxOpen className="text-blue-600 text-xl" />
@@ -188,12 +189,16 @@ const PackageList = () => {
               <p className="text-xs text-gray-600">₹{pkg.price} | {pkg.discount}% Off</p>
 
               <div className="flex space-x-2">
-                <button onClick={() => handleEditPackage(pkg.id)} className="text-blue-600 hover:text-blue-800">
+                <Button 
+                text=''
+                onClick={() => handleEditPackage(pkg.id)} className="text-blue-600 hover:text-blue-800">
                   <FaEdit className="text-sm" />
-                </button>
-                <button onClick={() => handleDeletePackage(pkg.id)} className="text-red-600 hover:text-red-800">
+                </Button>
+                <Button 
+                text=''
+                onClick={() => handleDeletePackage(pkg.id)} className="text-deletebutton hover:text-deletehover">
                   <FaTrash className="text-sm" />
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -212,7 +217,8 @@ const PackageList = () => {
               </div>
             )}
 
-            <button
+            <Button
+              text=''
               onClick={() => togglePackageDetails(pkg.id)}
               className="mt-2 text-xs text-blue-600 hover:text-blue-800 focus:outline-none self-center"
             >
@@ -227,21 +233,22 @@ const PackageList = () => {
                   <span>View Details</span>
                 </div>
               )}
-            </button>
+            </Button>
           </div>
         ))
       ) : (
         <div className="text-center text-gray-500">No packages available.</div>
       )}
 
-      <div className="flex justify-center mt-4 space-x-2">
-        <button
+      {/* <div className="flex justify-center mt-4 space-x-2">
+        <Button
+          text=''
           onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage === 1}
           className="p-2 bg-gray-200 rounded-md text-sm text-gray-600 disabled:opacity-50"
         >
           Prev
-        </button>
+        </Button>
         <span className="text-sm text-gray-600">
           Page {currentPage} of {totalPages}
         </span>
@@ -252,7 +259,12 @@ const PackageList = () => {
         >
           Next
         </button>
-      </div>
+      </div> */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+      />
 
       {editingPackage && (
         <Modal

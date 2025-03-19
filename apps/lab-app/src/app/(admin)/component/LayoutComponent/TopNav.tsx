@@ -41,23 +41,23 @@ const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange })
   };
 
   return (
-    <nav className="flex items-center justify-between py-2 px-6 border-b border-gray-200 bg-white shadow-sm rounded-md">
+    <nav className="flex items-center justify-between py-2 px-6 border-b border-gray-200 bg-white shadow-sm rounded-md ">
       {/* User Information */}
       <div className="flex items-center space-x-4 truncate">
         <span
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white text-sm font-bold"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-textzinc text-sm font-bold"
           title={`${user.firstName} ${user.lastName}`}
         >
           {user.firstName[0].toUpperCase()}
         </span>
         <div className="leading-tight truncate">
-          <h1 className="text-sm font-semibold text-gray-800 truncate">
+          <h1 className="text-sm font-semibold text-text-textzinc truncate">
             {user.firstName.toUpperCase()} {user.lastName.toUpperCase()}
           </h1>
           <div className="flex items-center gap-2 text-xs text-gray-500 truncate">
             <UserIcon className="h-4 w-4 text-primary" aria-hidden="true" />
             <select
-              className="bg-primary text-white rounded-md px-2 py-1 text-xs focus:outline-none focus:ring focus:ring-primary/50 transition"
+              className="bg-primary text-textzinc rounded-md px-2 py-1 text-xs focus:outline-none focus:ring focus:ring-primary/50 transition"
               title="Select Role"
             >
               {user.roles.map((role, index) => (
@@ -72,14 +72,14 @@ const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange })
 
       {/* Actions and Controls */}
       <div className="flex items-center space-x-3">
-        <span className="bg-primary text-white text-xs rounded-full px-2 py-0.5">
+        <span className="bg-primary text-textzinc text-xs rounded-full px-2 py-0.5">
           {new Date().toLocaleDateString()}
         </span>
         <CurrentTime />
 
         {labs.length > 0 && (
           <select
-            className="text-xs bg-primary text-white rounded-md px-3 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50 hover:bg-primary/90 transition"
+            className="text-xs bg-primary text-zinc rounded-md px-3 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50 hover:bg-primary/90 transition"
             onChange={handleChange}
             defaultValue=""
             title="Select Lab"
@@ -98,7 +98,7 @@ const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange })
         {/* Logout Button */}
         <Button
           text=""
-          className="bg-red-500 hover:bg-red-600 rounded-md p-1 text-white transition"
+          className="bg-clear hover:bg-clearhover rounded-md p-1 text-textwhite transition"
           onClick={handleLogout}
           aria-label="Logout"
         >

@@ -194,7 +194,7 @@ const TestReferancePoints = () => {
           <Button
             text="Add Test Reference"
             onClick={() => setAddModalOpen(true)}
-            className="bg-green-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-green-600 transition flex items-center text-sm"
+            className="bg-savebutton text-white px-4 py-2 rounded-md shadow-md hover:bg-savehover transition flex items-center text-sm"
           >
             <FaPlus className="mr-1" />
           </Button>
@@ -202,14 +202,14 @@ const TestReferancePoints = () => {
           <Button
             text="Download CSV"
             onClick={() => { handleDownloadCsv() }}
-            className="bg-blue-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-blue-600 transition flex items-center text-sm"
+            className="bg-download text-white px-4 py-2 rounded-md shadow-md hover:bg-downloadhover transition flex items-center text-sm"
           >
             <FaDownload className="mr-1" />
           </Button>
           <Button
             text="Download Excel"
             onClick={() => { handleDownloadExcel() }}
-            className="bg-indigo-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-indigo-600 transition flex items-center text-sm"
+            className="bg-download text-white px-4 py-2 rounded-md shadow-md hover:bg-downloadhover transition flex items-center text-sm"
           >
             <FaFileExcel className="mr-1" />
           </Button>
@@ -221,7 +221,7 @@ const TestReferancePoints = () => {
           {Object.entries(tests).map(([testName, records]) => (
             <div key={testName} className="mb-4">
               <div className="flex justify-between items-center bg-cardbackground p-3 rounded-md shadow-md mb-4">
-                <h4 className="text-primary font-medium">{testName}</h4>
+                <h4 className="text-textzinc font-medium">{testName}</h4>
                 <Button
                   text=""
                   onClick={() => {

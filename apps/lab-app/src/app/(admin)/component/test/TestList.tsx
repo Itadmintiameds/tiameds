@@ -69,7 +69,7 @@ export const TestLists = () => {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">Tests</h1>
         <Button text="Add Test" onClick={() => setModalOpen(true)}
-          className='px-4 py-1 text-xs bg-primary text-white rounded-md hover:bg-secondary focus:outline-none rounded'
+          className='px-4 py-1 text-xs bg-primary text-textzinc rounded-md hover:bg-primarylight focus:outline-none rounded'
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -134,7 +134,7 @@ export const TestLists = () => {
                 header: "Actions",
                 accessor: (test) => (
                   <div className="flex justify-around">
-                    <FaTrashCan className="text-red-500 text-xl cursor-pointer" onClick={() => {
+                    <FaTrashCan className="text-delete text-xl cursor-pointer hover:deletehover" onClick={() => {
                       if (currentLab) {
                         deleteTest(test.id.toString(), currentLab.id.toString()).then(() => {
                           setTests(prev => prev.filter(t => t.id !== test.id));
@@ -152,7 +152,7 @@ export const TestLists = () => {
                         setEditPopup(true);
                         setUpdateTest(test);
                       }}
-                      className="text-indigo-500 text-xl cursor-pointer" />
+                      className="text-updatebutton text-xl cursor-pointer hover:text-updatehover" />
                   </div>
                 ),
               },

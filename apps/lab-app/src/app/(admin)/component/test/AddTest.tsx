@@ -135,7 +135,7 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
             text="Add Test"
             onClick={() => { }}
             type='submit'
-            className="flex items-center justify-center px-4 py-1 w-full text-xs bg-primary text-white rounded-md hover:bg-secondary focus:outline-none"
+            className="flex items-center justify-center px-4 py-1 w-full text-xs bg-primary text-textzinc rounded-md hover:bg-primarylight focus:outline-none"
           >
             <Plus className="h-4" />
           </Button>

@@ -174,65 +174,6 @@ const Page = () => {
     return age;
   };
 
-  // const bill = {
-  //   // Lab Details
-  //   lab: {
-  //     logo: currentLab?.logo ?? 'N/A',
-  //     name: currentLab?.name || 'N/A',
-  //     address: `${currentLab?.address || 'N/A'}, ${currentLab?.city || 'N/A'}, ${currentLab?.state || 'N/A'}`,
-  //     //hardcoded value 
-  //     phone: 'N/A',
-  //     email: 'N/A',
-  //     gstn: 'N/A',
-  //     invoiceId: (patientDetails?.visit?.visitId || 'N/A').toString(),
-  //   },
-
-  //   // Billing Details
-  //   billingId: patientDetails?.visit?.billing?.billingId || 'N/A',
-  //   paymentStatus: patientDetails?.visit?.billing?.paymentStatus || 'N/A',
-  //   paymentMethod: patientDetails?.visit?.billing?.paymentMethod || 'N/A',
-  //   paymentDate: patientDetails?.visit?.billing?.paymentDate || 'N/A',
-  //   discount: patientDetails?.visit?.billing?.discount || '0%',
-  //   gstRate: patientDetails?.visit?.billing?.gstRate || 'N/A',
-  //   gstAmount: patientDetails?.visit?.billing?.gstAmount || '₹0.00',
-  //   cgstAmount: patientDetails?.visit?.billing?.cgstAmount || '₹0.00',
-  //   sgstAmount: patientDetails?.visit?.billing?.sgstAmount || '₹0.00',
-  //   igstAmount: patientDetails?.visit?.billing?.igstAmount || '₹0.00',
-  //   netAmount: patientDetails?.visit?.billing?.netAmount || '₹0.00',
-  //   totalAmount: patientDetails?.visit?.billing?.totalAmount || '₹0.00',
-
-  //   // Tests
-  //   tests: tests.map((test) => ({
-  //     name: test.name,
-  //     price: test.price.toFixed(2),
-  //   })),
-
-  //   // Health Packages
-  //   healthPackages: healthPackage?.map((pkg) => ({
-  //     packageName: pkg.packageName,
-  //     price: pkg.price.toFixed(2),
-  //     discount: pkg.discount.toFixed(2),
-  //     netPrice: (pkg.price - pkg.discount).toFixed(2),
-  //     tests: pkg.tests.map((test) => ({
-  //       name: test.name,
-  //       category: test.category,
-  //       price: test.price.toFixed(2),
-  //     })),
-  //   })),
-
-  //   // Patient Details
-  //   patient: {
-  //     name: `${patientDetails?.firstName || ''} ${patientDetails?.lastName || ''}`,
-  //     age: calculateAge(patientDetails?.dateOfBirth || ''),
-  //     email: patientDetails?.email || 'N/A',
-  //     phone: patientDetails?.phone || 'N/A',
-  //     address: `${patientDetails?.address || 'N/A'}, ${patientDetails?.city || 'N/A'}, ${patientDetails?.state || 'N/A'}, ${patientDetails?.zip || 'N/A'}`,
-  //     bloodGroup: patientDetails?.bloodGroup || 'N/A',
-  //     patientId: (patientDetails?.id || 'N/A').toString(),
-  //     Gender: patientDetails?.gender || 'N/A',
-  //   },
-  // };
-
   const handlePrint = () => {
     setBillingData({
       lab: {
@@ -287,7 +228,7 @@ const Page = () => {
     <>
       <div className="flex justify-end items-center sticky top-0 z-10 ">
         <ArrowLeftIcon
-          className="h-5 w-5 text-textwhite font-bold animate-bounce text-xl cursor-pointer bg-primary rounded-full p-1"
+          className="h-5 w-5 text-zinc font-bold animate-bounce text-xl cursor-pointer bg-primary rounded-full p-1"
           onClick={() => window.history.back()}
         />
       </div>
@@ -502,7 +443,7 @@ const Page = () => {
             <h2 className="text-sm font-semibold text-gray-600 border-b pb-2 mb-4">Tests</h2>
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-primary text-slate-100">
+                <tr className="bg-primary text-textzinc">
                   <th className="p-3 text-left font-medium">Test Name</th>
                   <th className="p-3 text-right font-medium">Price (₹)</th>
                 </tr>
@@ -523,7 +464,7 @@ const Page = () => {
             <h2 className="text-sm font-semibold text-gray-600 border-b pb-2 mb-4">Health Packages</h2>
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-primary text-slate-100">
+                <tr className="bg-primary text-textzinc">
                   <th className="p-3 text-left font-medium">Package Name</th>
                   <th className="p-3 text-right font-medium">Price (₹)</th>
                   <th className="p-3 text-right font-medium">Discount (₹)</th>
@@ -657,15 +598,15 @@ const Page = () => {
 
         {/* Action Buttons */}
         <section className="mt-6 flex gap-4 text-xs">
-          <Button text="Delete" onClick={() => alert('Deleted!')} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2">
+          <Button text="Delete" onClick={() => alert('Deleted!')} className="bg-delete hover:bg-deletehover text-white px-4 py-2">
             <TrashIcon size={16} className="mr-2" />
           </Button>
-          <Button text="Edit" onClick={() => alert('Edit Order!')} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2">
+          <Button text="Edit" onClick={() => alert('Edit Order!')} className="bg-edit hover:bg-edithover text-white px-4 py-2">
             <PencilIcon size={16} className="mr-2" />
           </Button>
           <Button text="Print Bill"
             onClick={() => handlePrint()}
-            className="bg-primary hover:bg-secondary text-white px-4 py-2">
+            className="bg-print hover:bg-printhover text-white px-4 py-2">
             <PrinterIcon size={16} className="mr-2" />
           </Button>
         </section>

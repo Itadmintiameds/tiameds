@@ -1,151 +1,128 @@
+import Button from "@/app/(admin)/component/common/Button";
+import { Bill } from '@/types/printbill/bill';
 import { Document, Page } from "@react-pdf/renderer";
-import React from "react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import React, { useRef, useState } from "react";
+import { CiMail } from "react-icons/ci";
+import { FaCloudDownloadAlt, FaSpinner, FaWhatsapp } from "react-icons/fa";
+import { toast } from 'react-toastify';
 import BillingSummary from "./BillingSummary";
 import Header from "./Header";
 import HealthPackageDetails from "./HealthPackageDetails";
 import PatientDetails from "./PatientDetails";
 import TestDetails from "./TestDetails";
 
-
-
-interface Test {
-  name: string;
-  category: string;
-  price: number;
-}
-// Type for a single health package
-interface HealthPackage {
-  packageName: string;
-  price: number;
-  discount: number;
-  netPrice: number;
-  tests: Test[];
-}
-
-// Type for lab details
-interface LabDetails {
-  logo: string;
-  name: string;
-  address: string;
-  phone: string;
-  email: string;
-  gstn: string;
-  invoiceId: string;
-}
-
-// Type for patient details
-interface PatientDetails {
-  name: string;
-  age: number;
-  email: string;
-  phone: string;
-  address: string;
-  bloodGroup: string;
-  patientId: string;
-  Gender: string;
-}
-
-// Type for the bill object
-interface Bill {
-  lab: LabDetails;
-  totalAmount: number;
-  discount: number;
-  gstRate: number;
-  gstAmount: number;
-  cgstAmount: number;
-  sgstAmount: number;
-  netAmount: number;
-  paymentStatus: string;
-  paymentMethod: string;
-  paymentDate: string;
-  tests: Test[];
-  healthPackages: HealthPackage[] | undefined; // Since `healthPackage` may be undefined
-  patient: PatientDetails;
-}
-
-
-
 const PrintBill: React.FC<{ billingData: Bill }> = ({ billingData }) => {
-  console.log(billingData, "billingData");
+  const [sendReportByEmail, setSendReportByEmail] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null); // Add useRef for capturing HTML element reference
+
+  const generatePDF = async () => {
+    const input = reportRef.current;
+    if (!input) return;
+
+    try {
+      const canvas = await html2canvas(input);
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      pdf.save(`${billingData?.patient?.name || "Lab_Incoice"}.pdf`); // Use correct path to patient name
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF.");
+    }
+  };
+
+  const sendEmailInvoice = async () => {
+    setSendReportByEmail(true);
+    if (!billingData?.patient?.email) {
+      toast.error("Patient email not available.");
+      return;
+    }
+    const input = reportRef.current;
+    if (!input) return;
+
+    try {
+      const canvas = await html2canvas(input);
+      const imgData = canvas.toDataURL("image/png");
+
+      const pdf = new jsPDF("p", "mm", "a4");
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+
+      const pdfBlob = new Blob([pdf.output("arraybuffer")], { type: "application/pdf" });
+
+      const formData = new FormData();
+      formData.append("file", pdfBlob, `${billingData.patient?.name || "Lab_Report"}.pdf`);
+      formData.append("email", billingData.patient.email); // Ensure correct path to patient email
+
+      const response = await fetch("/api/sendinvoice", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        toast.success("Report emailed successfully!");
+        setSendReportByEmail(false);
+      } else {
+        throw new Error("Failed to send email");
+      }
+    } catch (error) {
+      console.error("Error sending email:", error);
+      toast.error("Failed to send report via email.");
+    }
+  };
+
   return (
-    <Document>
-      <Page size="A4">
-        <Header lab={billingData.lab} />
-        <PatientDetails patient={billingData.patient} />
-        <TestDetails tests={billingData.tests} />
-        {billingData.healthPackages && (
-          <HealthPackageDetails healthPackages={billingData.healthPackages} />
-        )}
-        <BillingSummary billingData={billingData} />
-      </Page>
-    </Document>
+    <div>
+      <div className="flex gap-2 justify-end my-2">
+        <Button
+          text=""
+          onClick={generatePDF}
+          className="bg-green-600 text-white p-1 text-sm rounded-lg hover:bg-green-800 transition duration-200 ease-in-out flex items-center gap-3"
+        >
+          <FaCloudDownloadAlt className="text-lg" />
+        </Button>
+        {
+          sendReportByEmail ? (
+            <FaSpinner className="animate-spin text-xs text-primary" />
+          ) : (
+            <Button
+              text=""
+              onClick={sendEmailInvoice}
+              className="bg-blue-600 text-white p-1 text-sm rounded-lg hover:bg-blue-800 transition duration-200 ease-in-out flex items-center gap-3"
+            >
+              <CiMail className="text-lg" />
+            </Button>
+          )
+        }
+        <Button
+          text=""
+          onClick={() => window.print()}
+          className="bg-green-600 text-white p-1 text-sm rounded-lg hover:bg-green-800 transition duration-200 ease-in-out flex items-center gap-3"
+        >
+          <FaWhatsapp className="text-lg" />
+        </Button>
+      </div>
+      <div ref={reportRef}>
+        <Document>
+          <Page size="A4">
+            <Header lab={billingData.lab} />
+            <PatientDetails patient={billingData.patient} />
+            <TestDetails tests={billingData.tests} />
+            {billingData.healthPackages && (
+              <HealthPackageDetails healthPackages={billingData.healthPackages} />
+            )}
+            <BillingSummary billingData={billingData} />
+          </Page>
+        </Document>
+      </div>
+    </div>
   );
 };
+
 export default PrintBill;
 
-
-
-
-
-
-
-
-// import React, { useRef } from "react";
-// import { Document, Page, PDFViewer } from "@react-pdf/renderer";
-// import BillingSummary from "./BillingSummary";
-// import Header from "./Header";
-// import HealthPackageDetails from "./HealthPackageDetails";
-// import PatientDetails from "./PatientDetails";
-// import TestDetails from "./TestDetails";
-// import { IoIosPrint } from "react-icons/io";
-
-// const PrintBill: React.FC<{ billingData: any }> = ({ billingData }) => {
-//   const componentRef = useRef<any>(null);
-
-//   const handlePrint = () => {
-//     const printWindow = window.open("", "_blank");
-//     const printContent = componentRef.current?.innerHTML;
-
-//     if (printWindow && printContent) {
-//       printWindow.document.write(`
-//         <html>
-//           <head>
-//             <title>Print Bill</title>
-//           </head>
-//           <body>
-//             <div>${printContent}</div>
-//           </body>
-//         </html>
-//       `);
-//       printWindow.document.close();
-//       printWindow.print();
-//     }
-//   };
-
-//   return (
-//     <div>
-//       {/* Button to trigger the print dialog */}
-//       <button  className="bg-primary text-white px-4 py-2 rounded text-xs my-2 flex items-center"
-//       onClick={handlePrint}>
-//         <IoIosPrint className="mr-2" />
-//         Print Bill</button>
-
-//       {/* View the bill in the browser using PDFViewer */}
-//       <div style={{ marginBottom: 20 }}>
-//         <PDFViewer width="100%" height="600px">
-//           <Document>
-//             <Page size="A4">
-//               <Header lab={billingData.lab} />
-//               <PatientDetails patient={billingData.patient} />
-//               <TestDetails tests={billingData.tests} />
-//               <HealthPackageDetails healthPackages={billingData.healthPackages} />
-//               <BillingSummary billingData={billingData} />
-//             </Page>
-//           </Document>
-//         </PDFViewer>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default PrintBill;

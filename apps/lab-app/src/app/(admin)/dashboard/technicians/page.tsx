@@ -19,7 +19,7 @@ const tabs: TechnicianTab[] = [
 ];
 
 const Page = () => {
-    const [selectedTab, setSelectedTab] = useState<string>('Lab Create');
+    const [selectedTab, setSelectedTab] = useState<string>('Add Technician');
     return (
         <>
             <Tabs

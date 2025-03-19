@@ -24,7 +24,7 @@ const TabComponent: React.FC<TabsProps> = ({ tabs, selectedTab, onTabChange, chi
                     <button
                         key={tab.id}
                         className={`flex items-center px-4 py-2 rounded-lg text-xs transition-all duration-300 focus:outline-none ${selectedTab === tab.id
-                            ? 'bg-primary text-white scale-105 hover:bg-primarylight'
+                            ? 'bg-primary text-textzinc scale-105 hover:bg-primarylight'
                             : 'bg-gray-200 text-gray-500'
                             }`}
                         onClick={() => onTabChange(tab.id)}

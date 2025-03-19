@@ -134,7 +134,7 @@ const PendingTable: React.FC = () => {
     },
     {
       header: 'Status', accessor: (row: Patient) =>
-        <span className='bg-yellow-300 p-1 rounded'>{row.visit.visitStatus}</span>
+        <span className='bg-pending  text-white p-1 rounded'>{row.visit.visitStatus}</span>
     },
     {
       header: 'Tests',
@@ -145,7 +145,7 @@ const PendingTable: React.FC = () => {
               .map((testId) => {
                 const test = tests.find((t) => t.id === testId);
                 return test ? (
-                  <span key={test.id} className="bg-indigo-300 text-textdark shadow-xl p-0.5 rounded text-sm">
+                  <span key={test.id} className="bg-info text-white text-textdark shadow-xl p-0.5 rounded text-sm">
                     {test.name}
                   </span>
                 ) : null;
@@ -167,7 +167,7 @@ const PendingTable: React.FC = () => {
 
                 if (packageDetails) {
                   return (
-                    <span key={packageDetails.id} className="bg-blue-100 text-textdark shadow-xl p-0.5 rounded text-textsize">
+                    <span key={packageDetails.id} className="bg-info text-white text-textdark shadow-xl p-0.5 rounded text-sm">
                       {packageDetails.packageName}
                     </span>
                   );
@@ -199,15 +199,15 @@ const PendingTable: React.FC = () => {
           <>
             <Button
               text="View"
-              className="p-1 text-white bg-green-500 rounded text-xs hover:bg-primary-light flex items-center justify-center"
+              className="p-x-1 py-0.5 text-white bg-view rounded text-xs hover:bg-viewhover flex items-center justify-center"
               onClick={handleView(row)}
             >
-              <FaEye className="text-sm" />
+              <FaEye className="text-sm mr-2" />
             </Button>
             <Button
               text="Sample"
               onClick={() => row.visit.visitId !== undefined && handleSampleCollect(row.visit.visitId)} // Pass visitId to the function
-              className="flex items-center px-2 py-1 text-white bg-primary rounded text-xs hover:bg-primary-light"
+              className="flex items-center px-2 py-1 text-white bg-edit rounded text-xs hover:bg-edithover"
             >
               <PiTestTubeFill className="text-sm mr-2" />
             </Button>

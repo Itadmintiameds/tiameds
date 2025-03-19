@@ -15,15 +15,15 @@ interface SideBarProps {
 const SideBar = ({isOpen,setIsOpen}: SideBarProps) => {
   return (
     <aside
-    className={`fixed inset-y-0 left-0 z-30 bg-primary text-white shadow-lg transform transition-transform duration-300 ease-in-out ${isOpen ? "w-64" : "w-20"}`}
+    className={`fixed inset-y-0 left-0 z-30 bg-primary text-textzinc shadow-lg transform transition-transform duration-300 ease-in-out ${isOpen ? "w-64" : "w-20"}`}
   >
     <div className="flex items-center justify-between px-4 py-4">
       {isOpen ? (
         <span className="text-lg font-semibold">
-          <Image src="/tiamed2.svg" alt="Company Logo" width={70} height={32} className="invert brightness-400" />
+          <Image src="/LOGO.svg" alt="Company Logo" width={80} height={100} />
         </span>
       ) : (
-        <Image src="/tiamed2.svg" alt="Company Logo" width={50} height={32} className="invert brightness-400" />
+        <Image src="/LOGO.svg" alt="Company Logo"  width={40}  height={100}/>
       )}
       <Button
         text=''

@@ -10,30 +10,95 @@ html {
 /*  Color Variables for Theme Customization */
 :root {
   /* Primary branding colors for consistency across the UI */
-  --PRIMARY:  #4b0b80; /* Main brand color for navigation and pro minent elements */
-  --PRIMARY-LIGHT: #5c1d8f; /* Lighter shade of primary color for hover states */
-  --SECONDARY: #9333ea; /* Accent color for highlights and secondary actions */
-  --TERTIARY: #a855f7; /* Tertiary color for subtle highlights or background accents */
+  /* --PRIMARY:  #4b0b80; Main brand color for navigation and pro minent elements */
+  --PRIMARY: #E1C4F8;
+  /* Main brand color for navigation and pro minent elements */
+  --PRIMARY-LIGHT: #E5D2F4;
+  /* Lighter shade of primary color for hover states */
+  --SECONDARY: #9333ea;
+  /* Accent color for highlights and secondary actions */
+  --TERTIARY: #a855f7;
+  /* Tertiary color for subtle highlights or background accents */
 
   /* Background colors for different sections of the website */
-  --BACKGROUND: #f3f4f6; /* Default page background for content areas */
-  --CARD-BACKGROUND: #ffffff; /* White background for cards, panels, and modals */
-  --CARD-HOVER: #f9fafb; /* Hover state for cards and panels */
+  --BACKGROUND: #f3f4f6;
+  /* Default page background for content areas */
+  --CARD-BACKGROUND: #ffffff;
+  /* White background for cards, panels, and modals */
+  --CARD-HOVER: #f9fafb;
+  /* Hover state for cards and panels */
 
   /* Text colors for improved readability and emphasis */
-  --TEXT-DARK: #1e1b4b; /* Primary text color for headings and important information */
-  --TEXT-LIGHT: #71717a; /* Secondary text for body content */
-  --TEXT-MUTED: #9ca3af; /* Muted text for captions and less critical information */
-  --TEXT-WHITE: #ffffff; /* White text for dark backgrounds */
-  --TEXT-ZINC: #09090b; /* Black text for white backgrounds */
+  --TEXT-DARK: #1e1b4b;
+  /* Primary text color for headings and important information */
+  --TEXT-LIGHT: #71717a;
+  /* Secondary text for body content */
+  --TEXT-MUTED: #9ca3af;
+  /* Muted text for captions and less critical information */
+  --TEXT-WHITE: #ffffff;
+  /* White text for dark backgrounds */
+  --TEXT-ZINC: #09090b;
+  /* Black text for white backgrounds */
 
   /* Button colors for different actions */
-  --SAVE-BUTTON: #8b5cf6; /* Save button background */
-  --SAVE-HOVER: #7c3aed; /* Hover state for save button */
-  --DELETE-BUTTON: #dc2626; /* Delete button background for destructive actions */
-  --DELETE-HOVER: #b91c1c; /* Hover state for delete button */
-  --UPDATE-BUTTON: #4f46e5; /* Update button background for modifications */
-  --UPDATE-HOVER: #4338ca; /* Hover state for update button */
+  --SAVE-BUTTON: #007BFF;
+  /* Standard Save button */
+  --SAVE-HOVER: #0056b3;
+  /* Hover state for save button */
+
+  --DELETE-BUTTON: #FF0000;
+  /* Delete button background for destructive actions */
+  --DELETE-HOVER: #d90606;
+  /* Hover state for delete button */
+  --UPDATE-BUTTON: #4f46e5;
+  /* Update button background for modifications */
+  --UPDATE-HOVER: #4338ca;
+  /* Hover state for update button */
+
+  /* Border colors for separating elements and providing contrast */
+  --CLEAR-BUTTON: #ca0e0e;
+  /* Clear button background for neutral actions */
+  --CLEAR-HOVER: #a90b0b;
+  /* Hover state for clear button */
+
+
+  /* color for the warning message */
+  --COLOR-SUCCESS: #28A745;
+  /* Success message */
+  --COLOR-ERROR: #DC3545;
+  /* Error message */
+  --COLOR-WARNING: #FB7304;
+  /* Warning message */
+  --COLOR-PENDING: #FFC107;
+  /* Pending message */
+  --COLOR-INFO: #17A2B8;
+  /* Info message */
+  --COLOR-DANGER: #DC3545;
+  /* Danger message */
+
+  --COLOR-VIEW: #007BFF;
+  /* View message */
+  --COLOR-VIEW-HOVER: #0056b3;
+  /* Hover state for view message */
+  --COLOR-EDIT: #4f46e5;
+  /* Edit message */
+  --COLOR-EDIT-HOVER: #4338ca;
+  /* Hover state for edit message */
+  --COLOR-DELETE: #DC3545;
+  /* Delete message */
+  --COLOR-DELETE-HOVER: #d90606;
+  /* Hover state for delete message */
+  --COLOR-PRINT: #17A2B8;
+  /* Print message */
+
+  --COLOR-DOWNLOAD: #007BFF;
+  /* Download button */
+  --COLOR-DOWNLOAD-HOVER: #0056b3;
+  /* Hover state */
+
+  --COLOR-UPLOAD: #007BFF;
+  /* Upload button */
+
 }
 
 /* Base Styles for Consistency */
@@ -100,6 +165,7 @@ html {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }

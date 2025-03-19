@@ -8,6 +8,7 @@ import { FaEye } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import Pagination from '../../../common/Pagination';
 import TableComponent from '../../../common/TableComponent';
+import Button from '../../../common/Button';
 
 enum VisitStatus {
   PENDING = 'Pending',
@@ -91,7 +92,7 @@ const VisitingList: React.FC = () => {
     {
       header: 'Sample Status',
       accessor: (row: Patient) => (
-        <span className={`p-1 rounded ${row.visit.visitStatus === 'Pending' ? 'bg-yellow-300' : 'bg-green-300'}`}>
+        <span className={`p-1 rounded ${row.visit.visitStatus === 'Pending' ? 'bg-pending  text-white' : 'bg-success text-white'}`}>
           {row.visit.visitStatus}
         </span>
       )
@@ -100,7 +101,7 @@ const VisitingList: React.FC = () => {
     {
       header: 'Actions',
       accessor: (row: Patient) => (
-        <button className="px-2 py-1 text-white bg-primary rounded hover:bg-primary-light" onClick={handleView(row)}>
+        <button className="px-2 py-1 text-white bg-view rounded hover:bg-viewhover" onClick={handleView(row)}>
           <FaEye />
         </button>
       ),
@@ -141,9 +142,13 @@ const VisitingList: React.FC = () => {
           <input type="date" value={endDateFilter} onChange={(e) => setEndDateFilter(e.target.value)} className="border px-2 py-1 rounded text-xs" />
         </div>
 
-        <button onClick={handleClearFilters} className="px-4 py-2 bg-red-600 text-white rounded flex items-center">
-          <CiFilter className="mr-1 text-white" /> Clear Filters
-        </button>
+        <Button
+           text = ""
+          onClick={handleClearFilters}
+          className="px-4 py-2 bg-clear text-white rounded flex items-center hover:bg-clearhover"
+          >
+          <CiFilter className="mr-1 text-white" /> Clear
+        </Button>
       </div>
 
       {/* Table Component */}

@@ -481,7 +481,7 @@ const AddPatient = () => {
         <Button
           text='Patient'
           onClick={handleAddPatient}
-          className="flex items-center py-1 px-3 bg-primary text-white rounded-md text-xs hover:bg-primarylight"
+          className="flex items-center py-2 px-3 bg-savebutton  hover:bg-savehover text-white rounded-md text-xs hover:bg-primarylight"
         >
           <Plus size={16} className="mr-2" /> {/* Check Icon */}
 
@@ -491,7 +491,7 @@ const AddPatient = () => {
         <Button
           text='Cancel'
           onClick={handleClearPatient}
-          className="flex items-center py-1 px-3 bg-red-500 text-white rounded-md text-xs"
+          className="flex items-center py-2 px-3 bg-clear hover:bg-clearhover text-white rounded-md text-xs"
         >
           <XIcon size={16} className="mr-2" /> {/* X Icon */}
 

@@ -12,7 +12,7 @@ import PackageList from '../../component/package/PackageList';
 const tabs: PackageTabItem[] = [
     { id: 'package', label: 'Package', icon: <RiTestTubeLine className="text-xl" /> },
     { id: 'packageList', label: 'Package List', icon: <CiViewList className="text-xl" /> },
-    { id: 'dashboard', label: 'Dashboard', icon: <CiViewList className="text-xl" /> },      
+    // { id: 'dashboard', label: 'Dashboard', icon: <CiViewList className="text-xl" /> },      
 ];
 
 const Page = () => {

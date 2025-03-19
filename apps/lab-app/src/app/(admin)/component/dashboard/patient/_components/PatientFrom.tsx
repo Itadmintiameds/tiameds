@@ -301,7 +301,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
             type="button"
             text=""
             onClick={handleClearPatient} // Clear patient selection or search input
-            className="bg-red-500 mt-6 text-white px-4 py-2 rounded-md hover:bg-red-600 transition"
+            className="bg-clear mt-6 text-white px-4 py-2 rounded-md hover:bg-clearhover transition"
           >
             <FaTimes />
           </Button>

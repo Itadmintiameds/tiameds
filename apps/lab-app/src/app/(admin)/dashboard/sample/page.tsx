@@ -33,9 +33,9 @@ const Page = () => {
               `}
             >
               <tab.icon
-                className={`w-4 h-4 ${activeTab === tab.name ? 'text-primary' : 'text-gray-400'}`} // Adjusting icon color to match text color
+                className={`w-4 h-4 ${activeTab === tab.name ? 'text-textzinc' : 'text-gray-400'}`} // Adjusting icon color to match text color
               />
-              <span className={`${activeTab === tab.name ? 'text-primary' : 'text-gray-500'}`}>{tab.name}</span> {/* Ensure text color updates */}
+              <span className={`${activeTab === tab.name ? 'text-textzinc' : 'text-gray-500'}`}>{tab.name}</span> {/* Ensure text color updates */}
             </Button>
           ))}
         </div>

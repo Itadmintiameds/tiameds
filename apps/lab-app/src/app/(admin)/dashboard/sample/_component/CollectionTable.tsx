@@ -121,7 +121,7 @@ const CollectionTable: React.FC = () => {
     { header: 'ID', accessor: (row: Patient) => row.visitId },
     { header: 'Name', accessor: (row: Patient) => row.patientname },
     { header: 'Date', accessor: (row: Patient) => <span>{new Date(row.visitDate).toLocaleDateString()}</span> },
-    { header: 'Status', accessor: (row: Patient) => <span className="bg-blue-300 p-1 rounded">{row.visitStatus}</span> },
+    { header: 'Status', accessor: (row: Patient) => <span className="bg-green-400 p-1 ">{row.visitStatus}</span> },
     {
       header: 'Tests',
       accessor: (row: Patient) => (
@@ -129,7 +129,7 @@ const CollectionTable: React.FC = () => {
           {row.testIds.map((testId) => {
             const test = tests.find((t) => t.id === testId);
             return test ? (
-              <span key={test.id} className="bg-indigo-300 text-textdark shadow-xl p-0.5 rounded text-sm">
+              <span key={test.id} className="bg-info text-white text-textdark shadow-xl p-0.5 rounded text-sm">
                 {test.name}
               </span>
             ) : null;
@@ -144,7 +144,7 @@ const CollectionTable: React.FC = () => {
           {row.packageIds.map((packageId) => {
             const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
             return packageDetails ? (
-              <span key={packageDetails.id} className="bg-blue-100 text-textdark shadow-xl p-0.5 rounded text-textsize">
+              <span key={packageDetails.id} className="bg-info text-white text-textdark shadow-xl p-0.5 rounded text-sm">
                 {packageDetails.packageName}
               </span>
             ) : (
@@ -159,7 +159,7 @@ const CollectionTable: React.FC = () => {
       header: 'Samples',
       accessor: (row: Patient) => (
         <div className="flex gap-2 text-xs">
-          <Edit className="text-green-500 cursor-pointer" onClick={() => handleUpdate(row.visitId, row.sampleNames)} />
+          <Edit className="text-edit hover:edithover cursor-pointer" onClick={() => handleUpdate(row.visitId, row.sampleNames)} />
           {row.sampleNames.map((sample, index) => (
             <div key={index} className="flex items-center gap-2">
               <span className="bg-purple-200 p-1 rounded">{sample}</span>
@@ -194,7 +194,7 @@ const CollectionTable: React.FC = () => {
         <Button
           text="Reference"
           onClick={() => handleOpenReportModal(row)}
-          className="flex items-center px-1 py-0.5 text-white bg-primary rounded text-xs hover:bg-primary-light"
+          className="flex items-center text-textzic px-1 py-0.5  bg-primary rounded text-xs hover:bg-primary-light"
         >
           <PlusIcon
             className="text-sm mr-1" />

@@ -12,6 +12,7 @@ import Modal from '../common/Model';
 import Pagination from '../common/Pagination';
 import AddDoctor from './AddDoctor';
 import { PlusIcon } from 'lucide-react';
+import TableComponent from '../common/TableComponent';
 
 
 const DoctorSpeciality = [
@@ -64,7 +65,6 @@ const DoctorList = () => {
     const [addDoctor, setAddDoctor] = useState<Doctor | null>(null);
     const [showModal, setShowModal] = useState<boolean>(false);
     const { currentLab } = useLabs();
-
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [specialityFilter, setSpecialityFilter] = useState<string>('');
     const [qualificationFilter, setQualificationFilter] = useState<string>('');
@@ -123,6 +123,7 @@ const DoctorList = () => {
 
     const handleAddDoctor = (doctor: Doctor) => {
         if (currentLab?.id) {
+            //check data is comming or not
             createDoctor(currentLab.id, doctor)
                 .then((data) => {
                     if (data?.status === 'success') {
@@ -139,6 +140,7 @@ const DoctorList = () => {
         }
     };
 
+
     // Filter and paginate doctors
     const filteredDoctors = doctors.filter((doctor) =>
         doctor.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
@@ -151,6 +153,42 @@ const DoctorList = () => {
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
+    const columns = [
+        { header: "Name", accessor: "name" as keyof Doctor },
+        { header: "Email", accessor: "email" as keyof Doctor },
+        { header: "Speciality", accessor: "speciality" as keyof Doctor },
+        { header: "Qualification", accessor: "qualification" as keyof Doctor },
+        { header: "Phone", accessor: "phone" as keyof Doctor },
+        { header: "License Number", accessor: "licenseNumber" as keyof Doctor },
+    ];
+
+    const actions = (doctor: Doctor) => (
+        <div className="space-x-3 flex justify-center">
+            <Button
+                text=''
+                onClick={() => handleView(doctor)}
+                className="text-view hover:text-viewhover"
+            >
+                <IoMdEye size={20} />
+            </Button>
+            <Button
+                text=''
+                onClick={() => handleEdit(doctor)}
+                className="text-edit hover:text-edithover"
+            >
+                <IoMdCreate size={20} />
+            </Button>
+            <Button
+                text=''
+                onClick={() => doctor.id && handleDelete(doctor.id.toString())}
+                className="text-deletebutton hover:text-deletehover"
+            >
+                <IoMdTrash size={20} />
+            </Button>
+        </div>
+    );
+
+    if(doctors.length === 0) return <Loader />;
 
     return (
         <div className="flex flex-col">
@@ -189,87 +227,24 @@ const DoctorList = () => {
                 <Button
                     text="Doctor"
                     onClick={() => setAddDoctor({} as Doctor)}
-                    className="px-4 py-1 flex text-xs bg-primary text-white rounded-md hover:bg-button-tertiary focus:outline-none rounded "
+                    className="px-4 py-1 flex text-xs bg-primary text-textzinc rounded-md hover:bg-button-tertiary focus:outline-none rounded "
                 >
                     <PlusIcon className='mr-2' />
                 </Button>
             </div>
-
-
-
             <div className="overflow-x-auto">
-                <table className="min-w-full text-sm shadow-md rounded-md">
-                    <thead className="bg-gray-100 text-gray-700">
-                        <tr>
-                            <th className="text-left px-6 py-1">Name</th>
-                            <th className="text-left px-6 py-1">Email</th>
-                            <th className="text-left px-6 py-1">Speciality</th>
-                            <th className="text-left px-6 py-1">Qualification</th>
-                            <th className="text-left px-6 py-1">Phone</th>
-                            <th className="text-left px-6 py-1">License Number</th>
-                            <th className="text-center px-6 py-1">Actions</th>
-                        </tr>
-                    </thead>
-
-                    {loading ? (
-                        <tbody>
-                            <tr>
-                                <td colSpan={7} className="text-center py-4">
-                                    <Loader />
-                                </td>
-                            </tr>
-                        </tbody>
-                    ) : currentDoctors.length === 0 ? (
-                        <tbody>
-                            <tr>
-                                <td colSpan={7} className="text-center py-4">
-                                    No doctors found
-                                </td>
-                            </tr>
-                        </tbody>
-                    ) : (
-                        <tbody>
-                            {currentDoctors.map((doctor) => (
-                                <tr key={doctor.id} className="border-b hover:bg-gray-50">
-                                    <td className="px-6 py-1 font-thin">{doctor.name}</td>
-                                    <td className="px-6 py-1 font-thin">{doctor.email}</td>
-                                    <td className="px-6 py-1 font-thin">{doctor.speciality}</td>
-                                    <td className="px-6 py-1 font-thin">{doctor.qualification}</td>
-                                    <td className="px-6 py-1 font-thin">{doctor.phone}</td>
-                                    <td className="px-6 py-1 font-thin">{doctor.licenseNumber}</td>
-                                    <td className="px-6 py-1 text-center space-x-3">
-                                        <button
-                                            onClick={() => handleView(doctor)}
-                                            className="text-blue-500 hover:text-blue-700"
-                                        >
-                                            <IoMdEye size={20} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleEdit(doctor)}
-                                            className="text-green-500 hover:text-green-700"
-                                        >
-                                            <IoMdCreate size={20} />
-                                        </button>
-                                        <button
-                                            onClick={() => doctor.id && handleDelete(doctor.id.toString())}
-                                            className="text-red-500 hover:text-red-700"
-                                        >
-                                            <IoMdTrash size={20} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    )}
-                </table>
+                <TableComponent
+                    data={loading ? [] : currentDoctors}
+                    columns={columns}
+                    actions={actions}
+                    noDataMessage={"No doctors found"}
+                />
             </div>
-
             <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={setCurrentPage}
             />
-
             {selectedDoctor && (
                 <Modal
                     isOpen={!!selectedDoctor}

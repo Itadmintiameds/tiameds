@@ -64,7 +64,7 @@ const TestDownload = () => {
       <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-md text-center -mt-40">
         {/* Download Icon */}
         <div className="text-blue-500 mb-4">
-          <FaCloudDownloadAlt size={48} className="bg-primary text-slate-100 p-2" />
+          <FaCloudDownloadAlt size={48} className="bg-primary text-textzic p-2" />
         </div>
 
         {/* Title */}

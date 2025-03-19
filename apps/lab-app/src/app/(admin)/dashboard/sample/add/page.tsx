@@ -135,7 +135,7 @@ const Page = () => {
         <h1 className="text-lg font-bold">Sample List</h1>
         <Button
           text="Sample"
-          className="bg-primary hover:bg-primarylight text-white text-xs px-4 py-2 rounded"
+          className="bg-primary hover:bg-primarylight text-textzinc text-xs px-4 py-2 rounded"
           onClick={() => handleOpenModal()}
         >
           <PlusIcon size={20} />
@@ -151,14 +151,14 @@ const Page = () => {
             <Button
               text=""
               onClick={() => handleOpenModal(item)}
-              className="text-green-500 hover:text-green-700 border border-green-500 hover:bg-green-500 hover:text-white"
+              className="text-edit  border border-edit hover:bg-edit hover:text-white"
             >
               <IoMdCreate size={20} />
             </Button>
             <Button
               text=""
               onClick={() => handleDelete(item.id)}
-              className="text-red-500 hover:text-red-700 border border-red-500 hover:bg-red-500 hover:text-white"
+              className="text-deletebutton hover:text-red-700 border border-red-500 hover:bg-deletehover hover:text-white"
             >
               <IoMdTrash size={20} />
             </Button>

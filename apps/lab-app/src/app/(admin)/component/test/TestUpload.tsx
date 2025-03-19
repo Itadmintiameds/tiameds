@@ -29,7 +29,7 @@ const TestUpload = () => {
       <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-md text-center -mt-40">
         {/* Upload Icon */}
         <div className="text-blue-500 mb-4">
-          <FaCloudUploadAlt size={48} className='bg-primary text-slate-100 p-2' />
+          <FaCloudUploadAlt size={48} className='bg-primary text-textzinc p-2' />
         </div>
 
         {/* Title */}
@@ -45,7 +45,7 @@ const TestUpload = () => {
         {/* Upload Button */}
         <label
           htmlFor="file-upload"
-          className="cursor-pointer inline-block bg-gradient-to-r from-primary to-primarylight text-white py-2 px-6 rounded-md
+          className="cursor-pointer inline-block bg-gradient-to-r from-primary to-primarylight text-textzinc py-2 px-6 rounded-md
            hover:from-primary hover:to-secondary
            focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm font-medium"
         >

@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from 'react';
 import { getHealthPackageById } from '@/../services/packageServices';
 import { getTestById } from '@/../services/testService';
 import Button from '@/app/(admin)/component/common/Button';
@@ -6,14 +5,15 @@ import Loader from '@/app/(admin)/component/common/Loader';
 import Modal from '@/app/(admin)/component/common/Model';
 import Pagination from '@/app/(admin)/component/common/Pagination';
 import TableComponent from '@/app/(admin)/component/common/TableComponent';
+import Editreport from '@/app/(admin)/dashboard/sample/_component/Report/Editreport';
+import ViewReport from '@/app/(admin)/dashboard/sample/_component/Report/ViewReport';
 import { useLabs } from '@/context/LabContext';
+import { PatientData } from '@/types/sample/sample';
 import { TestList } from '@/types/test/testlist';
-import { TbReport, TbDownload, TbEdit } from 'react-icons/tb';
+import React, { useEffect, useState } from 'react';
+import { TbEdit, TbReport } from 'react-icons/tb';
 import { toast } from 'react-toastify';
 import { getAllVisitssamples } from '../../../../../../services/sampleServices';
-import ViewReport from '@/app/(admin)/dashboard/sample/_component/Report/ViewReport';
-import Editreport from '@/app/(admin)/dashboard/sample/_component/Report/Editreport';
-import { PatientData } from '@/types/sample/sample';
 
 
 interface Patient extends PatientData {
@@ -81,9 +81,9 @@ const LabReport: React.FC = () => {
         setViewPatient(patient);
     };
 
-    const handleDownloadReport = (patient: Patient) => {
-        console.log('Download Report', patient);
-    };
+    // const handleDownloadReport = (patient: Patient) => {
+    //     console.log('Download Report', patient);
+    // };
 
     const handleEditReport = (patient: Patient) => {
     
@@ -96,7 +96,7 @@ const LabReport: React.FC = () => {
         { header: 'ID', accessor: (row: Patient) => row.visitId },
         { header: 'Name', accessor: (row: Patient) => row.patientname },
         { header: 'Date', accessor: (row: Patient) => <span>{new Date(row.visitDate).toLocaleDateString()}</span> },
-        { header: 'Status', accessor: (row: Patient) => <span className="bg-blue-300 p-1 rounded">{row.visitStatus}</span> },
+        { header: 'Status', accessor: (row: Patient) => <span className="bg-success text-textwhite p-1 rounded">{row.visitStatus}</span> },
         {
             header: 'Tests',
             accessor: (row: Patient) => (
@@ -104,7 +104,7 @@ const LabReport: React.FC = () => {
                     {row.testIds.map((testId) => {
                         const test = tests.find((t) => t.id === testId);
                         return test ? (
-                            <span key={test.id} className="bg-indigo-300 text-textdark shadow-xl p-0.5 rounded text-sm">
+                            <span key={test.id} className="bg-info text-textwhite shadow-xl p-0.5 rounded text-sm">
                                 {test.name}
                             </span>
                         ) : null;
@@ -119,7 +119,7 @@ const LabReport: React.FC = () => {
                     {row.packageIds.map((packageId) => {
                         const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
                         return packageDetails ? (
-                            <span key={packageDetails.id} className="bg-blue-100 text-textdark shadow-xl p-0.5 rounded text-textsize">
+                            <span key={packageDetails.id} className="bg-info text-textwhite shadow-xl p-0.5 rounded text-textsize">
                                 {packageDetails.packageName}
                             </span>
                         ) : (
@@ -137,25 +137,25 @@ const LabReport: React.FC = () => {
                     <Button
                         text="View"
                         onClick={() => handleOpenReportModal(row)}
-                        className="flex items-center px-2 py-1 text-white bg-green-500 rounded text-xs hover:bg-green-600"
+                        className="flex items-center px-2 py-1 text-white bg-view rounded text-xs hover:bg-viewhover"
                     >
                         <TbReport className="text-sm mr-1" />
                     </Button>
 
                     {/* Download Report */}
-                    <Button
+                    {/* <Button
                         text="Download"
                         onClick={() => handleDownloadReport(row)}
                         className="flex items-center px-2 py-1 text-white bg-blue-500 rounded text-xs hover:bg-blue-600"
                     >
                         <TbDownload className="text-sm mr-1" />
-                    </Button>
+                    </Button> */}
 
                     {/* Edit Report */}
                     <Button
                         text="Edit"
                         onClick={() => handleEditReport(row)}
-                        className="flex items-center px-2 py-1 text-white bg-yellow-500 rounded text-xs hover:bg-yellow-600"
+                        className="flex items-center px-2 py-1 text-white bg-edit rounded text-xs hover:bg-edithover"
                     >
                         <TbEdit className="text-sm mr-1" />
                     </Button>

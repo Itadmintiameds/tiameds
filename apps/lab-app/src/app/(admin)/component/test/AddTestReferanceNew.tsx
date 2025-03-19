@@ -1,5 +1,8 @@
-import React from "react";
 import { TestReferancePoint } from "@/types/test/testlist";
+import { TrashIcon } from "@heroicons/react/24/outline";
+import { PlusIcon } from "lucide-react";
+import React from "react";
+import Button from "../common/Button";
 
 interface TestAddReferanceProps {
     handleAddNewReferanceRecord: (e: React.FormEvent) => void;
@@ -76,16 +79,21 @@ const AddTestReferanceNew = ({
 
                 {/* Action Buttons */}
                 <div className="col-span-2 flex justify-end space-x-2 mt-4">
-                    <button
+                    <Button
+                        text="Cancel"
                         type="button"
                         onClick={() => setNewReferanceRecord({} as TestReferancePoint)}
-                        className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition"
+                        className="bg-delete text-white px-4 py-2 rounded hover:bg-deletehover transition hover:deletehover"
                     >
-                        Cancel
-                    </button>
-                    <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
-                        Add
-                    </button>
+                        <TrashIcon className="h-5 w-5" />
+                    </Button>
+                    <Button
+                        text="Add"
+                        onClick={() => { }}
+                        type="submit"
+                        className="bg-savebutton text-white px-4 py-2 rounded hover:bg-savehover transition">
+                        <PlusIcon className="h-5 w-5" />
+                    </Button>
                 </div>
             </form>
         </div>

@@ -48,8 +48,8 @@ export const navigation: NavigationItem[] = [
     current: false,
     children: [
       { name: "Daily Reports", href: "#", current: false, icon: ClipboardListIcon },
-      { name: "Monthly Reports", href: "#", current: false, icon: ClipboardListIcon },
-      { name: "Annual Reports", href: "#", current: false, icon: ClipboardListIcon },
+      // { name: "Monthly Reports", href: "#", current: false, icon: ClipboardListIcon },
+      // { name: "Annual Reports", href: "#", current: false, icon: ClipboardListIcon },
     ],
   },
   {

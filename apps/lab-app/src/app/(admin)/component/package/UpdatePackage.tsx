@@ -1,11 +1,14 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 import { getTests } from '@/../services/testService';
+import Button from '@/app/(admin)/component/common/Button';
+import Loader from '@/app/(admin)/component/common/Loader';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
+import { PlusIcon } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { FaPlus, FaTimes } from 'react-icons/fa';
 
 
 interface updatePackage {
@@ -126,7 +129,7 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
     return (
         <div className="flex flex-col md:flex-row justify-around gap-4">
             {/* Package Details */}
-            <div className="p-4 bg-slate-50 rounded-lg shadow-lg w-full md:w-1/2">
+            <div className="p-4 bg-cardbackground rounded-lg shadow-lg w-full md:w-1/2">
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-600">Package Name</label>
@@ -180,18 +183,20 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
                 </div>
 
                 <div className="flex justify-end mt-4">
-                    <button
+                    <Button
+                        
+                        text="Save Changes"
                         onClick={handleSave}
-                        className="flex items-center space-x-2 px-4 py-2 bg-indigo-900 text-white rounded-md hover:bg-indigo-700 focus:outline-none"
+                        className="flex items-center space-x-2 px-4 py-2 bg-savebutton text-white rounded-md hover:bg-savehover focus:outline-none text-xs"
                     >
-                        <FaSave />
-                        <span>Save Changes</span>
-                    </button>
+                        <PlusIcon size={16} />
+                       
+                    </Button>
                 </div>
             </div>
 
             {/* Available Tests */}
-            <div className="p-4 bg-slate-50 rounded-lg shadow-lg w-full md:w-1/2">
+            <div className="p-4 bg-cardbackground rounded-lg shadow-lg w-full md:w-1/2">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4">Available Tests</h2>
                 <div className="flex items-center space-x-2 mb-4">
                     <input
@@ -215,7 +220,7 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
                 </div>
                 <div className="overflow-y-auto max-h-80">
                     {loading ? (
-                        <p>Loading tests...</p>
+                        <Loader />
                     ) : (
                         filteredTests.map((test) => (
                             <div
@@ -226,12 +231,13 @@ const UpdatePackage = ({ packageData, onClose, handleUpdatePackage }: UpdatePack
                                     <span className="text-sm font-medium text-gray-700">{test.name}</span>
                                     <span className="text-xs text-gray-500">{test.category}</span>
                                 </div>
-                                <button
+                                <Button
+                                    text = ''
                                     onClick={() => handleAddTest(test)}
                                     className="text-green-500 hover:text-green-700"
                                 >
                                     <FaPlus />
-                                </button>
+                                </Button>
                             </div>
                         ))
                     )}

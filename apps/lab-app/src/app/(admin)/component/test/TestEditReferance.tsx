@@ -1,5 +1,8 @@
 import { TestReferancePoint } from "@/types/test/testlist";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import { TrashIcon } from "lucide-react";
 import React from "react";
+import Button from "../common/Button";
 
 
 
@@ -13,10 +16,10 @@ interface TestEditReferanceProps {
     setFormData: React.Dispatch<React.SetStateAction<TestReferancePoint>>;
 }
 
-const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChange ,formData}: TestEditReferanceProps) => {
+const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChange, formData }: TestEditReferanceProps) => {
     if (!editRecord) return null;
 
-  
+
 
     return (
         <div className="p-4 border rounded shadow-lg bg-white">
@@ -111,19 +114,20 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
 
                 {/* Action Buttons */}
                 <div className="flex justify-end space-x-3 mt-4">
-                    <button
-                        type="button"
+                    <Button
+                        text="Cancel"
                         onClick={() => setEditRecord(null)}
-                        className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition"
+                        className="bg-delete text-white px-4 py-2 rounded hover:bg-deletehover transition hover:deletehover"
                     >
-                        Cancel
-                    </button>
-                    <button
+                        <TrashIcon className="w-6 h-6" />
+                    </Button>
+                    <Button
+                        text="Save"
+                        onClick={() => {}}
                         type="submit"
-                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-                    >
-                        Save
-                    </button>
+                        className="bg-savebutton text-white px-4 py-2 rounded hover:bg-savehover transition">
+                        <PlusIcon className="h-5 w-5" />
+                    </Button>
                 </div>
             </form>
         </div>

@@ -28,7 +28,7 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
     loading,
 
 }) => {
-   
+
     const [allSamples, setAllSamples] = useState<Sample[]>([]);
     const [selectedSample, setSelectedSample] = useState<string>("");
     const [editIndex, setEditIndex] = useState<number | null>(null);
@@ -56,7 +56,7 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
             setSelectedSample("");
 
             // Trigger parent update when a sample is added
-          
+
         }
     };
 
@@ -81,7 +81,7 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
         return <Loader />;
     }
     return (
-        <div className="max-w-lg mx-auto p-5 bg-white shadow-md rounded-lg">
+        <div className="max-w-lg mx-auto p-5 bg-white">
             <h1 className="text-xl font-semibold text-gray-700 mb-4">Patient Sample Collection</h1>
 
             {/* Dropdown and Add Button */}
@@ -98,12 +98,13 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
                         </option>
                     ))}
                 </select>
-                <button
+                <Button
+                    text=''
                     onClick={handleAddSample}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center"
+                    className="px-3 py-2 bg-savebutton text-white rounded-lg hover:bg-savehover text-sm flex items-center"
                 >
                     <FaPlusCircle className="mr-1" /> Add
-                </button>
+                </Button>
             </div>
 
             {/* Collected Samples List */}
@@ -146,14 +147,14 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
                                     <Button
                                         text=""
                                         onClick={() => handleEditSample(index)}
-                                        className="p-1 bg-yellow-400 text-white rounded hover:bg-yellow-500 text-xs flex items-center"
+                                        className="p-1 bg-edit text-white rounded hover:bg-edithover text-xs flex items-center"
                                     >
                                         <FaEdit className="mr-1" /> Edit
                                     </Button>
                                     <Button
                                         text=""
                                         onClick={() => handleDeleteSample(index)}
-                                        className="p-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs flex items-center"
+                                        className="p-1 bg-delete text-white rounded hover:bg-deletehover text-xs flex items-center"
                                     >
                                         <FaTrashAlt className="mr-1" /> Delete
                                     </Button>
@@ -167,9 +168,9 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
             {/* Submit Button */}
             <div className="mt-4">
                 <Button
-                    text="Save Samples"
+                    text="Samples"
                     onClick={handleVititSample}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center"
+                    className="px-4 py-2 bg-savebutton text-white rounded-lg hover:bg-savehover text-sm flex items-center"
                 >
                     <TbTestPipe2Filled className="mr-2" />
                 </Button>

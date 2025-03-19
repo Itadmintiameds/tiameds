@@ -44,6 +44,7 @@ const Layout = ({ children }: LayoutProps) => {
     const selectedLabName = event.target.value;
     const selectedLab = labs.find((lab) => lab.name === selectedLabName);
     if (selectedLab) {
+      alert("Are you sure you want to switch to " + selectedLab.name);
       setCurrentLab(selectedLab);
       toast.success(`Switched to ${selectedLab.name}`, { position: "top-right", autoClose: 2000 });
     }

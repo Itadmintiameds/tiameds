@@ -1,5 +1,8 @@
 import React from "react";
 import { TestReferancePoint } from "@/types/test/testlist";
+import Button from "../common/Button";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import { TrashIcon } from "lucide-react";
 
 interface TestAddReferanceProps {
     handleAddExistingReferanceRecord: (e: React.FormEvent) => void;
@@ -8,7 +11,7 @@ interface TestAddReferanceProps {
     setExistingTestReferanceRecord: React.Dispatch<React.SetStateAction<TestReferancePoint>>;
 }
 
-const AddExistingTestReferance= ({
+const AddExistingTestReferance = ({
     handleAddExistingReferanceRecord,
     handleChangeRef,
     existingTestReferanceRecord,
@@ -75,16 +78,21 @@ const AddExistingTestReferance= ({
 
                 {/* Action Buttons */}
                 <div className="col-span-2 flex justify-end space-x-2 mt-4">
-                    <button
+                    <Button
+                        text='Cancel'
                         type="button"
                         onClick={() => setExistingTestReferanceRecord({} as TestReferancePoint)}
-                        className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition"
-                    >
-                        Cancel
-                    </button>
-                    <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
-                        Add
-                    </button>
+                        className="bg-delete text-white px-4 py-2 rounded hover:bg-deletehover transition hover:deletehover"
+                        >
+                            <TrashIcon className="h-5 w-5" />
+                    </Button>
+                    <Button
+                        text='Add'
+                        onClick={() => { }}
+                        type="submit"
+                        className="bg-savebutton text-white px-4 py-2 rounded hover:bg-savehover transition">
+                        <PlusIcon className="h-5 w-5" />
+                    </Button>
                 </div>
             </form>
         </div>

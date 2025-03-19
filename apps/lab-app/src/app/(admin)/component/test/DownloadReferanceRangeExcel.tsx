@@ -66,7 +66,7 @@ const DownloadReferenceRange = () => {
         <div className="flex justify-center items-center bg-gray-50 h-screen">
             <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-md text-center -mt-40">
                 <div className="text-blue-500 mb-4">
-                    <FaCloudDownloadAlt size={48} className="bg-primary text-slate-100 p-2" />
+                    <FaCloudDownloadAlt size={48} className="bg-primary text-textzinc p-2" />
                 </div>
                 <h1 className="text-xl font-semibold text-gray-700 mb-2">
                     Download Test Reference Range
