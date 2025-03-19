@@ -38,6 +38,7 @@ const ListOfActiveMemberOfLab = () => {
                 try {
                     setLoading(true);
                     const response = await getMembersOfLab(currentLab.id);
+                    console.log('response', response);
                     setMembers(response?.data || []);
                 } catch (error) {
                     console.error('Failed to fetch members:', error);
