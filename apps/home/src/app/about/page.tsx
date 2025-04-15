@@ -7,6 +7,8 @@ const stats = [
   { label: 'Assets under holding', value: '$119 trillion' },
   { label: 'New users annually', value: '46,000' },
 ]
+
+
 const values = [
   {
     name: 'Innovation',
