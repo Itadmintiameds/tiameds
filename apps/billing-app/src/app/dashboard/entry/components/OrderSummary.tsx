@@ -152,7 +152,7 @@ const OrderSummary = () => {
                   },
                   { label: "DL No", value: "" },
                   { label: "GSTIN No", value: "" },
-                ].map(({ label, value }, index) => (
+                ]?.map(({ label, value }, index) => (
                   <div key={index} className="flex text-sm space-y-3 space-x-2">
                     <div className="font-semibold">{label}</div>
                     <div>: {String(value ?? "N/A")}</div>
@@ -181,7 +181,7 @@ const OrderSummary = () => {
                     label: "Address",
                     value: supplierData?.supplierAddress ?? "N/A",
                   },
-                ].map(({ label, value }, index) => (
+                ]?.map(({ label, value }, index) => (
                   <div key={index} className="flex text-sm space-y-3 space-x-2">
                     <div className="font-semibold">{label}</div>
                     <div>: {String(value)}</div>
@@ -217,7 +217,7 @@ const OrderSummary = () => {
                   value: purchaseEntryData.grandTotal,
                   isTotal: true,
                 },
-              ].map(({ label, value, isTotal }, index) => (
+              ]?.map(({ label, value, isTotal }, index) => (
                 <div
                   key={index}
                   className={`flex justify-between ${

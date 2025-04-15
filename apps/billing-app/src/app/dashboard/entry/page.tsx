@@ -51,7 +51,7 @@ const Page = () => {
         const purchases: PurchaseEntryData[] = response.data;
 
         const purchasesWithSuppliers = await Promise.all(
-          purchases.map(async (purchase) => {
+          purchases?.map(async (purchase) => {
             const supplierName = await fetchSupplier(purchase.supplierId);
             return { ...purchase, supplierName }; 
           })

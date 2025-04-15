@@ -174,7 +174,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
           <option value="newItem" className="text-Purple">
             + Add Item
           </option>
-          {items.map((item) => (
+          {items?.map((item) => (
             <option key={item.itemId} value={item.itemId}>
               {item.itemName}
             </option>
@@ -356,7 +356,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
           onCancelCallback: () => {
             // ✅ Clear from STATE (not input directly)
             setPurchaseRows((prev) =>
-              prev.map((row, i) =>
+              prev?.map((row, i) =>
                 i === idx ? { ...row, expiryDate: "" } : row
               )
             );
@@ -461,7 +461,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
 
         // Step 1: Prepare the rows with basic order data
         let updatedRows: PurchaseEntryItem[] =
-          purchaseOrder.purchaseOrderItemDtos.map(
+          purchaseOrder.purchaseOrderItemDtos?.map(
             (item: PurchaseEntryItem): PurchaseEntryItem => ({
               itemId: item.itemId,
               itemName: item.itemName,
@@ -488,7 +488,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
         setPurchaseRows(updatedRows);
 
         updatedRows = await Promise.all(
-          updatedRows.map(
+          updatedRows?.map(
             async (row: PurchaseEntryItem): Promise<PurchaseEntryItem> => {
               try {
                 const itemDetails = await getItemById(row.itemId.toString());
@@ -670,7 +670,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
       totalCgst: gstTotal,
       totalSgst: gstTotal,
       grandTotal: grandTotal,
-      stockItemDtos: purchaseRows.map((row) => ({
+      stockItemDtos: purchaseRows?.map((row) => ({
         itemId: row.itemId,
         batchNo: row.batchNo,
         packageQuantity: row.packageQuantity,
@@ -788,7 +788,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
               { id: "pharmacyName", label: "Pharmacy" },
               { id: "purchaseBillNo", label: "Bill No" },
               { id: "billDate", label: "Bill Date", type: "date" },
-            ].map(({ id, label, type }) => (
+            ]?.map(({ id, label, type }) => (
               <div key={id} className="relative w-72">
                 {id === "orderId" ? (
                   <>
@@ -809,7 +809,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
                       <option value="" disabled>
                         Select Order
                       </option>
-                      {orderPurchase.map((order) => (
+                      {orderPurchase?.map((order) => (
                         <option
                           key={order.orderId ?? "unknown"}
                           value={order.orderId?.toString() || ""}
@@ -840,7 +840,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
               { id: "paymentDueDate", label: "Payment Due Date", type: "date" },
               { id: "supplierName", label: "Supplier", type: "text" },
               { id: "invoiceAmount", label: "Invoice Amount", type: "number" },
-            ].map(({ id, label, type }) => (
+            ]?.map(({ id, label, type }) => (
               <InputField
                 key={id}
                 id={id}
@@ -888,7 +888,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
               value: grandTotal.toFixed(2),
               isTotal: true,
             },
-          ].map(({ label, value, isTotal }, index) => (
+          ]?.map(({ label, value, isTotal }, index) => (
             <div
               key={index}
               className={`flex justify-between ${
