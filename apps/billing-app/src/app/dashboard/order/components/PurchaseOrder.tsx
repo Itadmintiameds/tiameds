@@ -1,3 +1,4 @@
+'use client';
 import Button from "@/app/components/common/Button";
 import Drawer from "@/app/components/common/Drawer";
 import InputField from "@/app/components/common/InputField";
