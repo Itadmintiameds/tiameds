@@ -1,74 +1,133 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
-import { FaArrowLeft, FaSignInAlt, FaUserPlus } from 'react-icons/fa'
-import Link from 'next/link'
-import Login from '../components/Login'
-import Register from '../components/Register'
-import Image from 'next/image'
-
-
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { login } from "@/app/services/auth.Service";
+import { toast } from "react-toastify";
 
 const Page: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login')
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
-  const handleTabSwitch = (tab: 'login' | 'register') => {
-    setActiveTab(tab)
-  }
+  const handleLogin = async () => {
+    if (!username || !password) {
+      toast.error("Username and password are required.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await login({ username, password });
+      document.cookie = `token=${response.token}; path=/;`;
+      localStorage.setItem("user", JSON.stringify(response?.data));
+
+      toast.success("Logged in successfully!", { autoClose: 1000 });
+      router.push("/dashboard/order");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        toast.error(err.message || "Login failed. Please try again.");
+      } else {
+        toast.error("Login failed. Please try again.");
+      }
+    
+    
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <div className="h-screen flex bg-gradient-to-r from-gray-50 to-indigo-200">
-      {/* Left Panel */}
-      <div className="w-full sm:w-1/3 bg-white flex flex-col justify-center items-center p-8">
-
-        <Image src="/tiamed2.svg" alt="Lab Management System" width={200} height={200} />
-        <h1 className="text-3xl font-bold text-indigo-600 mb-4">Welcome to Tiamed</h1>
-        <p className="text-gray-500 text-center mb-6">
-          Manage your laboratory seamlessly with our powerful system.
-        </p>
-        <Link href="/" passHref>
-          <button className="flex items-center mt-6 text-sm font-semibold text-indigo-500 hover:text-indigo-700 transition-all duration-300">
-            <FaArrowLeft className="mr-2" /> Back to Home
-          </button>
-        </Link>
-      </div>
-
-      {/* Right Panel */}
-      <div className="flex-1 flex flex-col bg-white">
-        {/* Tab Navigation */}
-        <div className="flex justify-center border-b border-gray-200 bg-gray-50 shadow-sm">
-          <button
-            className={`flex items-center justify-center w-1/2 py-4 text-lg font-semibold transition-all ${activeTab === 'login'
-                ? 'text-indigo-600 border-b-4 border-indigo-500 bg-white'
-                : 'text-gray-500 hover:text-indigo-500'
-              }`}
-            onClick={() => handleTabSwitch('login')}
-          >
-            <FaSignInAlt className="mr-2" />
-            Log In
-          </button>
-          <button
-            className={`flex items-center justify-center w-1/2 py-4 text-lg font-semibold transition-all ${activeTab === 'register'
-                ? 'text-indigo-600 border-b-4 border-indigo-500 bg-white'
-                : 'text-gray-500 hover:text-indigo-500'
-              }`}
-            onClick={() => handleTabSwitch('register')}
-          >
-            <FaUserPlus className="mr-2" />
-            Register
-          </button>
+    <div className="flex h-screen bg-darkPurple">
+      <div className="w-[30%] flex flex-col items-center justify-center text-white px-10 space-y-10">
+        <div className="mt-10 flex space-x-4">
+          <Image
+            src="/TiamedsIcon1.svg"
+            alt="Company Logo"
+            width={80}
+            height={40}
+          />
+          <Image
+            src="/TiamedsLogo1.svg"
+            alt="Company Logo"
+            width={150}
+            height={40}
+          />
         </div>
 
-        {/* Content Area */}
-        {/* <div className="flex-1 flex justify-center items-center bg-gradient-to-br from-gray-50 to-indigo-100 p-4 sm:p-8">
-          {activeTab === 'login' ? <Login /> : <Register />}
-        </div> */}
-        <div className=" bg-gradient-to-br from-gray-50 to-indigo-100 sm:p-8">
-          {activeTab === 'login' ? <Login /> : <Register />}
+        <div>
+        <Image
+            src="/TiamedsLogo2.svg"
+            alt="Company Logo"
+            width={280}
+            height={40}
+          />
+        </div>
+      </div>
+
+      <div className="w-[70%] flex items-center justify-center bg-white rounded-l-[2rem] shadow-lg">
+        <div className="w-96 space-y-6">
+          <h2 className="text-2xl font-semibold text-gray-900">Login</h2>
+
+          <div className="mt-5 space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              User Name
+            </label>
+            <input
+              type="text"
+              placeholder="username"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-900"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+
+          <div className="mt-4 space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Password
+            </label>
+            <input
+              type="password"
+              placeholder="password123"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-900"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+
+          {/* <div className="flex items-center justify-between mt-4">
+            <label className="flex items-center text-sm text-gray-700">
+              <input
+                type="checkbox"
+                className="mr-2"
+                checked={rememberMe}
+                onChange={() => setRememberMe(!rememberMe)}
+              />
+              Remember me
+            </label>
+            <a href="#" className="text-sm text-purple-900 hover:underline">
+              Forgot Password?
+            </a>
+          </div> */}
+
+          <div>
+            <button
+              className={`w-96 bg-darkPurple text-white px-4 py-2 rounded-3xl cursor-pointer ${
+                isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              onClick={handleLogin}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Logging in..." : "Log In"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Page
+export default Page;

@@ -1,14 +1,15 @@
 'use client'
 
 
+import { registerSchema } from '@/app/schema/Register';
+import { register } from '@/app/services/auth.Service';
+import { RegisterData } from '@/app/types/RegisterData';
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { useState } from 'react';
 import { FaEnvelope, FaGlobeAsia, FaHome, FaLock, FaMapMarkerAlt, FaPhoneAlt, FaRegBuilding, FaUser } from 'react-icons/fa';
-import { RegisterData } from '@/types/Register';
-import { register } from '../../../services/authService';
+
 import { toast } from 'react-toastify';
-import { registerDataSchema } from '@/schema/registerDataSchema';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState<RegisterData>({
@@ -39,13 +40,10 @@ const Register: React.FC = () => {
     e.preventDefault();
     try {
       // Validate the form data
-      registerDataSchema.parse(formData);
+      registerSchema.parse(formData);
       
       // Call the register service
       const response = await register(formData);
-      console.log("response-----------"+response);
-      
-
       
       // Show success or error message based on the response
       if (response.status === 'OK') {
