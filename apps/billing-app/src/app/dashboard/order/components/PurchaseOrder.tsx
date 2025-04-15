@@ -138,7 +138,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
           <option value="newItem" className="text-Purple">
             + Add Item
           </option>
-          {items.map((item) => (
+          {items?.map((item) => (
             <option key={item.itemId} value={item.itemId}>
               {item.itemName}
             </option>
@@ -210,7 +210,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
         );
 
         setorderItemRows((prev) =>
-          prev.map((row, i) =>
+          prev?.map((row, i) =>
             i === index
               ? {
                   ...row,
@@ -231,7 +231,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
       }
     } else {
       setorderItemRows((prev) =>
-        prev.map((row, i) =>
+        prev?.map((row, i) =>
           i === index
             ? {
                 ...row,
@@ -397,7 +397,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
       totalAmount: 0,
       totalGst: 0,
       grandTotal: formData.grandTotal,
-      purchaseOrderItemDtos: orderItemRows.map((row) => ({
+      purchaseOrderItemDtos: orderItemRows?.map((row) => ({
         itemId: row.itemId,
         itemName: row.itemName,
         quantity: row.quantity,
@@ -525,7 +525,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
                 label: "Intended Delivery Date",
                 type: "date",
               },
-            ].map(({ id, label, type }) => (
+            ]?.map(({ id, label, type }) => (
               <div key={id} className="relative w-72">
                 {/* Supplier Dropdown */}
                 {id === "supplierId" ? (
@@ -559,7 +559,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
                         + New Supplier
                       </option>
 
-                      {suppliers.map((sup) => (
+                      {suppliers?.map((sup) => (
                         <option key={sup.supplierId} value={sup.supplierId}>
                           {sup.supplierName}
                         </option>
@@ -587,7 +587,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
                       </option>
 
                       {Array.isArray(pharmacies) &&
-                        pharmacies.map((pharmacy) => (
+                        pharmacies?.map((pharmacy) => (
                           <option
                             key={pharmacy.pharmacyId}
                             value={pharmacy.pharmacyId}
@@ -647,7 +647,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
 
               isTotal: true,
             },
-          ].map(({ label, value, isTotal }, index) => (
+          ]?.map(({ label, value, isTotal }, index) => (
             <div
               key={index}
               className={`flex justify-between ${
