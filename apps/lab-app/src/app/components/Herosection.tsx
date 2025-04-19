@@ -25,6 +25,10 @@ export default function Herosection() {
             src="tiamed1.svg"
             className="h-11"
           />
+           <p className="text-gray-500 italic mb-4">
+        &quot;Innovating Today, Shaping Tomorrow!&quot;
+        </p>
+
           <div className="mt-24 sm:mt-32 lg:mt-16">
             <a href="#" className="inline-flex space-x-6 animate-fade-in-up">
               <span className="rounded-full bg-indigo-600/10 px-3 py-1 text-sm/6 font-semibold text-purple-700 ring-1 ring-inset ring-indigo-600/10">
