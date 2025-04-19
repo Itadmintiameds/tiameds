@@ -1,32 +1,28 @@
-import React from "react";
-import TopStats from "./TopStatus";
-import PieChartStatus from "./PieChartStatus";
-import BarGraph from "./BarGraph";
-import { useEffect, useState } from 'react';
 import { useLabs } from '@/context/LabContext';
-import Loader from '../../common/Loader';
-import DatePicker from "react-datepicker";
-import {
-  FaUserInjured,
-  FaClipboardList,
-  FaFlask,
-  FaClock,
-  FaMoneyBillWave,
-  FaBox,
-  FaWallet,
-  FaVial,
-  FaBriefcaseMedical,
-  FaUserMd,
-  FaPercentage,
-  FaChartLine,
-} from 'react-icons/fa';
 import dayjs from 'dayjs';
+import { useEffect, useState } from 'react';
+import DatePicker from "react-datepicker";
 import 'react-datepicker/dist/react-datepicker.css';
+import {
+  FaBox,
+  FaBriefcaseMedical,
+  FaChartLine,
+  FaClock,
+  FaFlask,
+  FaMoneyBillWave,
+  FaPercentage,
+  FaUserInjured,
+  FaUserMd,
+  FaVial,
+  FaWallet
+} from 'react-icons/fa';
 import { getLabStatsData } from '../../../../../../services/statusServices';
+import Loader from '../../common/Loader';
+import BarGraph from "./BarGraph";
+import PieChartStatus from "./PieChartStatus";
+import TopStats from "./TopStatus";
 
 const StatisticsMain = () => {
-
-
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<{ name: string; value: number | string; icon: JSX.Element }[]>([]);
   const [selectedFilter, setSelectedFilter] = useState('today');
@@ -35,7 +31,7 @@ const StatisticsMain = () => {
     endDate: null,
   });
   const { currentLab } = useLabs();
-
+  
   useEffect(() => {
     if (currentLab?.id) {
       fetchStats();
@@ -68,8 +64,9 @@ const StatisticsMain = () => {
       if (data) {
         setStats(
           [
-            { name: 'Number of Patients', value: data.numberOfPatients, icon: <FaUserInjured size={28} className="text-primary" /> },
-            { name: 'Number of Visits', value: data.numberOfVisits, icon: <FaClipboardList size={28} className="text-secondary" /> },
+            // { name: 'Number of Patients', value: data.numberOfPatients, icon: <FaUserInjured size={28} className="text-primary" /> },
+            { name: 'Number of Patients', value: data.numberOfVisits, icon: <FaUserInjured size={28} className="text-primary" /> },
+            // { name: 'Number of Visits', value: data.numberOfVisits, icon: <FaClipboardList size={28} className="text-secondary" /> },
             { name: 'Collected Samples', value: data.collectedSamples, icon: <FaFlask size={28} className="text-tertiary" /> },
             { name: 'Pending Samples', value: data.pendingSamples, icon: <FaClock size={28} className="text-deletebutton" /> },
             { name: 'Paid Visits', value: data.paidVisits, icon: <FaMoneyBillWave size={28} className="text-savebutton" /> },

@@ -30,6 +30,7 @@ interface TopNavProps {
 }
 
 const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange }) => {
+  
   const handleLogout = () => {
     toast.success("Logged out successfully", {
       position: "top-right",
