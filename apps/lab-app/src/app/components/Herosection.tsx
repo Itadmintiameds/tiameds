@@ -27,7 +27,7 @@ export default function Herosection() {
           />
           <div className="mt-24 sm:mt-32 lg:mt-16">
             <a href="#" className="inline-flex space-x-6 animate-fade-in-up">
-              <span className="rounded-full bg-indigo-600/10 px-3 py-1 text-sm/6 font-semibold text-primary ring-1 ring-inset ring-indigo-600/10">
+              <span className="rounded-full bg-indigo-600/10 px-3 py-1 text-sm/6 font-semibold text-purple-700 ring-1 ring-inset ring-indigo-600/10">
                 New Release
               </span>
               <span className="inline-flex items-center space-x-2 text-sm/6 font-medium text-gray-600">
@@ -51,9 +51,9 @@ export default function Herosection() {
           <div className="mt-10 flex items-center gap-x-6">
             <Link
               href="/login"
-             className="rounded-md bg-gradient-to-r from-primary to-secondary px-12 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gradient-to-r hover:from-secondary hover:to-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 animate-bounce"
+             className="rounded-md bg-gradient-to-r from-purple-900 to-secondary px-12 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gradient-to-r hover:from-secondary hover:to-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 animate-bounce"
             >
-              Get started
+              Login
             </Link>
            
           </div>

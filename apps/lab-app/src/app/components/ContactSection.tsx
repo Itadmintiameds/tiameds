@@ -83,7 +83,7 @@ const ContactUsSection = () => {
           <div className="text-lg text-textmuted flex gap-2">
             For quick assistance, email us at{' '}
             <div className="animate-bounce">
-              <Link href="mailto:support@tiameds.com" className="text-primary font-semibold hover:text-textdark transition duration-300">
+              <Link href="mailto:support@tiameds.com" className="text-purple-700 font-semibold hover:text-textdark transition duration-300">
                 support@tiameds.ai
               </Link>
             </div>
@@ -144,7 +144,7 @@ const ContactUsSection = () => {
             </div>
 
             <div className="text-center">
-              <button type="submit" disabled={loading}  className="rounded-md bg-gradient-to-r from-primary to-secondary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gradient-to-r hover:from-secondary hover:to-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 animate-bounce">
+              <button type="submit" disabled={loading}  className="rounded-md bg-gradient-to-r from-purple-700 to-secondary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gradient-to-r hover:from-secondary hover:to-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 animate-bounce">
                 {loading ? 'Sending...' : 'Send Message'}
               </button>
               {responseMessage && <p className="mt-4 text-textmuted">{responseMessage}</p>}

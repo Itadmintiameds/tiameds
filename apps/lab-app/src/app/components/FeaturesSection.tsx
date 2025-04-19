@@ -164,7 +164,7 @@ export default function KeyFeaturesSection() {
         <div className="mt-10 grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, index) => (
             <div key={index} className="flex flex-col items-center text-center">
-              <div className="h-16 w-16 rounded-full bg-primarylight text-white flex items-center justify-center">
+              <div className="h-16 w-16 rounded-full bg-purple-900 text-white flex items-center justify-center">
                 {feature.icon}
               </div>
               <h3 className="mt-6 text-xl font-semibold text-gray-900">{feature.title}</h3>

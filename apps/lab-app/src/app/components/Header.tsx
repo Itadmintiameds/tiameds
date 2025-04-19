@@ -81,12 +81,12 @@ const Header = ({ navigation }: { navigation: NavigationItem[] }) => {
 
         {/* Login Button */}
         <div className="hidden lg:flex lg:flex-1 lg:justify-end">
-          <Link
+          {/* <Link
             href="/login"
             className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors duration-200"
           >
             Log in <span aria-hidden="true">&rarr;</span>
-          </Link>
+          </Link> */}
         </div>
       </nav>
 

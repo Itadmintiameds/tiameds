@@ -7,6 +7,7 @@ import TableComponent from '../common/TableComponent';
 // import { toast } from 'react-toastify';
 import { FaEye, FaRegEdit } from "react-icons/fa";
 import Modal from '../common/Model';
+import BeataComponent from '../common/BeataComponent';
 
 const LabList = () => {
   const { labs, setLabs } = useLabs();
@@ -82,7 +83,7 @@ const LabList = () => {
         title="Edit Lab"
         modalClassName='max-w-2xl'
       >
-        <h1>Edit Lab</h1>
+       <BeataComponent />
       </Modal>
 
       <Modal
@@ -91,12 +92,7 @@ const LabList = () => {
         title="View Lab"
         modalClassName='max-w-2xl'
       >
-        <h1>View Lab</h1>
-
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Lab</h1>
-
-        </div>
+         <BeataComponent />
       </Modal>
 
       {loading ? (

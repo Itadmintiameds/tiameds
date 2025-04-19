@@ -36,10 +36,6 @@ const Layout = ({ children }: LayoutProps) => {
   }, [initializeUser, setLabs, setCurrentLab]);
 
 
-  // console.log("currentLab", currentLab);
-
-
-
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedLabName = event.target.value;
     const selectedLab = labs.find((lab) => lab.name === selectedLabName);

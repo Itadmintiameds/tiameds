@@ -1,10 +1,9 @@
+import BeataComponent from '@/app/(admin)/component/common/BeataComponent'
 import React from 'react'
 
 const ListOfDeActiveMemberOfLab = () => {
   return (
-    <div className='text-lg'>
-      List of DeActive Member of Lab
-    </div>
+    <BeataComponent />
   )
 }
 

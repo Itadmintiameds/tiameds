@@ -1,90 +1,15 @@
-// 'use client'
-
-// import React, { useState } from 'react'
-// import { FaArrowLeft, FaSignInAlt, FaUserPlus } from 'react-icons/fa'
-// import Link from 'next/link'
-// import Login from '../components/Login'
-// import Register from '../components/Register'
-// import Image from 'next/image'
-
-
-
-// const Page: React.FC = () => {
-//   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login')
-
-//   const handleTabSwitch = (tab: 'login' | 'register') => {
-//     setActiveTab(tab)
-//   }
-
-//   return (
-//     <div className="h-screen flex bg-gradient-to-r from-gray-50 to-indigo-200">
-//       {/* Left Panel */}
-//       <div className="w-full sm:w-1/3 bg-white flex flex-col justify-center items-center p-8">
-
-//         <Image src="/tiamed2.svg" alt="Lab Management System" width={200} height={200} />
-//         <h1 className="text-3xl font-bold text-indigo-600 mb-4">Welcome to Tiamed</h1>
-//         <p className="text-gray-500 text-center mb-6">
-//           Manage your laboratory seamlessly with our powerful system.
-//         </p>
-//         <Link href="/" passHref>
-//           <button className="flex items-center mt-6 text-sm font-semibold text-indigo-500 hover:text-indigo-700 transition-all duration-300">
-//             <FaArrowLeft className="mr-2" /> Back to Home
-//           </button>
-//         </Link>
-//       </div>
-
-//       {/* Right Panel */}
-//       <div className="flex-1 flex flex-col bg-white">
-//         {/* Tab Navigation */}
-//         <div className="flex justify-center border-b border-gray-200 bg-gray-50 shadow-sm">
-//           <button
-//             className={`flex items-center justify-center w-1/2 py-4 text-lg font-semibold transition-all ${activeTab === 'login'
-//                 ? 'text-indigo-600 border-b-4 border-indigo-500 bg-white'
-//                 : 'text-gray-500 hover:text-indigo-500'
-//               }`}
-//             onClick={() => handleTabSwitch('login')}
-//           >
-//             <FaSignInAlt className="mr-2" />
-//             Log In
-//           </button>
-//           <button
-//             className={`flex items-center justify-center w-1/2 py-4 text-lg font-semibold transition-all ${activeTab === 'register'
-//                 ? 'text-indigo-600 border-b-4 border-indigo-500 bg-white'
-//                 : 'text-gray-500 hover:text-indigo-500'
-//               }`}
-//             onClick={() => handleTabSwitch('register')}
-//           >
-//             <FaUserPlus className="mr-2" />
-//             Register
-//           </button>
-//         </div>
-        
-//         <div className=" bg-gradient-to-br from-gray-50 to-indigo-100 sm:p-8">
-//           {activeTab === 'login' ? <Login /> : <Register />}
-//           {/* <Login /> */}
-//         </div>
-//       </div>
-//     </div>
-//   )
-// }
-
-// export default Page
-
-
-
 "use client"
-
 import React, { useState } from 'react'
-import { FaArrowLeft, FaSignInAlt, FaUserPlus } from 'react-icons/fa'
+import { FaArrowLeft, FaSignInAlt, FaClipboardList } from 'react-icons/fa'
 import Link from 'next/link'
 import Login from '../components/Login'
-import Register from '../components/Register'
 import Image from 'next/image'
+import BeataComponent from '@/app/(admin)/component/common/BeataComponent'
 
 const Page: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login')
+  const [activeTab, setActiveTab] = useState<'login' | 'onboarding'>('login')
 
-  const handleTabSwitch = (tab: 'login' | 'register') => {
+  const handleTabSwitch = (tab: 'login' | 'onboarding') => {
     setActiveTab(tab)
   }
 
@@ -92,20 +17,31 @@ const Page: React.FC = () => {
     <div className="h-screen flex">
       {/* Left Panel */}
       <div className="w-full sm:w-1/3 bg-white flex flex-col justify-center items-center p-8">
-        <Image src="/tiamed2.svg" alt="Lab Management System" width={200} height={200} />
-        <h1 className="text-3xl font-bold text-primary mb-4">Welcome to Tiamed</h1>
-        <p className="text-primary text-center mb-6">
-          Manage your laboratory seamlessly with our powerful system.
+        <div className="flex justify-center mb-6">
+          <Image src="/tiamed1.svg" alt="Tiamed Logo" width={80} height={80} />
+        </div>
+
+        <p className="text-gray-500 text-center italic mb-4">
+        &quot;Innovating Today, Shaping Tomorrow!&quot;
         </p>
+
+        <h1 className="text-3xl font-bold text-purple-800 mb-3">
+          Welcome to Tiamed
+        </h1>
+
+        <p className="text-gray-700 text-center mb-6">
+          Seamlessly manage your laboratory with our powerful, user-friendly system.
+        </p>
+
         <Link href="/" passHref>
-          <button className="flex items-center mt-6 text-sm font-semibold text-primary hover:text-secondary transition-all duration-300">
+          <button className="flex items-center mt-6 text-sm font-semibold text-purple-800 hover:text-secondary transition-all duration-300">
             <FaArrowLeft className="mr-2" /> Back to Home
           </button>
         </Link>
       </div>
 
-      {/* Right Panel with Updated Background */}
-      <div className="flex-1 relative isolate bg-white ">
+      {/* Right Panel */}
+      <div className="flex-1 relative isolate bg-white">
         <div
           aria-hidden="true"
           className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80 animate-gradient-flow"
@@ -122,32 +58,34 @@ const Page: React.FC = () => {
         {/* Tab Navigation */}
         <div className="flex justify-center border-b border-gray-200 bg-gray-50 shadow-sm">
           <button
-            className={`flex items-center justify-center w-1/2 py-4 text-lg font-semibold transition-all ${
-              activeTab === 'login'
-                ? 'text-primary border-b-2 border-primary bg-white hover:border-primary'
-                : 'text-tertiary hover:text-secondary'
-            }`}
+            className={`flex items-center justify-center w-1/2 py-4 text-lg font-semibold transition-all ${activeTab === 'login'
+              ? 'text-purple-800 border-b-2 border-primary bg-white hover:border-primary'
+              : 'text-tertiary hover:text-secondary'
+              }`}
             onClick={() => handleTabSwitch('login')}
           >
             <FaSignInAlt className="mr-2" />
             Log In
           </button>
           <button
-            className={`flex items-center justify-center w-1/2 py-4 text-lg font-semibold transition-all ${
-              activeTab === 'register'
-                ? 'text-primary border-b-2 border-primary bg-white'
-                : 'text-tertiary hover:text-secondary'
-            }`}
-            onClick={() => handleTabSwitch('register')}
+            className={`flex items-center justify-center w-1/2 py-4 text-lg font-semibold transition-all ${activeTab === 'onboarding'
+              ? 'text-purple-800 border-b-2 border-primary bg-white'
+              : 'text-tertiary hover:text-secondary'
+              }`}
+            onClick={() => handleTabSwitch('onboarding')}
           >
-            <FaUserPlus className="mr-2" />
-            Register
+            <FaClipboardList className="mr-2" />
+            Onboarding
           </button>
         </div>
 
-        {/* Login or Register Content */}
+        {/* Tab Content */}
         <div className="sm:p-8 px-4 py-6">
-          {activeTab === 'login' ? <Login /> : <Register />}
+          {activeTab === 'login' ? (
+            <Login />
+          ) : (
+            <BeataComponent />
+          )}
         </div>
       </div>
     </div>

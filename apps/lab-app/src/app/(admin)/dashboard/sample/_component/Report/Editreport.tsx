@@ -1,8 +1,9 @@
+import BeataComponent from '@/app/(admin)/component/common/BeataComponent'
 import React from 'react'
 
 const Editreport = () => {
   return (
-    <div>Editreport</div>
+    <BeataComponent />
   )
 }
 

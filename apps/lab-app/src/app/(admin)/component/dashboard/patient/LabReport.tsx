@@ -81,15 +81,9 @@ const LabReport: React.FC = () => {
         setViewPatient(patient);
     };
 
-    // const handleDownloadReport = (patient: Patient) => {
-    //     console.log('Download Report', patient);
-    // };
-
     const handleEditReport = (patient: Patient) => {
-    
         setEditModel(true);
-       console.log('Edit Report', patient);
-
+        console.log('Edit Report', patient);
     };
 
     const columns = [

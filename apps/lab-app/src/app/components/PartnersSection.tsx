@@ -81,7 +81,7 @@ const PartnersSection = () => {
               className="flex-shrink-0 w-full sm:w-1/2 lg:w-1/3 xl:w-1/4 px-4 py-6"
             >
               <div className="flex flex-col items-center text-center space-y-4 p-6 shadow-lg rounded-lg transition-all duration-300 bg-cardbackground text-textwhite partner-card">
-                <div className="rounded-full p-6 bg-primary text-textwhite shadow-md">
+                <div className="rounded-full p-6 bg-purple-700 text-textwhite shadow-md">
                   {partner.icon}
                 </div>
                 <h3 className="text-xl font-semibold text-textdark">

@@ -606,7 +606,7 @@ const Page = () => {
           </Button>
           <Button text="Print Bill"
             onClick={() => handlePrint()}
-            className="bg-print hover:bg-printhover text-white px-4 py-2">
+            className="bg-green-500 hover:bg-green-700 text-white px-4 py-2">
             <PrinterIcon size={16} className="mr-2" />
           </Button>
         </section>

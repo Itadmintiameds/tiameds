@@ -1,8 +1,9 @@
 import { NavigationItem } from "@/types/NavigationItem";
-import { CogIcon, DocumentTextIcon, FolderIcon, HomeIcon, ShoppingCartIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { CogIcon, DocumentTextIcon, HomeIcon, ShoppingCartIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { ClipboardListIcon, CreditCardIcon, FlaskConical, UserIcon } from "lucide-react";
 import { FaPeriscope } from "react-icons/fa";
 import { FaUserDoctor } from "react-icons/fa6";
+import { MdMan } from "react-icons/md";
 import { PiPackageFill } from "react-icons/pi";
 
 
@@ -17,11 +18,9 @@ export const navigation: NavigationItem[] = [
       { name: "Tests", href: "/dashboard/test", current: false, icon: ClipboardListIcon },
       { name: "Packages", href: "/dashboard/package", current: false, icon: PiPackageFill },
       { name: "Doctors", href: "/dashboard/doctor", current: false, icon: FaUserDoctor },
-      // { name: "Insurance", href: "/dashboard/insurance", current: false, icon: AiOutlineSafetyCertificate },
-      // { name: "Appointments", href: "#", current: false, icon: UserIcon },
-      // { name: "Reports", href: "#", current: false, icon: DocumentTextIcon },
       { name: "Add Sample", href: "/dashboard/sample/add", current: false, icon: FaPeriscope },
       { name: "Sample Collection", href: "/dashboard/sample", current: false, icon: ClipboardListIcon },
+      {name : "Patient Details",href : "/dashboard/patientdetails", current: false, icon: MdMan},
     ],
   },
   {
@@ -29,7 +28,6 @@ export const navigation: NavigationItem[] = [
     icon: UserGroupIcon,
     current: false,
     children: [
-      // { name: "Add Technician", href: "/dashboard/technicians", current: false, icon: UserIcon },
       { name: "Manage Technicians", href: "/dashboard/technicians", current: false, icon: ClipboardListIcon },
     ],
   },
@@ -38,8 +36,7 @@ export const navigation: NavigationItem[] = [
     icon: ShoppingCartIcon,
     current: false,
     children: [
-      { name: "Supplies", href: "#", current: false, icon: FolderIcon },
-      { name: "Equipment", href: "#", current: false, icon: ClipboardListIcon },
+    {name : "Inventory Summary", href: "/dashboard/inventorysummary", current: false, icon: ClipboardListIcon},
     ],
   },
   {
@@ -47,9 +44,7 @@ export const navigation: NavigationItem[] = [
     icon: DocumentTextIcon,
     current: false,
     children: [
-      { name: "Daily Reports", href: "#", current: false, icon: ClipboardListIcon },
-      // { name: "Monthly Reports", href: "#", current: false, icon: ClipboardListIcon },
-      // { name: "Annual Reports", href: "#", current: false, icon: ClipboardListIcon },
+      { name: "Detail Reports", href: "/dashboard/detailreports", current: false, icon: ClipboardListIcon },
     ],
   },
   {
@@ -57,8 +52,10 @@ export const navigation: NavigationItem[] = [
     icon: CreditCardIcon,
     current: false,
     children: [
-      { name: "Invoices", href: "#", current: false, icon: ClipboardListIcon },
-      { name: "Payments", href: "#", current: false, icon: ClipboardListIcon },
+      // { name: "Invoices", href: "#", current: false, icon: ClipboardListIcon },
+      { name: "Billing Summary", href: "/dashboard/billsummary", current: false, icon: ClipboardListIcon },
+    
+     
     ],
   },
   {
@@ -71,16 +68,6 @@ export const navigation: NavigationItem[] = [
       { name: "Lab", href: "/dashboard/lab", current: false, icon: FlaskConical },
     ],
   },
-  // {
-  //   name: "Profile",
-  //   icon: UserIcon,
-  //   current: false,
-  //   children: [
-  //     { name: "Edit Profile", href: "/dashboard/profile", current: false, icon: UserIcon },
-  //     { name: "Logout", href: "#", current: false, icon: ArrowRight }
-  //   ],
-  // },
-
-  // { name: "Logout", href: "#", icon: ArrowRight, current: false },
+  
 
 ];

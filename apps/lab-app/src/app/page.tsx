@@ -51,7 +51,9 @@ const Page = () => {
       <div id="partners">
         <PartnersSection />
       </div>
-      <Footer />
+      <div>
+        <Footer />
+      </div>
     </>
   );
 };

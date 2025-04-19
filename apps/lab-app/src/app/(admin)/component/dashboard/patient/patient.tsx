@@ -1,20 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import SubTabComponent from '../../common/SubTabComponent';
-import PatientList from './PatientList';
 import AddPatient from './AddPatient';
 import VisitingList from './_components/VisitingList';
-import BillingList from './_components/BillingList';
+// import BillingList from './_components/BillingList';
 import { Home } from 'lucide-react';
 import { IoIosMan } from 'react-icons/io';
+import BeataComponent from '../../common/BeataComponent';
 import Loader from '../../common/Loader';
 import LabReport from './LabReport';
 
 
 const tabs = [
   { id: 'AddPatient', icon: <IoIosMan size={16} />, label: 'Add Patient', content: <AddPatient /> },
-  { id: 'patients', icon: <Home size={16} />, label: 'Patients', content: <PatientList /> },
-  { id: 'visits', icon: <Home size={16} />, label: 'Visits', content: <VisitingList /> },
-  { id: 'billing', icon: <Home size={16} />, label: 'Billing', content: <BillingList /> },
+  // { id: 'patients', icon: <Home size={16} />, label: 'Patients', content: <PatientList /> },
+  { id: 'visits', icon: <Home size={16} />, label: 'Patients Visits', content: <VisitingList /> },
+  // { id: 'billing', icon: <Home size={16} />, label: 'Billing', content: <BillingList /> },
+  { id: 'billing', icon: <Home size={16} />, label: 'Billing', content: <BeataComponent /> },
   { id: 'reports', icon: <Home size={16} />, label: 'Reports', content: <LabReport /> }
 ];
 

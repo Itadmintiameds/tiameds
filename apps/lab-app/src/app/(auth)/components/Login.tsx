@@ -1,14 +1,13 @@
 import { loginDataSchema } from '@/schema/loginDataSchema';
 import { LoginData } from '@/types/Login';
-import Image from 'next/image';
+import { AxiosError } from 'axios';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { FaLock, FaUser } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import { login } from '../../../../services/authService';
 import { ZodError } from 'zod';
-import { AxiosError } from 'axios';
+import { login } from '../../../../services/authService';
 
 const Login = () => {
   const [formData, setFormData] = useState<LoginData>({
@@ -18,7 +17,6 @@ const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
-
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,7 +30,6 @@ const Login = () => {
     setValidationErrors({});
     setIsSubmitting(true);
 
-    // Form validation
     try {
       loginDataSchema.parse(formData);
     } catch (err) {
@@ -43,12 +40,10 @@ const Login = () => {
       setIsSubmitting(false);
       return;
     }
-
     // API call
     try {
       const response = await login(formData);
       console.log(response);
-
       // Store token in cookies
       // document.cookie = `token=${response.token}; path=/; Secure; HttpOnly`;  // Add Secure and HttpOnly for better security
 
@@ -70,26 +65,25 @@ const Login = () => {
     }
   };
 
-
   return (
     <div className="flex h-screen items-center justify-center">
       <div className="w-full max-w-md px-6 py-8 rounded-lg -mt-32 ">
         <div className="flex justify-center mb-6">
-          <Image src="/tiamed1.svg" alt="Lab Management System" width={80} height={80} />
+          {/* <Image src="/tiamed1.svg" alt="Lab Management System" width={80} height={80} /> */}
         </div>
 
-        <h2 className="text-center text-2xl font-bold text-primary">Welcome Back!</h2>
-        <p className="mt-2 text-center text-sm text-primary">
+        <h2 className="text-center text-2xl font-bold text-purple-800">Welcome Back!</h2>
+        <p className="mt-2 text-center text-sm text-purple-800">
           Sign in to your Lab Management System account
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-primary">
+            <label htmlFor="username" className="block text-sm font-medium text-purple-800">
               Username
             </label>
             <div className="relative mt-1">
-              <FaUser className="absolute top-1/2 left-3 -translate-y-1/2 text-primary" />
+              <FaUser className="absolute top-1/2 left-3 -translate-y-1/2 text-purple-800" />
               <input
                 id="username"
                 name="username"
@@ -105,11 +99,11 @@ const Login = () => {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-primary">
+            <label htmlFor="password" className="block text-sm font-medium text-purple-800">
               Password
             </label>
             <div className="relative mt-1">
-              <FaLock className="absolute top-1/2 left-3 -translate-y-1/2 text-primary" />
+              <FaLock className="absolute top-1/2 left-3 -translate-y-1/2 text-purple-800" />
               <input
                 id="password"
                 name="password"
@@ -131,11 +125,12 @@ const Login = () => {
             </div>
           </div>
 
-          <div className=' animate-bounce'>
+          {/* <div className=' animate-bounce'> */}
+          <div className=''>
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`w-full className="rounded-md bg-gradient-to-r from-primary to-secondary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gradient-to-r hover:from-secondary hover:to-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+              className={`w-full className="rounded-md bg-gradient-to-r from-purple-800 to-secondary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gradient-to-r hover:from-secondary hover:to-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
             >
               {isSubmitting ? 'Signing In...' : 'Sign In'}
@@ -143,9 +138,9 @@ const Login = () => {
           </div>
         </form>
 
-        <p className="mt-6 text-center text-sm text-primary">
+        <p className="mt-6 text-center text-sm text-purple-800">
           Forgot your password?{' '}
-          <Link href="#" className="font-medium text-secondary hover:text-indigo-500">
+          <Link href="#" className="font-medium text-purple-800 hover:text-indigo-500">
             Reset here
           </Link>
         </p>

@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function CTASection() {
   return (
-    <div className="bg-gradient-to-r from-primary to-secondary py-20 sm:py-24 lg:py-32">
+    <div className="bg-gradient-to-r from-purple-700 to-secondary py-20 sm:py-24 lg:py-32">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center text-white">
         <h2 className="text-3xl font-bold sm:text-4xl">
           Ready to Transform Your Lab Operations?
@@ -14,7 +14,7 @@ export default function CTASection() {
         <div className="mt-10 flex justify-center gap-x-6">
           <Link
             href="/onboarding"
-            className="inline-block rounded-md bg-white px-12 py-3 text-sm font-semibold text-primary shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 animated animate-bounce"
+            className="inline-block rounded-md bg-white px-12 py-3 text-sm font-semibold text-purple-900 shadow-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 animated animate-bounce"
           >
             Get Started
           </Link>
