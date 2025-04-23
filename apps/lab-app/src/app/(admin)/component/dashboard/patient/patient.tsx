@@ -2,13 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import SubTabComponent from '../../common/SubTabComponent';
 import AddPatient from './AddPatient';
 import VisitingList from './_components/VisitingList';
-// import BillingList from './_components/BillingList';
 import { Home } from 'lucide-react';
 import { IoIosMan } from 'react-icons/io';
 import BeataComponent from '../../common/BeataComponent';
 import Loader from '../../common/Loader';
 import LabReport from './LabReport';
-
 
 const tabs = [
   { id: 'AddPatient', icon: <IoIosMan size={16} />, label: 'Add Patient', content: <AddPatient /> },
@@ -20,7 +18,7 @@ const tabs = [
 ];
 
 const Patient = () => {
-  const [activeTab, setActiveTab] = useState<string | null>(null); // Initial state set to null
+  const [activeTab, setActiveTab] = useState<string | null>('visits');
 
   useEffect(() => {
     const savedTab = localStorage.getItem('activeTab');

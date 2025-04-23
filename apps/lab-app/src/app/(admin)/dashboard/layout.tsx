@@ -20,7 +20,6 @@ const Layout = ({ children }: LayoutProps) => {
 
   useEffect(() => {
     initializeUser();
-
     const fetchLabs = async () => {
       try {
         const data = await getUsersLab();
@@ -34,7 +33,7 @@ const Layout = ({ children }: LayoutProps) => {
     };
     fetchLabs();
   }, [initializeUser, setLabs, setCurrentLab]);
-
+  
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedLabName = event.target.value;
