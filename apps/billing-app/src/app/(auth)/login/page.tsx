@@ -44,7 +44,7 @@ const Page: React.FC = () => {
     <div className="flex h-screen bg-darkPurple">
       <div className="w-[30%] flex flex-col items-center justify-center text-white px-10 space-y-10">
         <div className="mt-10 flex space-x-4">
-        <h1>hello</h1>
+        <h1>hello 1</h1>
           <Image
             src="/TiamedsIcon1.svg"
             alt="Company Logo"
