@@ -4,13 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogPanel } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import Link from "next/link";
+import Image from 'next/image';
 
 const navigation = [
-  { name: 'About Us', href: '/about' },
+  // { name: 'About Us', href: '/about' },
   { name: 'Product', href: '/product' },
   { name: 'Careers', href: '/careers' },
-  { name: 'Events', href: '/events' },
-  { name: 'Blog', href: '/blog' },
+  // { name: 'Events', href: '/events' },
+  // { name: 'Blog', href: '/blog' },
   { name: 'Contact Us', href: '/contact' },
 ];
 
@@ -43,12 +44,14 @@ const HeaderNav = () => {
           className="flex items-center justify-between p-3 lg:px-8 transition-colors duration-300"
         >
           <div className="flex lg:flex-1">
-            <Link href="/" className="-m-1.5 p-1.5 hover:animate-bounce">
+            <Link href="/" className="-m-1.5 p-1.5 ">
               <span className="sr-only">Tiameds</span>
-              <img
-                alt="Tiameds Logo"
-                src="tiamed2.svg"
-                className="h-8 w-auto transition-transform duration-300 hover:scale-105"
+              <Image
+                alt="/TiamedsLogo.svg"
+                src="/TiamedsLogo.svg"
+                className="h-12 w-auto transition-transform duration-300 "
+                width={100}
+                height={100}
               />
             </Link>
           </div>
@@ -67,7 +70,7 @@ const HeaderNav = () => {
               <Link 
                 key={item.name}
                 href={item.href}
-                className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors duration-200 hover:underline hover:animate-bounce"
+                className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors duration-200 hover:underline "
               >
                 {item.name}
               </Link>
@@ -88,11 +91,13 @@ const HeaderNav = () => {
             <div className="flex items-center justify-between">
               <Link href="#" className="-m-1.5 p-1.5">
                 <span className="sr-only">Tiameds</span>
-                <img
-                  alt="Tiameds Logo"
-                  src="tiamed2.svg"
-                  className="h-8 w-auto"
-                />
+                <Image
+                alt="/tiamedfinallogo.png"
+                src="/tiamedfinallogo.png"
+                className="h-12 w-auto transition-transform duration-300 "
+                width={100}
+                height={100}
+              />
               </Link>
               <button
                 type="button"

@@ -3,7 +3,7 @@ import Link from "next/link"
 
 const FooterSection = () => {
   return (
-    <footer className="relative bg-background py-16 px-6 lg:py-20 lg:px-8">
+    <footer className="py-16 px-6 lg:py-0 lg:px-8">
       {/* Background Gradient */}
       <div
         aria-hidden="true"
