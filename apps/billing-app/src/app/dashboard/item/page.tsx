@@ -1,9 +1,14 @@
-import React from 'react'
+import Beta from "@/app/components/common/Beta";
+import React from "react";
 
-const page = () => {
+const Page = () => {
   return (
-    <div>Itemmmmmm</div>
-  )
-}
+    <>
+      <div className="flex items-center justify-center mt-30">
+        <Beta />
+      </div>
+    </>
+  );
+};
 
-export default page
+export default Page;

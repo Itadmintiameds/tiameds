@@ -122,7 +122,7 @@ const PurchaseOrderDetailsClient = () => {
           </div>
   
           <div className="flex space-x-4">
-            <div className="w-72 h-24 border border-Gray rounded-lg flex items-center px-6 space-x-4">
+            <div className="w-full h-24 border border-Gray rounded-lg flex items-center px-6 space-x-4">
               <div>
                 <Image
                   src="/OrderId.svg"
@@ -139,7 +139,7 @@ const PurchaseOrderDetailsClient = () => {
               </div>
             </div>
   
-            <div className="w-72 h-24 border border-Gray rounded-lg flex items-center px-6 space-x-4">
+            <div className="w-full h-24 border border-Gray rounded-lg flex items-center px-6 space-x-4">
               <div>
                 <Image
                   src="/Date.svg"
@@ -158,7 +158,7 @@ const PurchaseOrderDetailsClient = () => {
               </div>
             </div>
   
-            <div className="w-72 h-24 border border-Gray rounded-lg flex items-center px-6 space-x-4">
+            <div className="w-full h-24 border border-Gray rounded-lg flex items-center px-6 space-x-4">
               <div>
                 <Image
                   src="/Supplier.svg"
@@ -175,7 +175,7 @@ const PurchaseOrderDetailsClient = () => {
               </div>
             </div>
   
-            <div className="w-72 h-24 border border-Gray rounded-lg flex items-center px-6 space-x-4">
+            <div className="w-full h-24 border border-Gray rounded-lg flex items-center px-6 space-x-4">
               <div>
                 <Image
                   src="/Date.svg"

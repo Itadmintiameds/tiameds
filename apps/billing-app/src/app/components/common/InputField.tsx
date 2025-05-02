@@ -19,7 +19,7 @@ const InputField: React.FC<{
       readOnly={readOnly}
       required
       placeholder=" "
-      className="peer w-72 px-3 py-3 border border-gray-400 rounded-md bg-transparent text-black outline-none focus:border-purple-900 focus:ring-0"
+      className="peer w-full px-3 py-3 border border-gray-400 rounded-md bg-transparent text-black outline-none focus:border-purple-900 focus:ring-0"
       data-has-value={value ? "true" : "false"}
     />
     <label

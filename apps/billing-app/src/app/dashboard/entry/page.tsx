@@ -45,13 +45,13 @@ const Page = () => {
         const response = await getPurchase();
 
         if (!response?.data || response.status !== "success") {
-          throw new Error(response?.message || "Failed to fetch purchases");
+          throw new Error("Failed to fetch purchases");
         }
 
         const purchases: PurchaseEntryData[] = response.data;
 
         const purchasesWithSuppliers = await Promise.all(
-          purchases?.map(async (purchase) => {
+          purchases.map(async (purchase) => {
             const supplierName = await fetchSupplier(purchase.supplierId);
             return { ...purchase, supplierName }; 
           })
@@ -79,6 +79,10 @@ const Page = () => {
     {
       header: "Supplier Name",
       accessor: "supplierName" as keyof PurchaseEntryData,
+    },
+    {
+      header: "GRN No",
+      accessor: "grnNo" as keyof PurchaseEntryData,
     },
     {
       header: "Purchase Date",

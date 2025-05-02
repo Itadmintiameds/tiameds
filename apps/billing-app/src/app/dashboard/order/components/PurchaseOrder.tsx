@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import Button from "@/app/components/common/Button";
 import Drawer from "@/app/components/common/Drawer";
 import InputField from "@/app/components/common/InputField";
@@ -136,9 +137,9 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
         >
           <option value="">Select Item</option>
           <option value="newItem" className="text-Purple">
-            + Add Item
+            + Add New Item
           </option>
-          {items?.map((item) => (
+          {items.map((item) => (
             <option key={item.itemId} value={item.itemId}>
               {item.itemName}
             </option>
@@ -179,8 +180,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
       accessor: "purchasePrice",
       className: "text-left",
     },
-    // { header: "GST %", accessor: "gstPercentage", className: "text-left" },
-    // { header: "GST", accessor: "gstAmount", className: "text-left" },
+
     { header: "Estimated Amount", accessor: "amount", className: "text-left" },
     {
       header: "Action",
@@ -210,7 +210,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
         );
 
         setorderItemRows((prev) =>
-          prev?.map((row, i) =>
+          prev.map((row, i) =>
             i === index
               ? {
                   ...row,
@@ -231,7 +231,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
       }
     } else {
       setorderItemRows((prev) =>
-        prev?.map((row, i) =>
+        prev.map((row, i) =>
           i === index
             ? {
                 ...row,
@@ -250,16 +250,17 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
   const handleDeleteRow = (index: number) => {
     if (orderItemRows.length === 1) {
       toast.error("Cannot delete the last row", {
-                position: "top-right",
-                autoClose: 3000,
-              });
+        position: "top-right",
+        autoClose: 3000,
+      });
       return;
     }
 
     handleShowModal({
-      message: "Are you sure you want to delete this item? This action cannot be undone",
+      message:
+        "Are you sure you want to delete this item? This action cannot be undone",
       secondaryMessage: "Confirm Deletion",
-      bgClassName: "bg-darkRed", 
+      bgClassName: "bg-darkRed",
       onConfirmCallback: () => {
         setorderItemRows(orderItemRows.filter((_, i) => i !== index));
       },
@@ -361,7 +362,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
     const fetchPharmacies = async () => {
       try {
         const data = await getPharmacy();
-        setPharmacies(data.data); 
+        setPharmacies(data.data);
       } catch (error) {
         console.error(error);
       }
@@ -397,7 +398,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
       totalAmount: 0,
       totalGst: 0,
       grandTotal: formData.grandTotal,
-      purchaseOrderItemDtos: orderItemRows?.map((row) => ({
+      purchaseOrderItemDtos: orderItemRows.map((row) => ({
         itemId: row.itemId,
         itemName: row.itemName,
         quantity: row.quantity,
@@ -412,15 +413,15 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
         purchasePrice: row.purchasePrice || 0,
       })),
     };
-  
+
     handleShowModal({
-      message: "Are you sure you want to confirm the order? Once confirmed cannot be edited",
-      secondaryMessage:
-        "Confirm Order Completion",
-      bgClassName: "bg-darkPurple", 
+      message:
+        "Are you sure you want to confirm the order? Once confirmed cannot be edited",
+      secondaryMessage: "Confirm Order Completion",
+      bgClassName: "bg-darkPurple",
       onConfirmCallback: async () => {
         try {
-        await createPurchaseOrder(purchaseOrderData);
+          await createPurchaseOrder(purchaseOrderData);
           setFormData({
             orderId: "",
             orderId1: "",
@@ -434,7 +435,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
             grandTotal: 0,
             purchaseOrderItemDtos: [],
           });
-      
+
           setorderItemRows([
             {
               itemId: "",
@@ -451,7 +452,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
               purchasePrice: 0,
             },
           ]);
-      
+
           window.location.reload();
         } catch (error) {
           console.error("Failed to submit purchase order:", error);
@@ -460,7 +461,6 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
       },
     });
   };
-  
 
   return (
     <>
@@ -510,12 +510,12 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
           </div>
         </div>
 
-        <div className="border border-Gray max-w-7xl h-44 rounded-lg p-5">
+        <div className="border border-Gray w-full rounded-lg p-5">
           <div className="justify-start text-black text-lg font-normal leading-7">
             Basic Details
           </div>
 
-          <div className="relative mt-8 grid grid-cols-4 gap-4">
+          <div className="relative mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[
               { id: "orderedDate", label: "Order Date", type: "date" },
               { id: "pharmacyId", label: "Pharmacy", type: "dropdown" },
@@ -525,9 +525,8 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
                 label: "Intended Delivery Date",
                 type: "date",
               },
-            ]?.map(({ id, label, type }) => (
-              <div key={id} className="relative w-72">
-                {/* Supplier Dropdown */}
+            ].map(({ id, label, type }) => (
+              <div key={id} className="relative w-full">
                 {id === "supplierId" ? (
                   <>
                     <label
@@ -536,7 +535,6 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
                     >
                       {label}
                     </label>
-
                     <select
                       id={id}
                       value={formData.supplierId || ""}
@@ -548,18 +546,16 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
                           handleInputChange(e);
                         }
                       }}
-                      className="peer w-full px-3 py-3 border border-gray-400 rounded-md bg-transparent text-black outline-none focus:border-purple-900 focus:ring-0"
+                      className="w-full h-[49px] px-3 py-3 border border-gray-400 rounded-md bg-white text-black outline-none focus:border-purple-900 focus:ring-0"
                       name="supplierId"
                     >
                       <option value="" disabled>
                         Select Supplier
                       </option>
-
                       <option value="newSupplier" className="text-Purple">
                         + New Supplier
                       </option>
-
-                      {suppliers?.map((sup) => (
+                      {suppliers.map((sup) => (
                         <option key={sup.supplierId} value={sup.supplierId}>
                           {sup.supplierName}
                         </option>
@@ -574,20 +570,18 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
                     >
                       {label}
                     </label>
-
                     <select
                       id={id}
                       value={formData.pharmacyId || ""}
                       onChange={handleInputChange}
-                      className="peer w-full px-3 py-3 border border-gray-400 rounded-md bg-transparent text-black outline-none focus:border-purple-900 focus:ring-0"
+                      className="w-full h-[49px] px-3 py-3 border border-gray-400 rounded-md bg-white text-black outline-none focus:border-purple-900 focus:ring-0"
                       name="pharmacyId"
                     >
                       <option value="" disabled>
                         Select Pharmacy
                       </option>
-
                       {Array.isArray(pharmacies) &&
-                        pharmacies?.map((pharmacy) => (
+                        pharmacies.map((pharmacy) => (
                           <option
                             key={pharmacy.pharmacyId}
                             value={pharmacy.pharmacyId}
@@ -630,7 +624,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
         <div>
           <Button
             onClick={() => addNewRow()}
-            label="Add New Item"
+            label="Add Item Row"
             value=""
             className="w-44 bg-gray  h-11"
             icon={<Plus size={15} />}
@@ -647,7 +641,7 @@ const PurchaseOrder: React.FC<PurchaseOrderProps> = ({
 
               isTotal: true,
             },
-          ]?.map(({ label, value, isTotal }, index) => (
+          ].map(({ label, value, isTotal }, index) => (
             <div
               key={index}
               className={`flex justify-between ${

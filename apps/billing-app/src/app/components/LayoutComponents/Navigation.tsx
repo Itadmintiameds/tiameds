@@ -4,10 +4,11 @@ import { NavigationItem } from '@/app/types/NavigationItem'
 import { MdDashboard, MdInventory, MdAssignmentReturn, MdMedicalServices, MdAssignmentTurnedIn } from "react-icons/md";
 import { IoPeople } from "react-icons/io5";
 import { RiMedicineBottleFill} from "react-icons/ri";
-import { FaNotesMedical, FaStore, FaBan, FaHouseChimneyMedical} from "react-icons/fa6";
+import { FaNotesMedical, FaStore, FaBan} from "react-icons/fa6";
+// import { FaNotesMedical, FaStore, FaBan, FaHouseChimneyMedical} from "react-icons/fa6";
 import { PiReceiptFill } from "react-icons/pi";
-import { IoSettings } from "react-icons/io5";
-import { HiUser } from "react-icons/hi";
+// import { IoSettings } from "react-icons/io5";
+// import { HiUser } from "react-icons/hi";
 
 
 export const navigation: NavigationItem[] = [
@@ -31,24 +32,24 @@ export const navigation: NavigationItem[] = [
     icon: FaStore,
     current: false,
     children: [
-      { name: "Inventory Item", href: "/dashboard/test", current: false, icon: MdMedicalServices },
-      { name: "Expired Stock", href: "/dashboard/package", current: false, icon: FaBan },
+      { name: "Inventory Item", href: "/dashboard/inventory", current: false, icon: MdMedicalServices },
+      { name: "Expired Stock", href: "/dashboard/expiredStock", current: false, icon: FaBan },
 
      
     ],
   },
  
-  { name: "Billing", href: "/dashboard", icon: PiReceiptFill, current: true },
+  { name: "Billing", href: "/dashboard/billing", icon: PiReceiptFill, current: true },
   
-  {
-    name: "Settings",
-    icon: IoSettings,
-    current: false,
-    children: [
-      { name: "User Profile", href: "/dashboard/profile", current: false, icon: HiUser },
-      { name: "Pharmacy", href: "/dashboard/lab", current: false, icon: FaHouseChimneyMedical },
-    ],
-  },
+  // {
+  //   name: "Settings",
+  //   icon: IoSettings,
+  //   current: false,
+  //   children: [
+  //     { name: "User Profile", href: "/dashboard/profile", current: false, icon: HiUser },
+  //     { name: "Pharmacy", href: "/dashboard/lab", current: false, icon: FaHouseChimneyMedical },
+  //   ],
+  // },
   
 
  

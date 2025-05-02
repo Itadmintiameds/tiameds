@@ -1,7 +1,7 @@
 import Button from "@/app/components/common/Button";
 import InputField from "@/app/components/common/InputField";
 import { itemSchema } from "@/app/schema/ItemSchema";
-import { createItem } from "@/app/services/ItemService";
+import { createItem, getItemById, updateItem } from "@/app/services/ItemService";
 import { getVariant } from "@/app/services/VariantService";
 import { ItemData } from "@/app/types/ItemData";
 import { VariantData } from "@/app/types/VariantData";
@@ -9,19 +9,21 @@ import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { z, ZodError } from "zod";
 
-interface SupplierProps {
+interface ItemProps {
   setShowDrawer: (value: boolean) => void;
+  itemId?: string  | null;
 }
 
-const AddItem: React.FC<SupplierProps> = ({ setShowDrawer }) => {
+const AddItem: React.FC<ItemProps> = ({ setShowDrawer, itemId}) => {
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
 
+  
   const [variant, setVariant] = useState<VariantData[]>([]);
 
   const [formData, setFormData] = useState<ItemData>({
-    itemId: undefined,
+    itemId:"",
     itemName: "",
     purchaseUnit: 0,
     variantId: "",
@@ -52,11 +54,9 @@ const AddItem: React.FC<SupplierProps> = ({ setShowDrawer }) => {
     fetch();
   }, []);
 
-  // inside the component, before return:
+
   const unitOptions = React.useMemo(() => {
-    // find the currently selected variant
     const chosen = variant.find((v) => v.variantId === formData.variantId);
-    // map its unitDtos (or empty array)
     return chosen
       ? chosen.unitDtos.map((u) => ({ id: u.unitId, name: u.unitName }))
       : [];
@@ -84,7 +84,6 @@ const AddItem: React.FC<SupplierProps> = ({ setShowDrawer }) => {
     setFormData((prev) => {
       const next = { ...prev, [id]: formattedValue };
 
-      // Automatically update unit prices when dependent fields change
       const purchaseUnit =
         id === "purchaseUnit" ? Number(value) : prev.purchaseUnit;
       const purchasePrice =
@@ -92,10 +91,8 @@ const AddItem: React.FC<SupplierProps> = ({ setShowDrawer }) => {
       const mrpSalePrice =
         id === "mrpSalePrice" ? Number(value) : prev.mrpSalePrice;
 
-      // Avoid divide-by-zero
       const safeUnit = purchaseUnit || 1;
 
-      // Recalculate derived fields
       next.purchasePricePerUnit = purchasePrice / safeUnit;
       next.mrpSalePricePerUnit = mrpSalePrice / safeUnit;
 
@@ -138,12 +135,54 @@ const AddItem: React.FC<SupplierProps> = ({ setShowDrawer }) => {
     }
   };
 
+  // const addItem = async (e: { preventDefault: () => void }) => {
+  //   e.preventDefault();
+  //   setValidationErrors({});
+  //   try {
+  //     itemSchema.parse(formData);
+
+  //     if (formData.mrpSalePrice <= formData.purchasePrice) {
+  //       toast.error("MRP must be greater than Purchase Price", {
+  //         position: "top-right",
+  //         autoClose: 3000,
+  //       });
+  //       return;
+  //     }
+
+  //     await createItem(formData);
+  //     toast.success("Item created successfully", {
+  //       position: "top-right",
+  //       autoClose: 3000,
+  //     });
+
+  //     setShowDrawer(false);
+  //   } catch (error) {
+  //     console.error("Error:", error);
+  //     if (error instanceof ZodError) {
+  //       const formattedErrors: Record<string, string> = {};
+  //       error.errors.forEach((err) => {
+  //         const field = err.path[0] as string;
+  //         formattedErrors[field] = err.message;
+  //       });
+
+  //       setValidationErrors(formattedErrors); 
+  //     } else if (error instanceof Error) {
+  //       console.error("Unexpected Error:", error.message);
+  //     } else {
+  //       console.error("Unknown error occurred", error);
+  //     }
+  //   }
+  // };
+
+
   const addItem = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
     setValidationErrors({});
+  
     try {
-      itemSchema.parse(formData);
-
+      itemSchema.parse(formData); // Validate form data using your schema
+  
+      // Check if MRP is greater than Purchase Price
       if (formData.mrpSalePrice <= formData.purchasePrice) {
         toast.error("MRP must be greater than Purchase Price", {
           position: "top-right",
@@ -151,25 +190,35 @@ const AddItem: React.FC<SupplierProps> = ({ setShowDrawer }) => {
         });
         return;
       }
-
-      await createItem(formData);
-      toast.success("Item created successfully", {
-        position: "top-right",
-        autoClose: 3000,
-      });
-
-      setShowDrawer(false);
+  
+      if (itemId) {
+        // If itemId is present, call updateItem service
+        await updateItem(itemId, formData);
+        toast.success("Item updated successfully", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      } else {
+        // If no itemId, call createItem service
+        await createItem(formData);
+        toast.success("Item created successfully", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
+  
+      setShowDrawer(false); // Close the drawer after the operation
     } catch (error) {
       console.error("Error:", error);
+  
+      // Handle validation errors
       if (error instanceof ZodError) {
-        // Collect all validation errors and store them in state
         const formattedErrors: Record<string, string> = {};
         error.errors.forEach((err) => {
           const field = err.path[0] as string;
           formattedErrors[field] = err.message;
         });
-
-        setValidationErrors(formattedErrors); // Update state to show messages
+        setValidationErrors(formattedErrors);
       } else if (error instanceof Error) {
         console.error("Unexpected Error:", error.message);
       } else {
@@ -178,6 +227,39 @@ const AddItem: React.FC<SupplierProps> = ({ setShowDrawer }) => {
     }
   };
 
+  
+  
+  useEffect(() => {
+    console.log("Item Idddd", itemId);
+    
+    if (!itemId) return;
+  
+    async function fetchItemDetails() {
+      try {
+        const data = await getItemById(itemId!);
+  
+        const matchingVariant = variant.find((v) => v.variantId === data.variantId);
+        const matchingUnit = matchingVariant?.unitDtos.find((u) => u.unitId === data.unitId);
+  
+        setFormData({
+          ...data,
+          purchasePricePerUnit: data.purchaseUnit ? data.purchasePrice / data.purchaseUnit : 0,
+          mrpSalePricePerUnit: data.purchaseUnit ? data.mrpSalePrice / data.purchaseUnit : 0,
+          unitName: matchingUnit?.unitName || "",
+        });
+      } catch (error) {
+        console.error("Failed to fetch item details:", error);
+        toast.error("Failed to fetch item data.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
+    }
+  
+    fetchItemDetails();
+  }, [itemId, variant]);
+
+  
   return (
     <>
       <main className="space-y-6">
@@ -379,7 +461,7 @@ const AddItem: React.FC<SupplierProps> = ({ setShowDrawer }) => {
         <div>
           <Button
             onClick={addItem}
-            label="Add Item"
+            label={itemId ? "Save" : "Add Item"}
             value=""
             className="w-36 h-11 bg-darkPurple text-white"
           ></Button>

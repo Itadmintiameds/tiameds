@@ -162,14 +162,7 @@ const Page = () => {
             <div>
               <div className="flex space-x-4">
                 <div>
-                  {/* <Input
-                    type="text"
-                    value=""
-                    onChange={(e) => console.log(e.target.value)}
-                    placeholder="Search Table..."
-                    className="w-80 border-gray-300"
-                    icon={<Search size={18} />}
-                  /> */}
+                  
 
                   <Input
                     type="text"

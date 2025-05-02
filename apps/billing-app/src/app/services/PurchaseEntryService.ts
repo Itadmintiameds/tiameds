@@ -22,20 +22,53 @@ export const createPurchase = async (formData: PurchaseEntryData): Promise<Purch
   };
 
 
-  // Get Purchase
+//   Get Purchase
+// export const getPurchase = async () => {
+//   try {
+//       const response = await api.get('pharma/stock/getAll');
+//       return response.data;
+//   } catch (error: unknown) {
+//       console.error('Error fetching Purchase:', error);
+//       if (error instanceof Error) {
+//           throw new Error(`Error fetching Purchase: ${error.message}`);
+//       } else {
+//           throw new Error('An unknown error occurred while fetching Purchase.');
+//       }
+//   }
+// };
+
 export const getPurchase = async () => {
   try {
-      const response = await api.get('pharma/stock/getAll');
-      return response.data;
+    const response = await api.get('pharma/stock/getAll');
+
+    console.log("Full API response:", response);
+
+    if (Array.isArray(response.data)) {
+      return {
+        status: "success",
+        data: response.data
+      };
+    }
+
+    // If backend returns { data: [...] }
+    if (Array.isArray(response.data.data)) {
+      return {
+        status: "success",
+        data: response.data.data
+      };
+    }
+
+    throw new Error("Unexpected response structure from getPurchase");
   } catch (error: unknown) {
-      console.error('Error fetching Purchase:', error);
-      if (error instanceof Error) {
-          throw new Error(`Error fetching Purchase: ${error.message}`);
-      } else {
-          throw new Error('An unknown error occurred while fetching Purchase.');
-      }
+    console.error('Error fetching Purchase:', error);
+    if (error instanceof Error) {
+      throw new Error(`Error fetching Purchase: ${error.message}`);
+    } else {
+      throw new Error('An unknown error occurred while fetching Purchase.');
+    }
   }
 };
+
 
 // Get PurchaseById
 export const getPurchaseById = async (invId: string) => {

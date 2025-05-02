@@ -26,7 +26,7 @@ const Page: React.FC = () => {
       localStorage.setItem("user", JSON.stringify(response?.data));
 
       toast.success("Logged in successfully!", { autoClose: 1000 });
-      router.push("/dashboard/order");
+      router.push("/dashboard");
     } catch (err: unknown) {
       if (err instanceof Error) {
         toast.error(err.message || "Login failed. Please try again.");
@@ -44,15 +44,14 @@ const Page: React.FC = () => {
     <div className="flex h-screen bg-darkPurple">
       <div className="w-[30%] flex flex-col items-center justify-center text-white px-10 space-y-10">
         <div className="mt-10 flex space-x-4">
-  
           <Image
-            src="/TiamedsIcon1.svg"
+            src="/tiamedsIcon1.svg"
             alt="Company Logo"
             width={80}
             height={40}
           />
           <Image
-            src="/TiamedsLogo1.svg"
+            src="/tiamedsLogo1.svg"
             alt="Company Logo"
             width={150}
             height={40}
@@ -61,7 +60,7 @@ const Page: React.FC = () => {
 
         <div>
         <Image
-            src="/TiamedsLogo2.svg"
+            src="/tiamedsLogo2.svg"
             alt="Company Logo"
             width={280}
             height={40}

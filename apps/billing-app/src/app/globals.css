@@ -28,25 +28,8 @@
   --TERTIARY-GRAY: #CCCBCB;
 
   --PRIMARY-RED: #B30000;
+
   
-  }
-}
-@media (prefers-color-scheme) {
-  :root {
-    /* --background: #0a0a0a;
-    --foreground: #ededed; */
-
-    /* Primary branding colors for consistency across the UI */
-  --PRIMARY-PURPLE:  #E1C4F8; 
-  --SECONDARY-PURPLE: #E5D2F4;
-  --TERTIARY-PURPLE: #442060;
-  --DARK-PURPLE: #4B0082;
-
-  --PRIMARY-GRAY: #433E3F;
-  --SECONDARY-GRAY: #B5B3B3;
-  --TERTIARY-GRAY: #CCCBCB;
-
-  --PRIMARY-RED: #B30000;
   
   }
 }
@@ -108,4 +91,13 @@ body {
   border-color: var(--DARK-PURPLE);
 
 }
+
+
+}
+
+@layer utilities {
+  .data-\[state\=on\]\:bg-primaryPurple[data-state='on'] {
+    background-color: var(--PRIMARY-PURPLE);
+  }
+  
 }

@@ -2,7 +2,6 @@
 import Button from "@/app/components/common/Button";
 import React, { useEffect, useState } from "react";
 import { ClipboardList, Plus } from "lucide-react";
-import { RiDeleteBin6Line } from "react-icons/ri";
 import Table from "@/app/components/common/Table";
 import {
   PurchaseEntryData,
@@ -24,6 +23,7 @@ import { getPharmacyById } from "@/app/services/PharmacyService";
 import { getSupplierById } from "@/app/services/SupplierService";
 import { toast } from "react-toastify";
 import Modal from "@/app/components/common/Modal";
+import { BsThreeDotsVertical } from "react-icons/bs";
 
 interface PurchaseEntryProps {
   setShowPurchaseEntry: (value: boolean) => void;
@@ -42,6 +42,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
   const [modalCancelCallback, setModalCancelCallback] = useState<() => void>(
     () => {}
   );
+  const [currentItemId, setCurrentItemId] = useState<string | null>(null);
 
   interface ModalOptions {
     message: string;
@@ -55,7 +56,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
   const [, setShowDrawer] = useState<boolean>(false);
   const [purchaseRows, setPurchaseRows] = useState<PurchaseEntryItem[]>([
     {
-      itemId: 0,
+      itemId: "",
       batchNo: "",
       packageQuantity: 0,
       expiryDate: "",
@@ -97,22 +98,6 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
   const [subTotal, setSubTotal] = useState(0);
   const [gstTotal, setGstTotal] = useState(0);
   const [grandTotal, setGrandTotal] = useState(0);
-
-  // const [purchaseOrderData, setPurchaseOrderData] = useState<PurchaseOrderData>(
-  //   {
-  //     orderId: "",
-  //     orderId1: "",
-  //     pharmacyId: "",
-  //     pharmacistId: 0,
-  //     supplierId: "",
-  //     orderedDate: new Date(),
-  //     intendedDeliveryDate: new Date(),
-  //     totalAmount: 0,
-  //     totalGst: 0,
-  //     grandTotal: 0,
-  //     purchaseOrderItemDtos: [],
-  //   }
-  // );
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -172,9 +157,9 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
         >
           <option value="">Select Item</option>
           <option value="newItem" className="text-Purple">
-            + Add Item
+            + Add New Item
           </option>
-          {items?.map((item) => (
+          {items.map((item) => (
             <option key={item.itemId} value={item.itemId}>
               {item.itemName}
             </option>
@@ -243,12 +228,28 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
     {
       header: "Action",
       accessor: (row: PurchaseEntryItem, index: number) => (
-        <RiDeleteBin6Line
-          className="text-red-500 hover:text-red-700 cursor-pointer"
-          onClick={() => handleDeleteRow(index)}
-        />
+        <div className="relative group">
+        <button className="p-2 rounded-full hover:bg-gray-200 cursor-pointer">
+          <BsThreeDotsVertical size={18} />
+        </button>
+      
+        <div className="absolute right-0 mt-2 w-32 bg-white shadow-xl rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+          <button
+            onClick={() => handleItemDrawer(row.itemId)}
+            className="block w-full px-4 py-2 text-left text-gray-700 cursor-pointer hover:bg-purple-950 hover:text-white hover:rounded-lg whitespace-nowrap"
+          >
+            Edit Item Details
+          </button>
+
+          <button
+            onClick={() => handleDeleteRow(index)}
+            className="block w-full px-4 py-2 text-left text-gray-700 cursor-pointer hover:bg-purple-950 hover:text-white hover:rounded-lg"
+          >
+            Delete
+          </button>
+        </div>
+      </div>     
       ),
-      className: "text-left",
     },
   ];
 
@@ -315,7 +316,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
     setPurchaseRows([
       ...purchaseRows,
       {
-        itemId: 0,
+        itemId: "",
         pharmacyId: "",
         batchNo: "",
         packageQuantity: 0,
@@ -356,7 +357,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
           onCancelCallback: () => {
             // ✅ Clear from STATE (not input directly)
             setPurchaseRows((prev) =>
-              prev?.map((row, i) =>
+              prev.map((row, i) =>
                 i === idx ? { ...row, expiryDate: "" } : row
               )
             );
@@ -403,16 +404,24 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
   //   setShowDrawer(true);
   // };
 
-  const handleItemDrawer = () => {
-    setShowSupplier(false); // ✅ Close Supplier Drawer
+  const handleItemDrawer = (itemId?: string) => {
+    console.log("Item Idddd", itemId);
+    
+    if (itemId) {
+      setCurrentItemId(itemId); // Only set if provided
+    } 
+  
+    setShowSupplier(false);
     setShowItem(true);
     setShowDrawer(true);
   };
+  
+  
 
   const handleCloseDrawer = () => {
     setShowDrawer(false);
-    setShowItem(false); // ✅ Ensures the drawer unmounts
-    setShowSupplier(false); // ✅ Ensures the drawer unmounts
+    setShowItem(false); 
+    setShowSupplier(false); 
   };
 
   useEffect(() => {
@@ -424,26 +433,23 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
 
   useEffect(() => {
     if (formData.creditPeriod && formData.purchaseDate) {
-      const purchaseDate = new Date(formData.purchaseDate); // ✅ Use correct field
-      const creditPeriod = Number(formData.creditPeriod); // ✅ Ensure it's a number
+      const purchaseDate = new Date(formData.purchaseDate); 
+      const creditPeriod = Number(formData.creditPeriod); 
 
       if (!isNaN(creditPeriod) && !isNaN(purchaseDate.getTime())) {
-        // ✅ Ensure valid inputs
         const paymentDueDate = new Date(purchaseDate);
-        paymentDueDate.setDate(paymentDueDate.getDate() + creditPeriod); // ✅ Correct calculation
+        paymentDueDate.setDate(paymentDueDate.getDate() + creditPeriod); 
 
         setFormData((prev) => ({
           ...prev,
-          paymentDueDate, // ✅ Store as a Date object
+          paymentDueDate, 
         }));
       }
     }
   }, [formData.creditPeriod, formData.purchaseDate]);
 
   const handleOrderSelect = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    // console.log("Order selection triggered!");
-
-    const selectedOrderId = e.target.value.trim(); // Keep it as a string (UUID)
+    const selectedOrderId = e.target.value.trim(); 
 
     if (!selectedOrderId) {
       console.warn("Order ID is empty or invalid!");
@@ -453,15 +459,14 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
     setFormData((prev) => ({ ...prev, orderId: selectedOrderId }));
 
     try {
-      const purchaseOrder = await getPurchaseOrderById(selectedOrderId); // Fetch using UUID
+      const purchaseOrder = await getPurchaseOrderById(selectedOrderId); 
 
       if (purchaseOrder?.purchaseOrderItemDtos) {
-        const pharmacyId = purchaseOrder.pharmacyId || ""; // ✅ Fix: Define pharmacyId properly
+        const pharmacyId = purchaseOrder.pharmacyId || ""; 
         const supplierId = purchaseOrder.supplierId || "";
 
-        // Step 1: Prepare the rows with basic order data
         let updatedRows: PurchaseEntryItem[] =
-          purchaseOrder.purchaseOrderItemDtos?.map(
+          purchaseOrder.purchaseOrderItemDtos.map(
             (item: PurchaseEntryItem): PurchaseEntryItem => ({
               itemId: item.itemId,
               itemName: item.itemName,
@@ -488,7 +493,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
         setPurchaseRows(updatedRows);
 
         updatedRows = await Promise.all(
-          updatedRows?.map(
+          updatedRows.map(
             async (row: PurchaseEntryItem): Promise<PurchaseEntryItem> => {
               try {
                 const itemDetails = await getItemById(row.itemId.toString());
@@ -503,7 +508,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
                     itemDetails.sgstPercentage ?? row.sgstPercentage,
                   gstPercentage:
                     (itemDetails.cgstPercentage ?? 0) +
-                    (itemDetails.sgstPercentage ?? 0), // ✅ Update GST Percentage
+                    (itemDetails.sgstPercentage ?? 0), 
                 };
               } catch (error) {
                 console.error(
@@ -511,7 +516,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
                   row.itemId,
                   error
                 );
-                return row; // Keep the original row if fetching fails
+                return row; 
               }
             }
           )
@@ -615,14 +620,6 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
     setGrandTotal(newGrandTotal);
   }, [purchaseRows]);
 
-  // const handleShowModal = (options: ModalOptions) => {
-  //   setModalMessage(options.message);
-  //   setModalSecondaryMessage(options.secondaryMessage || "");
-  //   setModalBgClass(options.bgClassName || "");
-  //   setModalConfirmCallback(() => options.onConfirmCallback);
-  //   setShowModal(true);
-  // };
-
   const handleShowModal = (options: ModalOptions) => {
     setModalMessage(options.message);
     setModalSecondaryMessage(options.secondaryMessage || "");
@@ -670,7 +667,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
       totalCgst: gstTotal,
       totalSgst: gstTotal,
       grandTotal: grandTotal,
-      stockItemDtos: purchaseRows?.map((row) => ({
+      stockItemDtos: purchaseRows.map((row) => ({
         itemId: row.itemId,
         batchNo: row.batchNo,
         packageQuantity: row.packageQuantity,
@@ -750,7 +747,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
 
       {showItem && (
         <Drawer setShowDrawer={handleCloseDrawer} title={"Add New Item"}>
-          <AddItem setShowDrawer={handleCloseDrawer} />
+          <AddItem setShowDrawer={handleCloseDrawer} itemId={currentItemId}/>
         </Drawer>
       )}
 
@@ -777,22 +774,21 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
           </div>
         </div>
 
-        <div className="border border-Gray max-w-7xl h-64 rounded-lg p-5">
+        <div className="border border-Gray max-full h-full rounded-lg p-5">
           <div className="justify-start text-black text-lg font-normal leading-7">
             Basic Details
           </div>
 
-          <div className="relative mt-8 grid grid-cols-4 gap-4">
+          <div className="relative mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[
               { id: "orderId", label: "Order ID", type: "select" },
               { id: "pharmacyName", label: "Pharmacy" },
               { id: "purchaseBillNo", label: "Bill No" },
               { id: "billDate", label: "Bill Date", type: "date" },
-            ]?.map(({ id, label, type }) => (
-              <div key={id} className="relative w-72">
+            ].map(({ id, label, type }) => (
+              <div key={id} className="relative w-full">
                 {id === "orderId" ? (
                   <>
-                    {/* Floating Label Stays on Top */}
                     <label
                       htmlFor={id}
                       className="absolute left-3 top-0 -translate-y-1/2 bg-white px-1 text-gray-500 text-xs transition-all"
@@ -804,12 +800,12 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
                       id="orderId"
                       value={formData.orderId || ""}
                       onChange={handleOrderSelect}
-                      className="peer w-full px-3 py-3 border border-gray-400 rounded-md bg-transparent text-black outline-none focus:border-purple-900 focus:ring-0"
+                      className="peer w-full h-[49px] px-3 py-3 border border-gray-400 rounded-md bg-transparent text-black outline-none focus:border-purple-900 focus:ring-0"
                     >
                       <option value="" disabled>
                         Select Order
                       </option>
-                      {orderPurchase?.map((order) => (
+                      {orderPurchase.map((order) => (
                         <option
                           key={order.orderId ?? "unknown"}
                           value={order.orderId?.toString() || ""}
@@ -834,13 +830,13 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
             ))}
           </div>
 
-          <div className="relative mt-8 grid grid-cols-4 gap-4">
+          <div className="relative mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[
               { id: "creditPeriod", label: "Credit Period", type: "number" },
               { id: "paymentDueDate", label: "Payment Due Date", type: "date" },
               { id: "supplierName", label: "Supplier", type: "text" },
               { id: "invoiceAmount", label: "Invoice Amount", type: "number" },
-            ]?.map(({ id, label, type }) => (
+            ].map(({ id, label, type }) => (
               <InputField
                 key={id}
                 id={id}
@@ -850,12 +846,12 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
                   id === "paymentDueDate" && formData.paymentDueDate
                     ? new Date(formData.paymentDueDate)
                         .toISOString()
-                        .split("T")[0] // ✅ Convert Date to YYYY-MM-DD
+                        .split("T")[0]
                     : formData[id as keyof PurchaseEntryData]?.toString() ?? ""
                 }
                 onChange={
                   id === "paymentDueDate" ? () => {} : handleInputChange
-                } // Prevents editing Payment Due Date
+                }
                 readOnly={id === "paymentDueDate"}
               />
             ))}
@@ -871,7 +867,7 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
         <div>
           <Button
             onClick={() => addNewRow()}
-            label="Add New Item"
+            label="Add Item Row"
             value=""
             className="w-44 bg-gray h-11"
             icon={<Plus size={15} />}
@@ -881,14 +877,14 @@ const PurchaseEntry: React.FC<PurchaseEntryProps> = ({
         <div className="border h-56 w-lg border-Gray rounded-xl p-6 space-y-6 ml-auto font-normal text-sm">
           {[
             { label: "SUB TOTAL", value: subTotal.toFixed(2) },
-            { label: "GST TOTAL", value: gstTotal.toFixed(2) }, // ✅ Fix GST Total Display
+            { label: "GST TOTAL", value: gstTotal.toFixed(2) },
             { label: "DISCOUNT", value: 0 },
             {
               label: "GRAND TOTAL",
               value: grandTotal.toFixed(2),
               isTotal: true,
             },
-          ]?.map(({ label, value, isTotal }, index) => (
+          ].map(({ label, value, isTotal }, index) => (
             <div
               key={index}
               className={`flex justify-between ${
