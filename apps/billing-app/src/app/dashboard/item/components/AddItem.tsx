@@ -230,7 +230,7 @@ const AddItem: React.FC<ItemProps> = ({ setShowDrawer, itemId}) => {
   
   
   useEffect(() => {
-    console.log("Item Idddd", itemId);
+    console.log("Item Idddd1111", itemId);
     
     if (!itemId) return;
   
