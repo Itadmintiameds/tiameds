@@ -145,7 +145,7 @@ const Herosection = () => {
               className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-6"
             >
               <Link
-                href="/contact"
+                href="/contact-for-services"
                 className="relative group rounded-lg bg-gradient-to-r from-primary to-secondary px-6 py-3 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <span className="relative z-10">Start Your Project</span>

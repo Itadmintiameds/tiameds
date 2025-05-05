@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 
 interface FormData {
   name: string;
@@ -23,8 +24,6 @@ const ContactUsSection = () => {
     setLoading(true);
     setResponseMessage('');
 
-    
-
     try {
       const response = await fetch('/api/email', {
         method: 'POST',
@@ -33,123 +32,161 @@ const ContactUsSection = () => {
       });
 
       if (response.ok) {
-        setResponseMessage('Your message has been sent successfully.');
+        setResponseMessage('Your message has been sent successfully!');
         setFormData({ name: '', email: '', message: '' });
       } else {
-        setResponseMessage('Failed to send the message. Please try again later.');
+        setResponseMessage('Failed to send message. Please try again.');
       }
     } catch (error) {
-      console.error('Error:', error);
-      setResponseMessage('An error occurred while sending the message.');
+      setResponseMessage('An error occurred. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <section className="relative py-20 px-6 lg:py-28 lg:px-8 bg-background overflow-hidden">
+    <section className="relative py-16 px-6 lg:py-20 lg:px-8 bg-gray-50">
       {/* Background Gradient */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 top-0 -z-10 transform-gpu overflow-hidden blur-3xl"
-      >
-        <div
-          className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-primary to-secondary opacity-30 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"
-          style={{
-            clipPath:
-              'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
-          }}
-        />
+      <div className="absolute inset-0 overflow-hidden opacity-20">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-100 to-indigo-100 transform rotate-6 scale-125"></div>
       </div>
 
-      <div className="mx-auto max-w-6xl text-center relative z-10">
-        <h2 className="text-4xl font-extrabold tracking-tight text-textdark sm:text-5xl animate-fade-in-up">
-          Get In Touch With Us
-        </h2>
-        <p className="mt-6 text-lg text-textmuted max-w-3xl mx-auto animate-fade-in">
-          Have a question? We&apos;re here to assist you. Get in touch with our team for any inquiries, suggestions, or support.
-        </p>
-      </div>
-
-      <div className="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Left Side - Text */}
-        <div className="flex flex-col justify-center items-start space-y-6 p-6 md:p-10">
-          <h3 className="text-2xl font-semibold text-textdark leading-tight ">
-            We&apos;re here to help!
-          </h3>
-          <p className="text-lg text-textmuted max-w-md">
-            Whether you’re looking for more information about our products, need support, or just want to chat, our team is ready to assist. Reach out, and we’ll get back to you as soon as possible.
+      <div className="max-w-6xl mx-auto relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
+            Get In Touch
+          </h2>
+          <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+            Have questions? We're here to help. Reach out and we'll respond promptly.
           </p>
-          <div className="text-lg text-textmuted flex gap-2">
-            For quick assistance, email us at{' '}
-            <div className="animate-bounce">
-              <Link href="mailto:support@tiameds.com" className="text-purple-700 font-semibold hover:text-textdark transition duration-300">
-                support@tiameds.ai
-              </Link>
-            </div>
-            .
-          </div>
-        </div>
+        </motion.div>
 
-        {/* Right Side - Form */}
-        <div className="flex justify-center items-center">
-          <form onSubmit={handleSubmit} className="w-full p-8 rounded-lg shadow-lg space-y-8 max-w-lg mx-auto bg-white border border-gray-300">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Contact Info */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            viewport={{ once: true }}
+            className="space-y-6 p-6 bg-white rounded-xl shadow-sm border border-gray-200"
+          >
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Contact Information</h3>
+              <p className="text-gray-600 mb-6">
+                Whether you need support or have questions about our products, our team is ready to assist.
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0 bg-purple-100 p-3 rounded-lg text-purple-600">
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">Email us at</p>
+                  <Link href="mailto:support@tiameds.ai" className="text-base font-medium text-purple-600 hover:text-purple-700">
+                    support@tiameds.ai
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Contact Form */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+            viewport={{ once: true }}
+            className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-200"
+          >
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label htmlFor="name" className="block text-textdark font-medium mb-2">
-                  Full Name
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Full Name *
                 </label>
                 <input
+                  type="text"
                   id="name"
                   name="name"
-                  type="text"
+                  required
                   value={formData.name}
                   onChange={handleChange}
-                  required
-                  className="p-4 w-full bg-white border border-gray-300 rounded-lg focus:ring-primary focus:ring-2 transition-all duration-300 ease-in-out"
-                  placeholder="John Doe"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                  placeholder="Your name"
                 />
               </div>
+
               <div>
-                <label htmlFor="email" className="block text-textdark font-medium mb-2">
-                  Email Address
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Address *
                 </label>
                 <input
+                  type="email"
                   id="email"
                   name="email"
-                  type="email"
+                  required
                   value={formData.email}
                   onChange={handleChange}
-                  required
-                  className="p-4 w-full bg-white border border-gray-300 rounded-lg focus:ring-primary focus:ring-2 transition-all duration-300 ease-in-out"
-                  placeholder="john.doe@example.com"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                  placeholder="your.email@example.com"
                 />
               </div>
-            </div>
 
-            <div>
-              <label htmlFor="message" className="block text-textdark font-medium mb-2">
-                Your Message
-              </label>
-              <textarea
-                id="message"
-                name="message"
-                value={formData.message}
-                onChange={handleChange}
-                required
-                className="p-4 w-full bg-white border border-gray-300 rounded-lg focus:ring-primary focus:ring-2 transition-all duration-300 ease-in-out"
-                rows={6}
-                placeholder="Type your message here"
-              />
-            </div>
+              <div>
+                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                  Your Message *
+                </label>
+                <textarea
+                  id="message"
+                  name="message"
+                  required
+                  rows={4}
+                  value={formData.message}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                  placeholder="How can we help you?"
+                ></textarea>
+              </div>
 
-            <div className="text-center">
-              <button type="submit" disabled={loading}  className="rounded-md bg-gradient-to-r from-purple-700 to-secondary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gradient-to-r hover:from-secondary hover:to-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 animate-bounce">
-                {loading ? 'Sending...' : 'Send Message'}
-              </button>
-              {responseMessage && <p className="mt-4 text-textmuted">{responseMessage}</p>}
-            </div>
-          </form>
+              <div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white font-medium py-3 px-6 rounded-lg shadow hover:shadow-md transition-all disabled:opacity-70"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Sending...
+                    </span>
+                  ) : (
+                    'Send Message'
+                  )}
+                </button>
+              </div>
+
+              {responseMessage && (
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className={`text-sm text-center ${responseMessage.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {responseMessage}
+                </motion.p>
+              )}
+            </form>
+          </motion.div>
         </div>
       </div>
     </section>

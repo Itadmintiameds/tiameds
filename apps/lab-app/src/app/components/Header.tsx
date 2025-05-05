@@ -1,5 +1,4 @@
 'use client';
-
 import { Dialog, DialogPanel } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
@@ -46,9 +45,9 @@ const Header = ({ navigation }: { navigation: NavigationItem[] }) => {
             <span className="sr-only">Lab Management</span>
             <Image
               alt="Lab Management Logo"
-              src="/tiamed2.svg"
-              width={70}
-              height={50}
+              src="/finallogo.svg"
+              width={100}
+              height={100}
               className="transition-transform duration-300 hover:scale-105"
             />
           </Link>
@@ -72,7 +71,7 @@ const Header = ({ navigation }: { navigation: NavigationItem[] }) => {
             <Link
               key={item.name}
               href={item.href}
-              className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors duration-200 hover:underline hover:animate-bounce"
+              className="text-sm font-semibold text-gray-900 hover:text-purple-600 transition-colors duration-200 hover:underline "
             >
               {item.name}
             </Link>

@@ -135,9 +135,9 @@ const DemoTrialSection = () => {
                 <h3 className="text-xl font-bold text-gray-900 mb-3">{solution.name}</h3>
                 <p className="text-gray-600 mb-6 flex-grow">{solution.description}</p>
 
-                <div className="mt-auto pt-4 border-t border-gray-200">
+                {/* <div className="mt-auto pt-4 border-t border-gray-200">
                   <p className="text-sm font-medium text-primary">{solution.highlight}</p>
-                </div>
+                </div> */}
               </div>
             </motion.div>
           ))}

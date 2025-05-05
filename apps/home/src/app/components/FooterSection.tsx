@@ -69,13 +69,13 @@ const FooterSection = () => {
           {/* Company Info */}
           <div className="space-y-6">
             <Link href="/" className="flex items-center">
-               <Image
-                              alt="/TiamedsLogo.svg"
-                              src="/TiamedsLogo.svg"
-                              className="h-12 w-auto transition-transform duration-300 "
-                              width={100}
-                              height={100}
-                            />
+              <Image
+                alt="/TiamedsLogo.svg"
+                src="/TiamedsLogo.svg"
+                className="h-12 w-auto transition-transform duration-300 scale-120"
+                width={120}
+                height={120}
+              />
             </Link>
             <p className="text-gray-600">
               Enterprise-grade technology solutions for digital transformation.
@@ -139,17 +139,18 @@ const FooterSection = () => {
             <ul className="space-y-4">
               <motion.p whileHover={{ x: 5 }}>
                 <Link href="/product" className="text-gray-600 hover:text-primary transition-colors">
-                  Pharma Ecommerce
+
+                  Pharma E-Commerce Platform
                 </Link>
               </motion.p>
               <motion.p whileHover={{ x: 5 }}>
                 <Link href="/product" className="text-gray-600 hover:text-primary transition-colors">
-                  Lab Management System
+                  Lab Management Softwere
                 </Link>
               </motion.p>
               <motion.p whileHover={{ x: 5 }}>
                 <Link href="/product" className="text-gray-600 hover:text-primary transition-colors">
-                  Pharma Managment System
+                  Pharma Managment Softwere
                 </Link>
               </motion.p>
             </ul>
@@ -169,14 +170,14 @@ const FooterSection = () => {
               </motion.div>
               <motion.div whileHover={{ x: 5 }} className="flex items-center">
                 <FaPhone className="flex-shrink-0 mr-3 text-primary" />
-                <Link href="tel:+18005551234" className="hover:text-primary transition-colors">
-                  +1 (800) 555-1234
+                <Link href="tel:7678325053" className="hover:text-primary transition-colors">
+                  +91 7678325053
                 </Link>
               </motion.div>
               <motion.div whileHover={{ x: 5 }} className="flex items-center">
                 <FaEnvelope className="flex-shrink-0 mr-3 text-primary" />
                 <Link href="mailto:info@technova.com" className="hover:text-primary transition-colors">
-                support@tiameds.ai
+                  support@tiameds.ai
                 </Link>
               </motion.div>
             </address>

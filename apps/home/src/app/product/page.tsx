@@ -222,6 +222,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { FaArrowRight, FaCheckCircle, FaFlask, FaFileInvoiceDollar, FaShoppingCart } from 'react-icons/fa';
 import Image from 'next/image';
+import { FaShopLock } from 'react-icons/fa6';
 
 export interface Feature {
   name: string;
@@ -258,7 +259,7 @@ const ProductFeaturesPage = () => {
       icon: <FaFlask className="w-6 h-6" />
     },
     {
-      name: 'Billing and Invoicing Software',
+      name: 'Pharma Management Software',
       description: 'Automate your billing and invoicing processes with a solution that simplifies payment collection and tracking.',
       points: [
         'Invoice generation and customization',
@@ -274,12 +275,12 @@ const ProductFeaturesPage = () => {
         'Cloud-based and on-premises deployment options',
       ],
       imageSrc: '/pharma.png',
-      imageAlt: 'Billing and invoicing software interface showing invoice tracking.',
-      link: '#',
-      icon: <FaFileInvoiceDollar className="w-6 h-6" />
+      imageAlt: 'Pharma management software interface showing invoice tracking.',
+      link: 'https://pharma-test-env.tiameds.ai/login',
+      icon: <FaShopLock  className="w-6 h-6" />
     },
     {
-      name: 'Ecommerce Platform',
+      name: 'Pharma E-Commerce Platform',
       description: 'Launch and grow your online store with a comprehensive ecommerce platform that offers a range of features and tools.',
       points: [
         'Product catalog and inventory management',
@@ -297,7 +298,7 @@ const ProductFeaturesPage = () => {
       ],
       imageSrc: '/cross-beding.png',
       imageAlt: 'Ecommerce platform interface showing online store management.',
-      link: '#',
+      link:'',
       icon: <FaShoppingCart className="w-6 h-6" />
     },
   ];
@@ -409,13 +410,17 @@ const ProductFeaturesPage = () => {
                     </div>
                     
                     <div className="mt-auto">
-                      <Link
-                        href={feature.link}
-                        className="inline-flex items-center rounded-lg bg-gradient-to-r from-primary to-secondary px-4 sm:px-5 py-2 sm:py-3 text-white font-medium text-sm sm:text-base shadow hover:shadow-lg transition-all group"
-                      >
-                        <span>Explore {feature.name.split(' ')[0]}</span>
-                        <FaArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
-                      </Link>
+                      {
+                        feature.link && (
+                          <Link
+                            href={feature.link}
+                            className="inline-flex items-center rounded-lg bg-gradient-to-r from-primary to-secondary px-4 sm:px-5 py-2 sm:py-3 text-white font-medium shadow hover:shadow-lg transition-all group"
+                          >
+                            <span>Explore {feature.name.split(' ')[0]}</span>
+                            <FaArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+                          </Link>
+                        )
+                      }
                     </div>
                   </div>
                 </div>

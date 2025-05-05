@@ -23,7 +23,7 @@ const navigation: NavigationItem[] = [
   { name: 'Testimonials', href: '#testimonials' },
   { name: 'FAQ', href: '#faq' },
   { name: 'Contact', href: '#contact' },
-  { name: 'Partners', href: '#partners' },
+  // { name: 'Partners', href: '#partners' },
 ];
 
 const Page = () => {
@@ -48,9 +48,9 @@ const Page = () => {
       <div id="contact">
         <ContactSection />
       </div>
-      <div id="partners">
+      {/* <div id="partners">
         <PartnersSection />
-      </div>
+      </div> */}
       <div>
         <Footer />
       </div>

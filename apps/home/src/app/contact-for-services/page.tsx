@@ -3,6 +3,7 @@ import { FaHeadset, FaCalendarAlt, FaMapMarkerAlt, FaPhoneAlt, FaEnvelope } from
 import { motion } from 'framer-motion'
 import { FiArrowRight } from 'react-icons/fi'
 import Link from 'next/link'
+import FooterSection from '../components/FooterSection'
 
 interface ServiceContactPageProps {
   params: {
@@ -11,7 +12,6 @@ interface ServiceContactPageProps {
 }
 
 const ServiceContactPage = ({ params }: ServiceContactPageProps) => {
-  // This would normally come from your router/params
   const serviceName = params?.serviceName || "Your Selected Service"
   
   const contactMethods = [
@@ -20,32 +20,37 @@ const ServiceContactPage = ({ params }: ServiceContactPageProps) => {
       title: "Live Chat",
       description: "Chat with our solutions team in real-time",
       action: "Start Chat",
-      link: "#chat"
+      link: "#chat",
+      underDevelopment: true
     },
     {
       icon: <FaCalendarAlt className="h-8 w-8 text-primary" />,
       title: "Schedule Meeting",
       description: "Book a consultation at your convenience",
       action: "Book Now",
-      link: "#schedule"
+      link: "#schedule",
+      underDevelopment: true
     },
     {
       icon: <FaPhoneAlt className="h-8 w-8 text-primary" />,
       title: "Call Us",
-      description: "+1 (555) 123-4567",
+      description: "+91 7678325053",
       action: "Call Now",
-      link: "tel:+15551234567"
+      link: "tel:+15551234567",
+      underDevelopment: false
     },
     {
       icon: <FaEnvelope className="h-8 w-8 text-primary" />,
       title: "Email Us",
       description: "solutions@tiamedstech.com",
       action: "Send Email",
-      link: "mailto:solutions@tiamedstech.com"
+      link: "mailto:solutions@tiamedstech.com",
+      underDevelopment: true
     }
   ]
 
   return (
+    <>
     <div className="bg-gradient-to-b from-gray-50 to-white">
       {/* Hero Section */}
       <div className="relative px-6 pt-24 pb-16 lg:px-8 overflow-hidden">
@@ -125,8 +130,13 @@ const ServiceContactPage = ({ params }: ServiceContactPageProps) => {
                     whileInView={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
                     viewport={{ once: true }}
-                    className="flex items-start p-6 rounded-xl border border-gray-200 hover:border-primary transition-colors"
+                    className={`flex items-start p-6 rounded-xl border ${method.underDevelopment ? 'border-gray-200' : 'border-gray-200 hover:border-primary'} transition-colors relative`}
                   >
+                    {method.underDevelopment && (
+                      <div className="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                        Coming Soon
+                      </div>
+                    )}
                     <div className="flex-shrink-0 mr-6">
                       {method.icon}
                     </div>
@@ -135,10 +145,14 @@ const ServiceContactPage = ({ params }: ServiceContactPageProps) => {
                       <p className="text-gray-600 mb-4">{method.description}</p>
                       <Link
                         href={method.link}
-                        className="inline-flex items-center text-primary font-medium hover:text-secondary transition-colors"
+                        className={`inline-flex items-center font-medium transition-colors ${method.underDevelopment ? 'text-gray-400 cursor-not-allowed' : 'text-primary hover:text-secondary'}`}
+                        aria-disabled={method.underDevelopment}
+                        tabIndex={method.underDevelopment ? -1 : undefined}
                       >
                         {method.action}
-                        <FiArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+                        {!method.underDevelopment && (
+                          <FiArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+                        )}
                       </Link>
                     </div>
                   </motion.div>
@@ -237,9 +251,6 @@ const ServiceContactPage = ({ params }: ServiceContactPageProps) => {
           
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             {[
-                // #4754, Shivaji Road, NR Mohalla
-                // Mysore-570007, Karnataka
-                // India
               {
                 city: "Mysore",
                 address: "#4754, Shivaji Road, NR Mohalla\nMysore-570007, Karnataka\nIndia",
@@ -267,6 +278,8 @@ const ServiceContactPage = ({ params }: ServiceContactPageProps) => {
         </div>
       </div>
     </div>
+    <FooterSection />
+    </>
   )
 }
 

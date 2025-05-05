@@ -317,7 +317,7 @@ const AboutPage = () => {
                 className="mt-8 flex items-center justify-center gap-x-6"
               >
                 <a
-                  href="/contact"
+                  href="/contact-for-services"
                   className="rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-primary shadow-sm hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   Contact Us
@@ -330,7 +330,6 @@ const AboutPage = () => {
           </div>
         </section>
       </main>
-      
       <FooterSection />
     </div>
   )
