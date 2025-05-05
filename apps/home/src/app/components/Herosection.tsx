@@ -1,49 +1,96 @@
 'use client'
-import Link from 'next/link'
-import { FiArrowRight, FiCpu, FiCloud, FiDatabase, FiShield } from 'react-icons/fi'
+
 import { motion } from 'framer-motion'
-import { FaRobot } from 'react-icons/fa'
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { AiOutlineCloudServer } from 'react-icons/ai'
 import { BsShieldLock } from 'react-icons/bs'
+import { FaRobot } from 'react-icons/fa'
+import {
+  FiArrowRight,
+  FiCloud,
+  FiCpu,
+  FiDatabase,
+  FiShield,
+} from 'react-icons/fi'
+
+const techIcons = [
+  { icon: <FiCpu className="h-8 w-8" />, name: 'Processing' },
+  { icon: <FiCloud className="h-8 w-8" />, name: 'Cloud' },
+  { icon: <FiDatabase className="h-8 w-8" />, name: 'Database' },
+  { icon: <FiShield className="h-8 w-8" />, name: 'Security' },
+  { icon: <FaRobot className="h-8 w-8" />, name: 'AI' },
+  { icon: <AiOutlineCloudServer className="h-8 w-8" />, name: 'Server' },
+  { icon: <BsShieldLock className="h-8 w-8" />, name: 'Encryption' },
+]
 
 const Herosection = () => {
-  const techIcons = [
-    { icon: <FiCpu className="h-8 w-8" />, name: 'Processing' },
-    { icon: <FiCloud className="h-8 w-8" />, name: 'Cloud' },
-    { icon: <FiDatabase className="h-8 w-8" />, name: 'Database' },
-    { icon: <FiShield className="h-8 w-8" />, name: 'Security' },
-    { icon: <FaRobot className="h-8 w-8" />, name: 'AI' },
-    { icon: <AiOutlineCloudServer className="h-8 w-8" />, name: 'Server' },
-    { icon: <BsShieldLock className="h-8 w-8" />, name: 'Encryption' },
-  ]
+  interface FloatingIcon {
+    top: number
+    left: number
+    fontSize: number
+    moveX: number
+    moveY: number
+    rotate: number
+    duration: number
+    icon: JSX.Element
+  }
+  
+  const [floatingIcons, setFloatingIcons] = useState<FloatingIcon[]>([])
+
+  useEffect(() => {
+    const icons = Array.from({ length: 15 }).map(() => {
+      const top = Math.random() * 100
+      const left = Math.random() * 100
+      const fontSize = Math.random() * 20 + 10
+      const moveY = Math.random() * 100 - 50
+      const moveX = Math.random() * 100 - 50
+      const rotate = 360
+      const duration = Math.random() * 20 + 10
+      const tech = techIcons[Math.floor(Math.random() * techIcons.length)].icon
+
+      return {
+        top,
+        left,
+        fontSize,
+        moveX,
+        moveY,
+        rotate,
+        duration,
+        icon: tech,
+      }
+    })
+    setFloatingIcons(icons)
+  }, [])
 
   return (
     <div className="bg-gradient-to-b from-gray-50 to-white">
       <div className="relative isolate px-6 pt-14 lg:px-8 overflow-hidden">
-        {/* Animated floating tech elements */}
+
+        {/* Floating tech icons (client-only) */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
-          {Array.from({ length: 15 }).map((_, i) => (
+          {floatingIcons.map((item, i) => (
             <motion.div
               key={i}
               className="absolute text-gray-200"
               style={{
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                fontSize: `${Math.random() * 20 + 10}px`,
+                top: `${item.top}%`,
+                left: `${item.left}%`,
+                fontSize: `${item.fontSize}px`,
               }}
               animate={{
-                y: [0, Math.random() * 100 - 50],
-                x: [0, Math.random() * 100 - 50],
-                rotate: [0, 360],
+                y: [0, item.moveY],
+                x: [0, item.moveX],
+                rotate: [0, item.rotate],
               }}
               transition={{
-                duration: Math.random() * 20 + 10,
+                duration: item.duration,
                 repeat: Infinity,
                 repeatType: 'reverse',
                 ease: 'linear',
               }}
             >
-              {techIcons[Math.floor(Math.random() * techIcons.length)].icon}
+              {item.icon}
             </motion.div>
           ))}
         </div>
@@ -73,16 +120,8 @@ const Herosection = () => {
             >
               <span className="block">Building the Digital</span>
               <span className="relative inline-block">
-                <span className="relative">
-                  <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    Infrastructure
-                  </span>
-                  <motion.span
-                    initial={{ width: 0 }}
-                    animate={{ width: '100%' }}
-                    transition={{ duration: 0.8, delay: 0.4 }}
-                    className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-primary to-secondary"
-                  />
+                <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                  Infrastructure
                 </span>
               </span>
               <span className="block">of Tomorrow</span>
@@ -94,7 +133,9 @@ const Herosection = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="mt-6 text-xl leading-8 text-gray-600 max-w-3xl mx-auto"
             >
-              Tiameds Technology delivers cutting-edge SaaS platforms and enterprise solutions that power businesses at scale with security, reliability, and innovation.
+              Tiameds Technology delivers cutting-edge SaaS platforms and
+              enterprise solutions that power businesses at scale with security,
+              reliability, and innovation.
             </motion.p>
 
             <motion.div
@@ -114,7 +155,7 @@ const Herosection = () => {
 
               <Link
                 href="/techstack"
-                className="flex items-center gap-2 text-gray-900 font-medium hover:text-primary transition-colors"
+                className="flex items-center gap-2 text-gray-900 font-medium hover:text-primary transition-colors group"
               >
                 Explore Our Tech Stack
                 <FiArrowRight className="transition-transform group-hover:translate-x-1" />
@@ -128,9 +169,11 @@ const Herosection = () => {
               transition={{ duration: 0.6, delay: 0.8 }}
               className="mt-16"
             >
-              <p className="text-sm text-gray-500 mb-4">TRUSTED BY INNOVATORS WORLDWIDE</p>
+              <p className="text-sm text-gray-500 mb-4">
+                TRUSTED BY INNOVATORS WORLDWIDE
+              </p>
               <div className="flex flex-wrap justify-center gap-8">
-                {techIcons.map((item, index) => (
+                {techIcons.map((item) => (
                   <motion.div
                     key={item.name}
                     whileHover={{ y: -5, scale: 1.1 }}
@@ -139,7 +182,9 @@ const Herosection = () => {
                     <div className="p-4 bg-white rounded-xl shadow-sm border border-gray-100">
                       {item.icon}
                     </div>
-                    <span className="mt-2 text-xs font-medium text-gray-500">{item.name}</span>
+                    <span className="mt-2 text-xs font-medium text-gray-500">
+                      {item.name}
+                    </span>
                   </motion.div>
                 ))}
               </div>

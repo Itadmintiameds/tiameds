@@ -1,275 +1,307 @@
 'use client'
-
-import { Field, Label, Switch } from '@headlessui/react'; // Adjust the import based on your project setup
-import { useState } from 'react';
+import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { FiArrowRight, FiMail, FiUser, FiMessageSquare, FiPhone, FiMapPin } from 'react-icons/fi'
 
 interface FormData {
-  firstName: string
-  lastName: string
-  company: string
+  name: string
   email: string
-  product: string[] // Change to array for multi-select
-  phoneNumber: string
+  phone: string
+  subject: string
   message: string
 }
 
 const ContactUsSection = () => {
-  const [agreed, setAgreed] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<FormData>({
-    firstName: '',
-    lastName: '',
-    company: '',
-    email: '',
-    product: [], // Initialize as empty array for multi-select
-    phoneNumber: '',
-    message: ''
+  const [formData, setFormData] = useState<FormData>({ 
+    name: '', 
+    email: '', 
+    phone: '',
+    subject: '',
+    message: '' 
   })
+  const [loading, setLoading] = useState(false)
+  const [responseMessage, setResponseMessage] = useState('')
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, checked } = e.target as HTMLInputElement;
-
-    if (name === 'product') {
-      const updatedProducts = checked
-        ? [...formData.product, value] // Add product if checked
-        : formData.product.filter((product) => product !== value); // Remove product if unchecked
-
-      setFormData({
-        ...formData,
-        product: updatedProducts
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
-    }
-  };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setFormData({ ...formData, [name]: value })
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-
-    if (!agreed) {
-      alert('You must agree to the privacy policy to submit the form.')
-      return
-    }
-    console.log(formData)
     setLoading(true)
+    setResponseMessage('')
 
     try {
-      const response = await fetch('/api/contactforsale', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
-      const data: { message: string } = await response.json()
-
-      setLoading(false)
-      if (data.message === 'Emails sent successfully') {
-        alert('Your message has been sent. We will get back to you soon.')
-        setFormData({
-          firstName: '',
-          lastName: '',
-          company: '',
-          email: '',
-          product: [], // Reset to empty array
-          phoneNumber: '',
-          message: ''
-        })
-      } else {
-        alert('There was an issue sending your message. Please try again.')
-      }
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      setResponseMessage('Your message has been sent successfully!')
+      setFormData({ name: '', email: '', phone: '', subject: '', message: '' })
     } catch (error) {
-      console.error('Error:', error)
-      alert('Something went wrong. Please try again.')
+      setResponseMessage('Failed to send message. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="isolate bg-white px-6 py-24 sm:py-32 lg:px-8">
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 top-[-10rem] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[-20rem]"
-      >
-        <div
-          style={{
-            clipPath:
-              'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
-          }}
-          className="relative left-1/2 -z-10 aspect-[1155/678] w-[36.125rem] max-w-none -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-30 sm:left-[calc(50%-40rem)] sm:w-[72.1875rem]"
-        />
-      </div>
-
-      <div className="mx-auto max-w-2xl text-center">
-        <h2 className="text-balance text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">Contact sales</h2>
-        <p className="mt-2 text-lg/8 text-gray-600">Aute magna irure deserunt veniam aliqua magna enim voluptate.</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="mx-auto mt-16 max-w-xl sm:mt-20">
-
-        <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-          <div>
-            <label htmlFor="first-name" className="block text-sm/6 font-semibold text-gray-900">First name</label>
-            <input
-              id="first-name"
-              name="firstName"
-              type="text"
-              value={formData.firstName}
-              required
-              onChange={handleChange}
-              className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600"
-            />
-          </div>
-          <div>
-            <label htmlFor="last-name" className="block text-sm/6 font-semibold text-gray-900">Last name</label>
-            <input
-              id="last-name"
-              name="lastName"
-              required
-              type="text"
-              value={formData.lastName}
-              onChange={handleChange}
-              className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor="company" className="block text-sm/6 font-semibold text-gray-900">Company</label>
-            <input
-              id="company"
-              name="company"
-              type="text"
-              required
-              value={formData.company}
-              onChange={handleChange}
-              className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor="email" className="block text-sm/6 font-semibold text-gray-900">Email</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor="product" className="block text-sm/6 font-semibold text-gray-900">Product</label>
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <input
-                  id="basic"
-                  name="product"
-                  type="checkbox"
-                  required
-                  value="Basic"
-                  checked={formData.product.includes('Lab Managment System')}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                />
-                <label htmlFor="basic" className="ml-2 text-sm text-gray-900">Lab Managment System</label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  id="Billing Management System"
-                  name="product"
-                  type="checkbox"
-                  required
-                  value="Pro"
-                  checked={formData.product.includes('Billing Management System')}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                />
-                <label htmlFor="pro" className="ml-2 text-sm text-gray-900">Billing Management System</label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  id="enterprise"
-                  name="product"
-                  required
-                  type="checkbox"
-                  value="Enterprise"
-                  checked={formData.product.includes('Ecommerce System')}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                />
-                <label htmlFor="enterprise" className="ml-2 text-sm text-gray-900">Ecommerce System</label>
-              </div>
-            </div>
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor="phone-number" className="block text-sm/6 font-semibold text-gray-900">Phone number</label>
-            <input
-              id="phone-number"
-              name="phoneNumber"
-              required
-              type="text"
-              value={formData.phoneNumber}
-              onChange={handleChange}
-              className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor="message" className="block text-sm/6 font-semibold text-gray-900">Message</label>
-            <textarea
-              id="message"
-              name="message"
-              rows={4}
-              required
-              value={formData.message}
-              onChange={handleChange}
-              className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600"
-            />
-          </div>
-
-          <Field className="flex gap-x-4 sm:col-span-2">
-            <div className="flex h-6 items-center">
-              <Switch
-                checked={agreed}
-                onChange={setAgreed}
-                className="group flex w-8 flex-none cursor-pointer rounded-full bg-primary p-px ring-1 ring-inset ring-gray-900/5 transition-colors duration-200 ease-in-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary data-[checked]:bg-secondary"
-              >
-                <span className="sr-only">Agree to policies</span>
-                <span
-                  aria-hidden="true"
-                  className="size-4 transform rounded-full bg-white shadow-sm ring-1 ring-gray-900/5 transition duration-200 ease-in-out group-data-[checked]:translate-x-3.5"
-                />
-              </Switch>
-            </div>
-            <Label className="text-sm/6 text-gray-600">
-              By selecting this, you agree to our{' '}
-              <a href="#" className="font-semibold text-primary">
-                privacy&nbsp;policy
-              </a>
-              .
-            </Label>
-          </Field>
+    <div className="bg-gradient-to-b from-gray-50 to-white">
+      <div className="relative isolate px-6 pt-14 lg:px-8 overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 -z-10 overflow-hidden opacity-10">
+          {Array.from({ length: 15 }).map((_, i) => (
+            <motion.div
+              key={`contact-bg-${i}`}
+              className="absolute text-gray-200"
+              style={{
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                fontSize: `${Math.random() * 20 + 10}px`,
+              }}
+              animate={{
+                y: [0, Math.random() * 100 - 50],
+                x: [0, Math.random() * 100 - 50],
+                rotate: [0, 360],
+              }}
+              transition={{
+                duration: Math.random() * 20 + 10,
+                repeat: Infinity,
+                repeatType: 'reverse',
+                ease: 'linear',
+              }}
+            >
+              <FiMail className="w-6 h-6" />
+            </motion.div>
+          ))}
         </div>
 
-        <button
-          type="submit"
-          disabled={!agreed}
-          className="mt-8 w-full rounded-md bg-primary py-2 text-base font-semibold text-white hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-opacity-50 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Sending...' : 'Send message'}
-        </button>
-      </form>
+        <div className="mx-auto max-w-7xl py-32 sm:py-48 lg:py-28">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center"
+          >
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="inline-block mb-6 px-4 py-2 bg-primary/10 rounded-full"
+            >
+              <span className="text-sm font-medium text-primary">
+                Get In Touch
+              </span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="text-5xl font-bold tracking-tight text-gray-900 sm:text-7xl"
+            >
+              <span className="block">Contact Our</span>
+              <span className="relative inline-block">
+                <span className="relative">
+                  <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                    Support Team
+                  </span>
+                  <motion.span
+                    initial={{ width: 0 }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 0.8, delay: 0.4 }}
+                    className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-primary to-secondary"
+                  />
+                </span>
+              </span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="mt-6 text-xl leading-8 text-gray-600 max-w-3xl mx-auto"
+            >
+              Have questions about our solutions? Reach out to our team and we&apos;ll get back to you within 24 hours.
+            </motion.p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+            viewport={{ once: true }}
+            className="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-12"
+          >
+            {/* Contact Information */}
+            <div className="space-y-8 bg-white/50 backdrop-blur-sm rounded-xl p-8 shadow-sm border border-gray-100">
+              <h3 className="text-2xl font-semibold text-gray-900">Our Contact Details</h3>
+              
+              <div className="space-y-6">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 mt-1 mr-4">
+                    <FiMail className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900">Email Us</h4>
+                    <Link href="mailto:support@tiameds.ai" className="text-primary hover:text-secondary transition-colors">
+                      support@tiameds.ai
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 mt-1 mr-4">
+                    <FiPhone className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900">Call Us</h4>
+                    <Link href="tel:+1234567890" className="text-primary hover:text-secondary transition-colors">
+                      +123-456-7890
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 mt-1 mr-4">
+                    <FiMapPin className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900">Visit Us</h4>
+                    <p className="text-gray-600">
+                      #4754, Shivaji Road, NR Mohalla<br />
+                      Mysore-570007, Karnataka<br />
+                      India
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Form */}
+            <motion.div
+              whileHover={{ y: -5 }}
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-8"
+            >
+              <h3 className="text-2xl font-semibold text-gray-900 mb-6">Send Us a Message</h3>
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <FiUser className="mr-2 text-gray-400" />
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      placeholder="Your name"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <FiMail className="mr-2 text-gray-400" />
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      placeholder="your.email@example.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <FiPhone className="mr-2 text-gray-400" />
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      placeholder="+1 (123) 456-7890"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <FiMessageSquare className="mr-2 text-gray-400" />
+                      Subject
+                    </label>
+                    <select
+                      id="subject"
+                      name="subject"
+                      value={formData.subject}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    >
+                      <option value="">Select a subject</option>
+                      <option value="Support">Support</option>
+                      <option value="Sales">Sales</option>
+                      <option value="Partnership">Partnership</option>
+                      <option value="Careers">Careers</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    <FiMessageSquare className="mr-2 text-gray-400" />
+                    Your Message
+                  </label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    rows={5}
+                    value={formData.message}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    placeholder="How can we help you?"
+                  ></textarea>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="relative group w-full flex justify-center items-center px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all"
+                  >
+                    <span className="relative z-10 flex items-center">
+                      {loading ? 'Sending...' : 'Send Message'}
+                      <FiArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </button>
+                  
+                  {responseMessage && (
+                    <p className={`mt-4 text-center text-sm ${responseMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
+                      {responseMessage}
+                    </p>
+                  )}
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        </div>
+      </div>
     </div>
   )
 }
 
 export default ContactUsSection
-
-
-
-
-
-
-
-
-

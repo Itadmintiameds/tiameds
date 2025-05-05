@@ -1,91 +1,179 @@
 'use client';
-
-import { FaArrowAltCircleRight, FaLock, FaCloud, FaBrain, FaHeadset, FaPuzzlePiece } from 'react-icons/fa';
+import { motion } from 'framer-motion';
+import { 
+  FaArrowAltCircleRight, 
+  FaLock, 
+  FaCloud, 
+  FaBrain, 
+  FaHeadset, 
+  FaPuzzlePiece,
+  FaShieldAlt,
+  FaServer,
+  FaChartLine
+} from 'react-icons/fa';
+import { 
+  GiArtificialIntelligence,
+  GiNetworkBars,
+  GiProcessor
+} from 'react-icons/gi';
+import { FiCpu } from 'react-icons/fi';
 
 const ProductFeatures = () => {
   const features = [
     {
-      title: 'Streamlined Workflow',
-      description:
-        'Simplify medical operations with intelligent tools that reduce administrative overhead and allow professionals to focus on patient care.',
-      icon: <FaArrowAltCircleRight className="h-8 w-8 text-textwhite" />,
-      color: 'bg-cardbackground hover:bg-cardhover',
+      title: 'Optimized Workflow Engine',
+      description: 'Automate and streamline operations with our intelligent process orchestration tools',
+      icon: <FaArrowAltCircleRight className="h-6 w-6" />,
+      iconBg: 'bg-blue-100 text-blue-600',
+      pattern: <GiNetworkBars className="absolute -right-4 -bottom-4 text-blue-200/40 text-6xl" />
     },
     {
-      title: 'Data Security & Compliance',
-      description:
-        'Protect sensitive medical data with robust encryption, HIPAA compliance, and multi-layered security measures.',
-      icon: <FaLock className="h-8 w-8 text-textwhite" />,
-      color: 'bg-cardbackground hover:bg-cardhover',
+      title: 'Enterprise-Grade Security',
+      description: 'Military-grade encryption with zero-trust architecture and compliance certifications',
+      icon: <FaLock className="h-6 w-6" />,
+      iconBg: 'bg-violet-100 text-violet-600',
+      pattern: <FaShieldAlt className="absolute -right-4 -bottom-4 text-violet-200/40 text-6xl" />
     },
     {
-      title: 'Cloud Scalability',
-      description:
-        'Effortlessly scale your operations with our cloud-based solutions, tailored to grow with your organization.',
-      icon: <FaCloud className="h-8 w-8 text-textwhite" />,
-      color: 'bg-cardbackground hover:bg-cardhover',
+      title: 'Cloud-Native Infrastructure',
+      description: 'Elastic, distributed systems designed for global scale and reliability',
+      icon: <FaCloud className="h-6 w-6" />,
+      iconBg: 'bg-teal-100 text-teal-600',
+      pattern: <FaServer className="absolute -right-4 -bottom-4 text-teal-200/40 text-6xl" />
     },
     {
-      title: 'AI-Powered Insights',
-      description:
-        'Leverage advanced analytics and machine learning to gain actionable insights, optimize care, and improve outcomes.',
-      icon: <FaBrain className="h-8 w-8 text-textwhite" />,
-      color: 'bg-cardbackground hover:bg-cardhover',
+      title: 'AI-Powered Analytics',
+      description: 'Predictive insights and machine learning models for data-driven decisions',
+      icon: <FaBrain className="h-6 w-6" />,
+      iconBg: 'bg-purple-100 text-purple-600',
+      pattern: <GiArtificialIntelligence className="absolute -right-4 -bottom-4 text-purple-200/40 text-6xl" />
     },
     {
-      title: '24/7 Support',
-      description:
-        'Access expert assistance anytime with our dedicated support team, ensuring uninterrupted operations.',
-      icon: <FaHeadset className="h-8 w-8 text-textwhite" />,
-      color: 'bg-cardbackground hover:bg-cardhover',
+      title: '24/7 Expert Support',
+      description: 'Dedicated technical teams with SLA-backed response times',
+      icon: <FaHeadset className="h-6 w-6" />,
+      iconBg: 'bg-amber-100 text-amber-600',
+      pattern: <FiCpu className="absolute -right-4 -bottom-4 text-amber-200/40 text-6xl" />
     },
     {
-      title: 'Custom Integrations',
-      description:
-        'Seamlessly integrate with existing systems for a tailored and cohesive digital experience.',
-      icon: <FaPuzzlePiece className="h-8 w-8 text-textwhite" />,
-      color: 'bg-cardbackground hover:bg-cardhover',
-    },
+      title: 'Seamless Integration',
+      description: 'API-first design with pre-built connectors for enterprise systems',
+      icon: <FaPuzzlePiece className="h-6 w-6" />,
+      iconBg: 'bg-green-100 text-green-600',
+      pattern: <FaChartLine className="absolute -right-4 -bottom-4 text-green-200/40 text-6xl" />
+    }
   ];
 
   return (
-    <section className="relative bg-background py-20 px-6 lg:py-28 lg:px-8">
-      {/* Background Gradient */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 top-0 -z-10 transform-gpu overflow-hidden blur-3xl"
-      >
-        <div
-          className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-primary to-secondary opacity-30 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"
-          style={{
-            clipPath:
-              'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
-          }}
-        />
-      </div>
-
-      <div className="mx-auto max-w-6xl text-center">
-        <h2
-          className="text-4xl font-bold tracking-tight text-textdark sm:text-5xl animate-fade-in-up"
+    <section className="relative bg-gradient-to-b from-gray-50 to-white py-24 px-6 lg:px-8 overflow-hidden">
+      {/* Circuit Board Background Pattern */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 opacity-5">
+        <svg 
+          viewBox="0 0 1200 800" 
+          className="w-full h-full"
+          preserveAspectRatio="none"
         >
-          Why Choose Our SaaS Solutions
-        </h2>
-        <p className="mt-6 text-lg text-textmuted animate-fade-in">
-          Empowering healthcare professionals with tools to achieve excellence.
-        </p>
+          <path 
+            d="M100,100 L1100,100 L1100,700 L100,700 Z" 
+            stroke="currentColor" 
+            strokeWidth="1" 
+            strokeDasharray="4 4"
+            className="text-blue-200"
+            fill="none"
+          />
+          <rect x="300" y="300" width="600" height="200" 
+            stroke="currentColor" 
+            strokeWidth="1" 
+            strokeDasharray="4 4"
+            className="text-purple-200"
+            fill="none"
+          />
+          <circle cx="600" cy="400" r="150"
+            stroke="currentColor" 
+            strokeWidth="1" 
+            strokeDasharray="4 4"
+            className="text-teal-200"
+            fill="none"
+          />
+        </svg>
       </div>
 
-      <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-        {features.map((feature, index) => (
-          <div
-            key={index}
-            className={`flex flex-col items-center text-center space-y-4 p-6 shadow-lg rounded-lg transition-all duration-300 ${feature.color}`}
+      {/* Floating Tech Icons */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
+        <GiProcessor className="absolute top-1/4 left-10 text-blue-100 text-6xl animate-float-slow" />
+        <FaServer className="absolute top-1/3 right-20 text-violet-100 text-5xl animate-float" />
+        <FiCpu className="absolute bottom-1/4 left-1/4 text-teal-100 text-7xl animate-float-slower" />
+        <GiNetworkBars className="absolute bottom-1/3 right-1/3 text-amber-100 text-6xl animate-float" />
+      </div>
+
+      <div className="mx-auto max-w-7xl">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="text-center mb-20"
+        >
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="inline-flex items-center px-5 py-2 rounded-full bg-primary/10 mb-6"
           >
-            <div className="rounded-full p-4 shadow-md bg-primary">{feature.icon}</div>
-            <h3 className="text-xl font-semibold text-textdark">{feature.title}</h3>
-            <p className="text-sm text-textmuted">{feature.description}</p>
-          </div>
-        ))}
+            <span className="text-sm font-medium text-primary">ENTERPRISE TECHNOLOGY SOLUTIONS</span>
+          </motion.div>
+
+          <h2 className="text-4xl font-bold text-gray-900 sm:text-5xl mb-6">
+            <span className="block">Innovative IT Solutions for</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+              Digital Transformation
+            </span>
+          </h2>
+
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Cutting-edge software and infrastructure solutions designed to power modern enterprises.
+          </p>
+        </motion.div>
+
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {features.map((feature, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: i * 0.1 }}
+              viewport={{ once: true }}
+              whileHover={{ y: -10 }}
+              className="relative group"
+            >
+              <div className="relative h-full bg-white p-8 rounded-xl shadow-lg border border-gray-100 overflow-hidden transition-all duration-300 group-hover:shadow-xl">
+                {/* Background pattern */}
+                {feature.pattern}
+                
+                {/* Icon */}
+                <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl ${feature.iconBg} mb-6 transition-all duration-300 group-hover:scale-110`}>
+                  {feature.icon}
+                </div>
+                
+                {/* Content */}
+                <h3 className="text-xl font-bold text-gray-900 mb-4">{feature.title}</h3>
+                <p className="text-gray-600 mb-6">{feature.description}</p>
+                
+                <button className="flex items-center text-sm font-medium text-primary group-hover:text-secondary transition-colors">
+                  Learn More
+                  <svg 
+                    className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" 
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path d="M5 12H19M19 12L12 5M19 12L12 19" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </section>
   );

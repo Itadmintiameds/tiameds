@@ -1,89 +1,203 @@
-'use client';
+'use client'
+import { motion } from 'framer-motion'
 import Link from "next/link"
+import Image from "next/image"
+import {
+  FaEnvelope,
+  FaGithub,
+  FaLinkedin,
+  FaMapMarkerAlt,
+  FaPhone,
+  FaServer,
+  FaTwitter
+} from 'react-icons/fa'
+import {
+  GiNetworkBars,
+  GiProcessor
+} from 'react-icons/gi'
 
 const FooterSection = () => {
   return (
-    <footer className="py-16 px-6 lg:py-0 lg:px-8">
-      {/* Background Gradient */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 top-0 -z-10 transform-gpu overflow-hidden blur-3xl"
-      >
-        <div
-          className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-primary to-secondary opacity-30 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"
-          style={{
-            clipPath:
-              'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
-          }}
-        />
+    <footer className="relative bg-gradient-to-b from-gray-50 to-white py-20 px-6 lg:px-8 overflow-hidden">
+      {/* Circuit Board Background Pattern */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 opacity-10">
+        <svg
+          viewBox="0 0 1200 800"
+          className="w-full h-full"
+          preserveAspectRatio="none"
+        >
+          <path
+            d="M100,100 L1100,100 L1100,700 L100,700 Z"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeDasharray="4 4"
+            className="text-blue-200"
+            fill="none"
+          />
+          <rect x="300" y="300" width="600" height="200"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeDasharray="4 4"
+            className="text-purple-200"
+            fill="none"
+          />
+          <circle cx="600" cy="400" r="150"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeDasharray="4 4"
+            className="text-teal-200"
+            fill="none"
+          />
+        </svg>
       </div>
 
-      <div className="mx-auto max-w-7xl text-center relative z-10">
-        <div className="flex justify-between items-center mb-8">
-          {/* Left Side - Logo */}
-          <div className="flex items-center space-x-4">
-            <Link href="#" className="text-lg font-semibold text-textdark hover:text-primary">
-              <span className="sr-only">Tiameds</span>
-              Tiameds Technology
+      {/* Floating Tech Icons */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
+        <GiProcessor className="absolute top-1/4 left-10 text-blue-100 text-6xl opacity-20" />
+        <FaServer className="absolute top-1/3 right-20 text-violet-100 text-5xl opacity-20" />
+        <GiNetworkBars className="absolute bottom-1/4 left-1/4 text-teal-100 text-7xl opacity-20" />
+      </div>
+
+      <div className="mx-auto max-w-7xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          viewport={{ once: true }}
+          className="grid grid-cols-1 md:grid-cols-4 gap-12"
+        >
+          {/* Company Info */}
+          <div className="space-y-6">
+            <Link href="/" className="flex items-center">
+               <Image
+                              alt="/TiamedsLogo.svg"
+                              src="/TiamedsLogo.svg"
+                              className="h-12 w-auto transition-transform duration-300 "
+                              width={100}
+                              height={100}
+                            />
             </Link>
+            <p className="text-gray-600">
+              Enterprise-grade technology solutions for digital transformation.
+            </p>
+            <div className="flex space-x-6">
+              <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.9 }}>
+                <Link
+                  href="#"
+                  className="text-gray-600 hover:text-primary transition-colors"
+                  aria-label="Twitter"
+                >
+                  <FaTwitter className="w-5 h-5" />
+                </Link>
+              </motion.div>
+              <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.9 }}>
+                <Link
+                  href="#"
+                  className="text-gray-600 hover:text-primary transition-colors"
+                  aria-label="LinkedIn"
+                >
+                  <FaLinkedin className="w-5 h-5" />
+                </Link>
+              </motion.div>
+              <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.9 }}>
+                <Link
+                  href="#"
+                  className="text-gray-600 hover:text-primary transition-colors"
+                  aria-label="GitHub"
+                >
+                  <FaGithub className="w-5 h-5" />
+                </Link>
+              </motion.div>
+            </div>
           </div>
 
-          {/* Right Side - Social Links */}
-          <div className="flex space-x-6 text-gray-600">
-            <Link href="#" className="hover:text-tertiary text-gray-600">
-              <svg className="w-6 h-6" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.655-2.828.774 1.016-.61 1.794-1.573 2.165-2.723-.951.564-2.007.975-3.127 1.199C19.818 2.318 18.235.5 16.268.5c-3.1 0-5.613 2.515-5.613 5.613 0 .44.051.872.14 1.285-4.67-.233-8.8-2.47-11.58-5.87C.637 2.628.191 4.068.191 5.567c0 1.944 1.055 3.649 2.656 4.657-1.378-.042-2.679-.419-3.818-1.049-.001.035-.001.068-.001.101 0 2.72 1.933 5.005 4.487 5.52-1.774 1.396-4.017 2.236-6.507 2.236-.423 0-.84-.025-1.25-.073 2.333 1.495 5.11 2.362 8.062 2.362 9.674 0 15.017-8.017 15.017-14.973 0-.23-.004-.461-.014-.69A10.786 10.786 0 0 0 24 4.557z"/></svg>
-            </Link>
-            <Link href="#" className="hover:text-tertiary text-gray-600">
-              <svg className="w-6 h-6" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.478 2 2 6.478 2 12s4.478 10 10 10 10-4.478 10-10S17.522 2 12 2zm-1 14.93v-4.69h2v4.69c0 .49-.39.89-.88.89s-.88-.39-.88-.89zM13 8.93c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2z"/></svg>
-            </Link>
-            <Link href="#" className="hover:text-tertiary text-gray-600">
-              <svg className="w-6 h-6" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 4h-2V2h-4v2H7v2h6v12H7v2h6v2h4v-2h2z"/></svg>
-            </Link>
+          {/* Navigation */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Company</h3>
+            <div className="space-y-4">
+              <motion.p whileHover={{ x: 5 }}>
+                <Link href="/about" className="text-gray-600 hover:text-primary transition-colors">
+                  About Us
+                </Link>
+              </motion.p>
+              <motion.p whileHover={{ x: 5 }}>
+                <Link href="/contact" className="text-gray-600 hover:text-primary transition-colors">
+                  Contact Us
+                </Link>
+              </motion.p>
+              <motion.p whileHover={{ x: 5 }}>
+                <Link href="/careers" className="text-gray-600 hover:text-primary transition-colors">
+                  Careers
+                </Link>
+              </motion.p>
+            </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-          {/* Navigation Links */}
-          <div className="text-left">
-            <h3 className="text-xl font-semibold text-textdark mb-4">Company</h3>
+          {/* Solutions */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Solutions</h3>
             <ul className="space-y-4">
-              <li><Link className="text-gray-600 hover:text-primary" href="/about">About Us</Link></li>
-              <li><Link className="text-gray-600 hover:text-primary" href="/contact">Contact Us</Link></li>
-              <li><Link className="text-gray-600 hover:text-primary" href="/careers">Careers</Link></li>
+              <motion.p whileHover={{ x: 5 }}>
+                <Link href="/product" className="text-gray-600 hover:text-primary transition-colors">
+                  Pharma Ecommerce
+                </Link>
+              </motion.p>
+              <motion.p whileHover={{ x: 5 }}>
+                <Link href="/product" className="text-gray-600 hover:text-primary transition-colors">
+                  Lab Management System
+                </Link>
+              </motion.p>
+              <motion.p whileHover={{ x: 5 }}>
+                <Link href="/product" className="text-gray-600 hover:text-primary transition-colors">
+                  Pharma Managment System
+                </Link>
+              </motion.p>
             </ul>
           </div>
 
-          {/* Solutions Links */}
-          <div className="text-left">
-            <h3 className="text-xl font-semibold text-textdark mb-4">Solutions</h3>
-            <ul className="space-y-4">
-              <li><Link href="#" className="text-gray-600 hover:text-primary">Healthcare SaaS</Link></li>
-              <li><Link href="#" className="text-gray-600 hover:text-primary">Patient Management</Link></li>
-              <li><Link href="#" className="text-gray-600 hover:text-primary">Data Security</Link></li>
-            </ul>
+          {/* Contact */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Contact</h3>
+            <address className="not-italic text-gray-600 space-y-4">
+              <motion.div whileHover={{ x: 5 }} className="flex items-start">
+                <FaMapMarkerAlt className="flex-shrink-0 mt-1 mr-3 text-primary" />
+                <span className="hover:text-primary transition-colors">
+                  #4754, Shivaji Road, NR Mohalla <br />
+                  Mysore-570007, Karnataka <br />
+                  India
+                </span>
+              </motion.div>
+              <motion.div whileHover={{ x: 5 }} className="flex items-center">
+                <FaPhone className="flex-shrink-0 mr-3 text-primary" />
+                <Link href="tel:+18005551234" className="hover:text-primary transition-colors">
+                  +1 (800) 555-1234
+                </Link>
+              </motion.div>
+              <motion.div whileHover={{ x: 5 }} className="flex items-center">
+                <FaEnvelope className="flex-shrink-0 mr-3 text-primary" />
+                <Link href="mailto:info@technova.com" className="hover:text-primary transition-colors">
+                support@tiameds.ai
+                </Link>
+              </motion.div>
+            </address>
           </div>
-          {/* SAS health care INDIa, #4754, Shivaji Road, NR Mohalla, Mysore-570007, Mysuru, Karnataka, India 570007 */}
-          {/* Contact Information */}
-          <div className="text-left">
-            <h3 className="text-xl font-semibold text-textdark mb-4">Contact Information</h3>
-            <p className="text-gray-600">Tiameds Technology</p>
-            <p className="text-gray-600">4754, Shivaji Road, NR Mohalla</p>
-            <p className="text-gray-600">Mysore-570007, Mysuru, Karnataka, India 570007</p>
-            <p className="text-gray-600">
-              Email: <a href="mailto:support@tiameds.com" className="text-gray-600">support@tiameds.ai</a>
-            </p>
-            <p className="text-gray-600">
-              Phone: <a href="tel:+1234567890" className="text-gray-600">+123-456-7890</a>
-            </p>
-          </div>
-        </div>
+        </motion.div>
 
-        <div className="mt-16 border-t border-gray-200 pt-6 text-center">
-          <p className="text-gray-600 text-sm">© 2025 Tiameds Technology. All rights reserved.</p>
-        </div>
+        {/* Copyright */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          viewport={{ once: true }}
+          className="mt-16 pt-8 border-t border-gray-200 text-center"
+        >
+          <p className="text-gray-500 text-sm">
+            © {new Date().getFullYear()} TiaMeds Technology Private Limited. All rights reserved.
+          </p>
+        </motion.div>
       </div>
     </footer>
-  );
-};
+  )
+}
 
-export default FooterSection;
+export default FooterSection

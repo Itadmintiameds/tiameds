@@ -1,14 +1,16 @@
 'use client'
-import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { 
-  FiCpu, FiCloud, FiDatabase, FiShield, FiCode, FiServer,
-  FiLayers, FiBarChart2, FiSmartphone, FiGlobe, 
-  FiArrowRight
-} from 'react-icons/fi'
-import { FaRobot } from 'react-icons/fa'
+import Link from 'next/link'
 import { BsShieldLock } from 'react-icons/bs'
-import { AiOutlineCloudServer } from 'react-icons/ai'
+import { FaRobot } from 'react-icons/fa'
+import {
+  FiArrowRight,
+  FiBarChart2,
+  FiCloud,
+  FiLayers,
+  FiServer,
+  FiSmartphone
+} from 'react-icons/fi'
 
 
 const TechStackPage = () => {
@@ -162,7 +164,7 @@ const TechStackPage = () => {
               Powering Real-World Solutions
             </h2>
             <p className="mt-4 text-gray-600 max-w-2xl mx-auto">
-              See how we've leveraged these technologies for our clients.
+              See how we&apos;ve leveraged these technologies for our clients.
             </p>
           </div>
 

@@ -5,4 +5,5 @@ export interface Feature {
     imageSrc: string;
     imageAlt: string;
     link: string;
+    icons ?: string; // Optional property for icons
   }
