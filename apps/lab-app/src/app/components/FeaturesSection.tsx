@@ -1,6 +1,6 @@
 'use client'
-import { FaUserMd, FaTasks, FaUpload, FaFileAlt, FaLock, FaShieldAlt, FaUsersCog } from 'react-icons/fa'
 import { motion } from 'framer-motion'
+import { FaFileAlt, FaLock, FaTasks, FaUpload, FaUserMd, FaUsersCog } from 'react-icons/fa'
 
 interface Feature {
   title: string

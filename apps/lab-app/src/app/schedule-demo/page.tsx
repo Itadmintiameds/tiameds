@@ -70,7 +70,7 @@ export default function ScheduleDemoPage() {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Demo Scheduled Successfully!</h2>
             <p className="text-gray-600 mb-6">
-              Thank you for your interest. We've received your request and will contact you shortly to confirm your demo session.
+              Thank you for your interest. We&apos;ve received your request and will contact you shortly to confirm your demo session.
             </p>
             <p className="text-sm text-gray-500">
               A confirmation has been sent to {formData.email}

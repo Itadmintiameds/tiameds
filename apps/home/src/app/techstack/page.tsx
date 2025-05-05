@@ -273,7 +273,7 @@ const TechStackPage = () => {
               Powering Real-World Solutions
             </h2>
             <p className="text-gray-600 text-sm">
-              See how we've leveraged these technologies for our clients.
+              See how we&apos;ve leveraged these technologies for our clients.
             </p>
           </div>
 

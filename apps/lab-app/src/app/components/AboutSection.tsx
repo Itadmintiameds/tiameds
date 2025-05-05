@@ -113,7 +113,7 @@ export default function AboutSection() {
               Why Choose <span className="text-purple-600">Our Solution?</span>
             </h3>
             <p className="mt-4 text-lg text-gray-500">
-              We offer a fully integrated system that ensures your lab runs smoothly. From patient management to billing and everything in between, our platform provides a comprehensive suite of tools to meet your lab's unique needs.
+              We offer a fully integrated system that ensures your lab runs smoothly. From patient management to billing and everything in between, our platform provides a comprehensive suite of tools to meet your lab&apos;s unique needs.
             </p>
             <ul className="mt-6 space-y-4">
               {features.map((feature, i) => (

@@ -1,14 +1,14 @@
-import React from 'react';
 import {
-  Herosection, FeaturesSection,
-  CTASection, TestimonialsSection,
+  CTASection,
+  FeaturesSection,
   Footer,
+  Herosection,
+  TestimonialsSection,
 } from './components/Component';
 
 import AboutSection from './components/AboutSection';
-import FAQSection from './components/FAQSection';
 import ContactSection from './components/ContactSection';
-import PartnersSection from './components/PartnersSection';
+import FAQSection from './components/FAQSection';
 
 import Header from './components/Header';
 

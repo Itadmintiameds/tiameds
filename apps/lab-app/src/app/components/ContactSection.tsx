@@ -62,7 +62,7 @@ const ContactUsSection = () => {
             Get In Touch
           </h2>
           <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
-            Have questions? We're here to help. Reach out and we'll respond promptly.
+            Have questions? We&apos;re here to help. Reach out and we&apos;ll respond promptly.
           </p>
         </motion.div>
 
