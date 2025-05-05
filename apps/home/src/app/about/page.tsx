@@ -65,11 +65,13 @@ const AboutPage = () => {
         'Patient portal',
         'Billing integration'
       ]
+      
     },
+    
     {
       name: 'Pharma E-commerce Platform',
       description: 'Interoperability platform for healthcare providers',
-      status: 'Coming Soon',
+      status: 'IN progress',
       highlights: [
         'Secure data exchange',
         'Unified patient records',

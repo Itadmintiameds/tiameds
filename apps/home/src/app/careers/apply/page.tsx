@@ -4,8 +4,6 @@ import Link from 'next/link'
 import { FiArrowRight, FiBriefcase, FiMail, FiPhone } from 'react-icons/fi'
 
 const ApplyPage = () => {
-  // const [jobListings] = useState<any[]>([]) // Empty job listings array
-
   return (
     <div className="bg-gradient-to-b from-gray-50 to-white">
       <div className="relative isolate px-6 pt-14 lg:px-8 overflow-hidden">
