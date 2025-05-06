@@ -8,7 +8,7 @@ const DemoTrialSection = () => {
   const solutions = [
     {
       icon: <GiMedicinePills className="h-8 w-8" />,
-      name: 'Pharma Management system',
+      name: 'Pharma Management System',
       description: 'Automated inventory and order management system',
       highlight: '95% accuracy in dispensing'
     },
@@ -103,7 +103,8 @@ const DemoTrialSection = () => {
           </h2>
 
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Experience how our specialized platforms can optimize your pharmaceutical operations through a personalized demonstration.
+            {/* Experience how our specialized platforms can optimize your pharmaceutical operations through a personalized demonstration. */}
+            Experience how our specialized platforms can optimize your pharmaceutical and healthcare operations  through a personalized demonstration.
           </p>
         </motion.div>
 

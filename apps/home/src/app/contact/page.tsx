@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { FiArrowRight, FiMail, FiUser, FiMessageSquare, FiPhone, FiMapPin } from 'react-icons/fi'
+import FooterSection from '@/app/components/FooterSection'
 
 interface FormData {
   name: string
@@ -13,12 +14,12 @@ interface FormData {
 }
 
 const ContactUsSection = () => {
-  const [formData, setFormData] = useState<FormData>({ 
-    name: '', 
-    email: '', 
+  const [formData, setFormData] = useState<FormData>({
+    name: '',
+    email: '',
     phone: '',
     subject: '',
-    message: '' 
+    message: ''
   })
   const [loading, setLoading] = useState(false)
   const [responseMessage, setResponseMessage] = useState('')
@@ -46,6 +47,7 @@ const ContactUsSection = () => {
   }
 
   return (
+    <>
     <div className="bg-gradient-to-b from-gray-50 to-white">
       <div className="relative isolate px-6 pt-14 lg:px-8 overflow-hidden">
         {/* Animated background elements */}
@@ -77,7 +79,7 @@ const ContactUsSection = () => {
         </div>
 
         <div className="mx-auto max-w-7xl py-32 sm:py-48 lg:py-28">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -134,7 +136,7 @@ const ContactUsSection = () => {
             {/* Contact Information */}
             <div className="space-y-8 bg-white/50 backdrop-blur-sm rounded-xl p-8 shadow-sm border border-gray-100">
               <h3 className="text-2xl font-semibold text-gray-900">Our Contact Details</h3>
-              
+
               <div className="space-y-6">
                 <div className="flex items-start">
                   <div className="flex-shrink-0 mt-1 mr-4">
@@ -154,8 +156,8 @@ const ContactUsSection = () => {
                   </div>
                   <div>
                     <h4 className="text-lg font-medium text-gray-900">Call Us</h4>
-                    <Link href="tel:+1234567890" className="text-primary hover:text-secondary transition-colors">
-                      +123-456-7890
+                    <Link href="tel:91 7678325053" className="text-primary hover:text-secondary transition-colors">
+                      +91 7678325053
                     </Link>
                   </div>
                 </div>
@@ -166,11 +168,11 @@ const ContactUsSection = () => {
                   </div>
                   <div>
                     <h4 className="text-lg font-medium text-gray-900">Visit Us</h4>
-                    <p className="text-gray-600">
-                      #4754, Shivaji Road, NR Mohalla<br />
-                      Mysore-570007, Karnataka<br />
-                      India
-                    </p>
+                    <span className="text-gray-600">
+                      No. 59, 2nd Floor of Dakshina Murthy Towers <br />
+                      Devanooru, Rajeevnagara 2nd Stage, Udayagiri, <br />
+                      Mysore, Karnataka – 570019.
+                    </span>
                   </div>
                 </div>
               </div>
@@ -182,7 +184,7 @@ const ContactUsSection = () => {
               className="bg-white rounded-xl shadow-sm border border-gray-100 p-8"
             >
               <h3 className="text-2xl font-semibold text-gray-900 mb-6">Send Us a Message</h3>
-              
+
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -288,7 +290,7 @@ const ContactUsSection = () => {
                       <FiArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
                     </span>
                   </button>
-                  
+
                   {responseMessage && (
                     <p className={`mt-4 text-center text-sm ${responseMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
                       {responseMessage}
@@ -301,6 +303,8 @@ const ContactUsSection = () => {
         </div>
       </div>
     </div>
+    <FooterSection />
+    </>
   )
 }
 

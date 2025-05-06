@@ -9,7 +9,7 @@ import Image from 'next/image';
 const navigation = [
   { name: 'About Us', href: '/about' },
   { name: 'Product', href: '/product' },
-  { name: 'services', href: '/services' },
+  { name: 'Services', href: '/services' },
   { name: 'Careers', href: '/careers' },
   { name: 'Contact Us', href: '/contact' },
 ];
@@ -47,7 +47,7 @@ const HeaderNav = () => {
               <span className="sr-only">Tiameds</span>
               <Image
                 alt="/TiamedsLogo.svg"
-                src="/TiamedsLogo.svg"
+                src="/LOGO.svg"
                 className="h-12 w-auto transition-transform duration-300 "
                 width={100}
                 height={100}

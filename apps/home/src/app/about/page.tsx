@@ -65,9 +65,9 @@ const AboutPage = () => {
         'Patient portal',
         'Billing integration'
       ]
-      
+
     },
-    
+
     {
       name: 'Pharma E-commerce Platform',
       description: 'Interoperability platform for healthcare providers',
@@ -97,7 +97,7 @@ const AboutPage = () => {
                 <FiZap className="mr-2 text-primary animate-pulse" />
                 <span className="text-sm font-medium text-primary">ABOUT TIAMEDS</span>
               </motion.div>
-              
+
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -106,14 +106,14 @@ const AboutPage = () => {
               >
                 Transforming Healthcare Through Technology
               </motion.h1>
-              
+
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
                 className="mt-6 text-lg leading-8 text-gray-600"
               >
-                Tiameds Technology is a healthcare technology company specializing in SaaS solutions and custom software development for the medical industry. We combine innovative technology with deep healthcare expertise to deliver products and services that improve patient outcomes and operational efficiency.
+                TiaMeds Technologies Pvt. Ltd. is a forward-thinking healthcare and pharmaceutical IT company driving digital transformation across the medical landscape. We specialize in building scalable SaaS platforms, AI-powered solutions, and custom enterprise software that streamline clinical workflows, accelerate drug development, and enhance patient care.
               </motion.p>
             </div>
           </div>
@@ -133,10 +133,11 @@ const AboutPage = () => {
               </h2>
               <div className="mt-8 space-y-6 text-gray-600">
                 <p className="text-xl leading-8">
-                  To revolutionize healthcare delivery through innovative technology solutions that empower providers, streamline operations, and enhance patient care. We believe technology should remove barriers in healthcare, not create them.
+                  At TiaMeds Technologies, our mission is to revolutionize healthcare by developing intelligent, secure, and scalable technology solutions that empower providers, streamline clinical workflows, and improve patient outcomes. We believe technology should simplify healthcare — removing inefficiencies, not adding complexity.
                 </p>
                 <p className="text-base leading-7">
-                  Founded by healthcare professionals and technologists, Tiameds bridges the gap between medicine and technology. Our team brings together decades of combined experience in both fields to create solutions that actually work in real clinical environments.
+
+                  Founded by a team of experienced healthcare professionals and technologists, TiaMeds bridges the gap between medicine and technology. With decades of combined expertise, we develop practical, high-impact solutions tailored for real-world clinical environments-ensuring our innovations deliver measurable value where it matters most.
                 </p>
               </div>
             </motion.div>
@@ -207,7 +208,7 @@ const AboutPage = () => {
                 Our Products
               </h2>
               <p className="mt-4 text-lg leading-8 text-gray-600">
-                Innovative SaaS solutions developed specifically for healthcare challenges
+              Innovative SaaS solutions designed specifically to address challenges in healthcare and pharmacy.
               </p>
             </motion.div>
 

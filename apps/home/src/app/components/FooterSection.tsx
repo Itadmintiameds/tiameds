@@ -70,8 +70,8 @@ const FooterSection = () => {
           <div className="space-y-6">
             <Link href="/" className="flex items-center">
               <Image
-                alt="/TiamedsLogo.svg"
-                src="/TiamedsLogo.svg"
+                alt="/LOGO.svg"
+                src="/LOGO.svg"
                 className="h-12 w-auto transition-transform duration-300 scale-120"
                 width={120}
                 height={120}
@@ -163,9 +163,9 @@ const FooterSection = () => {
               <motion.div whileHover={{ x: 5 }} className="flex items-start">
                 <FaMapMarkerAlt className="flex-shrink-0 mt-1 mr-3 text-primary" />
                 <span className="hover:text-primary transition-colors">
-                  #4754, Shivaji Road, NR Mohalla <br />
-                  Mysore-570007, Karnataka <br />
-                  India
+                No. 59, 2nd Floor of Dakshina Murthy Towers <br />
+                 Devanooru, Rajeevnagara 2nd Stage, Udayagiri, <br />
+                  Mysore, Karnataka – 570019.
                 </span>
               </motion.div>
               <motion.div whileHover={{ x: 5 }} className="flex items-center">
@@ -193,7 +193,7 @@ const FooterSection = () => {
           className="mt-16 pt-8 border-t border-gray-200 text-center"
         >
           <p className="text-gray-500 text-sm">
-            © {new Date().getFullYear()} TiaMeds Technology Private Limited. All rights reserved.
+            © {new Date().getFullYear()} TiaMeds Technologies Pvt. Ltd. All rights reserved.
           </p>
         </motion.div>
       </div>

@@ -133,7 +133,7 @@ const Herosection = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="mt-6 text-xl leading-8 text-gray-600 max-w-3xl mx-auto"
             >
-              Tiameds Technology delivers cutting-edge SaaS platforms and
+              TiaMeds Technologies Pvt. Ltd.  delivers cutting-edge SaaS platforms and
               enterprise solutions that power businesses at scale with security,
               reliability, and innovation.
             </motion.p>

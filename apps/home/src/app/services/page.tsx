@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { FaChartLine, FaCloud, FaCode, FaNetworkWired, FaRobot, FaShieldAlt } from 'react-icons/fa'
 import { FiArrowRight } from 'react-icons/fi'
+import FooterSection from '../components/FooterSection'
 
 const ServicesPage = () => {
   const serviceCategories = [
@@ -87,6 +88,7 @@ const ServicesPage = () => {
   ]
 
   return (
+    <>
     <div className="bg-gradient-to-b from-gray-50 to-white">
       {/* Hero Section */}
       <div className="relative px-6 pt-24 pb-16 lg:px-8 overflow-hidden">
@@ -213,6 +215,8 @@ const ServicesPage = () => {
         </div>
       </div>
     </div>
+    <FooterSection />
+    </>
   )
 }
 
