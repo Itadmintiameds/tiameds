@@ -63,6 +63,7 @@ const PackageList = () => {
 
     try {
       const response = await getPackage(currentLab.id);
+      console.log('response-------------', response);
       if (response && response.status === 'success' && response.data) {
         setPackages(response.data);
         setFilteredPackages(response.data);

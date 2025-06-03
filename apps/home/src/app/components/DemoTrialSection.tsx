@@ -8,13 +8,13 @@ const DemoTrialSection = () => {
   const solutions = [
     {
       icon: <GiMedicinePills className="h-8 w-8" />,
-      name: 'Pharma Management System',
+      name: 'Pharma Management Software',
       description: 'Automated inventory and order management system',
       highlight: '95% accuracy in dispensing'
     },
     {
       icon: <FaMicroscope className="h-8 w-8" />,
-      name: 'Lab Automation',
+      name: 'Lab Management Software',
       description: 'Automated lab management and reporting system',
       highlight: '3x faster reporting'
     },

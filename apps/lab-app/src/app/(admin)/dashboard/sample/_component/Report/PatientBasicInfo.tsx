@@ -3,63 +3,50 @@ import { FaCalendarAlt, FaEnvelope, FaFlask, FaPhone, FaUser, FaVenusMars, FaVia
 
 const PatientBasicInfo = ({ patientList }: { patientList: PatientData[] }) => {
     return (
-        <div className="bg-white shadow-lg rounded-xl overflow-hidden p-4 my-4">
-            <h3 className="text-sm font-semibold text-blue-900 bg-blue-200 px-3 py-1 rounded-md inline-block shadow">
-                Patient Report Data
-            </h3>
+        <div className="bg-white rounded-lg border border-gray-200 p-4 my-4 shadow-xs">
+            <div className="flex justify-between items-center mb-3">
+                <h3 className="text-sm font-medium text-blue-700 bg-blue-50 px-3 py-1 rounded-md inline-flex items-center">
+                    <FaUser className="mr-2 text-blue-500" />
+                    Patient Report Data
+                    <span className="ml-2 text-xs font-normal text-blue-600 bg-white px-2 py-0.5 rounded-full">
+                        {patientList?.length} records
+                    </span>
+                </h3>
+            </div>
 
             {patientList.length > 0 ? (
-                patientList.map((patient, index) => (
-                    <div
-                        key={patient.visitId}
-                        className={`mt-2 p-3 rounded-lg shadow-sm border transition-all ${index % 2 === 0 ? "bg-gradient-to-r from-blue-50 to-blue-100" : "bg-white"
-                            }`}
-                    >
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-gray-700">
-                            <p>
-                                <FaUser className="inline-block mr-1 text-blue-600" />
-                                <strong>Name:</strong> {patient.patientname}
-                            </p>
-                            <p>
-                                <FaVenusMars className="inline-block mr-1 text-purple-600" />
-                                <strong>Gender:</strong> {patient.gender}
-                            </p>
-                            <p>
-                                <FaPhone className="inline-block mr-1 text-green-600" />
-                                <strong>Contact:</strong> {patient.contactNumber}
-                            </p>
-                            <p>
-                                <FaEnvelope className="inline-block mr-1 text-red-600" />
-                                <strong>Email:</strong> {patient.email}
-                            </p>
-                            <p>
-                                <FaCalendarAlt className="inline-block mr-1 text-orange-600" />
-                                <strong>DOB:</strong> {patient.dateOfBirth}
-                            </p>
-                            <p>
-                                <FaCalendarAlt className="inline-block mr-1 text-blue-600" />
-                                <strong>Visit:</strong> {patient.visitDate}
-                            </p>
-                            <p>
-                                <FaCalendarAlt className="inline-block mr-1 text-gray-600" />
-                                <strong>Status:</strong> {patient.visitStatus}
-                            </p>
-                            <p>
-                                <FaVial className="inline-block mr-1 text-yellow-600" />
-                                <strong>Samples:</strong> {patient.sampleNames.join(", ")}
-                            </p>
-                            <p>
-                                <FaFlask className="inline-block mr-1 text-indigo-600" />
-                                <strong>Tests:</strong> {patient.testIds.join(", ")}
-                            </p>
+                <div className="space-y-2">
+                    {patientList?.map((patient) => (
+                        <div key={patient?.visitId} className="p-3 rounded-lg border border-gray-100 bg-gray-50/50">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                                <InfoItem icon={<FaUser className="text-blue-500" />} label="Name" value={patient.patientname} />
+                                <InfoItem icon={<FaVenusMars className="text-purple-500" />} label="Gender" value={patient.gender} />
+                                <InfoItem icon={<FaPhone className="text-green-500" />} label="Contact" value={patient.contactNumber} />
+                                <InfoItem icon={<FaEnvelope className="text-red-500" />} label="Email" value={patient.email} />
+                                <InfoItem icon={<FaCalendarAlt className="text-orange-500" />} label="DOB" value={patient.dateOfBirth} />
+                                <InfoItem icon={<FaCalendarAlt className="text-blue-400" />} label="Visit" value={patient.visitDate} />
+                                <InfoItem icon={<FaCalendarAlt className="text-gray-500" />} label="Status" value={patient.visitStatus} />
+                                <InfoItem icon={<FaVial className="text-yellow-500" />} label="Samples" value={patient.sampleNames.join(", ")} />
+                                <InfoItem icon={<FaFlask className="text-indigo-500" />} label="Tests" value={patient.testIds.join(", ")} />
+                            </div>
                         </div>
-                    </div>
-                ))
+                    ))}
+                </div>
             ) : (
-                <p className="text-gray-500 text-center mt-3 text-xs">No patient data available.</p>
+                <p className="text-gray-400 text-xs text-center py-3 bg-gray-50 rounded">No patient data available</p>
             )}
         </div>
     )
 }
+
+const InfoItem = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) => (
+    <div className="flex items-start space-x-1.5 truncate">
+        <span className="mt-0.5">{icon}</span>
+        <div className="truncate">
+            <span className="font-medium text-gray-600">{label}: </span>
+            <span className="text-gray-700 truncate">{value}</span>
+        </div>
+    </div>
+);
 
 export default PatientBasicInfo

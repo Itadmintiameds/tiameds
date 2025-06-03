@@ -260,9 +260,9 @@ const VisitingList: React.FC = () => {
 
   const filteredPatients = patientList.filter((visit) => {
     let isValid = true;
-    const visitDate = new Date(visit.visit.visitDate);
+    const visitDate = new Date(visit?.visit?.visitDate);
 
-    if (statusFilter && visit.visit.visitStatus.toUpperCase() !== statusFilter.toUpperCase()) {
+    if (statusFilter && visit?.visit?.visitStatus.toUpperCase() !== statusFilter.toUpperCase()) {
       isValid = false;
     }
 
@@ -281,7 +281,7 @@ const VisitingList: React.FC = () => {
     return isValid;
   });
 
-  const sortedPatients = [...filteredPatients].sort((a, b) => new Date(b.visit.visitDate).getTime() - new Date(a.visit.visitDate).getTime());
+  const sortedPatients = [...filteredPatients].sort((a, b) => new Date(b?.visit?.visitDate).getTime() - new Date(a?.visit?.visitDate).getTime());
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
   const paginatedPatients = sortedPatients.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -299,19 +299,19 @@ const VisitingList: React.FC = () => {
   };
 
   const columns = [
-    { header: 'Visit ID', accessor: (row: Patient) => row.visit.visitId },
-    { header: 'Name', accessor: (row: Patient) => `${row.firstName} ${row.lastName}` },
-    { header: 'Visit Date', accessor: (row: Patient) => row.visit.visitDate },
-    { header: 'Visit Type', accessor: (row: Patient) => row.visit.visitType },
+    { header: 'Visit ID', accessor: (row: Patient) => row?.visit?.visitId },
+    { header: 'Name', accessor: (row: Patient) => `${row?.firstName} ${row.lastName}` },
+    { header: 'Visit Date', accessor: (row: Patient) => row?.visit?.visitDate },
+    { header: 'Visit Type', accessor: (row: Patient) => row?.visit?.visitType },
     {
       header: 'Sample Status',
       accessor: (row: Patient) => (
-        <span className={`p-1 rounded ${row.visit.visitStatus === 'Pending' ? 'bg-pending  text-white' : 'bg-success text-white'}`}>
+        <span className={`p-1 rounded ${row?.visit?.visitStatus === 'Pending' ? 'bg-pending  text-white' : 'bg-success text-white'}`}>
           {row.visit.visitStatus}
         </span>
       )
     },
-    { header: 'Total Amount', accessor: (row: Patient) => row.visit.billing.totalAmount },
+    { header: 'Total Amount', accessor: (row: Patient) => row?.visit?.billing?.totalAmount },
     {
       header: 'Actions',
       accessor: (row: Patient) => (

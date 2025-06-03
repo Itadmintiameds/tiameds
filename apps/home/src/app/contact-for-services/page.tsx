@@ -254,7 +254,7 @@ const ServiceContactPage = ({ params }: ServiceContactPageProps) => {
               {
                 city: "Mysore",
                 address: "#4754, Shivaji Road, NR Mohalla\nMysore-570007, Karnataka\nIndia",
-                phone: "+91 1234567890",
+                phone: "+91 7678325053",
               },
              
             ].map((office, index) => (

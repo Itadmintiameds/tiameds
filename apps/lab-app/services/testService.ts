@@ -295,3 +295,80 @@ export const getTestReferanceRangeByTestName = async (labId: string, testName: s
     throw new Error(errorMessage);
   }
 }
+
+
+// ======================================================== test referance range and test from master table =======================================================
+export const getMasterTestsList = async (): Promise<TestList[]> => {
+  try {
+    const response = await api.get<{ data: TestList[]; message: string; status: string }>('super-admin/referance-and-test/test-price-list');
+    return response.data.data; // Extract the tests array from the response
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while fetching tests.';
+
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      errorMessage = (error as any).response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+
+export const getMasterTestReferanceRange = async (): Promise<TestReferancePoint[]> => {
+  try {
+    const response = await api.get<{ data: TestReferancePoint[]; message: string; status: string }>('super-admin/referance-and-test/test-referance');
+    return response.data.data; // Extract the tests array from the response
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while fetching tests referance range.';
+
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      errorMessage = (error as any).response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+}
+
+export const downloadMasterTestReferanceRangeCsv = async (): Promise<string> => {
+  try {
+      const response = await api.get(`/super-admin/referance-and-test/test-referance/download`, {
+          responseType: 'blob',
+      });
+
+      return response.data.text();
+  } catch (error: unknown) {
+      let errorMessage = 'An error occurred while fetching the master test reference range.';
+
+      if (error instanceof Error && (error as any).response?.data?.message) {
+          errorMessage = (error as any).response.data.message;
+      } else if (error instanceof Error) {
+          errorMessage = error.message;
+      }
+
+      throw new Error(errorMessage);
+  }
+};
+
+// /testpricelist/download
+export const downloadMasterTestPriceListCsv = async (): Promise<string> => {
+  try {
+      const response = await api.get(`/super-admin/referance-and-test/testpricelist/download`, {
+          responseType: 'blob',
+      });
+
+      return response.data.text();
+  } catch (error: unknown) {
+      let errorMessage = 'An error occurred while fetching the master test price list.';
+
+      if (error instanceof Error && (error as any).response?.data?.message) {
+          errorMessage = (error as any).response.data.message;
+      } else if (error instanceof Error) {
+          errorMessage = error.message;
+      }
+      throw new Error(errorMessage);
+  }
+};

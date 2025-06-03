@@ -74,7 +74,7 @@ const Login = () => {
 
         <h2 className="text-center text-2xl font-bold text-purple-800">Welcome Back!</h2>
         <p className="mt-2 text-center text-sm text-purple-800">
-          Sign in to your Lab Management System account
+          Sign in to your Lab Management Softwere account
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">

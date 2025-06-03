@@ -25,7 +25,7 @@ const Layout = ({ children }: LayoutProps) => {
         const data = await getUsersLab();
         setLabs(data);
         if (data.length > 0) {
-          setCurrentLab(data[1]);
+          setCurrentLab(data[0]);
         }
       } catch (error) {
         toast.error("Failed to fetch labs", { position: "top-right", autoClose: 2000 });

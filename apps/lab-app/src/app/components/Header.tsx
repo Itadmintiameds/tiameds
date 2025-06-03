@@ -41,12 +41,12 @@ const Header = ({ navigation }: { navigation: NavigationItem[] }) => {
       >
         {/* Logo Section */}
         <div className="flex lg:flex-1">
-          <Link href="/" className="-m-1.5 p-1.5 hover:animate-bounce">
+          <Link href="/" className="-m-1.5 p-1.5 ">
             <span className="sr-only">Lab Management</span>
             <Image
               alt="Lab Management Logo"
-              src="/finallogo.svg"
-              width={100}
+              src="/LOGO.svg"
+              width={160}
               height={100}
               className="transition-transform duration-300 hover:scale-105"
             />

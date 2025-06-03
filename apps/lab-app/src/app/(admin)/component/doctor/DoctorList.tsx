@@ -144,8 +144,8 @@ const DoctorList = () => {
     // Filter and paginate doctors
     const filteredDoctors = doctors.filter((doctor) =>
         doctor.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        doctor.speciality.toLowerCase().includes(specialityFilter.toLowerCase()) &&
-        doctor.qualification.toLowerCase().includes(qualificationFilter.toLowerCase())
+        (doctor.speciality ?? "").toLowerCase().includes(specialityFilter.toLowerCase()) &&
+        (doctor.qualification ?? "").toLowerCase().includes(qualificationFilter.toLowerCase())
     );
 
     const totalPages = Math.ceil(filteredDoctors.length / itemsPerPage);
@@ -188,7 +188,7 @@ const DoctorList = () => {
         </div>
     );
 
-    if(doctors.length === 0) return <Loader />;
+    if (doctors.length === 0) return <Loader />;
 
     return (
         <div className="flex flex-col">

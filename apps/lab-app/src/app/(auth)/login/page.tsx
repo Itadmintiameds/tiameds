@@ -18,12 +18,12 @@ const Page: React.FC = () => {
       {/* Left Panel */}
       <div className="w-full sm:w-1/3 bg-white flex flex-col justify-center items-center p-8">
         <div className="flex justify-center mb-6">
-          <Image src="/tiamed1.svg" alt="Tiamed Logo" width={80} height={80} />
+          <Image src="/LOGO.svg" alt="Tiamed Logo" width={200} height={100} />
         </div>
 
-        <p className="text-gray-500 text-center italic mb-4">
+        {/* <p className="text-gray-500 text-center italic mb-4">
         &quot;Innovating Today, Shaping Tomorrow!&quot;
-        </p>
+        </p> */}
 
         <h1 className="text-3xl font-bold text-purple-800 mb-3">
           Welcome to Tiamed

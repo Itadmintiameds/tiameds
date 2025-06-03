@@ -1,11 +1,9 @@
 'use client';
 import Tabs from '@/app/(admin)/component/common/TabComponent';
-import TestDownload from '@/app/(admin)/component/test/TestDownload';
 import TestLists from '@/app/(admin)/component/test/TestList';
 import TestUpload from '@/app/(admin)/component/test/TestUpload';
 import { PackageTabItem } from '@/types/package/package';
 import React from 'react';
-import { FaFileDownload } from 'react-icons/fa';
 import { MdOutlineCloudUpload } from "react-icons/md";
 import { RiTestTubeLine } from "react-icons/ri";
 import { VscReferences } from "react-icons/vsc";
@@ -15,9 +13,9 @@ import UploadTestReference from '../../component/test/UploadTestReference';
 
 const tabs: PackageTabItem[] = [
   { id: 'test', label: 'Test', icon: <RiTestTubeLine className="text-xl" /> },
-  { id: 'upload', label: 'Upload', icon: <MdOutlineCloudUpload className="text-xl" /> },
-  { id: 'download', label: 'Download', icon: <FaFileDownload className="text-xl" /> },
+  // { id: 'download', label: 'Download', icon: <FaFileDownload className="text-xl" /> },
   { id:'test-referance-point', label: 'Test Referance range', icon: <VscReferences className="text-xl" />},
+  { id: 'upload', label: 'Upload', icon: <MdOutlineCloudUpload className="text-xl" /> },
   { id: 'upload-referance', label: 'Upload Referance', icon: <MdOutlineCloudUpload className="text-xl" /> },
   // { id: 'download-referance', label: 'Download Referance', icon: <FaFileDownload className="text-xl" /> },
 ];
@@ -45,7 +43,7 @@ const Page = () => {
           <>
             {selectedTab === 'test' && <TestLists />}
             {selectedTab === 'upload' && <TestUpload />}
-            {selectedTab === 'download' && <TestDownload />}
+            {/* {selectedTab === 'download' && <TestDownload />} */}
             {selectedTab === 'test-referance-point' && <TestReferancePoints />}
             {selectedTab === 'upload-referance' && <UploadTestReference />}
             {/* {selectedTab === 'download-referance' && <DownloadReferanceRangeExcel />} */}

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { FiCalendar, FiZap, FiClock, FiMail, FiPhone, FiArrowRight, FiCheck } from 'react-icons/fi'
 import { FaFlask, FaPills, FaMicroscope } from 'react-icons/fa'
 import { useState } from 'react'
+import FooterSection from '../components/FooterSection'
 
 const DemoPage = () => {
   const [email, setEmail] = useState('')
@@ -22,6 +23,7 @@ const DemoPage = () => {
   }
 
   return (
+ <>
     <div className="relative isolate bg-white py-24 sm:py-32 min-h-screen">
       {/* Animated gradient background */}
       <div
@@ -126,7 +128,7 @@ const DemoPage = () => {
               href="tel:+11234567890" 
               className="inline-flex items-center text-primary font-medium hover:text-secondary transition-colors"
             >
-              +1 (123) 456-7890 <FiArrowRight className="ml-2" />
+              +91 7678325053<FiArrowRight className="ml-2" />
             </a>
           </div>
         </motion.div>
@@ -190,6 +192,8 @@ const DemoPage = () => {
         </motion.div>
       </div>
     </div>
+      <FooterSection />
+ </>
   )
 }
 

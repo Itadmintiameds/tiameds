@@ -1,15 +1,13 @@
 'use client'
 import { motion } from 'framer-motion'
-import Link from "next/link"
 import Image from "next/image"
+import Link from "next/link"
 import {
   FaEnvelope,
-  FaGithub,
   FaLinkedin,
   FaMapMarkerAlt,
   FaPhone,
-  FaServer,
-  FaTwitter
+  FaServer
 } from 'react-icons/fa'
 import {
   GiNetworkBars,
@@ -81,7 +79,7 @@ const FooterSection = () => {
               Enterprise-grade technology solutions for digital transformation.
             </p>
             <div className="flex space-x-6">
-              <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.9 }}>
+              {/* <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.9 }}>
                 <Link
                   href="#"
                   className="text-gray-600 hover:text-primary transition-colors"
@@ -89,17 +87,17 @@ const FooterSection = () => {
                 >
                   <FaTwitter className="w-5 h-5" />
                 </Link>
-              </motion.div>
+              </motion.div> */}
               <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.9 }}>
                 <Link
-                  href="#"
+                  href="https://www.linkedin.com/company/tiameds-technologies/"
                   className="text-gray-600 hover:text-primary transition-colors"
                   aria-label="LinkedIn"
                 >
                   <FaLinkedin className="w-5 h-5" />
                 </Link>
               </motion.div>
-              <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.9 }}>
+              {/* <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.9 }}>
                 <Link
                   href="#"
                   className="text-gray-600 hover:text-primary transition-colors"
@@ -107,7 +105,7 @@ const FooterSection = () => {
                 >
                   <FaGithub className="w-5 h-5" />
                 </Link>
-              </motion.div>
+              </motion.div> */}
             </div>
           </div>
 
@@ -145,12 +143,12 @@ const FooterSection = () => {
               </motion.p>
               <motion.p whileHover={{ x: 5 }}>
                 <Link href="/product" className="text-gray-600 hover:text-primary transition-colors">
-                  Lab Management Softwere
+                  Lab Management Software
                 </Link>
               </motion.p>
               <motion.p whileHover={{ x: 5 }}>
                 <Link href="/product" className="text-gray-600 hover:text-primary transition-colors">
-                  Pharma Managment Softwere
+                  Pharma Managment Software
                 </Link>
               </motion.p>
             </ul>

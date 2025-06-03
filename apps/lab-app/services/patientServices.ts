@@ -44,6 +44,7 @@ export const getAllVisits = async (labId: number) => {
 
 // /lab/2/add-patient
 export const addPatient = async (labId: number, patient: Patient) => {
+    console.log(patient, 'patient in addPatient');
     try {
         const response = await api.post(`/lab/${labId}/add-patient`, patient);
         return response.data;
@@ -52,6 +53,16 @@ export const addPatient = async (labId: number, patient: Patient) => {
     }
 }
 
+
+export const updatePatientDetails = async (labId: number, patient: Patient) => {
+    console.log(patient, 'patient in addPatient');
+    try {
+        const response = await api.put(`/lab/${labId}/update-patient-details/${patient.id}`, patient);
+        return response.data;
+    } catch (error: unknown) {
+        throw new Error('An error occurred while adding patient.');
+    }
+}
 
 
 //get patient details by visit id

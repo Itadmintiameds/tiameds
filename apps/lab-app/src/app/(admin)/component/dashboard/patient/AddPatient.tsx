@@ -83,6 +83,8 @@ const AddPatient = () => {
         paymentMethod: PaymentMethod.CASH,
         paymentDate: new Date().toISOString().split('T')[0],
         discount: 0,
+        discountReason: '',
+        discountPercentage: 0,
         gstRate: 0,
         gstAmount: 0,
         cgstAmount: 0,
@@ -372,6 +374,8 @@ const AddPatient = () => {
           sgstAmount: 0,
           igstAmount: 0,
           netAmount: 0,
+          discountReason: '',
+          discountPercentage: 0,
         },
       },
     });

@@ -1,5 +1,4 @@
 'use client'
-
 import { Dialog, DialogBackdrop, DialogTitle } from '@headlessui/react';
 import { motion } from "framer-motion";
 import { IoMdClose } from "react-icons/io";

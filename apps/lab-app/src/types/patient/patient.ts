@@ -33,6 +33,7 @@ export type Visit = {
   packageIds: number[];
   insuranceIds: number[];
   billing: Billing;
+  listofeachtestdiscount?: listofDiscounts[];
 };
 
 export type Billing = {
@@ -48,9 +49,17 @@ export type Billing = {
   sgstAmount: number;
   igstAmount: number;
   netAmount: number;
+  discountReason : string;
+  discountPercentage: number;
 };
 
 
+interface listofDiscounts {
+  id: number;
+  discountAmount: number;
+  discountPercent: number;
+  finalPrice: number;
+}
 
 // Enum for Payment Statuses
 export enum PaymentStatus {

@@ -1,12 +1,21 @@
+// export interface TestList {
+//     id: number;
+//     category: string;
+//     name: string;
+//     price: number;
+//     createdAt: string;
+//     updatedAt: string;
+// }
 export interface TestList {
-    id: number;
-    category: string;
-    name: string;
-    price: number;
-    createdAt: string;
-    updatedAt: string;
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+  discountAmount?: number;
+  discountPercent?: number;
+  discountedPrice?: number;
+  
 }
-
 
 export interface TestForm {
     category: string;
