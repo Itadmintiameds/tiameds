@@ -6,10 +6,11 @@ import Pagination from '@/app/(admin)/component/common/Pagination';
 import TableComponent from '@/app/(admin)/component/common/TableComponent';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
-import html2canvas from 'html2canvas';
-import { CalendarDays, ChevronDown, Download, Edit, PlusIcon } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
-import Barcode from 'react-barcode';
+// import html2canvas from 'html2canvas';
+// import { CalendarDays, ChevronDown, Download, Edit, PlusIcon } from 'lucide-react';
+import { CalendarDays, ChevronDown, Edit, PlusIcon } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+// import Barcode from 'react-barcode';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { MdCancelPresentation } from 'react-icons/md';
@@ -54,7 +55,7 @@ const CollectionTable: React.FC = () => {
   const itemsPerPage = 8;
   const [updatedPopUp, setUpdatedPopUp] = useState(false);
   const [updateSample, setUpdateSample] = useState<UpdateSample | null>(null);
-  const barcodeRef = useRef<HTMLDivElement>(null);
+  // const barcodeRef = useRef<HTMLDivElement>(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [updateCollectionTable, setUpdateCollectionTable] = useState(false);
@@ -222,15 +223,15 @@ const CollectionTable: React.FC = () => {
     setUpdateSample({ visitId, sampleNames });
   };
 
-  const handleDownloadBarcode = async (id: number) => {
-    if (barcodeRef.current) {
-      const canvas = await html2canvas(barcodeRef.current);
-      const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
-      link.download = `barcode-${id}.png`;
-      link.click();
-    }
-  };
+  // const handleDownloadBarcode = async (id: number) => {
+  //   if (barcodeRef.current) {
+  //     const canvas = await html2canvas(barcodeRef.current);
+  //     const link = document.createElement('a');
+  //     link.href = canvas.toDataURL('image/png');
+  //     link.download = `barcode-${id}.png`;
+  //     link.click();
+  //   }
+  // };
   const handleOpenReportModal = (patient: Patient) => {
     if (!patient) return; // Add this guard clause
     setSelectedPatient(patient);
@@ -333,23 +334,23 @@ const CollectionTable: React.FC = () => {
         </div>
       )
     },
-    {
-      header: 'Barcode',
-      accessor: (row: Patient) => (
-        <div className="flex flex-col items-center gap-1">
-          <div ref={barcodeRef} className="mb-1">
-            <Barcode value={String(row.visitId)} format="CODE128" width={1.2} height={30} displayValue={false} />
-          </div>
-          <button
-            onClick={() => handleDownloadBarcode(row.visitId)}
-            className="flex items-center gap-1 text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition-colors"
-          >
-            <Download className="w-3 h-3" />
-            <span>Download</span>
-          </button>
-        </div>
-      )
-    },
+    // {
+    //   header: 'Barcode',
+    //   accessor: (row: Patient) => (
+    //     <div className="flex flex-col items-center gap-1">
+    //       <div ref={barcodeRef} className="mb-1">
+    //         <Barcode value={String(row.visitId)} format="CODE128" width={1.2} height={30} displayValue={false} />
+    //       </div>
+    //       <button
+    //         onClick={() => handleDownloadBarcode(row.visitId)}
+    //         className="flex items-center gap-1 text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition-colors"
+    //       >
+    //         <Download className="w-3 h-3" />
+    //         <span>Download</span>
+    //       </button>
+    //     </div>
+    //   )
+    // },
     {
       header: 'Actions',
       accessor: (row: Patient) => (
