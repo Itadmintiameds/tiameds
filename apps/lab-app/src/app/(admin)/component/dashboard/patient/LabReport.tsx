@@ -180,14 +180,18 @@ const LabReport: React.FC = () => {
                 )
             }
             {
-                editModel && (
+                editModel && viewPatient && (
                     <Modal
                         title='Edit Report'
                         isOpen={editModel}
                         onClose={() => setEditModel(false)}
                         modalClassName='max-w-3xl'
                     >
-                        <Editreport />
+                        <Editreport
+                            editPatient={viewPatient}
+                            setShowModal={setEditModel}
+                            refreshReports={fetchVisits}
+                        />
                     </Modal>
                 )
             }

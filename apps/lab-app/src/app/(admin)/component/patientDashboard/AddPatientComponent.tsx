@@ -575,13 +575,16 @@ enum Gender {
   Other = 'other',
 }
 
+// setAddUpdatePatientListVist={setAddUpdatePatientListVist}
+//           addUpdatePatientListVist={addUpdatePatientListVist}
+
 interface AddPatientComponentProps {
   setAddPatientModal: React.Dispatch<React.SetStateAction<boolean>>;
-  setUpdatePatientListVist: React.Dispatch<React.SetStateAction<boolean>>;
-  updatePatientListVist: boolean;
+  setAddUpdatePatientListVist: React.Dispatch<React.SetStateAction<boolean>>;
+  addUpdatePatientListVist: boolean;
 }
 
-const AddPatientComponent = ({ setAddPatientModal , setUpdatePatientListVist, updatePatientListVist }: AddPatientComponentProps) => {
+const AddPatientComponent = ({ setAddPatientModal , setAddUpdatePatientListVist, addUpdatePatientListVist}: AddPatientComponentProps) => {
   const [tests, setTests] = useState<TestList[]>([]);
   const [packages, setPackages] = useState<PackageType[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -994,14 +997,14 @@ const AddPatientComponent = ({ setAddPatientModal , setUpdatePatientListVist, up
 
       //==================================================================================================
 
-      console.log('Patient Data:', patientData);
+      // console.log('Patient Data:', patientData);
       // Uncomment to actually send the data
       const response = await addPatient(labId, patientData);
       setPatientDetails(response.data);
       if (response.status === 'success') {
         toast.success('Patient added successfully.', { autoClose: 2000, position: 'top-right' });
         handleClearPatient();
-        setUpdatePatientListVist(!updatePatientListVist);
+        setAddUpdatePatientListVist(!addUpdatePatientListVist);
         setAddPatientModal(false);
       } else {
         toast.error('An error occurred while adding the patient.');
@@ -1024,7 +1027,7 @@ const AddPatientComponent = ({ setAddPatientModal , setUpdatePatientListVist, up
 
   return (
     <div>
-      <div className="flex gap-4">
+      <div className="flex gap-4 bg-gray-50 p-4 rounded-lg shadow-md">
         <PatientFrom
           newPatient={newPatient}
           handleChange={handleChange}

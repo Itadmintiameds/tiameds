@@ -1,15 +1,36 @@
 
 import api from '@/utils/api';
 
+// interface Report {
+//   reportId: number;
+//   visitId: number;
+//   testName: string;
+//   testCategory: string;
+//   labId: number;
+//   referenceDescription: string;
+//   referenceRange : string;
+//   referenceDataAge: string;
+//   enteredValue: string;
+//   unit: string;
+//   createdBy: number;
+//   updatedBy: number;
+//   createdAt: string;
+//   updatedAt: string;
+// }
+
 interface Report {
   reportId: number;
+  id?: string; // Optional if sometimes present
   visitId: number;
+  visit_id?: string; // Alternative to visitId
   testName: string;
   testCategory: string;
   labId: number;
+  patientName?: string;
   referenceDescription: string;
-  referenceRange : string;
-  referenceDataAge: string;
+  referenceRange: string;
+  referenceAgeRange?: string;
+  referenceDataAge?: string; // Alternative to referenceAgeRange
   enteredValue: string;
   unit: string;
   createdBy: number;

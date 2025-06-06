@@ -17,15 +17,30 @@ const Layout = ({ children }: LayoutProps) => {
   const { user, initializeUser } = useUserStore();
   const { labs, setLabs, currentLab, setCurrentLab } = useLabs();
 
-
   useEffect(() => {
     initializeUser();
     const fetchLabs = async () => {
       try {
+        // Check local storage first
+        const storedLab = localStorage.getItem('currentLab');
+        const storedLabs = localStorage.getItem('userLabs');
+        
+        if (storedLab && storedLabs) {
+          setLabs(JSON.parse(storedLabs));
+          setCurrentLab(JSON.parse(storedLab));
+        }
+        
+        // Always fetch fresh data but don't wait for it
         const data = await getUsersLab();
         setLabs(data);
+        localStorage.setItem('userLabs', JSON.stringify(data));
+        
         if (data.length > 0) {
-          setCurrentLab(data[0]);
+          // Only set new lab if there wasn't one stored
+          if (!storedLab) {
+            setCurrentLab(data[0]);
+            localStorage.setItem('currentLab', JSON.stringify(data[0]));
+          }
         }
       } catch (error) {
         toast.error("Failed to fetch labs", { position: "top-right", autoClose: 2000 });
@@ -33,7 +48,6 @@ const Layout = ({ children }: LayoutProps) => {
     };
     fetchLabs();
   }, [initializeUser, setLabs, setCurrentLab]);
-  
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedLabName = event.target.value;
@@ -41,15 +55,16 @@ const Layout = ({ children }: LayoutProps) => {
     if (selectedLab) {
       alert("Are you sure you want to switch to " + selectedLab.name);
       setCurrentLab(selectedLab);
+      localStorage.setItem('currentLab', JSON.stringify(selectedLab));
       toast.success(`Switched to ${selectedLab.name}`, { position: "top-right", autoClose: 2000 });
     }
   };
 
   return (
-    <div className="flex h-screen ">
+    <div className="flex h-screen overflow-hidden"> {/* Added overflow-hidden to prevent scrolling */}
       <SideBar isOpen={isOpen} setIsOpen={setIsOpen} />
 
-      <main className={`flex-1 ml-20 transition-all duration-400 ${isOpen ? "ml-64" : "ml-20"}`}>
+      <main className={`flex-1 ml-20 transition-all duration-400 ${isOpen ? "ml-64" : "ml-20"} overflow-hidden`}> {/* Added overflow-hidden */}
         {/* Top Navigation Bar */}
         {user && (
           <TopNav
@@ -60,12 +75,12 @@ const Layout = ({ children }: LayoutProps) => {
           />
         )}
 
-        <div className="p-6 overflow-y-auto" style={{ maxHeight: "calc(100vh - 64px)" }}>
+        <div className="p-6 overflow-y-auto overflow-x-hidden" style={{ maxHeight: "calc(100vh - 64px)" }}> {/* Added overflow-x-hidden */}
           {
             labs == null ? (<Lab />)
               :
               (
-                <div className="relative isolate bg-white h-screen ">
+                <div className="relative isolate bg-white h-full"> {/* Changed h-screen to h-full */}
                   <div
                     aria-hidden="true"
                     className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80 animate-gradient-flow"
@@ -78,7 +93,7 @@ const Layout = ({ children }: LayoutProps) => {
                       className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-30 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"
                     />
                   </div>
-                  <div className="relative z-10 max-w-full mx-auto ">
+                  <div className="relative z-10 mx-auto max-w-full"> {/* Added max-w-full */}
                     {children}
                   </div>
                 </div>
@@ -91,14 +106,3 @@ const Layout = ({ children }: LayoutProps) => {
 };
 
 export default Layout;
-
-
-
-
-
-
-
-
-
-
-

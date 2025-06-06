@@ -4,8 +4,6 @@ import { TrashIcon } from "lucide-react";
 import React from "react";
 import Button from "../common/Button";
 
-
-
 interface TestEditReferanceProps {
     editRecord: TestReferancePoint | null;
     setEditRecord: React.Dispatch<React.SetStateAction<TestReferancePoint | null>>;
@@ -18,115 +16,132 @@ interface TestEditReferanceProps {
 
 const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChange, formData }: TestEditReferanceProps) => {
     if (!editRecord) return null;
-
-
-
+    
     return (
-        <div className="p-4 border rounded shadow-lg bg-white">
-            {/* Test Name & Category Display */}
-            <div className="mb-4 p-3 bg-gray-100 rounded">
-                <h2 className="text-lg font-semibold">{formData.testName}</h2>
-                <p className="text-sm text-gray-600">Category: {formData.category}</p>
+        <div className="p-4 bg-white rounded-lg">
+            {/* Header with subtle accent */}
+            <div className="mb-4 pb-3 border-b border-gray-100">
+                <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                    <span className="w-1.5 h-6 bg-blue-500 rounded-full mr-3"></span>
+                    {formData.testName}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1 pl-4.5">
+                    Category: {formData.category}
+                </p>
             </div>
 
             <form onSubmit={handleUpdate} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium">Description</label>
-                    <input
-                        type="text"
-                        name="testDescription"
-                        value={formData.testDescription}
-                        onChange={handleChange}
-                        className="w-full border p-2 rounded"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium">Gender</label>
-                    <select
-                        name="gender"
-                        value={formData.gender}
-                        onChange={handleChange}
-                        className="w-full border p-2 rounded"
-                    >
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Unisex">Unisex</option>
-                    </select>
-                </div>
-
-                <div className="flex space-x-2">
-                    <div className="w-1/2">
-                        <label className="block text-sm font-medium">Min Age</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Description */}
+                    <div className="sm:col-span-2">
+                        <label className="text-xs font-medium text-gray-500 block mb-1">Description</label>
                         <input
-                            type="number"
-                            name="ageMin"
-                            value={formData.ageMin}
+                            type="text"
+                            name="testDescription"
+                            value={formData.testDescription}
                             onChange={handleChange}
-                            className="w-full border p-2 rounded"
+                            className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                            placeholder="Test description"
                         />
                     </div>
-                    <div className="w-1/2">
-                        <label className="block text-sm font-medium">Max Age</label>
-                        <input
-                            type="number"
-                            name="ageMax"
-                            value={formData.ageMax}
+
+                    {/* Gender */}
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 block mb-1">Gender</label>
+                        <select
+                            name="gender"
+                            value={formData.gender}
                             onChange={handleChange}
-                            className="w-full border p-2 rounded"
+                            className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                        >
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="O">Unisex</option>
+                        </select>
+                    </div>
+
+                    {/* Age Range */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 block mb-1">Min Age</label>
+                            <input
+                                type="number"
+                                name="ageMin"
+                                value={formData.ageMin}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                                min="0"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 block mb-1">Max Age</label>
+                            <input
+                                type="number"
+                                name="ageMax"
+                                value={formData.ageMax}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                                min="0"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Reference Range */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 block mb-1">Min Range</label>
+                            <input
+                                type="number"
+                                name="minReferenceRange"
+                                value={formData.minReferenceRange}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                                step="0.01"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 block mb-1">Max Range</label>
+                            <input
+                                type="number"
+                                name="maxReferenceRange"
+                                value={formData.maxReferenceRange}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                                step="0.01"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Units */}
+                    <div className="sm:col-span-2">
+                        <label className="text-xs font-medium text-gray-500 block mb-1">Units</label>
+                        <input
+                            type="text"
+                            name="units"
+                            value={formData.units}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                            placeholder="Measurement units"
                         />
                     </div>
                 </div>
 
-                <div className="flex space-x-2">
-                    <div className="w-1/2">
-                        <label className="block text-sm font-medium">Min Range</label>
-                        <input
-                            type="number"
-                            name="minReferenceRange"
-                            value={formData.minReferenceRange}
-                            onChange={handleChange}
-                            className="w-full border p-2 rounded"
-                        />
-                    </div>
-                    <div className="w-1/2">
-                        <label className="block text-sm font-medium">Max Range</label>
-                        <input
-                            type="number"
-                            name="maxReferenceRange"
-                            value={formData.maxReferenceRange}
-                            onChange={handleChange}
-                            className="w-full border p-2 rounded"
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium">Units</label>
-                    <input
-                        type="text"
-                        name="units"
-                        value={formData.units}
-                        onChange={handleChange}
-                        className="w-full border p-2 rounded"
-                    />
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex justify-end space-x-3 mt-4">
+                {/* Action Buttons - Compact */}
+                <div className="flex justify-end gap-2 pt-3">
                     <Button
                         text="Cancel"
                         onClick={() => setEditRecord(null)}
-                        className="bg-delete text-white px-4 py-2 rounded hover:bg-deletehover transition hover:deletehover"
+                        className="text-xs px-3 py-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors flex items-center"
                     >
-                        <TrashIcon className="w-6 h-6" />
+                        <TrashIcon className="w-3.5 h-3.5 mr-1.5" />
                     </Button>
                     <Button
                         text="Save"
                         onClick={() => {}}
                         type="submit"
-                        className="bg-savebutton text-white px-4 py-2 rounded hover:bg-savehover transition">
-                        <PlusIcon className="h-5 w-5" />
+                        className="text-xs px-3 py-1.5 bg-blue-500 text-white hover:bg-blue-600 rounded transition-colors flex items-center"
+                    >
+                        <PlusIcon className="w-3.5 h-3.5 mr-1.5" />
                     </Button>
                 </div>
             </form>

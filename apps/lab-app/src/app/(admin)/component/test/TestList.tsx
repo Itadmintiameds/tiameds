@@ -1,247 +1,3 @@
-// 'use client';
-// import { deleteTest, getTests } from '@/../../services/testService';
-// import Button from "@/app/(admin)/component/common/Button";
-// import Loader from "@/app/(admin)/component/common/Loader";
-// import Pagination from '@/app/(admin)/component/common/Pagination';
-// import { useLabs } from '@/context/LabContext';
-// import { TestList } from '@/types/test/testlist';
-// import { Plus } from 'lucide-react';
-// import { useEffect, useState } from 'react';
-// import { FaTimes } from 'react-icons/fa';
-// import { FaTrashCan } from "react-icons/fa6";
-// import { MdModeEditOutline } from "react-icons/md";
-// import { toast } from 'react-toastify';
-// import Modal from '../common/Model';
-// import AddTest from './AddTest';
-// import TableComponent from '../common/TableComponent';
-// import TestEditComponent from './TestEditComponent';
-// import { FaCloudDownloadAlt } from 'react-icons/fa';
-// import { downloadTestCsv, downloadTestCsvExcel } from '@/../services/testService';
-// import * as XLSX from 'xlsx';
-// import Papa from 'papaparse';
-
-// export const TestLists = () => {
-//   const [tests, setTests] = useState<TestList[]>([]);
-//   const [filteredTests, setFilteredTests] = useState<TestList[]>([]);
-//   const [searchTerm, setSearchTerm] = useState('');
-//   const [category, setCategory] = useState('');
-//   const [sortOrder, setSortOrder] = useState<'low' | 'high' | ''>('');
-//   const [currentPage, setCurrentPage] = useState(1);
-//   const itemsPerPage = 20;
-//   const [isModalOpen, setModalOpen] = useState(false);
-//   const [loading, setLoading] = useState(true);
-//   const [editPopup, setEditPopup] = useState(false);
-//   const { currentLab } = useLabs();
-//   const [updateList, setUpdateList] = useState(false);
-//   const [updateTest, setUpdateTest] = useState<TestList>();
-
-//   useEffect(() => {
-//     if (currentLab) {
-//       setLoading(true);
-//       getTests(currentLab.id.toString())
-//         .then((tests) => {
-//           setTests(tests);
-//           setFilteredTests(tests);
-//         })
-//         .catch(console.error)
-//         .finally(() => setLoading(false));
-//     }
-//   }, [currentLab, updateList]);
-
-//   useEffect(() => {
-//     let updatedTests = [...tests];
-//     updatedTests.sort((a, b) => b.id - a.id);
-//     if (category) updatedTests = updatedTests.filter((test) => test.category === category);
-//     if (searchTerm) updatedTests = updatedTests.filter((test) => test.name.toLowerCase().includes(searchTerm.toLowerCase()));
-//     if (sortOrder === 'low') updatedTests.sort((a, b) => a.price - b.price);
-//     if (sortOrder === 'high') updatedTests.sort((a, b) => b.price - a.price);
-//     setFilteredTests(updatedTests);
-//     setCurrentPage(1);
-//   }, [tests, searchTerm, category, sortOrder, updateList]);
-
-//   const currentTests = filteredTests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-//   const clearFilters = () => {
-//     setSearchTerm('');
-//     setCategory('');
-//     setSortOrder('');
-//     setFilteredTests(tests);
-//   };
-
-
-//    // Download CSV
-//     const handleDownloadCsv = async () => {
-//       try {
-//         if (!currentLab?.id) {
-//           toast.error('Current lab is not selected.');
-//           return;
-//         }
-  
-//         await downloadTestCsv(currentLab.id.toString());
-//         toast.success('CSV file downloaded successfully!');
-//       } catch (error) {
-//         console.error(error);
-//         toast.error('An error occurred while downloading the CSV file.');
-//       }
-//     };
-  
-//     // Download Excel
-//     const handleDownloadExcel = async () => {
-//       try {
-//         if (!currentLab?.id) {
-//           toast.error('Current lab is not selected.');
-//           return;
-//         }
-  
-//         // Fetch the CSV content as text
-//         const csvText = await downloadTestCsvExcel(currentLab.id.toString());
-  
-//         // Parse CSV to JSON
-//         const { data } = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-  
-//         if (!data.length) {
-//           toast.error('No data found to export.');
-//           return;
-//         }
-  
-//         // Convert JSON to Excel
-//         const worksheet = XLSX.utils.json_to_sheet(data);
-//         const workbook = XLSX.utils.book_new();
-//         XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Data');
-  
-//         // Save as Excel file
-//         XLSX.writeFile(workbook, 'test_data.xlsx');
-  
-//         toast.success('Excel file downloaded successfully!');
-//       } catch (error) {
-//         console.error(error);
-//         toast.error('An error occurred while downloading the Excel file.');
-//       }
-//     };
-
-//   return (
-//     <div className="container mx-auto p-4">
-//       <div className="flex items-center justify-between mb-4">
-//         <h1 className="text-xl font-bold">Tests</h1>
-//         <Button text="Add Test" onClick={() => setModalOpen(true)}
-//           className='px-4 py-1 text-xs bg-primary text-textzinc rounded-md hover:bg-primarylight focus:outline-none rounded'
-//         >
-//           <Plus className="h-4 w-4" />
-//         </Button>
-//       </div>
-
-//       <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)}
-//         modalClassName='max-w-sm'
-//       >
-//         <AddTest
-//           updateList={updateList}
-//           setUpdateList={setUpdateList}
-//           closeModal={() => setModalOpen(false)} />
-//       </Modal>
-//       <div className="flex justify-end mb-4"></div>
-//         <Button 
-//         text="Download CSV"
-//          onClick={handleDownloadCsv}
-//           className="mr-2">
-//           <FaCloudDownloadAlt className="inline mr-1" />
-//         </Button>
-//         <Button
-//           text="Download Excel"
-//           onClick={handleDownloadExcel}
-//           className="mr-2">
-//           <FaCloudDownloadAlt className="inline mr-1" />
-//         </Button>
-
-//       <Modal
-//         isOpen={editPopup}
-//         onClose={() => setEditPopup(false)}
-//         modalClassName='max-w-sm'
-//       >
-//         <TestEditComponent
-//           updateList={updateList}
-//           setUpdateList={setUpdateList}
-//           closeModal={() => setEditPopup(false)}
-//           test={updateTest}
-//         />
-//       </Modal>
-
-//       {loading ? (
-//         <div className="flex justify-center items-center h-48">
-//           <Loader />
-//         </div>
-//       ) : (
-//         <>
-//           <div className="flex gap-4 mb-4 items-center">
-//             <input type="text" placeholder="Search By Name" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-1/4 text-xs border border-gray-300 p-2 rounded-md" />
-//             <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-1/4 text-xs border border-gray-300 p-2 rounded-md">
-//               <option value="">All Categories</option>
-//               {Array.from(new Set(tests.map((test) => test.category))).map((cat) => (
-//                 <option key={cat} value={cat}>{cat}</option>
-//               ))}
-//             </select>
-//             <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as 'low' | 'high')} className="w-1/4 text-xs border border-gray-300 p-2 rounded-md">
-//               <option value="">Sort by Price</option>
-//               <option value="low">Low to High</option>
-//               <option value="high">High to Low</option>
-//             </select>
-//             <button onClick={clearFilters} className="text-xs text-red-500 flex items-center gap-1">
-//               <FaTimes className="text-xs" /> Clear Filters
-//             </button>
-//           </div>
-
-//           <TableComponent
-//             data={currentTests}
-//             columns={[
-//               { header: "#", accessor: (test) => test.id },
-//               { header: "Name", accessor: (test) => test.name },
-//               { header: "Category", accessor: (test) => test.category },
-//               { header: "Price (₹)", accessor: (test) => `₹${test.price}` },
-//               // { header: "Created At", accessor: (test) => test.createdAt },
-//               // { header: "Updated At", accessor: (test) => test.updatedAt },
-//               {
-//                 header: "Actions",
-//                 accessor: (test) => (
-//                   <div className="flex justify-around">
-//                     <FaTrashCan className="text-delete text-xl cursor-pointer hover:deletehover" onClick={() => {
-//                       if (currentLab) {
-//                         deleteTest(test.id.toString(), currentLab.id.toString()).then(() => {
-//                           setTests(prev => prev.filter(t => t.id !== test.id));
-//                           toast.success('Test deleted successfully');
-//                         }).catch(
-//                           (err) => {
-//                             toast.error(err.message);
-//                           }
-//                         );
-//                       }
-//                     }} />
-
-//                     <MdModeEditOutline
-//                       onClick={() => {
-//                         setEditPopup(true);
-//                         setUpdateTest(test);
-//                       }}
-//                       className="text-updatebutton text-xl cursor-pointer hover:text-updatehover" />
-//                   </div>
-//                 ),
-//               },
-//             ]}
-//           />
-//           <Pagination currentPage={currentPage} totalPages={Math.ceil(filteredTests.length / itemsPerPage)} onPageChange={setCurrentPage} />
-//         </>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default TestLists;
-
-
-
-
-
-
-
-
 
 'use client';
 import { deleteTest, getTests } from '@/../../services/testService';
@@ -438,12 +194,21 @@ export const TestLists = () => {
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <Loader type="progress" text="Loading tests Lists..." />
+        <p className="mt-4 text-sm text-gray-500"> Please wait while we fetch the test data.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full bg-gray-50 p-6 rounded-xl">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Test List</h2>
+          <h2 className="text-xl font-bold text-gray-800">Test List</h2>
           <p className="text-gray-500">Browse and manage laboratory tests</p>
         </div>
         
@@ -584,12 +349,6 @@ export const TestLists = () => {
         />
       </Modal>
 
-      {/* Main Content */}
-      {loading ? (
-        <div className="flex justify-center items-center h-64 bg-white rounded-xl shadow-sm border border-gray-100">
-          <Loader />
-        </div>
-      ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {paginatedTests.length > 0 ? (
             <>
@@ -628,7 +387,6 @@ export const TestLists = () => {
             </div>
           )}
         </div>
-      )}
     </div>
   );
 };

@@ -95,3 +95,23 @@ export const getPatientById = async (labId: number, patientId: number) => {
         throw new Error('An error occurred while fetching patient details.');
     }
 }
+
+
+
+// date wise getting patient visits details
+
+// Example: http://localhost:8080/api/v1/lab/2/visitsdatewise?startDate=2025-05-31&endDate=2025-05-31
+
+export const getVisitsByDate = async (labId: number, startDate: string, endDate: string) => {
+    try {
+        const response = await api.get(`/lab/${labId}/visitsdatewise`, {
+            params: {
+                startDate,
+                endDate
+            }
+        });
+        return response.data;
+    } catch (error: unknown) {
+        throw new Error('An error occurred while fetching visits by date.');
+    }
+}

@@ -74,14 +74,32 @@ export const addSampleToVisit = async (visitId: number, sampleNames: string[]): 
 };
 
 
-export const getAllVisitssamples = async (labId: number): Promise<PatientData[]> => {
+// export const getAllVisitssamples = async (labId: number): Promise<PatientData[]> => {
+//     try {
+//         const response = await api.get<ApiResponse<PatientData[]>>(`/lab/${labId}/get-visit-samples`);
+//         return response.data.data;
+//     } catch (error) {
+//         throw new Error(error instanceof Error ? error.message : 'An error occurred while fetching samples.');
+//     }
+// };
+
+// /lab/2/get-visit-samples?startDate=2025-04-01&endDate=2025-06-03&visitStatus=Collected
+
+export const getAllVisitssamples = async (labId: number, startDate?: string, endDate?: string, visitStatus?: string): Promise<VisitSampleList[]> => {
     try {
-        const response = await api.get<ApiResponse<PatientData[]>>(`/lab/${labId}/get-visit-samples`);
+        const params: { [key: string]: string | undefined } = {};
+        if (startDate) params.startDate = startDate;
+        if (endDate) params.endDate = endDate;
+        if (visitStatus) params.visitStatus = visitStatus;
+
+        const response = await api.get<ApiResponse<VisitSampleList[]>>(`/lab/${labId}/get-visit-samples`, { params });
         return response.data.data;
     } catch (error) {
-        throw new Error(error instanceof Error ? error.message : 'An error occurred while fetching samples.');
+        throw new Error(error instanceof Error ? error.message : 'An error occurred while fetching visit samples.');
     }
-};
+}
+
+
 
 
 export const updateVisitSample = async (visitId: number, sampleNames: string[]): Promise<void> => {

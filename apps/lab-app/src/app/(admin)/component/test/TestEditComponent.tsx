@@ -21,8 +21,6 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
         category: test?.category || '',
         name: test?.name || '',
         price: test?.price || 0,
-        // createdAt: test?.createdAt || new Date().toISOString(),
-        // updatedAt: test?.updatedAt || new Date().toISOString(),
     });
     const { currentLab } = useLabs();
 

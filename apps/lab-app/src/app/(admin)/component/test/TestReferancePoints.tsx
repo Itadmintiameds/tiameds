@@ -1,768 +1,3 @@
-// import { useState, useEffect } from "react";
-// import { getTestReferanceRange, updateTestReferanceRange, deleteTestReferanceRange, addTestReferanceRange} from "../../../../../services/testService";
-// import { TestReferancePoint } from "@/types/test/testlist";
-// import Loader from "../../component/common/Loader";
-// import { useLabs } from "@/context/LabContext";
-// import { FaEdit, FaTrash, FaPlus } from "react-icons/fa";
-// import Modal from "../common/Model";
-// import TestEditReferance from "./TestEditReferance";
-// import { toast } from "react-toastify";
-// import TableComponent from "../common/TableComponent";
-// import AddTestReferanceNew from "./AddTestReferanceNew";
-// import Button from "../common/Button";
-// import { FaDownload, FaFileExcel } from "react-icons/fa";
-// import AddExistingTestReferance from "./AddExistingTestReferance";
-// import Pagination from "../common/Pagination";
-// import * as XLSX from 'xlsx';
-// import { saveAs } from "file-saver";
-// import { fetchTestReferenceRangeCsv } from '@/../services/testService';
-// import Papa from 'papaparse';
-
-// const TestReferancePoints = () => {
-//   const [referencePoints, setReferencePoints] = useState<TestReferancePoint[]>([]);
-//   const [loading, setLoading] = useState(true);
-//   const [isEditModalOpen, setEditModalOpen] = useState(false);
-//   const [editRecord, setEditRecord] = useState<TestReferancePoint | null>(null);
-//   const [formData, setFormData] = useState<TestReferancePoint>({} as TestReferancePoint);
-//   const [addModalOpen, setAddModalOpen] = useState(false);
-//   const [newReferanceRecord, setNewReferanceRecord] = useState<TestReferancePoint>({
-//     gender: "F",
-//     ageMin: 0,
-//   } as TestReferancePoint);
-
-//   const [existingModalOpen, setExistingModalOpen] = useState(false);
-//   const [existingTestReferanceRecord, setExistingTestReferanceRecord] = useState<TestReferancePoint>({ gender: "F" } as TestReferancePoint);
-//   const { currentLab } = useLabs();
-
-//   useEffect(() => {
-//     if (currentLab) {
-//       setLoading(true);
-//       getTestReferanceRange(currentLab.id.toString())
-//         .then((data) => setReferencePoints(data))
-//         .catch((error) => toast.error((error as Error).message))
-//         .finally(() => setLoading(false));
-//     }
-//   }, [currentLab]);
-
-//   if (loading) return <Loader />;
-
-//   const groupedData = referencePoints.reduce((acc, test) => {
-//     if (!acc[test.category]) acc[test.category] = {};
-//     if (!acc[test.category][test.testName]) acc[test.category][test.testName] = [];
-//     acc[test.category][test.testName].push(test);
-//     return acc;
-//   }, {} as Record<string, Record<string, TestReferancePoint[]>>);
-
-//   const handleEditRecord = (test: TestReferancePoint) => {
-//     setEditRecord(test);
-//     setFormData(test);
-//     setEditModalOpen(true);
-//   };
-
-//   const handleUpdate = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (!currentLab || !editRecord) return;
-
-//     try {
-//       setLoading(true);
-//       await updateTestReferanceRange(currentLab.id.toString(), editRecord.id.toString(), formData);
-
-//       setReferencePoints(prevPoints =>
-//         prevPoints.map((item) =>
-//           item.id === editRecord.id ? { ...item, ...formData } : item
-//         )
-//       );
-
-//       toast.success("Test reference range updated successfully.");
-//       setEditModalOpen(false);
-//     } catch (error) {
-//       toast.error((error as Error).message);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleDelete = async (id: string) => {
-//     if (!currentLab) return;
-
-//     try {
-//       setLoading(true);
-//       await deleteTestReferanceRange(currentLab.id.toString(), id);
-//       setReferencePoints((prev) => prev.filter((item) => item.id.toString() !== id));
-//       toast.success("Test reference range deleted successfully.");
-//     } catch (error) {
-//       toast.error((error as Error).message);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleAddNewReferanceRecord = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (!currentLab || !newReferanceRecord) return;
-
-//     try {
-//       setLoading(true);
-//       await addTestReferanceRange(currentLab.id.toString(), newReferanceRecord);
-//       setReferencePoints((prev) => [...prev, newReferanceRecord]);
-//       toast.success("Test reference range added successfully.", { autoClose: 2000 });
-//       setAddModalOpen(false);
-//       setNewReferanceRecord({} as TestReferancePoint);
-//     } catch (error) {
-//       toast.error((error as Error).message, { autoClose: 2000 });
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleAddExistingReferanceRecord = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (!currentLab || !existingTestReferanceRecord) return;
-
-//     try {
-//       setLoading(true);
-//       await addTestReferanceRange(currentLab.id.toString(), existingTestReferanceRecord);
-//       setReferencePoints((prev) => [...prev, existingTestReferanceRecord]);
-//       toast.success("Test reference range added successfully.", { autoClose: 2000 });
-//       setExistingModalOpen(false);
-//       setExistingTestReferanceRecord({} as TestReferancePoint);
-//     } catch (error) {
-//       toast.error((error as Error).message, { autoClose: 2000 });
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleDownloadCsv = async () => {
-//     try {
-//       if (!currentLab?.id) {
-//         toast.error('Current lab is not selected.');
-//         return;
-//       }
-
-//       const csvText = await fetchTestReferenceRangeCsv(currentLab.id.toString());
-
-//       // Convert CSV text into a downloadable Blob
-//       const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
-//       saveAs(blob, 'test_reference_range.csv');
-
-//       toast.success('CSV file downloaded successfully!');
-//     } catch (error) {
-//       toast.error(error instanceof Error ? error.message : 'Failed to download CSV.');
-//     }
-//   };
-
-//   const handleDownloadExcel = async () => {
-//     try {
-//       if (!currentLab?.id) {
-//         toast.error('Current lab is not selected.');
-//         return;
-//       }
-//       const csvText = await fetchTestReferenceRangeCsv(currentLab.id.toString());
-//       const { data } = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-//       if (!data.length) {
-//         toast.error('No data found to export.');
-//         return;
-//       }
-//       const worksheet = XLSX.utils.json_to_sheet(data);
-//       const workbook = XLSX.utils.book_new();
-//       XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Reference Range');
-//       XLSX.writeFile(workbook, 'test_reference_range.xlsx');
-//       toast.success('Excel file downloaded successfully!');
-//     } catch (error) {
-//       toast.error(error instanceof Error ? error.message : 'Failed to download Excel.');
-//     }
-//   };
-//   const columns = [
-//     { header: "Description", accessor: (test: TestReferancePoint) => test.testDescription },
-//     { header: "Gender", accessor: (test: TestReferancePoint) => test.gender },
-//     {
-//       header: "Age",
-//       accessor: (test: TestReferancePoint) => `${test.ageMin} - ${test.ageMax}`
-//     },
-//     {
-//       header: "Range",
-//       accessor: (test: TestReferancePoint) => `${test.minReferenceRange} - ${test.maxReferenceRange} ${test.units}`
-//     },
-//   ];
-
-//   return (
-//     <div className="w-full">
-//       <div className="flex justify-between items-center mb-4 my-4">
-//         <h2 className="text-lg font-semibold text-blue-600">Test Reference Range</h2>
-//         <div className="flex space-x-2">
-//           <Button
-//             text="Add Test Reference"
-//             onClick={() => setAddModalOpen(true)}
-//             className="bg-savebutton text-white px-4 py-2 rounded-md shadow-md hover:bg-savehover transition flex items-center text-sm"
-//           >
-//             <FaPlus className="mr-1" />
-//           </Button>
-
-//           <Button
-//             text="Download CSV"
-//             onClick={() => { handleDownloadCsv() }}
-//             className="bg-download text-white px-4 py-2 rounded-md shadow-md hover:bg-downloadhover transition flex items-center text-sm"
-//           >
-//             <FaDownload className="mr-1" />
-//           </Button>
-//           <Button
-//             text="Download Excel"
-//             onClick={() => { handleDownloadExcel() }}
-//             className="bg-download text-white px-4 py-2 rounded-md shadow-md hover:bg-downloadhover transition flex items-center text-sm"
-//           >
-//             <FaFileExcel className="mr-1" />
-//           </Button>
-//         </div>
-//       </div>
-//       {Object.entries(groupedData).map(([category, tests]) => (
-//         <div key={category} className="rounded-lg shadow-lg p-6 mb-6">
-//           <h3 className="text-lg font-semibold text-blue-600 mb-3">{category}</h3>
-//           {Object.entries(tests).map(([testName, records]) => (
-//             <div key={testName} className="mb-4">
-//               <div className="flex justify-between items-center bg-cardbackground p-3 rounded-md shadow-md mb-4">
-//                 <h4 className="text-textzinc font-medium">{testName}</h4>
-//                 <Button
-//                   text=""
-//                   onClick={() => {
-//                     setExistingModalOpen(true);
-//                     setExistingTestReferanceRecord((prev) => ({ ...prev, testName, category }));
-//                   }}
-//                   className="bg-green-500 text-white px-3 py-2 rounded-lg shadow hover:bg-green-600 transition flex items-center text-xs"
-//                 >
-//                   <FaPlus className="mr-1" />
-//                   Add Test Reference for {testName}
-//                 </Button>
-//               </div>
-
-//               {/* Table Component */}
-//               <TableComponent
-//                 data={records}
-//                 columns={columns}
-//                 actions={(test) => (
-//                   <>
-//                     <FaEdit
-//                       onClick={() => handleEditRecord(test)}
-//                       className="text-blue-500 cursor-pointer hover:scale-110 transition"
-//                       title="Edit"
-//                     />
-//                     <FaTrash
-//                       onClick={() => handleDelete(test.id.toString())}
-//                       title="Delete"
-//                       className="text-red-500 cursor-pointer hover:scale-110 transition"
-//                     />
-//                   </>
-//                 )}
-//               />
-//             </div>
-//           ))}
-//         </div>
-//       ))}
-//       {isEditModalOpen && (
-//         <Modal
-//           isOpen={isEditModalOpen}
-//           title="Edit Test Reference Point"
-//           onClose={() => setEditModalOpen(false)}
-//           modalClassName="max-w-2xl"
-//         >
-//           <TestEditReferance
-//             editRecord={editRecord}
-//             setEditRecord={setEditRecord}
-//             setEditModalOpen={setEditModalOpen}
-//             handleUpdate={handleUpdate}
-//             handleChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
-//             formData={formData}
-//             setFormData={setFormData}
-//           />
-//         </Modal>
-//       )}
-//       {addModalOpen && (
-//         <Modal
-//           isOpen={addModalOpen}
-//           title=""
-//           onClose={() => setAddModalOpen(false)}
-//           modalClassName="max-w-2xl"
-//         >
-//           <AddTestReferanceNew
-//             handleAddNewReferanceRecord={handleAddNewReferanceRecord}
-//             handleChangeRef={(e) => setNewReferanceRecord({ ...newReferanceRecord, [e.target.name]: e.target.value })}
-//             newReferanceRecord={newReferanceRecord}
-//             setNewReferanceRecord={setNewReferanceRecord}
-//           />
-//         </Modal>
-//       )}
-//       {existingModalOpen && (
-//         <Modal
-//           isOpen={existingModalOpen}
-//           title=""
-//           onClose={() => setExistingModalOpen(false)}
-//           modalClassName="max-w-2xl"
-//         >
-//           <AddExistingTestReferance
-//             handleAddExistingReferanceRecord={handleAddExistingReferanceRecord}
-//             handleChangeRef={(e) => setExistingTestReferanceRecord({ ...existingTestReferanceRecord, [e.target.name]: e.target.value })}
-//             existingTestReferanceRecord={existingTestReferanceRecord}
-//             setExistingTestReferanceRecord={setExistingTestReferanceRecord}
-//           />
-//         </Modal>
-//       )}
-
-//       <Pagination currentPage={1} totalPages={1} onPageChange={() => { }} />
-
-//     </div>
-//   );
-// };
-
-// export default TestReferancePoints;
-
-
-
-
-// import { useState, useEffect, useMemo } from "react";
-// import {
-//   getTestReferanceRange,
-//   updateTestReferanceRange,
-//   deleteTestReferanceRange,
-//   addTestReferanceRange
-// } from "../../../../../services/testService";
-// import { TestReferancePoint } from "@/types/test/testlist";
-// import Loader from "../../component/common/Loader";
-// import { useLabs } from "@/context/LabContext";
-// import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel } from "react-icons/fa";
-// import Modal from "../common/Model";
-// import TestEditReferance from "./TestEditReferance";
-// import { toast } from "react-toastify";
-// import TableComponent from "../common/TableComponent";
-// import AddTestReferanceNew from "./AddTestReferanceNew";
-// import Button from "../common/Button";
-// import AddExistingTestReferance from "./AddExistingTestReferance";
-// import Pagination from "../common/Pagination";
-// import * as XLSX from 'xlsx';
-// import { saveAs } from "file-saver";
-// import { fetchTestReferenceRangeCsv } from '@/../services/testService';
-// import Papa from 'papaparse';
-
-// const ITEMS_PER_PAGE = 5;
-
-// const TestReferancePoints = () => {
-//   // State management
-//   const [referencePoints, setReferencePoints] = useState<TestReferancePoint[]>([]);
-//   const [loading, setLoading] = useState(true);
-//   const [isEditModalOpen, setEditModalOpen] = useState(false);
-//   const [editRecord, setEditRecord] = useState<TestReferancePoint | null>(null);
-//   const [formData, setFormData] = useState<TestReferancePoint>({} as TestReferancePoint);
-//   const [addModalOpen, setAddModalOpen] = useState(false);
-//   const [newReferanceRecord, setNewReferanceRecord] = useState<TestReferancePoint>({
-//     gender: "F",
-//     ageMin: 0,
-//   } as TestReferancePoint);
-//   const [existingModalOpen, setExistingModalOpen] = useState(false);
-//   const [existingTestReferanceRecord, setExistingTestReferanceRecord] = useState<TestReferancePoint>({ gender: "F" } as TestReferancePoint);
-//   const [searchTerm, setSearchTerm] = useState("");
-//   const [currentPage, setCurrentPage] = useState(1);
-//   const { currentLab } = useLabs();
-
-//   // Data fetching
-//   useEffect(() => {
-//     if (currentLab) {
-//       setLoading(true);
-//       getTestReferanceRange(currentLab.id.toString())
-//         .then((data) => setReferencePoints(data))
-//         .catch((error) => toast.error((error as Error).message))
-//         .finally(() => setLoading(false));
-//     }
-//   }, [currentLab]);
-
-//   // Data filtering and pagination
-//   const { filteredGroupedData, totalCategories } = useMemo(() => {
-//     const filtered = referencePoints.filter(test =>
-//       test.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//       test.testName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//       test.testDescription?.toLowerCase().includes(searchTerm.toLowerCase())
-//     );
-
-//     const grouped = filtered.reduce((acc, test) => {
-//       if (!acc[test.category]) acc[test.category] = {};
-//       if (!acc[test.category][test.testName]) acc[test.category][test.testName] = [];
-//       acc[test.category][test.testName].push(test);
-//       return acc;
-//     }, {} as Record<string, Record<string, TestReferancePoint[]>>);
-
-//     const categories = Object.keys(grouped);
-//     const paginatedCategories = categories.slice(
-//       (currentPage - 1) * ITEMS_PER_PAGE,
-//       currentPage * ITEMS_PER_PAGE
-//     );
-
-//     const paginatedGroupedData: Record<string, Record<string, TestReferancePoint[]>> = {};
-//     paginatedCategories.forEach(category => {
-//       paginatedGroupedData[category] = grouped[category];
-//     });
-
-//     return {
-//       filteredGroupedData: paginatedGroupedData,
-//       totalCategories: categories.length
-//     };
-//   }, [referencePoints, searchTerm, currentPage]);
-
-//   // CRUD operations
-//   const handleEditRecord = (test: TestReferancePoint) => {
-//     setEditRecord(test);
-//     setFormData(test);
-//     setEditModalOpen(true);
-//   };
-
-//   const handleUpdate = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (!currentLab || !editRecord) return;
-
-//     try {
-//       setLoading(true);
-//       await updateTestReferanceRange(currentLab.id.toString(), editRecord.id.toString(), formData);
-//       setReferencePoints(prevPoints =>
-//         prevPoints.map((item) =>
-//           item.id === editRecord.id ? { ...item, ...formData } : item
-//         )
-//       );
-//       toast.success("Test reference range updated successfully.");
-//       setEditModalOpen(false);
-//     } catch (error) {
-//       toast.error((error as Error).message);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleDelete = async (id: string) => {
-//     if (!currentLab) return;
-
-//     try {
-//       setLoading(true);
-//       await deleteTestReferanceRange(currentLab.id.toString(), id);
-//       setReferencePoints((prev) => prev.filter((item) => item.id.toString() !== id));
-//       toast.success("Test reference range deleted successfully.");
-//     } catch (error) {
-//       toast.error((error as Error).message);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleAddNewReferanceRecord = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (!currentLab || !newReferanceRecord) return;
-
-//     try {
-//       setLoading(true);
-//       await addTestReferanceRange(currentLab.id.toString(), newReferanceRecord);
-//       setReferencePoints((prev) => [...prev, newReferanceRecord]);
-//       toast.success("Test reference range added successfully.", { autoClose: 2000 });
-//       setAddModalOpen(false);
-//       setNewReferanceRecord({} as TestReferancePoint);
-//     } catch (error) {
-//       toast.error((error as Error).message, { autoClose: 2000 });
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const handleAddExistingReferanceRecord = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (!currentLab || !existingTestReferanceRecord) return;
-
-//     try {
-//       setLoading(true);
-//       await addTestReferanceRange(currentLab.id.toString(), existingTestReferanceRecord);
-//       setReferencePoints((prev) => [...prev, existingTestReferanceRecord]);
-//       toast.success("Test reference range added successfully.", { autoClose: 2000 });
-//       setExistingModalOpen(false);
-//       setExistingTestReferanceRecord({} as TestReferancePoint);
-//     } catch (error) {
-//       toast.error((error as Error).message, { autoClose: 2000 });
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Export functions
-//   const handleDownloadCsv = async () => {
-//     try {
-//       if (!currentLab?.id) {
-//         toast.error('Current lab is not selected.');
-//         return;
-//       }
-//       const csvText = await fetchTestReferenceRangeCsv(currentLab.id.toString());
-//       const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
-//       saveAs(blob, 'test_reference_range.csv');
-//       toast.success('CSV file downloaded successfully!');
-//     } catch (error) {
-//       toast.error(error instanceof Error ? error.message : 'Failed to download CSV.');
-//     }
-//   };
-
-//   const handleDownloadExcel = async () => {
-//     try {
-//       if (!currentLab?.id) {
-//         toast.error('Current lab is not selected.');
-//         return;
-//       }
-//       const csvText = await fetchTestReferenceRangeCsv(currentLab.id.toString());
-//       const { data } = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-//       if (!data.length) {
-//         toast.error('No data found to export.');
-//         return;
-//       }
-//       const worksheet = XLSX.utils.json_to_sheet(data);
-//       const workbook = XLSX.utils.book_new();
-//       XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Reference Range');
-//       XLSX.writeFile(workbook, 'test_reference_range.xlsx');
-//       toast.success('Excel file downloaded successfully!');
-//     } catch (error) {
-//       toast.error(error instanceof Error ? error.message : 'Failed to download Excel.');
-//     }
-//   };
-
-//   // Table configuration
-//   const columns = [
-//     {
-//       header: "Description",
-//       accessor: (test: TestReferancePoint) => test.testDescription || "N/A",
-//       className: "min-w-[200px]"
-//     },
-//     {
-//       header: "Gender",
-//       accessor: (test: TestReferancePoint) => test.gender,
-//       className: "text-center"
-//     },
-//     {
-//       header: "Age Range",
-//       accessor: (test: TestReferancePoint) => `${test.ageMin || "0"} - ${test.ageMax || "∞"} years`,
-//       className: "text-center"
-//     },
-//     {
-//       header: "Reference Range",
-//       accessor: (test: TestReferancePoint) => (
-//         <span className="font-medium">
-//           {test.minReferenceRange} - {test.maxReferenceRange} {test.units && <span className="text-gray-500">{test.units}</span>}
-//         </span>
-//       ),
-//       className: "min-w-[180px]"
-//     },
-//   ];
-
-//   if (loading) return <Loader />;
-
-//   return (
-//     <div className="w-full bg-gray-50 p-6 rounded-xl">
-//       {/* Header Section */}
-//       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-//         <div>
-//           <h2 className="text-2xl font-bold text-gray-800">Test Reference Ranges</h2>
-//           <p className="text-gray-500">Manage laboratory test reference values</p>
-//         </div>
-
-//         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-//           {/* Search Input */}
-//           <div className="relative flex-1">
-//             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-//               <FaSearch className="text-gray-400" />
-//             </div>
-//             <input
-//               type="text"
-//               placeholder="Search by category, test or description..."
-//               className="pl-10 pr-4 py-2.5 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               value={searchTerm}
-//               onChange={(e) => {
-//                 setSearchTerm(e.target.value);
-//                 setCurrentPage(1);
-//               }}
-//             />
-//           </div>
-
-//           {/* Action Buttons */}
-//           <div className="flex gap-2">
-//             <Button
-//               text="Add Reference"
-//               onClick={() => setAddModalOpen(true)}
-//               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2"
-//             >
-//               <FaPlus />
-//             </Button>
-//             <Button
-//               text="CSV"
-//               onClick={handleDownloadCsv}
-//               className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2"
-//             >
-//               <FaDownload />
-//             </Button>
-//             <Button
-//               text="Excel"
-//               onClick={handleDownloadExcel}
-//               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2"
-             
-//             >
-//               <FaFileExcel />
-//             </Button>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* Main Content */}
-//       {Object.keys(filteredGroupedData).length > 0 ? (
-//         <>
-//           {/* Category Cards */}
-//           {Object.entries(filteredGroupedData).map(([category, tests]) => (
-//             <div key={category} className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
-//               <div className="flex justify-between items-center p-4 bg-gray-50">
-//                 <div className="flex items-center">
-//                   <h3 className="text-lg font-semibold text-gray-800">{category}</h3>
-//                   <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
-//                     {Object.keys(tests).length} tests
-//                   </span>
-//                 </div>
-//               </div>
-
-//               {/* Test Tables */}
-//               <div className="p-4">
-//                 {Object.entries(tests).map(([testName, records]) => (
-//                   <div key={testName} className="mb-6 last:mb-0">
-//                     <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg mb-3">
-//                       <h4 className="font-medium text-gray-700">{testName}</h4>
-//                       <Button
-//                         text="Add Reference"
-//                         onClick={() => {
-//                           setExistingModalOpen(true);
-//                           setExistingTestReferanceRecord(prev => ({ ...prev, testName, category }));
-//                         }}
-//                         className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm"
-
-//                       >
-//                         <FaPlus className="mr-1" />
-                      
-//                       </Button>
-//                     </div>
-
-//                     <TableComponent
-//                       data={records}
-//                       columns={columns}
-//                       actions={(test) => (
-//                         <div className="flex gap-3">
-//                           <FaEdit
-//                             onClick={() => handleEditRecord(test)}
-//                             className="text-blue-500 cursor-pointer hover:text-blue-700"
-//                             title="Edit"
-//                             size={18}
-//                           />
-//                           <FaTrash
-//                             onClick={() => handleDelete(test.id.toString())}
-//                             className="text-red-500 cursor-pointer hover:text-red-700"
-//                             title="Delete"
-//                             size={18}
-//                           />
-//                         </div>
-//                       )}
-//                     />
-//                   </div>
-//                 ))}
-//               </div>
-//             </div>
-//           ))}
-
-//           {/* Pagination */}
-//           <div className="mt-4">
-//             <Pagination
-//               currentPage={currentPage}
-//               totalPages={Math.ceil(totalCategories / ITEMS_PER_PAGE)}
-//               onPageChange={setCurrentPage}
-//             />
-//           </div>
-//         </>
-//       ) : (
-//         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-//           <FaSearch className="mx-auto text-4xl text-gray-400 mb-4" />
-//           <h3 className="text-lg font-medium text-gray-700 mb-2">
-//             {searchTerm ? "No matching results found" : "No test reference data available"}
-//           </h3>
-//           <p className="text-gray-500">
-//             {searchTerm ? "Try adjusting your search query" : "Add test references to get started"}
-//           </p>
-//           {searchTerm && (
-//             <button
-//               onClick={() => setSearchTerm("")}
-//               className="mt-4 text-blue-600 hover:text-blue-800 font-medium"
-//             >
-//               Clear search
-//             </button>
-//           )}
-//         </div>
-//       )}
-
-//       {/* Modals */}
-//       {isEditModalOpen && (
-//         <Modal
-//           isOpen={isEditModalOpen}
-//           title="Edit Reference Range"
-//           onClose={() => setEditModalOpen(false)}
-//           modalClassName="max-w-2xl"
-//         >
-//           <TestEditReferance
-//             editRecord={editRecord}
-//             setEditRecord={setEditRecord}
-//             setEditModalOpen={setEditModalOpen}
-//             handleUpdate={handleUpdate}
-//             handleChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
-//             formData={formData}
-//             setFormData={setFormData}
-//           />
-//         </Modal>
-//       )}
-
-//       {addModalOpen && (
-//         <Modal
-//           isOpen={addModalOpen}
-//           title="Add New Reference Range"
-//           onClose={() => setAddModalOpen(false)}
-//           modalClassName="max-w-2xl"
-//         >
-//           <AddTestReferanceNew
-//             handleAddNewReferanceRecord={handleAddNewReferanceRecord}
-//             handleChangeRef={(e) => setNewReferanceRecord({ ...newReferanceRecord, [e.target.name]: e.target.value })}
-//             newReferanceRecord={newReferanceRecord}
-//             setNewReferanceRecord={setNewReferanceRecord}
-//           />
-//         </Modal>
-//       )}
-
-//       {existingModalOpen && (
-//         <Modal
-//           isOpen={existingModalOpen}
-//           title="Add Existing Test Reference"
-//           onClose={() => setExistingModalOpen(false)}
-//           modalClassName="max-w-2xl"
-//         >
-//           <AddExistingTestReferance
-//             handleAddExistingReferanceRecord={handleAddExistingReferanceRecord}
-//             handleChangeRef={(e) => setExistingTestReferanceRecord({ ...existingTestReferanceRecord, [e.target.name]: e.target.value })}
-//             existingTestReferanceRecord={existingTestReferanceRecord}
-//             setExistingTestReferanceRecord={setExistingTestReferanceRecord}
-//           />
-//         </Modal>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default TestReferancePoints;
-
-
-
-
-
-
-
-
-// ============================================================
-
 import { useState, useEffect, useMemo } from "react";
 import {
   getTestReferanceRange,
@@ -790,7 +25,6 @@ import Papa from 'papaparse';
 const ITEMS_PER_PAGE = 5;
 
 const TestReferancePoints = () => {
-  // State management
   const [referencePoints, setReferencePoints] = useState<TestReferancePoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
@@ -810,7 +44,6 @@ const TestReferancePoints = () => {
   const [activeFilter, setActiveFilter] = useState<"all" | "category" | "test" | "description">("all");
   const [activeTab, setActiveTab] = useState<"all" | "common" | "special">("all");
 
-  // Data fetching
   useEffect(() => {
     if (currentLab) {
       setLoading(true);
@@ -897,9 +130,6 @@ const TestReferancePoints = () => {
     };
   }, [referencePoints, searchTerm, currentPage, activeFilter, activeTab]);
 
-  // ... [keep all your existing CRUD operations and export functions unchanged]
-
-  // Table configuration
   const columns = [
     {
       header: "Description",
@@ -926,8 +156,6 @@ const TestReferancePoints = () => {
       className: "min-w-[180px]"
     },
   ];
-
-  if (loading) return <Loader />;
 
   async function handleDownloadCsv(): Promise<void> {
     try {
@@ -993,22 +221,35 @@ const TestReferancePoints = () => {
     setEditModalOpen(true);
   }
 
-  async function handleDelete(id: string): Promise<void> {
-    if (!currentLab) return;
+
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this test reference range?")) return;
+
+    if (!currentLab || !id) {
+      toast.error("Invalid lab or test reference range ID.", { autoClose: 2000 });
+      console.error("Invalid lab or test reference range ID:", { currentLab, id });
+      return;
+    }
+
+    console.log("Deleting test reference range with ID:", id);
+    console.log("Current lab ID:", currentLab.id);
 
     try {
       setLoading(true);
       await deleteTestReferanceRange(currentLab.id.toString(), id);
-      setReferencePoints((prev) => prev.filter((item) => item.id.toString() !== id));
-      toast.success("Test reference range deleted successfully.");
-    } catch (error) {
-      toast.error((error as Error).message);
+      setReferencePoints(prev => prev.filter(test => test.id !== id));
+      toast.success("Test reference range deleted successfully.", { autoClose: 2000 });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "An unexpected error occurred while deleting the test reference range.";
+      toast.error(message, { autoClose: 2000 });
+      console.error("Delete error:", error);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  // Add new reference record handler
+
   async function handleAddNewReferanceRecord(e: React.FormEvent) {
     e.preventDefault();
     if (!currentLab || !newReferanceRecord) return;
@@ -1046,12 +287,21 @@ const TestReferancePoints = () => {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <Loader type="progress" text="Loading test reference ranges..." />
+        <p className="mt-4 text-sm text-gray-500"> Please wait while we fetch the data.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full bg-gray-50 p-6 rounded-xl">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Test Reference Ranges</h2>
+          <h2 className="text-xl font-bold text-gray-800">Test Reference Ranges</h2>
           <p className="text-gray-500">Manage laboratory test reference values</p>
         </div>
 
@@ -1063,7 +313,7 @@ const TestReferancePoints = () => {
             </div>
             <div className="absolute inset-y-0 right-0 flex items-center">
               <div className="relative">
-                <button 
+                <button
                   className="h-full px-3 flex items-center text-gray-500 hover:text-blue-600"
                   onClick={() => setActiveFilter(prev => prev === "all" ? "category" : prev === "category" ? "test" : prev === "test" ? "description" : "all")}
                 >
@@ -1075,6 +325,7 @@ const TestReferancePoints = () => {
             <input
               type="text"
               placeholder={`Search by ${activeFilter}...`}
+              // className="pl-10 pr-24 py-2.5 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               className="pl-10 pr-24 py-2.5 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={searchTerm}
               onChange={(e) => {
@@ -1083,7 +334,7 @@ const TestReferancePoints = () => {
               }}
             />
           </div>
-          
+
           {/* Export buttons */}
           <div className="flex gap-2">
             <Button
@@ -1114,7 +365,7 @@ const TestReferancePoints = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-gray-500 text-sm font-medium">Total Tests</h3>
+          <h3 className="text-gray-500 text-sm font-medium">Total Tests Referance</h3>
           <p className="text-2xl font-bold text-gray-800">{stats.totalTests}</p>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
@@ -1122,7 +373,7 @@ const TestReferancePoints = () => {
           <p className="text-2xl font-bold text-gray-800">{stats.totalCategories}</p>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-gray-500 text-sm font-medium">Showing</h3>
+          <h3 className="text-gray-500 text-sm font-medium">Showing Tests Referance</h3>
           <p className="text-2xl font-bold text-gray-800">
             {stats.filteredTests} {searchTerm ? "results" : "tests"}
           </p>
@@ -1137,7 +388,7 @@ const TestReferancePoints = () => {
         >
           All Tests
         </button>
-       
+
       </div>
 
       {/* Main Content */}
@@ -1162,7 +413,7 @@ const TestReferancePoints = () => {
                   <FaChevronDown className="text-gray-400" />
                 )}
               </button>
-              
+
               {expandedCategories[category] && (
                 <div className="p-4">
                   {Object.entries(tests).map(([testName, records]) => (
@@ -1193,7 +444,7 @@ const TestReferancePoints = () => {
                               size={18}
                             />
                             <FaTrash
-                              onClick={() => handleDelete(test.id.toString())}
+                              onClick={() => handleDelete(test.id)}
                               className="text-red-500 cursor-pointer hover:text-red-700"
                               title="Delete"
                               size={18}
@@ -1237,7 +488,7 @@ const TestReferancePoints = () => {
         </div>
       )}
 
-            {isEditModalOpen && (
+      {isEditModalOpen && (
         <Modal
           isOpen={isEditModalOpen}
           title="Edit Reference Range"
@@ -1261,7 +512,7 @@ const TestReferancePoints = () => {
           isOpen={addModalOpen}
           title="Add New Reference Range"
           onClose={() => setAddModalOpen(false)}
-          modalClassName="max-w-2xl"
+          modalClassName="max-w-3xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
         >
           <AddTestReferanceNew
             handleAddNewReferanceRecord={handleAddNewReferanceRecord}

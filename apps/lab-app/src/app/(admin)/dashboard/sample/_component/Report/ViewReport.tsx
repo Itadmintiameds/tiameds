@@ -418,7 +418,7 @@
 
 import Loader from "@/app/(admin)/component/common/Loader";
 import { useLabs } from "@/context/LabContext";
-import { PatientData } from "@/types/sample/sample";
+// import { PatientData } from "@/types/sample/sample";
 import { Button } from "@headlessui/react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -428,6 +428,21 @@ import { FaCloudDownloadAlt, FaSpinner, FaUser, FaWhatsapp } from "react-icons/f
 import { toast } from "react-toastify";
 import { getReportData } from "../../../../../../../services/reportServices";
 
+interface PatientData  {
+    visitId: number;
+    patientname: string;
+    visitDate: string;
+    visitStatus: string;
+    sampleNames: string[];
+    testIds: number[];
+    packageIds: number[];
+    contactNumber?: string;
+    gender?: string;
+    email?: string;
+    dateOfBirth?: string;
+
+}
+
 interface Report {
     reportId: number;
     visitId: number;
@@ -436,7 +451,7 @@ interface Report {
     labId: number;
     referenceDescription: string;
     referenceRange: string;
-    referenceDataAge: string;
+    referenceDataAge?: string;
     enteredValue: string;
     unit: string;
     createdBy: number;
@@ -446,6 +461,7 @@ interface Report {
 }
 
 const LabReport = ({ viewPatient }: { viewPatient: PatientData | null }) => {
+    console.log("View Patient:", viewPatient);
     const { currentLab } = useLabs();
     const [report, setReport] = useState<Report[]>([]);
     const [loading, setLoading] = useState(false);
@@ -458,7 +474,6 @@ const LabReport = ({ viewPatient }: { viewPatient: PatientData | null }) => {
         
         const fetchData = async () => {
             setLoading(true);
-            // setError(null);
             try {
                 const response = await getReportData(currentLab.id.toString(), viewPatient.visitId.toString());
                 if (Array.isArray(response)) {

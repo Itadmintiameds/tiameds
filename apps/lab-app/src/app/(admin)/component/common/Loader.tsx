@@ -1,18 +1,3 @@
-// import React from 'react'
-// import { FaSpinner } from 'react-icons/fa'
-
-// const Loader = () => {
-//     return (
-//         <div className="flex justify-center items-center p-4">
-//             <FaSpinner className="animate-spin text-3xl text-primary" />
-//         </div>
-//     )
-// }
-
-// export default Loader
-
-
-
 import React, { useState, useEffect } from 'react';
 import { FaSpinner, FaCircleNotch, FaRegSnowflake, FaAtom } from 'react-icons/fa';
 import { GiSpinningSword, GiSpinningBlades } from 'react-icons/gi';
@@ -148,7 +133,7 @@ const Loader: React.FC<LoaderProps> = ({
       </div>
       {text && (
         <motion.p 
-          className="text-primary mt-2 font-medium"
+          className="text-indigo-600 mt-2 font-medium"
           animate={{
             opacity: [0.6, 1, 0.6],
           }}
@@ -161,7 +146,7 @@ const Loader: React.FC<LoaderProps> = ({
         </motion.p>
       )}
       {type === 'progress' && (
-        <p className="text-primary mt-2 text-sm">{progress}%</p>
+        <p className="text-indigo-600 mt-2 text-sm">{progress}%</p>
       )}
     </div>
   );

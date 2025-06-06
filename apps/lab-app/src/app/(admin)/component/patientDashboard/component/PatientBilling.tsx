@@ -89,7 +89,8 @@ const PatientBilling = ({ newPatient, handleChange, selectedPackages, isGlobalDi
                 name="visit.billing.discountPercentage"
                 min="0"
                 max="100"
-                value={discountPercentage}
+                value={discountPercentage || ''}
+                placeholder='0.00'
                 onChange={handleDiscountChange}
                 className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
@@ -106,7 +107,8 @@ const PatientBilling = ({ newPatient, handleChange, selectedPackages, isGlobalDi
                 name="visit.billing.discount"
                 min="0"
                 max={totalAmount}
-                value={discount}
+                value={discount || ''}
+                placeholder="0.00"
                 onChange={handleDiscountChange}
                 className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
               />

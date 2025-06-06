@@ -11,17 +11,17 @@ export interface Sample {
     sampleNames: string[];
 }
 
-export interface VisitSampleList {
-    visitId: number;
-    patientname: string;
-    visitDate: string;
-    visitStatus: string;
-    sampleNames: string[];
-    testIds: number[];
-    packageIds: number[];
-}
+// export interface VisitSampleList {
+//     visitId: number;
+//     patientname: string;
+//     visitDate: string;
+//     visitStatus: string;
+//     sampleNames: string[];
+//     testIds: number[];
+//     packageIds: number[];
+// }
 
-export interface PatientData {
+export interface VisitSampleList {
     visitId: number;
     patientname: string;
     gender: string;
@@ -32,8 +32,36 @@ export interface PatientData {
     sampleNames: string[];
     testIds: number[];
     packageIds: number[];
-    dateOfBirth: string;
-  }
+    dateOfBirth?: string;
+}
+
+// export interface PatientData {
+//     visitId: number;
+//     patientname: string;
+//     gender: string;
+//     contactNumber: string;
+//     email: string;
+//     visitDate: string;
+//     visitStatus: string;
+//     sampleNames: string[];
+//     testIds: number[];
+//     packageIds: number[];
+//     dateOfBirth?: string;
+//   }
+
+export interface PatientData {
+  visitId: number;
+  patientname: string;
+  gender: string;
+  contactNumber: string;
+  email: string;
+  visitDate: string;
+  visitStatus: string;
+  sampleNames: string[];
+  testIds: number[];
+  packageIds: number[];
+  dateOfBirth?: string;
+}
   
 export interface ApiResponse<T> {
     status: string;
