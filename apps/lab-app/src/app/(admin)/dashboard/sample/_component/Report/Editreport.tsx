@@ -1,49 +1,36 @@
-import { getHealthPackageById } from '@/../services/packageServices';
-import { getReportData } from '@/../services/reportServices';
-import { getTestById, getTestReferanceRangeByTestName } from '@/../services/testService';
-import Loader from '@/app/(admin)/component/common/Loader';
-import { useLabs } from '@/context/LabContext';
-import { TestList, TestReferancePoint } from '@/types/test/testlist';
 import React, { useEffect, useState } from 'react';
 import {
-  TbArrowDownCircle,
-  TbArrowUpCircle,
-  TbCalendarTime,
-  TbCategory,
-  TbChartLine,
-  TbClipboardText,
-  TbGenderAgender,
-  TbGenderFemale,
-  TbGenderMale,
-  TbInfoCircle,
-  TbNumbers,
-  TbReportMedical,
-  TbRuler,
-  TbSquareRoundedCheck,
-  TbTestPipe
+  TbArrowDownCircle, TbArrowUpCircle, TbCalendarTime, TbCategory,
+  TbChartLine, TbClipboardText, TbGenderAgender, TbGenderFemale,
+  TbGenderMale, TbInfoCircle, TbNumbers, TbReportMedical,
+  TbRuler, TbSquareRoundedCheck, TbTestPipe
 } from "react-icons/tb";
 import { toast } from 'react-toastify';
+import Loader from '@/app/(admin)/component/common/Loader';
+import { useLabs } from '@/context/LabContext';
+import { getHealthPackageById } from '@/../services/packageServices';
+import { getReportData, updateReports } from '@/../services/reportServices';
+import { getTestById, getTestReferanceRangeByTestName } from '@/../services/testService';
 import PatientBasicInfo from './PatientBasicInfo';
 import ReportHeader from './ReportHeader';
 
 interface Patient {
-    visitId: number;
-    patientname: string;
-    visitDate: string;
-    visitStatus: string;
-    sampleNames: string[];
-    testIds: number[];
-    packageIds: number[];
-    contactNumber?: string;
-    gender?: string;
-    email?: string;
-    dateOfBirth?: string;
-    id?: string;
-
+  visitId: number;
+  patientname: string;
+  visitDate: string;
+  visitStatus: string;
+  sampleNames: string[];
+  testIds: number[];
+  packageIds: number[];
+  contactNumber?: string;
+  gender?: string;
+  email?: string;
+  dateOfBirth?: string;
+  id?: string;
 }
 
 interface ReportData {
-  id?: string;
+  report_id?: string;
   visit_id: string;
   testName: string;
   testCategory: string;
@@ -55,16 +42,32 @@ interface ReportData {
   unit: string;
 }
 
+interface TestReferancePoint {
+  testDescription: string;
+  minReferenceRange: number | null;
+  maxReferenceRange: number | null;
+  ageMin: number | null;
+  ageMax: number | null;
+  gender: string;
+  units: string;
+}
+
+interface TestList {
+  id: number;
+  name: string;
+  category: string;
+}
+
 interface PatientReportDataEditProps {
-  editPatient:Patient ;
+  editPatient: Patient;
   setShowModal: (value: React.SetStateAction<boolean>) => void;
   refreshReports: () => void;
 }
 
-const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({ 
-  editPatient, 
-  setShowModal, 
-  refreshReports 
+const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
+  editPatient,
+  setShowModal,
+  refreshReports
 }) => {
   const { currentLab } = useLabs();
   const [loading, setLoading] = useState(false);
@@ -97,7 +100,7 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
   const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
     if (!value || isNaN(Number(value))) return 'no-reference';
     const numValue = parseFloat(value);
-    
+
     if (minRef === null || maxRef === null) return 'no-reference';
     if (numValue < minRef) return 'below';
     if (numValue > maxRef) return 'above';
@@ -130,17 +133,17 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
     }
   };
 
+
   const fetchTestDataAndReport = async () => {
     try {
       if (!currentLab?.id) return;
       setLoading(true);
-      
-      // Fetch existing report data first
-      const existingReport = await getReportData (currentLab.id.toString(), editPatient.visitId.toString());
-      // Map to ReportData type
-      const mappedReportData: ReportData[] = (existingReport).map((item) => ({
-        id: item.id,
-        visit_id: item.visit_id ?? editPatient.visitId.toString(),
+
+      // 1. First fetch the existing report data
+      const existingReport = await getReportData(currentLab.id.toString(), editPatient.visitId.toString());
+      const mappedReportData: ReportData[] = existingReport.map((item) => ({
+        report_id: item.reportId !== undefined && item.reportId !== null ? String(item.reportId) : '',
+        visit_id: item.visit_id ?? item.visitId?.toString() ?? editPatient.visitId.toString(),
         testName: item.testName,
         testCategory: item.testCategory ?? '',
         patientName: item.patientName ?? editPatient.patientname,
@@ -152,72 +155,61 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
       }));
       setExistingReportData(mappedReportData);
 
-      // Fetch test data
+      // 2. Fetch test data
       const uniqueTestIds = Array.from(new Set(editPatient.testIds));
       const fetchedTests = await Promise.all(
-        uniqueTestIds.map((testId) => getTestById(currentLab.id.toString(), testId))
+        uniqueTestIds.map(testId => getTestById(currentLab.id.toString(), testId))
       );
-      
-      // Fetch package data if any
+
+      // 3. Fetch package data if any
       const uniquePackageIds = Array.from(new Set(editPatient.packageIds));
       const fetchedPackages = await Promise.all(
-        uniquePackageIds.map((packageId) => getHealthPackageById(currentLab.id, packageId))
+        uniquePackageIds.map(packageId => getHealthPackageById(currentLab.id, packageId))
       );
-      
-      const formattedPackages = fetchedPackages.map((pkg) => pkg.data);
-      const packageTests = formattedPackages.flatMap((pkg) => pkg.tests);
+
+      const packageTests = fetchedPackages.flatMap(pkg => pkg.data.tests);
       const combinedTests = [...fetchedTests, ...packageTests.filter(
-        (pkgTest) => !fetchedTests.some((test) => test.id === pkgTest.id)
+        pkgTest => !fetchedTests.some(test => test.id === pkgTest.id)
       )];
-      
       setAllTests(combinedTests);
-      
-      // Get reference ranges for all tests
-      const allTestNames = combinedTests.map((test) => test.name);
+
+      // 4. Get reference ranges for all tests
+      const allTestNames = combinedTests.map(test => test.name);
       const referenceData: Record<string, TestReferancePoint[]> = {};
-      
+
       await Promise.all(
-        allTestNames.map(async (testName) => {
+        allTestNames.map(async testName => {
           const refPoints = await getTestReferanceRangeByTestName(currentLab.id.toString(), testName);
           referenceData[testName] = Array.isArray(refPoints) ? refPoints : [refPoints];
         })
       );
 
-      // Filter reference data based on patient gender
+      // 5. Filter reference data based on patient gender
       const filteredReferenceData: Record<string, TestReferancePoint[]> = {};
-      Object.keys(referenceData).forEach((testName) => {
-        filteredReferenceData[testName] = referenceData[testName].filter((point) => {
+      Object.keys(referenceData).forEach(testName => {
+        filteredReferenceData[testName] = referenceData[testName].filter(point => {
           const patientGender = (editPatient.gender ?? 'U').toLowerCase();
           const referenceGender = point.gender === 'M' ? 'male' : point.gender === 'F' ? 'female' : 'U';
           return referenceGender === patientGender || referenceGender === 'U';
         });
       });
-
       setReferencePoints(filteredReferenceData);
 
-      // Initialize input values with existing report data
+      // 6. Now that we have all data, initialize the input values
       const initialInputValues: Record<string, Record<number, string>> = {};
-      
-      interface ExistingReportItem {
-        testName: string;
-        referenceDescription: string;
-        enteredValue: string;
-      }
 
-      const existingReportDataArray: ExistingReportItem[] = existingReport as ExistingReportItem[] ?? [];
+      mappedReportData.forEach(reportItem => {
+        const refPoints = filteredReferenceData[reportItem.testName] || [];
+        const pointIndex = refPoints.findIndex(
+          point => point.testDescription === reportItem.referenceDescription
+        );
 
-      existingReportDataArray.forEach((reportItem: ExistingReportItem) => {
-        const testName: string = reportItem.testName;
-        const refPoints: TestReferancePoint[] = filteredReferenceData[testName] || [];
-        
-        refPoints.forEach((point: TestReferancePoint, index: number) => {
-          if (point.testDescription === reportItem.referenceDescription) {
-            if (!initialInputValues[testName]) {
-              initialInputValues[testName] = {};
-            }
-            initialInputValues[testName][index] = reportItem.enteredValue;
+        if (pointIndex >= 0) {
+          if (!initialInputValues[reportItem.testName]) {
+            initialInputValues[reportItem.testName] = {};
           }
-        });
+          initialInputValues[reportItem.testName][pointIndex] = reportItem.enteredValue;
+        }
       });
 
       setInputValues(initialInputValues);
@@ -234,7 +226,7 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
   }, [editPatient]);
 
   const handleInputChange = (testName: string, index: number, value: string) => {
-    setInputValues((prev) => ({
+    setInputValues(prev => ({
       ...prev,
       [testName]: {
         ...prev[testName],
@@ -253,7 +245,7 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
     try {
       const updatedReportData: ReportData[] = [];
 
-      allTests.forEach((test) => {
+      allTests.forEach(test => {
         const testInputs = inputValues[test.name] || {};
         const referenceData = referencePoints[test.name] || [];
 
@@ -263,13 +255,12 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
 
           // Find existing report item to get its ID
           const existingItem = existingReportData.find(
-            item => 
-              item.testName === test.name && 
+            item => item.testName === test.name &&
               item.referenceDescription === point.testDescription
           );
 
           updatedReportData.push({
-            id: existingItem?.id, // Include ID for updates
+            report_id: existingItem?.report_id || '', // Required for updates
             visit_id: editPatient.visitId.toString(),
             testName: test.name,
             testCategory: test.category,
@@ -283,7 +274,13 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
         });
       });
 
-      // await updateReport(currentLab?.id.toString() || '', updatedReportData);
+      if (!currentLab?.id) {
+        throw new Error("Lab ID is undefined");
+      }
+
+      // Send all updates in a single batch
+      await updateReports(currentLab.id, updatedReportData);
+
       refreshReports();
       setShowModal(false);
       toast.success("Report updated successfully");
@@ -294,8 +291,6 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
       setLoading(false);
     }
   };
-
-
 
   if (loading) return <Loader />;
 
@@ -311,9 +306,9 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
           dateOfBirth: editPatient.dateOfBirth ?? ''
         }}
       />
-      <RangeIndicatorLegend />    
+      <RangeIndicatorLegend />
       <div className="space-y-5 mt-6">
-        {allTests.map((test) => (
+        {allTests.map(test => (
           <div key={test.id} className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
             <div className="flex items-center mb-4">
               <TbTestPipe className="text-blue-500 mr-2" size={20} />
@@ -325,7 +320,7 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
                 {test.name}
               </h3>
             </div>
-            
+
             <div className="space-y-3">
               {referencePoints[test.name]?.map((point, index) => {
                 const currentValue = inputValues[test.name]?.[index] || '';
@@ -334,10 +329,10 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
                   point.minReferenceRange,
                   point.maxReferenceRange
                 );
-                
+
                 return (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className={`p-4 rounded-lg border ${getStatusColor(status)} transition-all`}
                   >
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
@@ -410,9 +405,20 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
         <button
           onClick={handleUpdateData}
           className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition-colors flex items-center justify-center"
+          disabled={loading}
         >
-          <TbReportMedical className="mr-2" size={18} />
-          Update Report
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-64">
+              <Loader type="progress" fullScreen={false} text= "Updating Report..." />
+              <p className="mt-2 text-sm text-gray-500">Please wait while we update the report.</p>
+              
+            </div>
+          ) : (
+            <>
+              <TbReportMedical className="mr-2" size={18} />
+              Update Report
+            </>
+          )}
         </button>
       </div>
     </div>

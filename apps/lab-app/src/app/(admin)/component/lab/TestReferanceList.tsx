@@ -11,6 +11,7 @@ import Pagination from "../common/Pagination";
 import * as XLSX from 'xlsx';
 import { saveAs } from "file-saver";
 import Papa from 'papaparse';
+import { FaInfoCircle } from "react-icons/fa";
 
 const ITEMS_PER_PAGE = 8;
 
@@ -48,7 +49,7 @@ const TestReferanceList = () => {
   // Filter data based on search term and active filter
   const filteredData = useMemo(() => {
     if (!searchTerm) return referencePoints;
-    
+
     const lowerSearchTerm = searchTerm.toLowerCase();
     return referencePoints.filter(item => {
       if (activeFilter === "category") {
@@ -101,12 +102,12 @@ const TestReferanceList = () => {
     try {
       const csvText = await downloadMasterTestReferanceRangeCsv();
       const { data } = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-      
+
       if (!data.length) {
         toast.error('No data found to export.');
         return;
       }
-      
+
       const worksheet = XLSX.utils.json_to_sheet(data);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Reference Range');
@@ -118,13 +119,13 @@ const TestReferanceList = () => {
   };
 
   const columns = [
-    { 
-      header: "Description", 
+    {
+      header: "Description",
       accessor: (test: TestReferancePoint) => test.testDescription || "N/A",
       className: "min-w-[200px]"
     },
-    { 
-      header: "Gender", 
+    {
+      header: "Gender",
       accessor: (test: TestReferancePoint) => test.gender,
       className: "text-center"
     },
@@ -146,13 +147,23 @@ const TestReferanceList = () => {
 
   return (
     <div className="w-full bg-gray-50 p-6 rounded-xl">
+      <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200 flex items-start gap-3">
+        <FaInfoCircle className="text-blue-500 mt-1 flex-shrink-0" />
+        <div>
+          <h3 className="font-bold text-blue-800">Master Data Access</h3>
+          <p className="text-sm text-blue-700">
+            This table displays master data records. Modifications require Super Admin privileges.
+            For any changes, please contact Tiamed Technology administration.
+          </p>
+        </div>
+      </div>
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Test Reference Ranges</h2>
           <p className="text-gray-500">Browse and manage laboratory test reference values</p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           {/* Search with filter dropdown */}
           <div className="relative flex-1">
@@ -161,7 +172,7 @@ const TestReferanceList = () => {
             </div>
             <div className="absolute inset-y-0 right-0 flex items-center">
               <div className="relative">
-                <button 
+                <button
                   className="h-full px-3 flex items-center text-gray-500 hover:text-blue-600"
                   onClick={() => setActiveFilter(prev => prev === "all" ? "category" : prev === "category" ? "test" : prev === "test" ? "description" : "all")}
                 >
@@ -181,7 +192,7 @@ const TestReferanceList = () => {
               }}
             />
           </div>
-          
+
           {/* Export buttons */}
           <div className="flex gap-2">
             <Button
@@ -224,8 +235,9 @@ const TestReferanceList = () => {
 
       {/* Main Content */}
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <Loader />
+       <div className="flex flex-col items-center justify-center h-64">
+          <Loader type="progress" fullScreen={false} text="Loading tests reference data..." />
+          <h3 className="text-lg font-semibold text-gray-800">Loading Test Reference Data</h3 >
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -249,7 +261,7 @@ const TestReferanceList = () => {
                       <FaChevronDown className="text-gray-400" />
                     )}
                   </button>
-                  
+
                   {expandedCategories[category] && (
                     <div className="px-4 pb-4">
                       {Object.entries(groupedData[category]).map(([testName, records]) => (
@@ -263,7 +275,7 @@ const TestReferanceList = () => {
                           <TableComponent
                             data={records}
                             columns={columns}
-                            // rowClass Name="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                          // rowClass Name="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
                           />
                         </div>
                       ))}
@@ -271,13 +283,13 @@ const TestReferanceList = () => {
                   )}
                 </div>
               ))}
-              
+
               <div className="p-4 border-t border-gray-100">
-                <Pagination 
-                  currentPage={currentPage} 
-                  totalPages={totalPages} 
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
                   onPageChange={setCurrentPage}
-                  
+
                 />
               </div>
             </>

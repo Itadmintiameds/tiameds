@@ -1,22 +1,6 @@
 
 import api from '@/utils/api';
 
-// interface Report {
-//   reportId: number;
-//   visitId: number;
-//   testName: string;
-//   testCategory: string;
-//   labId: number;
-//   referenceDescription: string;
-//   referenceRange : string;
-//   referenceDataAge: string;
-//   enteredValue: string;
-//   unit: string;
-//   createdBy: number;
-//   updatedBy: number;
-//   createdAt: string;
-//   updatedAt: string;
-// }
 
 interface Report {
   reportId: number;
@@ -40,6 +24,7 @@ interface Report {
 }
 
 interface ReportData {
+  report_id?: string; // Optional for create, required for update
   visit_id: string;
   testName: string;
   testCategory: string;
@@ -50,7 +35,6 @@ interface ReportData {
   enteredValue: string;
   unit: string;
 }
-
 
 
 export const getReportData = async (labId: string, visitId: string): Promise<Report []> => {
@@ -97,3 +81,28 @@ export  const createReport = async (labId: string, reportData: ReportData []): P
   }
 
 
+export const updateReports = async (labId: number, reports: ReportData[]): Promise<ReportData[]> => {
+  try {
+    const invalidReports = reports.filter(report => !report.report_id);
+    if (invalidReports.length > 0) {
+      throw new Error('All reports must have report_id for updates');
+    }
+    console.log('Sending update payload:', reports); // Debug log
+    const response = await api.put<{ data: ReportData[] }>(`lab/${labId}/report`, reports);
+    return response.data.data;
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while updating the report.';
+    
+    if (error instanceof Error) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
+    console.error('Error updating reports:', error);
+    throw new Error(errorMessage);
+  }
+};

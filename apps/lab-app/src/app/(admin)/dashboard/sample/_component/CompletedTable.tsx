@@ -429,7 +429,7 @@ const CompletedTable: React.FC = () => {
                             title='View Report'
                             isOpen={ViewModel}
                             onClose={() => setViewModel(false)}
-                            modalClassName='max-w-3xl'
+                            modalClassName='max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden'
                         >
                             <ViewReport viewPatient={viewPatient} />
                         </Modal>
@@ -440,7 +440,7 @@ const CompletedTable: React.FC = () => {
                             title='Edit Report'
                             isOpen={editModel}
                             onClose={() => setEditModel(false)}
-                            modalClassName='max-w-3xl'
+                            modalClassName='max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden'
                         >
                             <Editreport
                                 editPatient={editPatient}

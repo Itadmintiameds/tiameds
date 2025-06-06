@@ -8,6 +8,7 @@ import { FaDownload, FaFileExcel, FaFilter, FaSearch, FaTimes } from 'react-icon
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import { downloadMasterTestPriceListCsv, getMasterTestsList } from '../../../../../services/testService';
+import { FaInfoCircle } from 'react-icons/fa';
 
 // Components
 import Button from "@/app/(admin)/component/common/Button";
@@ -44,7 +45,7 @@ export const TestPriceList = () => {
   // Filter and sort tests
   const filteredTests = useMemo(() => {
     let results = [...tests];
-    
+
     // Apply search filter based on active filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -53,8 +54,8 @@ export const TestPriceList = () => {
       } else if (activeFilter === 'category') {
         results = results.filter(test => test.category.toLowerCase().includes(term));
       } else {
-        results = results.filter(test => 
-          test.name.toLowerCase().includes(term) || 
+        results = results.filter(test =>
+          test.name.toLowerCase().includes(term) ||
           test.category.toLowerCase().includes(term)
         );
       }
@@ -106,12 +107,12 @@ export const TestPriceList = () => {
     try {
       const csvText = await downloadMasterTestPriceListCsv();
       const { data } = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-      
+
       if (!data.length) {
         toast.error('No data found to export');
         return;
       }
-      
+
       const worksheet = XLSX.utils.json_to_sheet(data);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Price List');
@@ -123,23 +124,23 @@ export const TestPriceList = () => {
   };
 
   const columns = [
-    { 
-      header: "Test ID", 
+    {
+      header: "Test ID",
       accessor: (test: TestList) => test.id,
       className: "w-24 text-center"
     },
-    { 
-      header: "Test Name", 
+    {
+      header: "Test Name",
       accessor: (test: TestList) => test.name,
       className: "min-w-[200px]"
     },
-    { 
-      header: "Category", 
+    {
+      header: "Category",
       accessor: (test: TestList) => test.category,
       className: "min-w-[150px]"
     },
-    { 
-      header: "Price", 
+    {
+      header: "Price",
       accessor: (test: TestList) => (
         <span className="font-medium text-green-700">
           ₹{test.price.toFixed(2)}
@@ -151,16 +152,26 @@ export const TestPriceList = () => {
 
   return (
     <div className="w-full bg-gray-50 p-6 rounded-xl">
+      <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200 flex items-start gap-3">
+        <FaInfoCircle className="text-blue-500 mt-1 flex-shrink-0" />
+        <div>
+          <h3 className="font-bold text-blue-800">Master Data Access</h3>
+          <p className="text-sm text-blue-700">
+            This table displays master data records. Modifications require Super Admin privileges.
+            For any changes, please contact Tiamed Technology administration.
+          </p>
+        </div>
+      </div>
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Test Price List</h2>
           <p className="text-gray-500">Browse and manage laboratory test prices</p>
         </div>
-        
+
         <div className="flex gap-3">
           <Button
-          text=''
+            text=''
             onClick={handleDownloadExcel}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 transition-colors"
           >
@@ -168,7 +179,7 @@ export const TestPriceList = () => {
             <span className="hidden sm:inline">Excel</span>
           </Button>
           <Button
-          text=''
+            text=''
             onClick={handleDownloadCsv}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 transition-colors"
           >
@@ -205,9 +216,9 @@ export const TestPriceList = () => {
               <FaSearch className="text-gray-400" />
             </div>
             <div className="absolute inset-y-0 right-0 flex items-center">
-              <button 
+              <button
                 className="h-full px-3 flex items-center text-gray-500 hover:text-blue-600"
-                onClick={() => setActiveFilter(prev => 
+                onClick={() => setActiveFilter(prev =>
                   prev === 'all' ? 'name' : prev === 'name' ? 'category' : 'all'
                 )}
               >
@@ -228,7 +239,7 @@ export const TestPriceList = () => {
           </div>
 
           {/* Category filter */}
-          <select 
+          <select
             value={category}
             onChange={(e) => {
               setCategory(e.target.value);
@@ -243,7 +254,7 @@ export const TestPriceList = () => {
           </select>
 
           {/* Price sort */}
-          <select 
+          <select
             value={sortOrder}
             onChange={(e) => {
               setSortOrder(e.target.value as 'low' | 'high');
@@ -271,8 +282,9 @@ export const TestPriceList = () => {
 
       {/* Main Content */}
       {loading ? (
-        <div className="flex justify-center items-center h-64 bg-white rounded-xl shadow-sm border border-gray-100">
-          <Loader  />
+        <div className="flex flex-col items-center justify-center h-64">
+          <Loader type="progress" fullScreen={false} text="Loading tests..." />
+          <p className="mt-4 text-sm text-gray-500">Please wait while we fetch the test data.</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -281,17 +293,17 @@ export const TestPriceList = () => {
               <TableComponent
                 data={paginatedTests}
                 columns={columns}
-                // className="border-0"
-                // headerClassName="bg-gray-50 text-gray-700 font-medium"
-                // rowClassName="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+              // className="border-0"
+              // headerClassName="bg-gray-50 text-gray-700 font-medium"
+              // rowClassName="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
               />
-              
+
               <div className="p-4 border-t border-gray-100">
-                <Pagination 
-                  currentPage={currentPage} 
-                  totalPages={totalPages} 
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
                   onPageChange={setCurrentPage}
-                  // className="justify-center"
+                // className="justify-center"
                 />
               </div>
             </>

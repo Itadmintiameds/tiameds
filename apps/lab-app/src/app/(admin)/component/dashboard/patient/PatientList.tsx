@@ -1,4 +1,5 @@
-import { deletePatient, getPatient, updatePatient } from '@/../services/patientServices';
+// import { deletePatient, getPatient, updatePatient } from '@/../services/patientServices';
+import { getPatient, updatePatient } from '@/../services/patientServices';
 import Model from '@/app/(admin)/component/common/Model';
 import Pagination from '@/app/(admin)/component/common/Pagination';
 import UpdatePatient from '@/app/(admin)/component/dashboard/patient/UpdatePatient';
@@ -6,7 +7,7 @@ import { useLabs } from '@/context/LabContext';
 import { Patient } from '@/types/patient/patient';
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from 'react';
-import { FaEdit, FaEye, FaTrash } from 'react-icons/fa';
+import { FaEdit, FaEye } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import Loader from '../../common/Loader';
 import TableComponent from '../../common/TableComponent';
@@ -77,25 +78,25 @@ const PatientList: React.FC = () => {
   };
 
   // Handle Delete Patient
-  const handleDelete = (patient: Patient) => {
-    if (!currentLab?.id) return;
+  // const handleDelete = (patient: Patient) => {
+  //   if (!currentLab?.id) return;
 
-    if (window.confirm('Are you sure you want to delete this patient?')) {
-      const patientId = Number(patient?.id);
-      deletePatient(currentLab.id, patientId)
-        .then((response) => {
-          if (response.status === 'success') {
-            setPatients((prev) => prev.filter((p) => p.id !== patient.id));
-            toast.success('Patient deleted successfully!');
-          } else {
-            toast.error(response.message || 'Failed to delete patient.', { autoClose: 2000 });
-          }
-        })
-        .catch((error) => {
-          toast.error(error.message || 'Failed to delete patient.', { autoClose: 2000 });
-        });
-    }
-  };
+  //   if (window.confirm('Are you sure you want to delete this patient?')) {
+  //     const patientId = Number(patient?.id);
+  //     deletePatient(currentLab.id, patientId)
+  //       .then((response) => {
+  //         if (response.status === 'success') {
+  //           setPatients((prev) => prev.filter((p) => p.id !== patient.id));
+  //           toast.success('Patient deleted successfully!');
+  //         } else {
+  //           toast.error(response.message || 'Failed to delete patient.', { autoClose: 2000 });
+  //         }
+  //       })
+  //       .catch((error) => {
+  //         toast.error(error.message || 'Failed to delete patient.', { autoClose: 2000 });
+  //       });
+  //   }
+  // };
 
   //rendering  the page get all data of particular patient visits
   const handleVisits = (patient: Patient) => {
@@ -146,9 +147,9 @@ const PatientList: React.FC = () => {
             >
               <FaEdit />
             </button>
-            <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(patient)}>
+            {/* <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(patient)}>
               <FaTrash />
-            </button>
+            </button> */}
             {/* <button className="text-blue-500 hover:text-blue-700" onClick={() => handleVisits(patient)}>
               Visits
             </button> */}
