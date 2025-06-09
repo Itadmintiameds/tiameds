@@ -5,7 +5,6 @@ import { FaPersonChalkboard, FaPersonCirclePlus } from "react-icons/fa6";
 import  ListOfMemberOfLab  from './_component/ListOfMemberOfLab';
 import AddMemberOnLab from './_component/AddMemberOnLab';
 
-
 interface TechnicianTab {
     id: string;
     label: string;

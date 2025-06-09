@@ -6,8 +6,8 @@ import React, { useEffect, useState } from "react";
 import { FaUser, FaUserPlus } from "react-icons/fa";
 import { FiUserPlus } from "react-icons/fi";
 import { toast } from "react-toastify";
-// import { getMembersOfLab, createMember } from "../../../../../../services/technicianServices";
-import { getMembersOfLab } from "../../../../../../services/technicianServices";
+import { getMembersOfLab, createMember } from "../../../../../../services/technicianServices";
+// import { getMembersOfLab } from "../../../../../../services/technicianServices";
 
 interface FormData {
     username: string;
@@ -76,6 +76,7 @@ const AddMemberOnLab = () => {
         setLoading(true);
         try {
             toast.info("Adding member will be dissable in demo");
+            console.log("Form Data:", formData);
             // const generatedPassword = generatePassword();
             // const newUser = { ...formData, password: generatedPassword, verified: false,modules: [] };
             // const emailData = {
@@ -174,3 +175,11 @@ const AddMemberOnLab = () => {
 };
 
 export default AddMemberOnLab;
+
+
+
+
+
+
+
+

@@ -25,14 +25,14 @@ const tabs = [
     borderColor: 'bg-teal-600',
     bgColor: 'bg-teal-100'
   },
-  { 
-    id: 'patientNewdashboard', 
-    label: 'Patient Management New', 
-    icon: <IoMdAnalytics className="text-lg" />,
-    activeColor: 'text-teal-600',
-    borderColor: 'bg-teal-600',
-    bgColor: 'bg-teal-100'
-  },
+  // { 
+  //   id: 'patientNewdashboard', 
+  //   label: 'Patient Management New', 
+  //   icon: <IoMdAnalytics className="text-lg" />,
+  //   activeColor: 'text-teal-600',
+  //   borderColor: 'bg-teal-600',
+  //   bgColor: 'bg-teal-100'
+  // },
 ];
 
 const TabButton = ({ tab, isActive, onClick }: { tab: typeof tabs[0], isActive: boolean, onClick: () => void }) => (
@@ -84,9 +84,10 @@ const Page = () => {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.25 }}
             >
-              {selectedTab === 'patient' && <Patient />}
+              {/* {selectedTab === 'patient' && <Patient />} */}
+              {selectedTab === 'patient' &&  <PatientDashboard />}
               {selectedTab === 'dashboard' && <Statistics />}
-              {selectedTab === 'patientNewdashboard' && <PatientDashboard />}
+              {/* {selectedTab === 'patientNewdashboard' && <PatientDashboard />} */}
             </motion.div>
           </AnimatePresence>
         </div>
