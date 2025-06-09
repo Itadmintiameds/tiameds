@@ -1,15 +1,10 @@
-import Button from '@/app/(admin)/component/common/Button';
 import Loader from '@/app/(admin)/component/common/Loader';
-import Modal from '@/app/(admin)/component/common/Model';
+import Pagination from '@/app/(admin)/component/common/Pagination';
 import TableComponent from '@/app/(admin)/component/common/TableComponent';
 import { useLabs } from '@/context/LabContext';
 import React, { useEffect, useState } from 'react';
-import { FaEdit } from 'react-icons/fa';
-// import { deleteMember as deleteMemberService, getMembersOfLab } from '../../../../../../services/technicianServices';
 import { getMembersOfLab } from '../../../../../../services/technicianServices';
-import EditMember from './EditMember';
 
-// Define table columns
 interface Member {
     id: number;
     username: string;
@@ -29,8 +24,13 @@ const ListOfActiveMemberOfLab = () => {
     const [members, setMembers] = useState<Member[]>([]);
     const { currentLab } = useLabs();
     const [loading, setLoading] = useState(false);
-    const [editPopup, setEditPopup] = useState(false);
-    const [updateMember, setUpdateMember] = useState<Member | null>(null);
+    // const [editPopup, setEditPopup] = useState(false);
+    // const [updateMember, setUpdateMember] = useState<Member | null>(null);
+    
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(5); // You can adjust this number
+    const [totalItems, setTotalItems] = useState(0);
 
     useEffect(() => {
         const fetchMembers = async () => {
@@ -38,8 +38,10 @@ const ListOfActiveMemberOfLab = () => {
                 try {
                     setLoading(true);
                     const response = await getMembersOfLab(currentLab.id);
-                    console.log('response', response);
-                    setMembers(response?.data || []);
+                    // Filter active members
+                    const activeMembers = (response.data as Member[]).filter((member: Member) => member.enabled);
+                    setMembers(activeMembers);
+                    setTotalItems(activeMembers.length);
                 } catch (error) {
                     console.error('Failed to fetch members:', error);
                 } finally {
@@ -50,92 +52,119 @@ const ListOfActiveMemberOfLab = () => {
         fetchMembers();
     }, [currentLab]);
 
-    // const deleteMember = async (userId: number) => {
-    //     try {
-    //         setLoading(true);
-    //         console.log('userId', userId);
-    //          toast.info('Delete member is disabled in demo');
-    //         // await deleteMemberService(userId);
-    //         // setMembers((prevMembers) => prevMembers.filter((member) => member.id !== userId));
-    //         // toast.success('Member deleted successfully');
-    //     } catch (error) {
-    //         console.error('Failed to delete member:', error);
-    //         toast.error('Failed to delete member');
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
+    // Calculate paginated data
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = members.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-    const handleEdit = (member: Member) => {
-        setEditPopup(true);
-        setUpdateMember(member);
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
     };
 
     const columns: Column[] = [
-        { header: 'ID', accessor: (member) => member.id },
-        { header: 'Username', accessor: (member) => member.username },
-        { header: 'Email', accessor: (member) => member.email },
-        { header: 'First Name', accessor: (member) => member.firstName },
-        { header: 'Last Name', accessor: (member) => member.lastName },
+        { 
+            header: 'ID', 
+            accessor: (member) => <span className="font-medium text-gray-700">{member.id}</span> 
+        },
+        { 
+            header: 'Username', 
+            accessor: (member) => <span className="text-gray-800">{member.username}</span> 
+        },
+        { 
+            header: 'Email', 
+            accessor: (member) => <a href={`mailto:${member.email}`} className="text-blue-600 hover:underline">{member.email}</a> 
+        },
+        { 
+            header: 'First Name', 
+            accessor: (member) => <span className="text-gray-800">{member.firstName}</span> 
+        },
+        { 
+            header: 'Last Name', 
+            accessor: (member) => <span className="text-gray-800">{member.lastName}</span> 
+        },
         {
             header: 'Status',
             accessor: (member) => (
-                <span className={`text-xs ${member.enabled ? 'bg-success text-white p-1' : 'text-whit bg-delete'}`}>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    member.enabled 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                }`}>
                     {member.enabled ? 'Active' : 'Inactive'}
                 </span>
             ),
         },
         {
             header: 'Roles',
-            accessor: (member) => <span className="text-xs">{member.roles.join(', ')}</span>,
-        },
-        {
-            header: 'Actions',
             accessor: (member) => (
-                <div className="flex items-center space-x-3">
-                    <Button
-                        text=''
-                        onClick={() => handleEdit(member)}
-                        className="text-edit hover:text-edithover">
-                        <FaEdit className="text-lg" />
-                    </Button>
-                    {/* <Button
-                        text=''
-                        onClick={() => { }}
-                        className="text-green-500 hover:text-green-700">
-                        <FaEye className="text-lg" />
-                    </Button> */}
-                    {/* <Button
-                        text=''
-                        onClick={() => deleteMember(member.id)}
-                        className="text-deletebutton hover:text-deletehover"
-                    >
-                        <FaTrash className="text-lg" />
-                    </Button> */}
+                <div className="flex flex-wrap gap-1">
+                    {member.roles.map((role, index) => (
+                        <span 
+                            key={index}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                            {role}
+                        </span>
+                    ))}
                 </div>
             ),
         },
     ];
 
     return (
-        <section>
-            {editPopup && updateMember && (
-                <Modal
-                    isOpen={editPopup}
-                    onClose={() => setEditPopup(false)}
-                    modalClassName="max-w-xl"
-                    title="Edit Member"
-                >
-                    <EditMember updateMember={updateMember} />
-                </Modal>
-            )}
-            <h2 className="text-xl font-semibold mb-4">Lab Members</h2>
+        <section className="bg-white rounded-lg shadow p-6">
+            <div className="mb-6 flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800">Lab Members</h2>
+                {currentLab && (
+                    <span className="text-sm text-gray-500">
+                        Lab: <span className="font-medium">{currentLab.name}</span>
+                    </span>
+                )}
+            </div>
+
+
             {loading ? (
-                <Loader />
+                <div className="flex justify-center py-8">
+                    <Loader />
+                </div>
             ) : members.length > 0 ? (
-                <TableComponent columns={columns} data={members} />
+                <>
+                    <div className="overflow-x-auto">
+                        <TableComponent 
+                            columns={columns} 
+                            data={currentItems} 
+                            className="min-w-full divide-y divide-gray-200"
+                        />
+                    </div>
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={handlePageChange}
+                    />
+                </>
             ) : (
-                <p>No members found</p>
+                <div className="text-center py-8">
+                    <svg
+                        className="mx-auto h-12 w-12 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        aria-hidden="true"
+                    >
+                        <path
+                            vectorEffect="non-scaling-stroke"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                    </svg>
+                    <h3 className="mt-2 text-lg font-medium text-gray-900">No members found</h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                        There are currently no members assigned to this lab.
+                    </p>
+                </div>
             )}
         </section>
     );
