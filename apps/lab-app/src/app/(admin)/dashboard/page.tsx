@@ -1,12 +1,10 @@
 'use client';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { FaPerson } from "react-icons/fa6";
 import { MdOutlineDashboard } from "react-icons/md";
-import { IoMdAnalytics } from "react-icons/io";
 import Statistics from '../component/dashboard/statistics/Statistics';
 import PatientDashboard from '../component/patientDashboard/PatientDashboard';
-import Patient from '@/app/(admin)/component/dashboard/patient/patient';
 
 const tabs = [
   { 

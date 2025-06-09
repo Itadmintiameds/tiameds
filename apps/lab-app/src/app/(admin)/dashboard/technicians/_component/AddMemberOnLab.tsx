@@ -6,8 +6,8 @@ import React, { useEffect, useState } from "react";
 import { FaUser, FaUserPlus } from "react-icons/fa";
 import { FiUserPlus } from "react-icons/fi";
 import { toast } from "react-toastify";
-import { getMembersOfLab, createMember } from "../../../../../../services/technicianServices";
-// import { getMembersOfLab } from "../../../../../../services/technicianServices";
+// import { getMembersOfLab, createMember } from "../../../../../../services/technicianServices";
+import { getMembersOfLab } from "../../../../../../services/technicianServices";
 
 interface FormData {
     username: string;
