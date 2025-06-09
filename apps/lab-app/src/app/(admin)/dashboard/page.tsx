@@ -55,7 +55,7 @@ const TabButton = ({ tab, isActive, onClick }: { tab: typeof tabs[0], isActive: 
 );
 
 const Page = () => {
-  const [selectedTab, setSelectedTab] = useState<string>('patientNewdashboard');
+  const [selectedTab, setSelectedTab] = useState<string>('patient');
   
   return (
     <div className="p-4">
