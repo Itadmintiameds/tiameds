@@ -480,8 +480,8 @@ const PatientVisitListTable: React.FC = () => {
       <Modal
         isOpen={viewPatientModal}
         onClose={() => setViewPatientModal(false)}
-        title="Patient Visit Details"
-        modalClassName="max-w-5xl max-h-[90vh] rounded-lg  overflow-y-auto overflow-hidden"
+        title="Invoice Details"
+        modalClassName="max-w-4xl max-h-[90vh] rounded-lg  overflow-y-auto overflow-hidden"
       >
         <PatientDetailsViewComponent />
       </Modal>
@@ -504,7 +504,7 @@ const PatientVisitListTable: React.FC = () => {
         isOpen={viewReportModal}
         onClose={() => setViewReportModal(false)}
         title="Report"
-        modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+        modalClassName="max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
       >
 
         {viewReportDetails && (
@@ -521,6 +521,8 @@ const PatientVisitListTable: React.FC = () => {
               sampleNames: [],
               testIds: viewReportDetails.visit?.testIds ?? [],
               packageIds: viewReportDetails.visit?.packageIds ?? [],
+              dateOfBirth: viewReportDetails.dateOfBirth ?? '',
+              visitType: viewReportDetails.visit?.visitType ?? VisitType.OUT_PATIENT,
             }}
           />
         )}

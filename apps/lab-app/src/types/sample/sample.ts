@@ -61,6 +61,7 @@ export interface PatientData {
   testIds: number[];
   packageIds: number[];
   dateOfBirth?: string;
+  visitType?: string; // Optional field for visit type
 }
   
 export interface ApiResponse<T> {

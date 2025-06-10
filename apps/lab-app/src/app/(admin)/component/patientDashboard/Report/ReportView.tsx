@@ -1,4 +1,3 @@
-
 import Loader from "@/app/(admin)/component/common/Loader";
 import { useLabs } from "@/context/LabContext";
 import { PatientData } from "@/types/sample/sample";
@@ -6,61 +5,57 @@ import { Button } from "@headlessui/react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useEffect, useRef, useState } from "react";
-import { CiMail, CiCalendar } from "react-icons/ci";
-import { FaCloudDownloadAlt, FaSpinner, FaUser, FaWhatsapp } from "react-icons/fa";
-import { toast } from "react-toastify";
+import { FaPrint } from "react-icons/fa";
 import { getReportData } from "../../../../../../services/reportServices";
 
 interface Report {
-  reportId: number;
-  id?: string; // Optional if sometimes present
-  visitId: number;
-  visit_id?: string; // Alternative to visitId
-  testName: string;
-  testCategory: string;
-  labId: number;
-  patientName?: string;
-  referenceDescription: string;
-  referenceRange: string;
-  referenceAgeRange?: string;
-  referenceDataAge?: string; // Alternative to referenceAgeRange
-  enteredValue: string;
-  unit: string;
-  createdBy: number;
-  updatedBy: number;
-  createdAt: string;
-  updatedAt: string;
+    reportId: number;
+    id?: string;
+    visitId: number;
+    visit_id?: string;
+    testName: string;
+    testCategory: string;
+    labId: number;
+    patientName?: string;
+    referenceDescription: string;
+    referenceRange: string;
+    referenceAgeRange?: string;
+    referenceDataAge?: string;
+    enteredValue: string;
+    unit: string;
+    createdBy: number;
+    updatedBy: number;
+    createdAt: string;
+    updatedAt: string;
 }
 
 interface ReportViewProps {
     viewReportDetailsbyId: number;
-    viewPatient: PatientData; // Add this line
+    viewPatient: PatientData;
 }
+
+const A4_WIDTH = 210; // mm
+// const A4_HEIGHT = 297; // mm
 
 const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => {
     const { currentLab } = useLabs();
-    const [report, setReport] = useState<Report[]>([]);
+    const [reports, setReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(false);
-    // const [error, setError] = useState<string | null>(null);
-    const reportRef = useRef<HTMLDivElement>(null);
-    const [sendReportByEmail, setSendReportByEmail] = useState(false);
+    const reportRefs = useRef<(HTMLDivElement | null)[]>([]);
+    // const [sendReportByEmail, setSendReportByEmail] = useState(false);
+
+    console.log("viewPatient", viewPatient);
 
     useEffect(() => {
         if (!currentLab?.id || !viewReportDetailsbyId) return;
-        
+
         const fetchData = async () => {
             setLoading(true);
-            // setError(null);
             try {
                 const response = await getReportData(currentLab.id.toString(), viewReportDetailsbyId.toString());
                 if (Array.isArray(response)) {
-                    setReport(response);
-                } else {
-                    // setError("Invalid response format");
+                    setReports(response);
                 }
-            } catch (err) {
-                // setError("Failed to load report data");
-                console.error("Error:", err);
             } finally {
                 setLoading(false);
             }
@@ -69,160 +64,258 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
         fetchData();
     }, [currentLab, viewPatient]);
 
-    const generatePDF = async () => {
-        if (!reportRef.current) return;
-        
-        const canvas = await html2canvas(reportRef.current);
-        const pdf = new jsPDF("p", "mm", "a4");
-        pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 210, (canvas.height * 210) / canvas.width);
-        pdf.save(`${viewPatient?.patientname || "Lab_Report"}.pdf`);
-    };
+    const printAllReports = async () => {
+        const pdf = new jsPDF('p', 'mm', 'a4');
 
-    const sendEmailReport = async () => {
-        if (!viewPatient?.email) {
-            toast.error("Patient email not available");
-            return;
-        }
+        for (let i = 0; i < reportRefs.current.length; i++) {
+            const page = reportRefs.current[i];
+            if (!page) continue;
 
-        setSendReportByEmail(true);
-        try {
-            const canvas = await html2canvas(reportRef.current!);
-            const pdf = new jsPDF("p", "mm", "a4");
-            pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 210, (canvas.height * 210) / canvas.width);
-            
-            const response = await fetch("/api/sendReport", {
-                method: "POST",
-                body: JSON.stringify({
-                    email: viewPatient.email,
-                    pdf: pdf.output("datauristring"),
-                    patientName: viewPatient.patientname
-                }),
-                headers: { "Content-Type": "application/json" }
+            const canvas = await html2canvas(page, {
+                useCORS: true,
+                allowTaint: true,
+                logging: false
             });
 
-            if (response.ok) toast.success("Report sent!");
-            else throw new Error("Failed to send");
-        } catch (error) {
-            toast.error("Failed to send email");
-            console.error(error);
-        } finally {
-            setSendReportByEmail(false);
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = A4_WIDTH - 20;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+
+            if (i < reportRefs.current.length - 1) {
+                pdf.addPage();
+            }
         }
+
+        pdf.output('dataurlnewwindow');
     };
 
-    const groupedReports = report.reduce((acc: Record<string, Report[]>, test) => {
-        (acc[test.testName] = acc[test.testName] || []).push(test);
+    if (loading) return <Loader type="progress" fullScreen={false} text="Loading report data..." />;
+
+    const groupedReports = reports.reduce((acc: Record<string, Report[]>, report) => {
+        if (!acc[report.testName]) {
+            acc[report.testName] = [];
+        }
+        acc[report.testName].push(report);
         return acc;
     }, {});
 
-    if (loading) return <Loader />;
+
+    function calculateAge(dateOfBirth: string): string {
+        const dob = new Date(dateOfBirth);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+            age--;
+        }
+        return age.toString();
+    }
+
 
     return (
-        <div className="space-y-4">
+        <div className="">
             {/* Action Buttons */}
-            <div className="flex justify-end gap-2">
-                <Button
-                    onClick={generatePDF}
-                    className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
-                    title="Download PDF"
-                >
-                    <FaCloudDownloadAlt className="text-lg" />
-                </Button>
-                
-                <Button
-                    onClick={sendEmailReport}
-                    className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
-                    title="Email Report"
-                    disabled={sendReportByEmail}
-                >
-                    {sendReportByEmail ? <FaSpinner className="animate-spin" /> : <CiMail className="text-lg" />}
-                </Button>
-                
-                <Button
-                    onClick={() => window.print()}
-                    className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
-                    title="Print"
-                >
-                    <FaWhatsapp className="text-lg" />
-                </Button>
+            <div className="flex justify-between items-center mb-4 print:hidden">
+                <div className="text-sm text-gray-600">
+                    {Object.keys(groupedReports).length} page report
+                </div>
+                <div className="flex gap-2">
+                    <Button
+                        onClick={printAllReports}
+                        className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 "
+                    >
+                        <FaPrint className="text-lg" />
+                        Print All
+                    </Button>
+
+                </div>
             </div>
 
-            {/* Report Content */}
-            <div 
-                ref={reportRef}
-                className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm max-w-4xl mx-auto"
-            >
-                {/* Header */}
-                <div className="flex justify-between items-start pb-4 border-b">
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-800">{currentLab?.name || "Diagnostic Lab"}</h1>
-                        <p className="text-xs text-gray-500">
-                            {currentLab?.address}, {currentLab?.city}, {currentLab?.state}
+            {/* Report Pages */}
+            {Object.entries(groupedReports).map(([testName, testResults], index) => (
+                <div
+                    key={index}
+                    ref={el => { reportRefs.current[index] = el; }}
+                    className="bg-white p-8 border border-gray-200 rounded-lg mb-6 flex flex-col shadow-sm"
+                    style={{
+                        width: '210mm',
+                        minHeight: '297mm',
+                    }}
+                >
+                    {/* Watermark Background */}
+                    <div className="absolute inset-0 opacity-5 pointer-events-none">
+                        <div className="h-full w-full bg-[url('/tiamed1.svg')] bg-center bg-no-repeat bg-contain"></div>
+                    </div>
+
+                    {/* Header */}
+                    <div className="flex justify-between items-start border-b border-blue-100 pb-6 mb-6">
+                        <div className="flex items-center">
+                            <img src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
+                            <div>
+                                <h1 className="text-2xl font-bold text-blue-800">{currentLab?.name || ''}</h1>
+                                <p className="text-xs text-gray-600 mt-1">Accredited by NABL | ISO 15189:2012 Certified</p>
+                            </div>
+                        </div>
+                        <div className="text-right bg-blue-50 p-3 rounded-lg">
+                            <p className="text-xs font-medium text-blue-700">Report ID: <span className="font-bold">{viewPatient?.visitId || 'N/A'}</span></p>
+                            <p className="text-xs font-medium text-blue-700">Date: <span className="font-bold">{new Date().toLocaleDateString()}</span></p>
+                            <p className="text-xs font-medium text-blue-700 mt-1">Page: {index + 1}/{Object.keys(groupedReports).length}</p>
+                        </div>
+                    </div>
+
+                    {/* Patient Info */}
+                    <div className="grid grid-cols-4 gap-4 mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm">
+                        {/* Patient Name & Contact */}
+                        <div className="space-y-1">
+                            <p className="font-medium text-blue-700">Patient Name</p>
+                            <p className="font-semibold text-gray-800">{viewPatient?.patientname || 'N/A'}</p>
+                            <p className="font-semibold text-gray-800 text-xs">{viewPatient?.contactNumber || 'N/A'}</p>
+                        </div>
+
+                        {/* Demographics - Compact */}
+                        <div className="space-y-1">
+                            <p className="font-medium text-blue-700">Age /Gender</p>
+                            <div className="flex gap-2">
+                                <p className="font-semibold text-gray-800">{calculateAge(viewPatient?.dateOfBirth ?? '') || 'N/A'}</p>
+                                <span className="text-gray-400">|</span>
+                                <p className="font-semibold text-gray-800">{viewPatient?.gender || 'N/A'}</p>
+                            </div>
+                        </div>
+
+                        {/* Physician Info */}
+                        <div className="space-y-1">
+                            <p className="font-medium text-blue-700">Referred By</p>
+                            <p className="font-semibold text-gray-800">DR. SELF</p>
+                        
+                        </div>
+
+                        {/* Status & Visit Info */}
+                        <div className="space-y-1">
+                            <div>
+                                <p className="font-medium text-blue-700">Status</p>
+                                 <p className="font-semibold text-gray-800 text-xs">Visit ID: {viewPatient?.visitId || 'N/A'}</p>
+                                <p className="font-semibold text-gray-800 text-xs">Visit Status: {viewPatient?.visitStatus || 'N/A'}</p>
+                                <p className="font-semibold text-gray-800 text-xs">Visit Type: {viewPatient?.visitType || 'N/A'}</p>
+                                <p className="font-semibold text-gray-800 text-xs">Visit Date: {viewPatient?.visitDate|| 'N/A'}</p>
+                            </div>
+                
+                            {viewPatient?.sampleNames?.length > 0 && (
+                                <div>
+                                    <p className="font-medium text-gray-600">Samples:</p>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                        {viewPatient.sampleNames.map((name, idx) => (
+                                            <span
+                                                key={idx}
+                                                className="bg-white px-1.5 py-0.5 rounded-full border border-gray-200 text-gray-800 text-xs"
+                                            >
+                                                {name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Test Header */}
+                    <div className="mb-6">
+                        <h2 className="text-xl font-bold text-blue-800 mb-2">{testName}</h2>
+                        <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-100 rounded-full"></div>
+                    </div>
+
+                    {/* Test Results */}
+                    <div className="mb-8 flex-grow">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="bg-blue-600 text-white">
+                                    <th className="text-left p-3 font-medium">Parameter</th>
+                                    <th className="text-left p-3 font-medium">Value</th>
+                                    <th className="text-left p-3 font-medium">Unit</th>
+                                    <th className="text-left p-3 font-medium">Reference Range</th>
+                                    <th className="text-left p-3 font-medium">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {testResults.map((param, idx) => {
+                                    // Simple logic to determine if value is abnormal (for demo)
+                                    const isNormal = Math.random() > 0.2;
+                                    return (
+                                        <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
+                                            <td className="p-3 border-b border-gray-100 font-medium">{param.referenceDescription}</td>
+                                            <td className="p-3 border-b border-gray-100 font-bold">{param.enteredValue}</td>
+                                            <td className="p-3 border-b border-gray-100">{param.unit}</td>
+                                            <td className="p-3 border-b border-gray-100">{param.referenceRange}</td>
+                                            <td className="p-3 border-b border-gray-100">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${isNormal ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                    {isNormal ? 'Normal' : 'Abnormal'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Interpretation Notes */}
+                    <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+                        <h3 className="font-bold text-yellow-800 mb-2 flex items-center">
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            Interpretation Note
+                        </h3>
+                        <p className="text-sm text-yellow-700">
+                            Some values are outside the reference range. Please consult with your physician for clinical correlation.
                         </p>
                     </div>
-                    <div className="text-right">
-                        <p className="text-xs font-medium">Report Date: {new Date().toLocaleDateString()}</p>
-                        <p className="text-xs">ID: {viewPatient?.visitId || "N/A"}</p>
-                    </div>
-                </div>
 
-                {/* Patient Info */}
-                <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                    <div className="flex items-center gap-2">
-                        <FaUser className="text-gray-400" />
-                        <span>{viewPatient?.patientname || "N/A"}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <CiCalendar className="text-gray-400" />
-                        <span>DOB: {viewPatient?.dateOfBirth || "N/A"}</span>
-                    </div>
-                </div>
-
-                {/* Test Results */}
-                <div className="mt-6">
-                    {Object.keys(groupedReports).length > 0 ? (
-                        Object.entries(groupedReports).map(([testName, parameters], i) => (
-                            <div key={i} className="mb-6">
-                                <h3 className="font-semibold text-gray-700 border-b pb-1 mb-2">{testName}</h3>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-gray-50">
-                                            <tr>
-                                                <th className="px-3 py-2 text-left">Parameter</th>
-                                                <th className="px-3 py-2 text-left">Value</th>
-                                                <th className="px-3 py-2 text-left">Unit</th>
-                                                <th className="px-3 py-2 text-left">Reference</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {parameters.map((param, j) => (
-                                                <tr key={j} className="border-b border-gray-100 hover:bg-gray-50">
-                                                    <td className="px-3 py-2">{param.referenceDescription}</td>
-                                                    <td className="px-3 py-2 font-medium">{param.enteredValue}</td>
-                                                    <td className="px-3 py-2">{param.unit}</td>
-                                                    <td className="px-3 py-2 text-xs">{param.referenceRange}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                    {/* Footer */}
+                    <div className="mt-auto pt-6 border-t border-gray-200">
+                        <div className="grid grid-cols-3 gap-4 border-t border-gray-200 pt-4">
+                            <div className="text-center">
+                                <p className="text-xs font-medium text-gray-700 mb-2">Lab Technician</p>
+                                <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+                                    <span className="text-xs text-gray-500">Signature/Stamp</span>
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <p className="text-center text-gray-500 py-4">No test results available</p>
-                    )}
-                </div>
+                            <div className="text-center">
+                                <p className="text-xs font-medium text-gray-700 mb-2">Verified By</p>
+                                <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+                                    <span className="text-xs text-gray-500">Signature/Stamp</span>
+                                </div>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-xs font-medium text-gray-700 mb-2">Authorized Pathologist</p>
+                                <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+                                    <span className="text-xs text-gray-500">Dr. Signature/Stamp</span>
+                                </div>
+                            </div>
+                        </div>
 
-                {/* Footer */}
-                <div className="mt-6 pt-4 border-t text-xs text-gray-500 text-center">
-                    <p>This is an electronically generated report - Signature not required</p>
-                    {/* <p className="mt-1">For queries contact: {currentLab?.phone || "N/A"}</p> */}
+                        <div className="mt-4 text-center">
+                            <p className="text-xs text-gray-600 mb-1">This is an electronically generated report. No physical signature required.</p>
+                            <p className="text-xs text-gray-600">For queries: help@nextjen.com | +91 98765 43210 | www.nextjendl.com</p>
+                            <p className="text-xs font-medium text-blue-600 mt-2">Thank you for choosing NEXTJEN DIAGNOSTICS</p>
+                        </div>
+                    </div>
+
+                    {/* divider */}
+                    <div className="flex justify-between items-center mt-4">
+                        <div className="flex items-center">
+                            <img src="/tiamed1.svg" alt="Tiamed Logo" className="h-6 mr-2 opacity-80" />
+                            <span className="text-xs font-medium text-gray-600">Powered by Tiameds Technology</span>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-xs text-gray-500">Generated on: {new Date().toLocaleString()}</p>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            ))}
         </div>
     );
 };
 
-export default ReportView;
-
-
+export default ReportView

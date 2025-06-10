@@ -37,7 +37,7 @@ interface HealthPackage {
 const DATE_FILTER_OPTIONS = ['all', 'today', 'yesterday', 'last7days', 'thisMonth', 'thisYear', 'custom'] as const;
 type DateFilterOption = typeof DATE_FILTER_OPTIONS[number];
 
-const CompletedTable: React.FC = () => {
+const CompletedTable = () => {
     const { currentLab } = useLabs();
     const [patientList, setPatientList] = useState<Patient[]>([]);
     const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
@@ -429,9 +429,14 @@ const CompletedTable: React.FC = () => {
                             title='View Report'
                             isOpen={ViewModel}
                             onClose={() => setViewModel(false)}
-                            modalClassName='max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden'
+                            modalClassName='max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden'
                         >
-                            <ViewReport viewPatient={viewPatient} />
+                            <ViewReport viewPatient={{
+                                ...viewPatient,
+                                gender: viewPatient.gender ?? '',
+                                contactNumber: viewPatient.contactNumber ?? '',
+                                email: viewPatient.email ?? ''
+                            }} />
                         </Modal>
                     )}
 
