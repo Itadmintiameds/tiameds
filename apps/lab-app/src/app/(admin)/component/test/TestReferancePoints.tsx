@@ -141,11 +141,28 @@ const TestReferancePoints = () => {
       accessor: (test: TestReferancePoint) => test.gender,
       className: "text-center"
     },
+    // {
+    //   header: "Age Range",
+    //   accessor: (test: TestReferancePoint) => `${test.ageMin || "0"} - ${test.ageMax || "∞"} years`,
+    //   className: "text-center"
+    // },
     {
       header: "Age Range",
-      accessor: (test: TestReferancePoint) => `${test.ageMin || "0"} - ${test.ageMax || "∞"} years`,
-      className: "text-center"
+      accessor: (test: TestReferancePoint) => (
+        <>
+          {test.ageMin || "0"}{" "}
+          <span className="text-gray-500 text-xs px-2 font-semibold">
+            {test.minAgeUnit || "Years"}
+          </span>{" "}
+          - {test.ageMax || "∞"}{" "}
+          <span className="text-gray-500 text-xs px-2 font-semibold">
+            {test.maxAgeUnit || "Years"}
+          </span>
+        </>
+      ),
+      className: "text-center text-gray-600"
     },
+
     {
       header: "Reference Range",
       accessor: (test: TestReferancePoint) => (
@@ -197,6 +214,8 @@ const TestReferancePoints = () => {
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
     if (!currentLab || !editRecord) return;
+
+    console.log("Updating test reference range:", editRecord);
 
     try {
       setLoading(true);
@@ -256,6 +275,7 @@ const TestReferancePoints = () => {
 
     try {
       setLoading(true);
+      console.log("Adding new reference record:", newReferanceRecord);
       await addTestReferanceRange(currentLab.id.toString(), newReferanceRecord);
       setReferencePoints((prev) => [...prev, newReferanceRecord]);
       toast.success("Test reference range added successfully.", { autoClose: 2000 });
@@ -295,6 +315,9 @@ const TestReferancePoints = () => {
       </div>
     );
   }
+
+
+  console.log("Reference Points:", referencePoints);
 
   return (
     <div className="w-full bg-gray-50 p-6 rounded-xl">
@@ -504,6 +527,7 @@ const TestReferancePoints = () => {
             formData={formData}
             setFormData={setFormData}
           />
+        
         </Modal>
       )}
 
@@ -536,6 +560,7 @@ const TestReferancePoints = () => {
             existingTestReferanceRecord={existingTestReferanceRecord}
             setExistingTestReferanceRecord={setExistingTestReferanceRecord}
           />
+        
         </Modal>
       )}
     </div>

@@ -28,6 +28,7 @@ const TestReferanceList = () => {
     setLoading(true);
     getMasterTestReferanceRange()
       .then((data) => {
+
         setReferencePoints(data);
         // Expand first category by default
         if (data.length > 0) {
@@ -118,6 +119,8 @@ const TestReferanceList = () => {
     }
   };
 
+
+
   const columns = [
     {
       header: "Description",
@@ -131,9 +134,22 @@ const TestReferanceList = () => {
     },
     {
       header: "Age Range",
-      accessor: (test: TestReferancePoint) => `${test.ageMin || "0"} - ${test.ageMax || "∞"} years`,
-      className: "text-center"
+      accessor: (test: TestReferancePoint) => (
+        <>
+          {test.ageMin || "0"}{" "}
+          <span className="text-gray-500 text-xs px-2 font-semibold">
+            {test.minAgeUnit || "Years"}
+          </span>{" "}
+          - {test.ageMax || "∞"}{" "}
+          <span className="text-gray-500 text-xs px-2 font-semibold">
+            {test.maxAgeUnit || "Years"}
+          </span>
+        </>
+      ),
+      className: "text-center text-gray-600"
     },
+
+
     {
       header: "Reference Range",
       accessor: (test: TestReferancePoint) => (
@@ -144,6 +160,8 @@ const TestReferanceList = () => {
       className: "min-w-[180px]"
     },
   ];
+
+  // console.log(referencePoints, "referancce point------------------- ")
 
   return (
     <div className="w-full bg-gray-50 p-6 rounded-xl">
@@ -235,7 +253,7 @@ const TestReferanceList = () => {
 
       {/* Main Content */}
       {loading ? (
-       <div className="flex flex-col items-center justify-center h-64">
+        <div className="flex flex-col items-center justify-center h-64">
           <Loader type="progress" fullScreen={false} text="Loading tests reference data..." />
           <h3 className="text-lg font-semibold text-gray-800">Loading Test Reference Data</h3 >
         </div>

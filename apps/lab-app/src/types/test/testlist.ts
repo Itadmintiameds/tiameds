@@ -33,4 +33,7 @@ export interface TestReferancePoint {
     updatedBy: string;
     createdAt: string;
     updatedAt: string;
+    minAgeUnit: string;
+    maxAgeUnit: string;
+
 }

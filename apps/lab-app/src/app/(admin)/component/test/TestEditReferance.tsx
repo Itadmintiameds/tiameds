@@ -60,10 +60,23 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                         </select>
                     </div>
 
-                    {/* Age Range */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <div>
-                            <label className="text-xs font-medium text-gray-500 block mb-1">Min Age</label>
+                    {/* Units */}
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 block mb-1">Units</label>
+                        <input
+                            type="text"
+                            name="units"
+                            value={formData.units}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                            placeholder="Measurement units"
+                        />
+                    </div>
+
+                    {/* Min Age with Unit */}
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 block mb-1">Min Age</label>
+                        <div className="flex gap-2">
                             <input
                                 type="number"
                                 name="ageMin"
@@ -72,17 +85,45 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
                                 min="0"
                             />
+                            <select
+                                name="minAgeUnit"
+                                value={formData.minAgeUnit || ""}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                            >
+                                <option value="" disabled>Unit</option>
+                                <option value="YEARS">Years</option>
+                                <option value="MONTHS">Months</option>
+                                <option value="WEEKS">Weeks</option>
+                                <option value="DAYS">Days</option>
+                            </select>
                         </div>
-                        <div>
-                            <label className="text-xs font-medium text-gray-500 block mb-1">Max Age</label>
+                    </div>
+
+                    {/* Max Age with Unit */}
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 block mb-1">Max Age</label>
+                        <div className="flex gap-2">
                             <input
                                 type="number"
                                 name="ageMax"
+                                min="0"
                                 value={formData.ageMax}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
-                                min="0"
                             />
+                            <select
+                                name="maxAgeUnit"
+                                value={formData.maxAgeUnit || ""}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                            >
+                                <option value="" disabled>Unit</option>
+                                <option value="YEARS">Years</option>
+                                <option value="MONTHS">Months</option>
+                                <option value="WEEKS">Weeks</option>
+                                <option value="DAYS">Days</option>
+                            </select>
                         </div>
                     </div>
 
@@ -93,6 +134,7 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                             <input
                                 type="number"
                                 name="minReferenceRange"
+                                min={0}
                                 value={formData.minReferenceRange}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
@@ -104,25 +146,13 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                             <input
                                 type="number"
                                 name="maxReferenceRange"
+                                min={0}
                                 value={formData.maxReferenceRange}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
                                 step="0.01"
                             />
                         </div>
-                    </div>
-
-                    {/* Units */}
-                    <div className="sm:col-span-2">
-                        <label className="text-xs font-medium text-gray-500 block mb-1">Units</label>
-                        <input
-                            type="text"
-                            name="units"
-                            value={formData.units}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
-                            placeholder="Measurement units"
-                        />
                     </div>
                 </div>
 
