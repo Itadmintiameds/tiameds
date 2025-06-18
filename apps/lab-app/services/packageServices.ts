@@ -1,6 +1,12 @@
 import api from '@/utils/api';
-import { Package } from '@/types/package/package';
 
+export interface Package {
+  id: number;
+  packageName: string;
+  price: number;
+  discount?: number; 
+  testIds?: number[]; 
+}
 
 export const createPackage = async (labId: number, packageData: Package) => {    
     try {

@@ -214,9 +214,6 @@ const TestReferancePoints = () => {
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
     if (!currentLab || !editRecord) return;
-
-    console.log("Updating test reference range:", editRecord);
-
     try {
       setLoading(true);
       await updateTestReferanceRange(currentLab.id.toString(), editRecord.id.toString(), formData);

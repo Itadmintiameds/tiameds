@@ -14,7 +14,7 @@ interface PatientFormProps {
 enum Gender {
   Male = 'male',
   Female = 'female',
-  Other = 'other',
+  // Other = 'other',
 }
 
 const EditPatientFrom : React.FC<PatientFormProps> = ({

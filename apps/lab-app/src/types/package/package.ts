@@ -11,7 +11,8 @@ export interface Package {
   packageName: string;
   price: number;
   discount?: number; 
-  testIds?: number[];
+  testIds?: number[]; // Array of test IDs associated with the package
+  tests: Test[]; // Optional array of Test objects if you want to include test details
 }
 
 

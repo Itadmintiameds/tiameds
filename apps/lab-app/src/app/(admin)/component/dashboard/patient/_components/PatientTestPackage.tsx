@@ -1,13 +1,14 @@
 import { TestList } from '@/types/test/testlist';
 import { FaTrashAlt } from 'react-icons/fa'; // Importing Trash icon from react-icons
+import { Package } from '@/types/package/package';
 
-interface Package {
-  id: number;
-  packageName: string;
-  price: number;
-  discount?: number;
+// interface Package {
+//   id: number;
+//   packageName: string;
+//   price: number;
+//   discount?: number;
 
-}
+// }
 
 interface PatientTestPackageProps {
   categories: string[];

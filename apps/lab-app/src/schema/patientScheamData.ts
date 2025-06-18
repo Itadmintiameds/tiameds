@@ -2,15 +2,8 @@ import { z } from 'zod';
 
 export const patientSchema = z.object({
   firstName: z.string().min(2, { message: "First name must have at least 2 characters" }).min(2).max(50),
-  // lastName: z.string().min(2, { message: "Last name must have at least 2 characters" }).max(50),
-  // lastName: z.string(),
-  // email: z.string().email({ message: "Invalid email format" }),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits" }).max(10, { message: "Phone number must be at most 10 digits" }),
-  // address: z.string(),
   city: z.string().min(2).max(50),
-  // state: z.string(),
-  // zip: z.string(),
-  // bloodGroup: z.string(),
   dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date of birth must be in YYYY-MM-DD format" }),
   visit: z.object({
     visitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Visit date must be in YYYY-MM-DD format" }),
@@ -27,7 +20,7 @@ export const patientSchema = z.object({
       paymentStatus: z.string().transform((val) => val.toLowerCase()), // Normalize to lowercase
       paymentMethod: z.string().transform((val) => val.toLowerCase()), // Normalize to lowercase
       paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Payment date must be in YYYY-MM-DD format" }),
-      discount: z.coerce.number().min(0).max(100),
+      discount: z.coerce.number().min(0),
       gstRate: z.coerce.number().min(0).max(100),
       gstAmount: z.number().min(0),
       cgstAmount: z.number().min(0),

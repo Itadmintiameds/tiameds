@@ -27,7 +27,7 @@ enum BloodGroup {
 enum Gender {
   Male = 'male',
   Female = 'female',
-  Other = 'other',
+  // Other = 'other',
 }
 
 const PatientForm: React.FC<PatientFormProps> = ({
