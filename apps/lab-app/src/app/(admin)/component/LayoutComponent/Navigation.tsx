@@ -24,11 +24,11 @@ export const navigation: NavigationItem[] = [
     ],
   },
   {
-    name: "Technicians",
+    name: "User Management",
     icon: UserGroupIcon,
     current: false,
     children: [
-      { name: "Manage Technicians", href: "/dashboard/technicians", current: false, icon: ClipboardListIcon },
+      { name: "Manage Members", href: "/dashboard/technicians", current: false, icon: ClipboardListIcon },
     ],
   },
   {

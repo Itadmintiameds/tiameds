@@ -14,7 +14,7 @@ export function middleware(req: NextRequest) {
 
   // If token is missing and user tries to access protected routes, redirect to '/login'
   if (!token && (pathname.startsWith('/dashboard') || pathname.startsWith('/admin'))) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    return NextResponse.redirect(new URL('/user-login', req.url));
   }
 
   // Allow the request to proceed normally
@@ -22,5 +22,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/login', '/dashboard/:path*', '/admin/:path*'], // Define protected & public routes
+  matcher: ['/', '/user-login', '/dashboard/:path*', '/admin/:path*'], // Define protected & public routes
 };

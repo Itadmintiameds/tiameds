@@ -14,6 +14,8 @@ interface LabContextType {
     setFormData: React.Dispatch<React.SetStateAction<LabFormData>>;
     patientDetails: Patient | undefined;
     setPatientDetails: React.Dispatch<React.SetStateAction<Patient | undefined>>;
+    refreshlab: boolean;
+    setRefreshLab: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const LabContext = createContext<LabContextType | undefined>(undefined);
@@ -33,10 +35,11 @@ const LabProvider = ({ children }: LabProviderProps) => {
         state: '',
         description: '',
     });
+    const[refreshlab, setRefreshLab] = useState<boolean>(false);
 
 
     return (
-        <LabContext.Provider value={{ labs, setLabs, currentLab, setCurrentLab, formData, setFormData, patientDetails, setPatientDetails }}>
+        <LabContext.Provider value={{ labs, setLabs, currentLab, setCurrentLab, formData, setFormData, patientDetails, setPatientDetails,refreshlab, setRefreshLab }}>
             {children}
         </LabContext.Provider>
     );

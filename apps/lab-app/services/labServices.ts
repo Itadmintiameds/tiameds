@@ -1,7 +1,7 @@
 import api from '@/utils/api';
 
 import { LabResponse } from '@/types/Lab';
-import { LabFormData } from '@/types/LabFormData';
+import { LabFormData,LabFormDataNew } from '@/types/LabFormData';
 import { toast } from 'react-toastify';
 
 
@@ -31,7 +31,7 @@ export const getUsersLab = async (): Promise<LabResponse[]> => {
 }
 
 
-export const createLab = async (formData: LabFormData): Promise<LabResponse> => {
+export const createLab = async (formData: LabFormDataNew): Promise<LabResponse> => {
   try {
     const response = await api.post<{ data: LabResponse; message: string; status: string }>('lab/admin/add-lab', formData);
     toast.success(response.data.message);

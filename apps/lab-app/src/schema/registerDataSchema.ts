@@ -23,6 +23,6 @@ export const registerDataSchema = z.object({
   state: z.string().min(1, "State is required"),
   zip: z.string().min(5, "Zip code is required"),
   country: z.string().min(1, "Country is required"),
-  modules: z.array(z.number()).nonempty(),
+  // modules: z.array(z.number()).nonempty(),
   verified: z.boolean(),
 });

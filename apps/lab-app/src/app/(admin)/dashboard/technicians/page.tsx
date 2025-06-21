@@ -12,8 +12,8 @@ interface TechnicianTab {
 }
 
 const tabs: TechnicianTab[] = [
-    { id: 'Add Technician', label: 'Add Technician', icon: <FaPersonCirclePlus className="text-xl" /> },
-    { id: 'Manage Technicians', label: 'Manage Technicians', icon: <FaPersonChalkboard className="text-xl" /> },
+    { id: 'Add Technician', label: 'Add Member', icon: <FaPersonCirclePlus className="text-xl" /> },
+    { id: 'Manage Technicians', label: 'Manage Member', icon: <FaPersonChalkboard className="text-xl" /> },
 
 ];
 

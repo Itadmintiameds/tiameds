@@ -1,0 +1,1564 @@
+
+// 'use client'
+// import Image from 'next/image';
+// import Link from 'next/link';
+// import React, { useState } from 'react';
+// import { 
+//   FaEnvelope, 
+//   FaGlobeAmericas, 
+//   FaHome, 
+//   FaLock, 
+//   FaMapMarkerAlt, 
+//   FaPhoneAlt, 
+//   FaRegBuilding, 
+//   FaUser,
+//   FaUserTie,
+//   FaIdCard,
+//   FaFlask,
+//   FaMicroscope,
+//   FaArrowRight,
+//   FaSignInAlt,
+//   FaChevronRight
+// } from 'react-icons/fa';
+// import { FiLoader } from 'react-icons/fi';
+// import { RegisterData } from '@/types/Register';
+// import { registerDataSchema } from '@/schema/registerDataSchema';
+// import { register } from '@/../services/authService';
+// import { toast } from 'react-toastify';
+// import { motion } from 'framer-motion';
+
+// const RegisterPage = () => {
+//   const [formData, setFormData] = useState<RegisterData>({
+//     username: '',
+//     password: '',
+//     email: '',
+//     firstName: '',
+//     lastName: '',
+//     phone: '',
+//     address: '',
+//     city: '',
+//     state: '',
+//     zip: '',
+//     country: '',
+//     modules: [1],
+//     verified: false,
+//   });
+//   const [isSubmitting, setIsSubmitting] = useState(false);
+//   const [currentStep, setCurrentStep] = useState(1);
+
+//   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     const { name, value } = e.target;
+//     setFormData((prevData) => ({
+//       ...prevData,
+//       [name]: value,
+//     }));
+//   };
+
+//   const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault();
+//     setIsSubmitting(true);
+    
+//     try {
+//       registerDataSchema.parse(formData);
+//       const response = await register(formData);
+      
+//       if (response.status === 'OK') {
+//         toast.success('Registration successful! Please check your email to verify your account.', { 
+//           autoClose: 5000,
+//           position: "top-center"
+//         });
+//       } else {
+//         toast.error(response.message || 'Registration failed. Please try again.');
+//       }
+//     } catch (error) {
+//       if (error instanceof Error) {
+//         toast.error(error.message || 'An error occurred during registration.');
+//       }
+//     } finally {
+//       setIsSubmitting(false);
+//     }
+//   };
+
+//   const nextStep = () => {
+//     if (currentStep < 3) {
+//       setCurrentStep(currentStep + 1);
+//     }
+//   };
+
+//   const prevStep = () => {
+//     if (currentStep > 1) {
+//       setCurrentStep(currentStep - 1);
+//     }
+//   };
+
+//   const fieldGroups = [
+//     {
+//       title: "Account Information",
+//       fields: [
+//         { id: 'username', name: 'username', type: 'text', placeholder: 'Choose a username', icon: <FaUser /> },
+//         { id: 'email', name: 'email', type: 'email', placeholder: 'Your email address', icon: <FaEnvelope /> },
+//         { id: 'password', name: 'password', type: 'password', placeholder: 'Create a password', icon: <FaLock /> }
+//       ]
+//     },
+//     {
+//       title: "Personal Details",
+//       fields: [
+//         { id: 'firstName', name: 'firstName', type: 'text', placeholder: 'First name', icon: <FaUserTie /> },
+//         { id: 'lastName', name: 'lastName', type: 'text', placeholder: 'Last name', icon: <FaUserTie /> },
+//         { id: 'phone', name: 'phone', type: 'tel', placeholder: 'Phone number', icon: <FaPhoneAlt /> }
+//       ]
+//     },
+//     {
+//       title: "Address Information",
+//       fields: [
+//         { id: 'address', name: 'address', type: 'text', placeholder: 'Street address', icon: <FaHome /> },
+//         { id: 'city', name: 'city', type: 'text', placeholder: 'City', icon: <FaMapMarkerAlt /> },
+//         { id: 'state', name: 'state', type: 'text', placeholder: 'State/Province', icon: <FaRegBuilding /> },
+//         { id: 'zip', name: 'zip', type: 'text', placeholder: 'ZIP/Postal code', icon: <FaIdCard /> },
+//         { id: 'country', name: 'country', type: 'text', placeholder: 'Country', icon: <FaGlobeAmericas /> }
+//       ]
+//     }
+//   ];
+
+//   return (
+//     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+//       {/* Navigation Bar */}
+//       <nav className="bg-white shadow-sm border-b border-gray-100">
+//         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+//           <div className="flex justify-between h-16 items-center">
+//             <div className="flex items-center">
+//               <Link href="/" className="flex items-center group">
+//                 <Image 
+//                   src="/LOGO.svg" 
+//                   alt="Diagnostics" 
+//                   width={120} 
+//                   height={40} 
+//                   className="mr-2 transition-transform group-hover:scale-105"
+//                 />
+//               </Link>
+//             </div>
+//             <div className="flex items-center space-x-6">
+//               <Link href="/" className="text-gray-600 hover:text-purple-600 flex items-center transition-colors duration-200 group">
+//                 <span className="hidden sm:inline mr-1 group-hover:-translate-x-0.5 transition-transform">Home</span>
+//                 <FaHome className="text-lg" />
+//               </Link>
+//               <Link href="/user-login" className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 shadow-sm hover:shadow-md">
+//                 <span>Login</span>
+//                 <FaChevronRight className="text-sm" />
+//               </Link>
+//             </div>
+//           </div>
+//         </div>
+//       </nav>
+
+//       <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)]">
+//         {/* Left Side - Compact Branding and Information */}
+//         <div className="lg:w-1/2 bg-gradient-to-br from-purple-900 to-purple-700 p-6 lg:p-8 text-white flex flex-col gap-8">
+//           <div className="">
+//             <motion.div 
+//               initial={{ opacity: 0, y: -20 }}
+//               animate={{ opacity: 1, y: 0 }}
+//               transition={{ duration: 0.5 }}
+//               className="mb-8"
+//             >
+//               <h1 className="text-xl font-bold tracking-tight">Diagnostics Platform</h1>
+//             </motion.div>
+            
+//             <motion.div 
+//               initial={{ opacity: 0, y: 20 }}
+//               animate={{ opacity: 1, y: 0 }}
+//               transition={{ duration: 0.5 }}
+//               className="space-y-6"
+//             >
+//               <h2 className="text-2xl font-bold leading-tight">
+//                 Professional Healthcare Network
+//               </h2>
+              
+//               <div className="space-y-4">
+//                 <div className="flex items-center space-x-3 text-purple-200 text-sm">
+//                   <FaFlask className="text-lg" />
+//                   <span>Advanced Lab Tools</span>
+//                 </div>
+//                 <div className="flex items-center space-x-3 text-purple-200 text-sm">
+//                   <FaMicroscope className="text-lg" />
+//                   <span>Precision Diagnostics</span>
+//                 </div>
+//               </div>
+              
+//               <div className="bg-purple-800/50 p-3 rounded-lg border border-purple-700/50 text-sm">
+//                 <h3 className="font-medium mb-2">Why register with us?</h3>
+//                 <ul className="space-y-2 text-purple-100">
+//                   <li className="flex items-start">
+//                     <span className="text-purple-300 mr-2">✓</span>
+//                     <span>Role based access control</span>
+//                   </li>
+//                   <li className="flex items-start">
+//                     <span className="text-purple-300 mr-2">✓</span>
+//                     <span>Real-time diagnostic results</span>
+//                   </li>
+//                   <li className="flex items-start">
+//                     <span className="text-purple-300 mr-2">✓</span>
+//                     <span>Integrated patient management</span>
+//                   </li>
+//                 </ul>
+//               </div>
+//             </motion.div>
+//           </div>
+          
+//           <motion.div 
+//             initial={{ opacity: 0 }}
+//             animate={{ opacity: 1 }}
+//             transition={{ delay: 0.3, duration: 0.5 }}
+//             className="space-y-4"
+//           >
+//             {[1, 2, 3].map((step) => (
+//               <motion.div 
+//                 key={step} 
+//                 whileHover={{ scale: 1.01 }}
+//                 className={`flex items-start space-x-3 p-2 rounded-lg transition-all duration-300 ${currentStep === step ? 'bg-purple-800/30' : 'bg-purple-900/10 hover:bg-purple-900/20'}`}
+//               >
+//                 <div className="flex-shrink-0 mt-1">
+//                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${currentStep === step ? 'bg-white text-purple-700' : 'bg-purple-600'}`}>
+//                     {step}
+//                   </div>
+//                 </div>
+//                 <div>
+//                   <h4 className="font-medium text-sm">{fieldGroups[step-1].title}</h4>
+//                 </div>
+//               </motion.div>
+//             ))}
+//           </motion.div>
+//         </div>
+
+//         {/* Right Side - Registration Form */}
+//         <div className="lg:w-2/3 bg-white p-8 sm:p-12 lg:p-16 overflow-y-auto">
+//           <div className="max-w-md mx-auto">
+//             <div className="lg:hidden mb-8">
+//               <div className="flex items-center justify-center">
+//                 <h1 className="text-2xl font-bold text-purple-800">Diagnostics Platform</h1>
+//               </div>
+//             </div>
+            
+//             <motion.div 
+//               key={currentStep}
+//               initial={{ opacity: 0, x: 20 }}
+//               animate={{ opacity: 1, x: 0 }}
+//               exit={{ opacity: 0, x: -20 }}
+//               transition={{ duration: 0.3 }}
+//               className="mb-10"
+//             >
+//               <h2 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">Create Your Account</h2>
+//               <p className="text-gray-600">
+//                 Already registered?{' '}
+//                 <Link href="/user-login" className="text-purple-600 font-medium hover:text-purple-700 transition-colors underline underline-offset-4">
+//                   Sign in to your account
+//                 </Link>
+//               </p>
+//             </motion.div>
+            
+//             <form onSubmit={handleSubmit} className="space-y-8">
+//               {/* Step Indicator */}
+//               <div className="flex justify-between mb-8 px-4">
+//                 {[1, 2, 3].map((step) => (
+//                   <div key={step} className="flex flex-col items-center relative">
+//                     {step > 1 && (
+//                       <div className="absolute h-0.5 bg-gray-200 w-full top-5 -left-1/2 -z-10">
+//                         <div 
+//                           className={`h-full ${currentStep >= step ? 'bg-purple-600' : 'bg-gray-200'} transition-all duration-300`}
+//                           style={{ width: currentStep >= step ? '100%' : '0%' }}
+//                         ></div>
+//                       </div>
+//                     )}
+//                     <div 
+//                       className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${currentStep === step ? 'bg-purple-600 text-white shadow-md' : currentStep > step ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400 border border-gray-200'}`}
+//                     >
+//                       {step}
+//                     </div>
+//                     <span className="text-xs mt-2 text-gray-500 font-medium">
+//                       {fieldGroups[step-1].title.split(' ')[0]}
+//                     </span>
+//                   </div>
+//                 ))}
+//               </div>
+              
+//               {/* Current Step Content */}
+//               <div className="space-y-6">
+//                 <h3 className="text-lg font-medium text-gray-800 flex items-center">
+//                   <span className="bg-purple-100 text-purple-800 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-sm">
+//                     {currentStep}
+//                   </span>
+//                   {fieldGroups[currentStep-1].title}
+//                 </h3>
+                
+//                 <div className="space-y-4">
+//                   {fieldGroups[currentStep-1].fields.map((field) => (
+//                     <motion.div 
+//                       key={field.id} 
+//                       whileHover={{ scale: 1.005 }}
+//                       className="space-y-1"
+//                     >
+//                       <div className="relative">
+//                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+//                           {field.icon}
+//                         </div>
+//                         <input
+//                           id={field.id}
+//                           name={field.name}
+//                           type={field.type}
+//                           required
+//                           placeholder={field.placeholder}
+//                           value={formData[field.name as keyof RegisterData] as string}
+//                           onChange={handleInputChange}
+//                           className="block w-full rounded-lg border-gray-300 pl-10 pr-4 py-3 text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:shadow-sm border"
+//                         />
+//                       </div>
+//                     </motion.div>
+//                   ))}
+//                 </div>
+//               </div>
+              
+//               {/* Navigation Buttons */}
+//               <div className="flex justify-between pt-6">
+//                 {currentStep > 1 ? (
+//                   <motion.button
+//                     type="button"
+//                     onClick={prevStep}
+//                     whileHover={{ x: -2 }}
+//                     className="px-6 py-3 text-purple-600 font-medium rounded-lg hover:bg-purple-50 transition-all duration-200 flex items-center border border-gray-200 hover:border-purple-200"
+//                   >
+//                     <FaArrowRight className="transform rotate-180 mr-2" />
+//                     Back
+//                   </motion.button>
+//                 ) : (
+//                   <div></div>
+//                 )}
+                
+//                 {currentStep < 3 ? (
+//                   <motion.button
+//                     type="button"
+//                     onClick={nextStep}
+//                     whileHover={{ scale: 1.02 }}
+//                     className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 flex items-center shadow-md hover:shadow-lg"
+//                   >
+//                     Continue
+//                     <FaArrowRight className="ml-2" />
+//                   </motion.button>
+//                 ) : (
+//                   <motion.button
+//                     type="submit"
+//                     disabled={isSubmitting}
+//                     whileHover={{ scale: 1.02 }}
+//                     className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg w-full"
+//                   >
+//                     {isSubmitting ? (
+//                       <>
+//                         <FiLoader className="animate-spin mr-2" />
+//                         Creating Account...
+//                       </>
+//                     ) : (
+//                       'Complete Registration'
+//                     )}
+//                   </motion.button>
+//                 )}
+//               </div>
+//             </form>
+            
+//             <div className="mt-8 border-t border-gray-200 pt-6">
+//               <p className="text-xs text-gray-500 text-center">
+//                 By registering, you agree to our{' '}
+//                 <Link href="/terms" className="text-purple-600 hover:underline font-medium">Terms of Service</Link> and{' '}
+//                 <Link href="/privacy" className="text-purple-600 hover:underline font-medium">Privacy Policy</Link>.
+//                 <br/>Your data is protected with enterprise-grade security.
+//               </p>
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default RegisterPage;
+
+
+
+
+
+
+
+
+
+
+
+// 'use client'
+// import Image from 'next/image';
+// import Link from 'next/link';
+// import React, { useState } from 'react';
+// import { 
+//   FaEnvelope, 
+//   FaGlobeAmericas, 
+//   FaHome, 
+//   FaLock, 
+//   FaMapMarkerAlt, 
+//   FaPhoneAlt, 
+//   FaRegBuilding, 
+//   FaUser,
+//   FaUserTie,
+//   FaIdCard,
+//   FaFlask,
+//   FaMicroscope,
+//   FaArrowRight,
+//   FaSignInAlt,
+//   FaChevronRight
+// } from 'react-icons/fa';
+// import { FiLoader } from 'react-icons/fi';
+// import { RegisterData } from '@/types/Register';
+// import { registerDataSchema } from '@/schema/registerDataSchema';
+// import { register } from '@/../services/authService';
+// import { toast } from 'react-toastify';
+// import { motion } from 'framer-motion';
+
+// const RegisterPage = () => {
+//   const [formData, setFormData] = useState<RegisterData>({
+//     username: '',
+//     password: '',
+//     email: '',
+//     firstName: '',
+//     lastName: '',
+//     phone: '',
+//     address: '',
+//     city: '',
+//     state: '',
+//     zip: '',
+//     country: '',
+//     modules: [1],
+//     verified: false,
+//   });
+//   const [isSubmitting, setIsSubmitting] = useState(false);
+//   const [currentStep, setCurrentStep] = useState(1);
+
+//   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     const { name, value } = e.target;
+//     setFormData((prevData) => ({
+//       ...prevData,
+//       [name]: value,
+//     }));
+//   };
+
+//   const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault();
+//     setIsSubmitting(true);
+    
+//     try {
+//       registerDataSchema.parse(formData);
+//       const response = await register(formData);
+      
+//       if (response.status === 'OK') {
+//         toast.success('Registration successful! Please check your email to verify your account.', { 
+//           autoClose: 5000,
+//           position: "top-center"
+//         });
+//       } else {
+//         toast.error(response.message || 'Registration failed. Please try again.');
+//       }
+//     } catch (error) {
+//       if (error instanceof Error) {
+//         toast.error(error.message || 'An error occurred during registration.');
+//       }
+//     } finally {
+//       setIsSubmitting(false);
+//     }
+//   };
+
+//   const nextStep = () => {
+//     if (currentStep < 3) {
+//       setCurrentStep(currentStep + 1);
+//     }
+//   };
+
+//   const prevStep = () => {
+//     if (currentStep > 1) {
+//       setCurrentStep(currentStep - 1);
+//     }
+//   };
+
+//   const fieldGroups = [
+//     {
+//       title: "Account Information",
+//       fields: [
+//         { id: 'username', name: 'username', type: 'text', placeholder: 'Choose a username', icon: <FaUser /> },
+//         { id: 'email', name: 'email', type: 'email', placeholder: 'Your email address', icon: <FaEnvelope /> },
+//         { id: 'password', name: 'password', type: 'password', placeholder: 'Create a password', icon: <FaLock /> }
+//       ]
+//     },
+//     {
+//       title: "Personal Details",
+//       fields: [
+//         { id: 'firstName', name: 'firstName', type: 'text', placeholder: 'First name', icon: <FaUserTie /> },
+//         { id: 'lastName', name: 'lastName', type: 'text', placeholder: 'Last name', icon: <FaUserTie /> },
+//         { id: 'phone', name: 'phone', type: 'tel', placeholder: 'Phone number', icon: <FaPhoneAlt /> }
+//       ]
+//     },
+//     {
+//       title: "Address Information",
+//       fields: [
+//         { id: 'address', name: 'address', type: 'text', placeholder: 'Street address', icon: <FaHome /> },
+//         { id: 'city', name: 'city', type: 'text', placeholder: 'City', icon: <FaMapMarkerAlt /> },
+//         { id: 'state', name: 'state', type: 'text', placeholder: 'State/Province', icon: <FaRegBuilding /> },
+//         { id: 'zip', name: 'zip', type: 'text', placeholder: 'ZIP/Postal code', icon: <FaIdCard /> },
+//         { id: 'country', name: 'country', type: 'text', placeholder: 'Country', icon: <FaGlobeAmericas /> }
+//       ]
+//     }
+//   ];
+
+//   return (
+//     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+//       {/* Navigation Bar */}
+//       <nav className="bg-white shadow-sm border-b border-gray-100">
+//         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+//           <div className="flex justify-between h-16 items-center">
+//             <div className="flex items-center">
+//               <Link href="/" className="flex items-center group">
+//                 <Image 
+//                   src="/LOGO.svg" 
+//                   alt="Diagnostics" 
+//                   width={120} 
+//                   height={40} 
+//                   className="mr-2 transition-transform group-hover:scale-105"
+//                 />
+//               </Link>
+//             </div>
+//             <div className="flex items-center space-x-6">
+//               <Link href="/" className="text-gray-600 hover:text-purple-600 flex items-center transition-colors duration-200 group">
+//                 <span className="hidden sm:inline mr-1 group-hover:-translate-x-0.5 transition-transform">Home</span>
+//                 <FaHome className="text-lg" />
+//               </Link>
+//               <Link href="/user-login" className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 shadow-sm hover:shadow-md">
+//                 <span>Login</span>
+//                 <FaChevronRight className="text-sm" />
+//               </Link>
+//             </div>
+//           </div>
+//         </div>
+//       </nav>
+
+//       <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)]">
+//         {/* Left Side - Compact Branding and Information */}
+//         <div className="lg:w-1/2 p-6 lg:p-8 text-gray-800 flex flex-col gap-8 bg-white border-r border-gray-100">
+//           <div className="">
+//             <motion.div 
+//               initial={{ opacity: 0, y: -20 }}
+//               animate={{ opacity: 1, y: 0 }}
+//               transition={{ duration: 0.5 }}
+//               className="mb-8"
+//             >
+//               <h1 className="text-xl font-bold tracking-tight text-purple-700">Diagnostics Platform</h1>
+//             </motion.div>
+            
+//             <motion.div 
+//               initial={{ opacity: 0, y: 20 }}
+//               animate={{ opacity: 1, y: 0 }}
+//               transition={{ duration: 0.5 }}
+//               className="space-y-6"
+//             >
+//               <h2 className="text-2xl font-bold leading-tight text-gray-900">
+//                 Professional Healthcare Network
+//               </h2>
+              
+//               <div className="space-y-4">
+//                 <div className="flex items-center space-x-3 text-gray-600 text-sm">
+//                   <FaFlask className="text-lg text-purple-600" />
+//                   <span>Advanced Lab Tools</span>
+//                 </div>
+//                 <div className="flex items-center space-x-3 text-gray-600 text-sm">
+//                   <FaMicroscope className="text-lg text-purple-600" />
+//                   <span>Precision Diagnostics</span>
+//                 </div>
+//               </div>
+              
+//               <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm">
+//                 <h3 className="font-medium mb-2 text-gray-800">Why register with us?</h3>
+//                 <ul className="space-y-2 text-gray-600">
+//                   <li className="flex items-start">
+//                     <span className="text-purple-600 mr-2">✓</span>
+//                     <span>Role based access control</span>
+//                   </li>
+//                   <li className="flex items-start">
+//                     <span className="text-purple-600 mr-2">✓</span>
+//                     <span>Real-time diagnostic results</span>
+//                   </li>
+//                   <li className="flex items-start">
+//                     <span className="text-purple-600 mr-2">✓</span>
+//                     <span>Integrated patient management</span>
+//                   </li>
+//                 </ul>
+//               </div>
+//             </motion.div>
+//           </div>
+          
+//           <motion.div 
+//             initial={{ opacity: 0 }}
+//             animate={{ opacity: 1 }}
+//             transition={{ delay: 0.3, duration: 0.5 }}
+//             className="space-y-4"
+//           >
+//             {[1, 2, 3].map((step) => (
+//               <motion.div 
+//                 key={step} 
+//                 whileHover={{ scale: 1.01 }}
+//                 className={`flex items-start space-x-3 p-2 rounded-lg transition-all duration-300 ${currentStep === step ? 'bg-purple-100' : 'bg-gray-50 hover:bg-gray-100'}`}
+//               >
+//                 <div className="flex-shrink-0 mt-1">
+//                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${currentStep === step ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+//                     {step}
+//                   </div>
+//                 </div>
+//                 <div>
+//                   <h4 className="font-medium text-sm text-gray-800">{fieldGroups[step-1].title}</h4>
+//                 </div>
+//               </motion.div>
+//             ))}
+//           </motion.div>
+//         </div>
+
+//         {/* Right Side - Registration Form */}
+//         <div className="lg:w-2/3 bg-white p-8 sm:p-12 lg:p-16 overflow-y-auto">
+//           <div className="max-w-md mx-auto">
+//             <div className="lg:hidden mb-8">
+//               <div className="flex items-center justify-center">
+//                 <h1 className="text-2xl font-bold text-purple-800">Diagnostics Platform</h1>
+//               </div>
+//             </div>
+            
+//             <motion.div 
+//               key={currentStep}
+//               initial={{ opacity: 0, x: 20 }}
+//               animate={{ opacity: 1, x: 0 }}
+//               exit={{ opacity: 0, x: -20 }}
+//               transition={{ duration: 0.3 }}
+//               className="mb-10"
+//             >
+//               <h2 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">Create Your Account</h2>
+//               <p className="text-gray-600">
+//                 Already registered?{' '}
+//                 <Link href="/user-login" className="text-purple-600 font-medium hover:text-purple-700 transition-colors underline underline-offset-4">
+//                   Sign in to your account
+//                 </Link>
+//               </p>
+//             </motion.div>
+            
+//             <form onSubmit={handleSubmit} className="space-y-8">
+//               {/* Step Indicator */}
+//               <div className="flex justify-between mb-8 px-4">
+//                 {[1, 2, 3].map((step) => (
+//                   <div key={step} className="flex flex-col items-center relative">
+//                     {step > 1 && (
+//                       <div className="absolute h-0.5 bg-gray-200 w-full top-5 -left-1/2 -z-10">
+//                         <div 
+//                           className={`h-full ${currentStep >= step ? 'bg-purple-600' : 'bg-gray-200'} transition-all duration-300`}
+//                           style={{ width: currentStep >= step ? '100%' : '0%' }}
+//                         ></div>
+//                       </div>
+//                     )}
+//                     <div 
+//                       className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${currentStep === step ? 'bg-purple-600 text-white shadow-md' : currentStep > step ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400 border border-gray-200'}`}
+//                     >
+//                       {step}
+//                     </div>
+//                     <span className="text-xs mt-2 text-gray-500 font-medium">
+//                       {fieldGroups[step-1].title.split(' ')[0]}
+//                     </span>
+//                   </div>
+//                 ))}
+//               </div>
+              
+//               {/* Current Step Content */}
+//               <div className="space-y-6">
+//                 <h3 className="text-lg font-medium text-gray-800 flex items-center">
+//                   <span className="bg-purple-100 text-purple-800 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-sm">
+//                     {currentStep}
+//                   </span>
+//                   {fieldGroups[currentStep-1].title}
+//                 </h3>
+                
+//                 <div className="space-y-4">
+//                   {fieldGroups[currentStep-1].fields.map((field) => (
+//                     <motion.div 
+//                       key={field.id} 
+//                       whileHover={{ scale: 1.005 }}
+//                       className="space-y-1"
+//                     >
+//                       <div className="relative">
+//                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+//                           {field.icon}
+//                         </div>
+//                         <input
+//                           id={field.id}
+//                           name={field.name}
+//                           type={field.type}
+//                           required
+//                           placeholder={field.placeholder}
+//                           value={formData[field.name as keyof RegisterData] as string}
+//                           onChange={handleInputChange}
+//                           className="block w-full rounded-lg border-gray-300 pl-10 pr-4 py-3 text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:shadow-sm border"
+//                         />
+//                       </div>
+//                     </motion.div>
+//                   ))}
+//                 </div>
+//               </div>
+              
+//               {/* Navigation Buttons */}
+//               <div className="flex justify-between pt-6">
+//                 {currentStep > 1 ? (
+//                   <motion.button
+//                     type="button"
+//                     onClick={prevStep}
+//                     whileHover={{ x: -2 }}
+//                     className="px-6 py-3 text-purple-600 font-medium rounded-lg hover:bg-purple-50 transition-all duration-200 flex items-center border border-gray-200 hover:border-purple-200"
+//                   >
+//                     <FaArrowRight className="transform rotate-180 mr-2" />
+//                     Back
+//                   </motion.button>
+//                 ) : (
+//                   <div></div>
+//                 )}
+                
+//                 {currentStep < 3 ? (
+//                   <motion.button
+//                     type="button"
+//                     onClick={nextStep}
+//                     whileHover={{ scale: 1.02 }}
+//                     className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 flex items-center shadow-md hover:shadow-lg"
+//                   >
+//                     Continue
+//                     <FaArrowRight className="ml-2" />
+//                   </motion.button>
+//                 ) : (
+//                   <motion.button
+//                     type="submit"
+//                     disabled={isSubmitting}
+//                     whileHover={{ scale: 1.02 }}
+//                     className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg w-full"
+//                   >
+//                     {isSubmitting ? (
+//                       <>
+//                         <FiLoader className="animate-spin mr-2" />
+//                         Creating Account...
+//                       </>
+//                     ) : (
+//                       'Complete Registration'
+//                     )}
+//                   </motion.button>
+//                 )}
+//               </div>
+//             </form>
+            
+//             <div className="mt-8 border-t border-gray-200 pt-6">
+//               <p className="text-xs text-gray-500 text-center">
+//                 By registering, you agree to our{' '}
+//                 <Link href="/terms" className="text-purple-600 hover:underline font-medium">Terms of Service</Link> and{' '}
+//                 <Link href="/privacy" className="text-purple-600 hover:underline font-medium">Privacy Policy</Link>.
+//                 <br/>Your data is protected with enterprise-grade security.
+//               </p>
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default RegisterPage;
+
+
+
+// 'use client'
+// import { register } from '@/../services/authService';
+// import { registerDataSchema } from '@/schema/registerDataSchema';
+// import { RegisterData } from '@/types/Register';
+// import { motion } from 'framer-motion';
+// import Image from 'next/image';
+// import Link from 'next/link';
+// import React, { useState } from 'react';
+// import {
+//   FaArrowRight,
+//   FaChevronRight,
+//   FaEnvelope,
+//   FaFlask,
+//   FaGlobeAmericas,
+//   FaHome,
+//   FaIdCard,
+//   FaLock,
+//   FaMapMarkerAlt,
+//   FaMicroscope,
+//   FaPhoneAlt,
+//   FaRegBuilding,
+//   FaUser,
+//   FaUserTie
+// } from 'react-icons/fa';
+// import { FiLoader } from 'react-icons/fi';
+// import { toast } from 'react-toastify';
+
+// const RegisterPage = () => {
+//   const [formData, setFormData] = useState<RegisterData>({
+//     username: '',
+//     password: '',
+//     email: '',
+//     firstName: '',
+//     lastName: '',
+//     phone: '',
+//     address: '',
+//     city: '',
+//     state: '',
+//     zip: '',
+//     country: '',
+//     verified: false,
+//   });
+//   const [isSubmitting, setIsSubmitting] = useState(false);
+//   const [currentStep, setCurrentStep] = useState(1);
+
+//   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     const { name, value } = e.target;
+//     setFormData((prevData) => ({
+//       ...prevData,
+//       [name]: value,
+//     }));
+//   };
+
+//   const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault();
+//     setIsSubmitting(true);
+    
+//     try {
+//       registerDataSchema.parse(formData);
+//       const response = await register(formData);
+      
+//       if (response.status === 'OK') {
+//         toast.success('Registration successful! Please check your email to verify your account.', { 
+//           autoClose: 5000,
+//           position: "top-center"
+//         });
+//         // Optionally redirect to login page or home page
+//         window.location.href = '/user-login';
+//       } else {
+//         toast.error(response.message || 'Registration failed. Please try again.');
+//       }
+//     } catch (error) {
+//       if (error instanceof Error) {
+//         toast.error(error.message || 'An error occurred during registration.');
+//       }
+//     } finally {
+//       setIsSubmitting(false);
+//     }
+//   };
+
+//   const nextStep = () => {
+//     if (currentStep < 3) {
+//       setCurrentStep(currentStep + 1);
+//     }
+//   };
+
+//   const prevStep = () => {
+//     if (currentStep > 1) {
+//       setCurrentStep(currentStep - 1);
+//     }
+//   };
+
+//   const fieldGroups = [
+//     {
+//       title: "Account Information",
+//       fields: [
+//         { id: 'username', name: 'username', type: 'text', placeholder: 'Choose a username', icon: <FaUser /> },
+//         { id: 'email', name: 'email', type: 'email', placeholder: 'Your email address', icon: <FaEnvelope /> },
+//         { id: 'password', name: 'password', type: 'password', placeholder: 'Create a password', icon: <FaLock /> }
+//       ]
+//     },
+//     {
+//       title: "Personal Details",
+//       fields: [
+//         { id: 'firstName', name: 'firstName', type: 'text', placeholder: 'First name', icon: <FaUserTie /> },
+//         { id: 'lastName', name: 'lastName', type: 'text', placeholder: 'Last name', icon: <FaUserTie /> },
+//         { id: 'phone', name: 'phone', type: 'tel', placeholder: 'Phone number', icon: <FaPhoneAlt /> }
+//       ]
+//     },
+//     {
+//       title: "Address Information",
+//       fields: [
+//         { id: 'address', name: 'address', type: 'text', placeholder: 'Street address', icon: <FaHome /> },
+//         { id: 'city', name: 'city', type: 'text', placeholder: 'City', icon: <FaMapMarkerAlt /> },
+//         { id: 'state', name: 'state', type: 'text', placeholder: 'State/Province', icon: <FaRegBuilding /> },
+//         { id: 'zip', name: 'zip', type: 'text', placeholder: 'ZIP/Postal code', icon: <FaIdCard /> },
+//         { id: 'country', name: 'country', type: 'text', placeholder: 'Country', icon: <FaGlobeAmericas /> }
+//       ]
+//     }
+//   ];
+
+//   return (
+//     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+//       {/* Navigation Bar */}
+//       <nav className="bg-white shadow-sm border-b border-gray-100">
+//         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+//           <div className="flex justify-between h-16 items-center">
+//             <div className="flex items-center">
+//               <Link href="/" className="flex items-center group">
+//                 <Image 
+//                   src="/LOGO.svg" 
+//                   alt="Diagnostics" 
+//                   width={120} 
+//                   height={40} 
+//                   className="mr-2 transition-transform group-hover:scale-105"
+//                 />
+//               </Link>
+//             </div>
+//             <div className="flex items-center space-x-6">
+//               <Link href="/" className="text-gray-600 hover:text-purple-600 flex items-center transition-colors duration-200 group">
+//                 <span className="hidden sm:inline mr-1 group-hover:-translate-x-0.5 transition-transform">Home</span>
+//                 <FaHome className="text-lg" />
+//               </Link>
+//               <Link href="/user-login" className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 shadow-sm hover:shadow-md">
+//                 <span>Login</span>
+//                 <FaChevronRight className="text-sm" />
+//               </Link>
+//             </div>
+//           </div>
+//         </div>
+//       </nav>
+
+//       <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)]">
+//         {/* Left Side - Compact Branding and Information */}
+//         <div className="lg:w-1/2 p-6 lg:p-8 text-white flex flex-col gap-8 bg-gradient-to-br from-purple-600 to-purple-800">
+//           <div className="">
+//             <motion.div 
+//               initial={{ opacity: 0, y: -20 }}
+//               animate={{ opacity: 1, y: 0 }}
+//               transition={{ duration: 0.5 }}
+//               className="mb-8"
+//             >
+//               <h1 className="text-xl font-bold tracking-tight text-purple-100">Diagnostics Platform</h1>
+//             </motion.div>
+            
+//             <motion.div 
+//               initial={{ opacity: 0, y: 20 }}
+//               animate={{ opacity: 1, y: 0 }}
+//               transition={{ duration: 0.5 }}
+//               className="space-y-6"
+//             >
+//               <h2 className="text-2xl font-bold leading-tight text-white">
+//                 Professional Healthcare Network
+//               </h2>
+              
+//               <div className="space-y-4">
+//                 <div className="flex items-center space-x-3 text-purple-100 text-sm">
+//                   <FaFlask className="text-lg text-purple-200" />
+//                   <span>Advanced Lab Tools</span>
+//                 </div>
+//                 <div className="flex items-center space-x-3 text-purple-100 text-sm">
+//                   <FaMicroscope className="text-lg text-purple-200" />
+//                   <span>Precision Diagnostics</span>
+//                 </div>
+//               </div>
+              
+//               <div className="bg-purple-700/30 p-3 rounded-lg border border-purple-500/20 text-sm">
+//                 <h3 className="font-medium mb-2 text-white">Why register with us?</h3>
+//                 <ul className="space-y-2 text-purple-100">
+//                   <li className="flex items-start">
+//                     <span className="text-purple-200 mr-2">✓</span>
+//                     <span>Role based access control</span>
+//                   </li>
+//                   <li className="flex items-start">
+//                     <span className="text-purple-200 mr-2">✓</span>
+//                     <span>Real-time diagnostic results</span>
+//                   </li>
+//                   <li className="flex items-start">
+//                     <span className="text-purple-200 mr-2">✓</span>
+//                     <span>Integrated patient management</span>
+//                   </li>
+//                 </ul>
+//               </div>
+//             </motion.div>
+//           </div>
+          
+//           <motion.div 
+//             initial={{ opacity: 0 }}
+//             animate={{ opacity: 1 }}
+//             transition={{ delay: 0.3, duration: 0.5 }}
+//             className="space-y-4"
+//           >
+//             {[1, 2, 3].map((step) => (
+//               <motion.div 
+//                 key={step} 
+//                 whileHover={{ scale: 1.01 }}
+//                 className={`flex items-start space-x-3 p-2 rounded-lg transition-all duration-300 ${currentStep === step ? 'bg-purple-700/40' : 'bg-purple-800/20 hover:bg-purple-800/30'}`}
+//               >
+//                 <div className="flex-shrink-0 mt-1">
+//                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${currentStep === step ? 'bg-white text-purple-700' : 'bg-purple-500/70 text-white'}`}>
+//                     {step}
+//                   </div>
+//                 </div>
+//                 <div>
+//                   <h4 className="font-medium text-sm text-white">{fieldGroups[step-1].title}</h4>
+//                 </div>
+//               </motion.div>
+//             ))}
+//           </motion.div>
+//         </div>
+
+//         {/* Right Side - Registration Form */}
+//         <div className="lg:w-2/3 bg-white p-8 sm:p-12 lg:p-16 overflow-y-auto">
+//           <div className="max-w-md mx-auto">
+//             <div className="lg:hidden mb-8">
+//               <div className="flex items-center justify-center">
+//                 <h1 className="text-2xl font-bold text-purple-700">Diagnostics Platform</h1>
+//               </div>
+//             </div>
+            
+//             <motion.div 
+//               key={currentStep}
+//               initial={{ opacity: 0, x: 20 }}
+//               animate={{ opacity: 1, x: 0 }}
+//               exit={{ opacity: 0, x: -20 }}
+//               transition={{ duration: 0.3 }}
+//               className="mb-10"
+//             >
+//               <h2 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">Create Your Account</h2>
+//               <p className="text-gray-600">
+//                 Already registered?{' '}
+//                 <Link href="/user-login" className="text-purple-600 font-medium hover:text-purple-700 transition-colors underline underline-offset-4">
+//                   Sign in to your account
+//                 </Link>
+//               </p>
+//             </motion.div>
+            
+//             <form onSubmit={handleSubmit} className="space-y-8">
+//               {/* Step Indicator */}
+//               <div className="flex justify-between mb-8 px-4">
+//                 {[1, 2, 3].map((step) => (
+//                   <div key={step} className="flex flex-col items-center relative">
+//                     {step > 1 && (
+//                       <div className="absolute h-0.5 bg-gray-200 w-full top-5 -left-1/2 -z-10">
+//                         <div 
+//                           className={`h-full ${currentStep >= step ? 'bg-purple-600' : 'bg-gray-200'} transition-all duration-300`}
+//                           style={{ width: currentStep >= step ? '100%' : '0%' }}
+//                         ></div>
+//                       </div>
+//                     )}
+//                     <div 
+//                       className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${currentStep === step ? 'bg-purple-600 text-white shadow-md' : currentStep > step ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400 border border-gray-200'}`}
+//                     >
+//                       {step}
+//                     </div>
+//                     <span className="text-xs mt-2 text-gray-500 font-medium">
+//                       {fieldGroups[step-1].title.split(' ')[0]}
+//                     </span>
+//                   </div>
+//                 ))}
+//               </div>
+              
+//               {/* Current Step Content */}
+//               <div className="space-y-6">
+//                 <h3 className="text-lg font-medium text-gray-800 flex items-center">
+//                   <span className="bg-purple-100 text-purple-800 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-sm">
+//                     {currentStep}
+//                   </span>
+//                   {fieldGroups[currentStep-1].title}
+//                 </h3>
+                
+//                 <div className="space-y-4">
+//                   {fieldGroups[currentStep-1].fields.map((field) => (
+//                     <motion.div 
+//                       key={field.id} 
+//                       whileHover={{ scale: 1.005 }}
+//                       className="space-y-1"
+//                     >
+//                       <div className="relative">
+//                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+//                           {field.icon}
+//                         </div>
+//                         <input
+//                           id={field.id}
+//                           name={field.name}
+//                           type={field.type}
+//                           required
+//                           placeholder={field.placeholder}
+//                           value={formData[field.name as keyof RegisterData] as string}
+//                           onChange={handleInputChange}
+//                           className="block w-full rounded-lg border-gray-300 pl-10 pr-4 py-3 text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:shadow-sm border"
+//                         />
+//                       </div>
+//                     </motion.div>
+//                   ))}
+//                 </div>
+//               </div>
+              
+//               {/* Navigation Buttons */}
+//               <div className="flex justify-between pt-6">
+//                 {currentStep > 1 ? (
+//                   <motion.button
+//                     type="button"
+//                     onClick={prevStep}
+//                     whileHover={{ x: -2 }}
+//                     className="px-6 py-3 text-purple-600 font-medium rounded-lg hover:bg-purple-50 transition-all duration-200 flex items-center border border-gray-200 hover:border-purple-200"
+//                   >
+//                     <FaArrowRight className="transform rotate-180 mr-2" />
+//                     Back
+//                   </motion.button>
+//                 ) : (
+//                   <div></div>
+//                 )}
+                
+//                 {currentStep < 3 ? (
+//                   <motion.button
+//                     type="button"
+//                     onClick={nextStep}
+//                     whileHover={{ scale: 1.02 }}
+//                     className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 flex items-center shadow-md hover:shadow-lg"
+//                   >
+//                     Continue
+//                     <FaArrowRight className="ml-2" />
+//                   </motion.button>
+//                 ) : (
+//                   <motion.button
+//                     type="submit"
+//                     disabled={isSubmitting}
+//                     whileHover={{ scale: 1.02 }}
+//                     className="px-3 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg"
+//                   >
+//                     {isSubmitting ? (
+//                       <>
+//                         <FiLoader className="animate-spin mr-2" />
+//                         Creating Account...
+//                       </>
+//                     ) : (
+//                       'Complete Registration'
+//                     )}
+//                   </motion.button>
+//                 )}
+//               </div>
+//             </form>
+            
+//             <div className="mt-8 border-t border-gray-200 pt-6">
+//               <p className="text-xs text-gray-500 text-center">
+//                 By registering, you agree to our{' '}
+//                 <Link href="/terms" className="text-purple-600 hover:underline font-medium">Terms of Service</Link> and{' '}
+//                 <Link href="/privacy" className="text-purple-600 hover:underline font-medium">Privacy Policy</Link>.
+//                 <br/>Your data is protected with enterprise-grade security.
+//               </p>
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default RegisterPage;
+
+
+
+
+
+
+
+'use client'
+import { register } from '@/../services/authService';
+import { registerDataSchema } from '@/schema/registerDataSchema';
+import { RegisterData } from '@/types/Register';
+import { motion } from 'framer-motion';
+import Image from 'next/image';
+import Link from 'next/link';
+import React, { useState } from 'react';
+import {
+  FaArrowRight,
+  FaChevronRight,
+  FaEnvelope,
+  FaFlask,
+  FaGlobeAmericas,
+  FaHome,
+  FaIdCard,
+  FaLock,
+  FaMapMarkerAlt,
+  FaMicroscope,
+  FaPhoneAlt,
+  FaRegBuilding,
+  FaUser,
+  FaUserTie
+} from 'react-icons/fa';
+import { FiLoader } from 'react-icons/fi';
+import { toast } from 'react-toastify';
+
+const RegisterPage = () => {
+  const [formData, setFormData] = useState<RegisterData>({
+    username: '',
+    password: '',
+    email: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
+    country: '',
+    verified: false,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      registerDataSchema.parse(formData);
+      const response = await register(formData);
+
+      if (response.status === 'success') {
+        // Show success toast
+        toast.success('Registration successful! Please check your email to verify your account.', { 
+          autoClose: 3000,
+          position: "top-center",
+          onClose: () => {
+            // Clear form fields
+            setFormData({
+              username: '',
+              password: '',
+              email: '',
+              firstName: '',
+              lastName: '',
+              phone: '',
+              address: '',
+              city: '',
+              state: '',
+              zip: '',
+              country: '',
+              verified: false,
+            });
+            // Reset to first step
+            setCurrentStep(1);
+            // Redirect to login page
+            window.location.href = '/user-login';
+          }
+        });
+      } else {
+        toast.error(response.message || 'Registration failed. Please try again.');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message || 'An error occurred during registration.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const nextStep = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const fieldGroups = [
+    {
+      title: "Account Information",
+      fields: [
+        { id: 'username', name: 'username', type: 'text', placeholder: 'Choose a username', icon: <FaUser /> },
+        { id: 'email', name: 'email', type: 'email', placeholder: 'Your email address', icon: <FaEnvelope /> },
+        { id: 'password', name: 'password', type: 'password', placeholder: 'Create a password', icon: <FaLock /> }
+      ]
+    },
+    {
+      title: "Personal Details",
+      fields: [
+        { id: 'firstName', name: 'firstName', type: 'text', placeholder: 'First name', icon: <FaUserTie /> },
+        { id: 'lastName', name: 'lastName', type: 'text', placeholder: 'Last name', icon: <FaUserTie /> },
+        { id: 'phone', name: 'phone', type: 'tel', placeholder: 'Phone number', icon: <FaPhoneAlt /> }
+      ]
+    },
+    {
+      title: "Address Information",
+      fields: [
+        { id: 'address', name: 'address', type: 'text', placeholder: 'Street address', icon: <FaHome /> },
+        { id: 'city', name: 'city', type: 'text', placeholder: 'City', icon: <FaMapMarkerAlt /> },
+        { id: 'state', name: 'state', type: 'text', placeholder: 'State/Province', icon: <FaRegBuilding /> },
+        { id: 'zip', name: 'zip', type: 'text', placeholder: 'ZIP/Postal code', icon: <FaIdCard /> },
+        { id: 'country', name: 'country', type: 'text', placeholder: 'Country', icon: <FaGlobeAmericas /> }
+      ]
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+      {/* Navigation Bar */}
+      <nav className="bg-white shadow-sm border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
+            <div className="flex items-center">
+              <Link href="/" className="flex items-center group">
+                <Image 
+                  src="/LOGO.svg" 
+                  alt="Diagnostics" 
+                  width={120} 
+                  height={40} 
+                  className="mr-2 transition-transform group-hover:scale-105"
+                />
+              </Link>
+            </div>
+            <div className="flex items-center space-x-6">
+              <Link href="/" className="text-gray-600 hover:text-purple-600 flex items-center transition-colors duration-200 group">
+                <span className="hidden sm:inline mr-1 group-hover:-translate-x-0.5 transition-transform">Home</span>
+                <FaHome className="text-lg" />
+              </Link>
+              <Link href="/user-login" className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 shadow-sm hover:shadow-md">
+                <span>Login</span>
+                <FaChevronRight className="text-sm" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)]">
+        {/* Left Side - Compact Branding and Information */}
+        <div className="lg:w-1/2 p-6 lg:p-8 text-white flex flex-col gap-8 bg-gradient-to-br from-purple-600 to-purple-800">
+          <div className="">
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="mb-8"
+            >
+              <h1 className="text-xl font-bold tracking-tight text-purple-100">Diagnostics Platform</h1>
+            </motion.div>
+            
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-6"
+            >
+              <h2 className="text-2xl font-bold leading-tight text-white">
+                Professional Healthcare Network
+              </h2>
+              
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 text-purple-100 text-sm">
+                  <FaFlask className="text-lg text-purple-200" />
+                  <span>Advanced Lab Tools</span>
+                </div>
+                <div className="flex items-center space-x-3 text-purple-100 text-sm">
+                  <FaMicroscope className="text-lg text-purple-200" />
+                  <span>Precision Diagnostics</span>
+                </div>
+              </div>
+              
+              <div className="bg-purple-700/30 p-3 rounded-lg border border-purple-500/20 text-sm">
+                <h3 className="font-medium mb-2 text-white">Why register with us?</h3>
+                <ul className="space-y-2 text-purple-100">
+                  <li className="flex items-start">
+                    <span className="text-purple-200 mr-2">✓</span>
+                    <span>Role based access control</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-purple-200 mr-2">✓</span>
+                    <span>Real-time diagnostic results</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-purple-200 mr-2">✓</span>
+                    <span>Integrated patient management</span>
+                  </li>
+                </ul>
+              </div>
+            </motion.div>
+          </div>
+          
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className="space-y-4"
+          >
+            {[1, 2, 3].map((step) => (
+              <motion.div 
+                key={step} 
+                whileHover={{ scale: 1.01 }}
+                className={`flex items-start space-x-3 p-2 rounded-lg transition-all duration-300 ${currentStep === step ? 'bg-purple-700/40' : 'bg-purple-800/20 hover:bg-purple-800/30'}`}
+              >
+                <div className="flex-shrink-0 mt-1">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${currentStep === step ? 'bg-white text-purple-700' : 'bg-purple-500/70 text-white'}`}>
+                    {step}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm text-white">{fieldGroups[step-1].title}</h4>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+
+        {/* Right Side - Registration Form */}
+        <div className="lg:w-2/3 bg-white p-8 sm:p-12 lg:p-16 overflow-y-auto">
+          <div className="max-w-md mx-auto">
+            <div className="lg:hidden mb-8">
+              <div className="flex items-center justify-center">
+                <h1 className="text-2xl font-bold text-purple-700">Diagnostics Platform</h1>
+              </div>
+            </div>
+            
+            <motion.div 
+              key={currentStep}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="mb-10"
+            >
+              <h2 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">Create Your Account</h2>
+              <p className="text-gray-600">
+                Already registered?{' '}
+                <Link href="/user-login" className="text-purple-600 font-medium hover:text-purple-700 transition-colors underline underline-offset-4">
+                  Sign in to your account
+                </Link>
+              </p>
+            </motion.div>
+            
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Step Indicator */}
+              <div className="flex justify-between mb-8 px-4">
+                {[1, 2, 3].map((step) => (
+                  <div key={step} className="flex flex-col items-center relative">
+                    {step > 1 && (
+                      <div className="absolute h-0.5 bg-gray-200 w-full top-5 -left-1/2 -z-10">
+                        <div 
+                          className={`h-full ${currentStep >= step ? 'bg-purple-600' : 'bg-gray-200'} transition-all duration-300`}
+                          style={{ width: currentStep >= step ? '100%' : '0%' }}
+                        ></div>
+                      </div>
+                    )}
+                    <div 
+                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${currentStep === step ? 'bg-purple-600 text-white shadow-md' : currentStep > step ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400 border border-gray-200'}`}
+                    >
+                      {step}
+                    </div>
+                    <span className="text-xs mt-2 text-gray-500 font-medium">
+                      {fieldGroups[step-1].title.split(' ')[0]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Current Step Content */}
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium text-gray-800 flex items-center">
+                  <span className="bg-purple-100 text-purple-800 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-sm">
+                    {currentStep}
+                  </span>
+                  {fieldGroups[currentStep-1].title}
+                </h3>
+                
+                <div className="space-y-4">
+                  {fieldGroups[currentStep-1].fields.map((field) => (
+                    <motion.div 
+                      key={field.id} 
+                      whileHover={{ scale: 1.005 }}
+                      className="space-y-1"
+                    >
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                          {field.icon}
+                        </div>
+                        <input
+                          id={field.id}
+                          name={field.name}
+                          type={field.type}
+                          required
+                          placeholder={field.placeholder}
+                          value={formData[field.name as keyof RegisterData] as string}
+                          onChange={handleInputChange}
+                          className="block w-full rounded-lg border-gray-300 pl-10 pr-4 py-3 text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:shadow-sm border"
+                        />
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Navigation Buttons */}
+              <div className="flex justify-between pt-6">
+                {currentStep > 1 ? (
+                  <motion.button
+                    type="button"
+                    onClick={prevStep}
+                    whileHover={{ x: -2 }}
+                    className="px-6 py-3 text-purple-600 font-medium rounded-lg hover:bg-purple-50 transition-all duration-200 flex items-center border border-gray-200 hover:border-purple-200"
+                  >
+                    <FaArrowRight className="transform rotate-180 mr-2" />
+                    Back
+                  </motion.button>
+                ) : (
+                  <div></div>
+                )}
+                
+                {currentStep < 3 ? (
+                  <motion.button
+                    type="button"
+                    onClick={nextStep}
+                    whileHover={{ scale: 1.02 }}
+                    className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 flex items-center shadow-md hover:shadow-lg"
+                  >
+                    Continue
+                    <FaArrowRight className="ml-2" />
+                  </motion.button>
+                ) : (
+                  <motion.button
+                    type="submit"
+                    disabled={isSubmitting}
+                    whileHover={{ scale: 1.02 }}
+                    className="px-3 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <FiLoader className="animate-spin mr-2" />
+                        Creating Account...
+                      </>
+                    ) : (
+                      'Complete Registration'
+                    )}
+                  </motion.button>
+                )}
+              </div>
+            </form>
+            
+            <div className="mt-8 border-t border-gray-200 pt-6">
+              <p className="text-xs text-gray-500 text-center">
+                By registering, you agree to our{' '}
+                <Link href="/terms" className="text-purple-600 hover:underline font-medium">Terms of Service</Link> and{' '}
+                <Link href="/privacy" className="text-purple-600 hover:underline font-medium">Privacy Policy</Link>.
+                <br/>Your data is protected with enterprise-grade security.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RegisterPage;

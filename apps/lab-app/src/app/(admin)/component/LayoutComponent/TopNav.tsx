@@ -282,16 +282,20 @@ interface TopNavProps {
 }
 
 const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange }) => {
+
   
-  const handleLogout = () => {
+  
+ const handleLogout = () => {
     toast.success("Logged out successfully", {
       position: "top-right",
       autoClose: 2000,
       hideProgressBar: true,
     });
     localStorage.removeItem("user");
+    localStorage.removeItem("currentLab");
+    localStorage.removeItem("userLabs");
     document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    window.location.replace("/login");
+    window.location.replace("/user-login");
   };
 
   return (
@@ -338,7 +342,7 @@ const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange })
           <CurrentTime  />
         </div>
 
-        {labs.length > 0 && (
+        {labs?.length > 0 && (
           <select
             className="text-xs bg-white text-gray-700 rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary/50 hover:bg-gray-50 transition border border-gray-300 shadow-xs cursor-pointer min-w-[160px]"
             onChange={handleChange}

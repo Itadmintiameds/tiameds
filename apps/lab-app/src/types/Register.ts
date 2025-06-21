@@ -11,6 +11,6 @@ export interface RegisterData {
     state: string;
     zip: string;
     country: string;
-    modules: number[];
+    // modules: number[];
     verified: boolean;
     }

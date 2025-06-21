@@ -39,7 +39,7 @@ export default function Herosection() {
 
           <div className="mt-10 flex items-center gap-x-6">
             <Link
-              href="/login"
+              href="/user-login"
               className="rounded-md bg-gradient-to-r from-purple-600 to-purple-800 px-12 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gradient-to-r hover:from-purple-700 hover:to-purple-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600  transition-all duration-300"
             >
               Login

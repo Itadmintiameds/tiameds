@@ -564,6 +564,8 @@ import Select, { MultiValue} from 'react-select';
 import { toast } from "react-toastify";
 import { createMember, getMembersOfLab, updateMember } from "../../../../../../services/technicianServices";
 import UpdateUserPassword from "./UpdateUserPassword";
+// import {memberSchema} from "@/schema/memberSchema";
+
 
 interface FormData {
     username: string;
@@ -693,6 +695,8 @@ const AddMemberOnLab = () => {
                 }
                 toast.success("Member updated successfully ");
             } else {
+                // Validate form data using zod schema
+                // const validation = memberSchema.safeParse(formData);
                 const response = await createMember(currentLab?.id as number, {
                     ...formData,
                     enabled: true,

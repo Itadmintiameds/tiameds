@@ -2,7 +2,6 @@
 import React from 'react'
 import PatientVisitListTable from './PatientVisitListTable'
 
-
 const PatientDashboard = () => {
   return (
     <>
@@ -10,5 +9,4 @@ const PatientDashboard = () => {
     </>
   )
 }
-
 export default PatientDashboard

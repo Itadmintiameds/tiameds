@@ -79,14 +79,14 @@ const Header = ({ navigation }: { navigation: NavigationItem[] }) => {
         </div>
 
         {/* Login Button */}
-        <div className="hidden lg:flex lg:flex-1 lg:justify-end">
-          {/* <Link
-            href="/login"
+        {/* <div className="hidden lg:flex lg:flex-1 lg:justify-end">
+          <Link
+            href="/user-login"
             className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors duration-200"
-          >
-            Log in <span aria-hidden="true">&rarr;</span>
-          </Link> */}
-        </div>
+          > <span aria-hidden="true">&rarr;</span>
+          </Link>
+            Log in
+        </div> */}
       </nav>
 
       {/* Mobile Navigation Drawer */}
@@ -122,7 +122,7 @@ const Header = ({ navigation }: { navigation: NavigationItem[] }) => {
               </div>
               <div className="py-6">
                 <Link
-                  href="/login"
+                  href="/user-login"
                   className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold text-gray-900 hover:bg-gray-50 transition-all duration-200"
                 >
                   Log in

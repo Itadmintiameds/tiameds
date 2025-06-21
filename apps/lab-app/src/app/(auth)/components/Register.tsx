@@ -1,6 +1,4 @@
 'use client'
-
-
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { useState } from 'react';
@@ -23,7 +21,7 @@ const Register: React.FC = () => {
     state: '',
     zip: '',
     country: '',
-    modules: [1],
+    // modules: [1],
     verified: false,
   });
 
