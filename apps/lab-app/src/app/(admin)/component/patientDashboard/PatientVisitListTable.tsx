@@ -525,6 +525,7 @@ const PatientVisitListTable: React.FC = () => {
               visitType: viewReportDetails.visit?.visitType ?? VisitType.OUT_PATIENT,
             }}
           />
+          
         )}
       </Modal>
     </div>

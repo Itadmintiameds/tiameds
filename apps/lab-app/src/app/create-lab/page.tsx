@@ -82,10 +82,8 @@ const Lab = () => {
         dataPrivacyAgreement: false,
         isActive: false
     });
-    const {refreshlab,setRefreshLab} = useLabs(); 
-
+    const { refreshlab, setRefreshLab } = useLabs();
     const router = useRouter();
-
     const handleLogout = () => {
         toast.success("Logged out successfully", {
             position: "top-right",
@@ -96,7 +94,6 @@ const Lab = () => {
         document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         window.location.replace("/user-login");
     };
-
     useEffect(() => {
         const validateForm = async () => {
             try {
@@ -309,14 +306,9 @@ const Lab = () => {
                 dataPrivacyAgreement: false,
                 isActive: false
             });
-
+            router.push('/dashboard');
             setErrors({});
             setRefreshLab(!refreshlab); // Trigger refresh of labs context
-            // redirect to dashboard or labs page
-            setTimeout(() => {
-                router.push('/dashboard');
-            }, 1500);
-
             toast.success('Lab created successfully', {
                 position: 'top-right',
                 autoClose: 3000,

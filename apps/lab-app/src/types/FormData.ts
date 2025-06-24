@@ -10,7 +10,7 @@ export interface FormData {
     state: string;
     zip: string;
     country: string;
-    modules: number[];
+    modules: null;
     verified: boolean; 
   }
   

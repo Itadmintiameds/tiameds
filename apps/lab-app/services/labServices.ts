@@ -22,6 +22,7 @@ export const getLabs = async (): Promise<LabResponse[]> => {
 export const getUsersLab = async (): Promise<LabResponse[]> => {
   try {
     const response = await api.get<{ data: LabResponse[]; message: string; status: string }>('lab/admin/get-user-labs');
+    // const response = await api.get<{ data: LabResponse[]; message: string; status: string }>('lab-for-all/get-user-labs');
     return response.data.data; // Extract the labs array from the response
   } catch (error: any) {
     const message = error.response?.data?.message || 'An error occurred while fetching labs.';

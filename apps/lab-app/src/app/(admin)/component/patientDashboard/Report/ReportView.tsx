@@ -53,6 +53,7 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
             setLoading(true);
             try {
                 const response = await getReportData(currentLab.id.toString(), viewReportDetailsbyId.toString());
+                console.log("Fetched report data:", response);
                 if (Array.isArray(response)) {
                     setReports(response);
                 }

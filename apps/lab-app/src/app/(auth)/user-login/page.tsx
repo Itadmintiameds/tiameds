@@ -15,6 +15,7 @@ import { loginDataSchema } from '@/schema/loginDataSchema'
 import { LoginData } from '@/types/Login'
 import { AxiosError } from 'axios'
 import { ZodError } from 'zod'
+import { useLabs } from '@/context/LabContext';
 
 const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState<LoginData>({
@@ -25,6 +26,7 @@ const LoginPage: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
+  const {setLoginedUser} = useLabs();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -50,12 +52,28 @@ const LoginPage: React.FC = () => {
       // API call
       try {
         const response = await login(formData);
-        console.log(response);
+        // console.log(response.data);
+        setLoginedUser({
+          username: response.data.username,
+          email: response.data.email,
+          firstName: response.data.firstName,
+          lastName: response.data.lastName,
+          roles: response.data.roles,
+          modules: null,
+          phone: response.data.phone,
+          address: response.data.address,
+          city: response.data.city,
+          state: response.data.state,
+          zip: response.data.zip,
+          country: response.data.country,
+          enabled: response.data.enabled,
+          is_verified: response.data.is_verified,
+        });
         // Store token in cookies
         // document.cookie = `token=${response.token}; path=/; Secure; HttpOnly`;  // Add Secure and HttpOnly for better security
   
         document.cookie = `token=${response.token}; path=/;`;
-        console.log('Current Cookies:', document.cookie);
+        // console.log('Current Cookies:', document.cookie);
   
         localStorage.setItem('user', JSON.stringify(response?.data)); // Store user in localStorage
         router.push('/dashboard');
@@ -71,6 +89,9 @@ const LoginPage: React.FC = () => {
         setIsSubmitting(false);
       }
     };
+
+
+   
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gradient-to-br from-white to-purple-50">
