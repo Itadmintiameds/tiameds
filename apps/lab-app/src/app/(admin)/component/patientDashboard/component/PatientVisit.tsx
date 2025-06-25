@@ -20,12 +20,12 @@ interface PatientVisitProps {
     newPatient: Patient;
     handleChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }) => void;
     doctors: Doctor[];
-    updatedocorlist: boolean;
-    setUpdatedocorlist: React.Dispatch<React.SetStateAction<boolean>>;
+    
+
 }
 
-const PatientVisit = ({ newPatient, handleChange, doctors, setUpdatedocorlist }: PatientVisitProps) => {
-    const { currentLab } = useLabs();
+const PatientVisit = ({ newPatient, handleChange, doctors}: PatientVisitProps) => {
+    const { currentLab, refreshDocterList,setRefreshDocterList } = useLabs();
     const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
     const [isDoctorAddedLoading, setIsDoctorAddedLoading] = useState(false);
     const [doctor, setDoctor] = useState<Doctor>({
@@ -87,9 +87,10 @@ const PatientVisit = ({ newPatient, handleChange, doctors, setUpdatedocorlist }:
         try {
             if (currentLab?.id) {
                 const res = await createDoctor(currentLab.id, doctor);
+        
                 if (res?.status === 'success') {
+                    setRefreshDocterList(!refreshDocterList);
                     toast.success('Doctor added successfully!');
-                    setUpdatedocorlist(true);
                 } else {
                     toast.error('Failed to add doctor!');
                 }
@@ -105,7 +106,7 @@ const PatientVisit = ({ newPatient, handleChange, doctors, setUpdatedocorlist }:
             setIsDoctorModalOpen(false);
             setErrors({});
             setIsDoctorAddedLoading(false);
-            setUpdatedocorlist(false);
+            setRefreshDocterList(!refreshDocterList);
             setDoctor({
                 id: undefined,
                 name: '',

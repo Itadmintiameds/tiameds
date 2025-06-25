@@ -173,8 +173,6 @@
 
 
 
-
-
 'use client';
 
 import { useState } from 'react';
@@ -209,28 +207,36 @@ const Page = () => {
   const { loginedUser } = useLabs();
   const roles = loginedUser?.roles || [];
 
+  const isSuperAdmin = roles.includes('SUPERADMIN');
   const isAdmin = roles.includes('ADMIN');
   const isTechnician = roles.includes('TECHNICIAN');
+  const isDesk = roles.includes('DESKROLE');
 
-  const tabsToShow = isAdmin
-    ? allTabs
+  // Filter tabs based on user role
+  const tabsToShow = isSuperAdmin
+    ? allTabs // SUPERADMIN sees all tabs
+    : isAdmin
+    ? allTabs.filter(tab => tab.id !== 'Lab Create') // ADMIN sees all except Lab Create
     : isTechnician
-    ? allTabs.filter(tab =>
-        ['Download Test', 'Test Reference Parameters'].includes(tab.id)
-      )
+    ? allTabs.filter(tab => tab.id === 'Test Reference Parameters') // TECHNICIAN only sees Test Reference
+    : isDesk
+    ? allTabs.filter(tab => tab.id === 'Download Test') // DESKROLE only sees Test Price List
     : [];
 
   const [selectedTab, setSelectedTab] = useState<string>(tabsToShow[0]?.id || '');
   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
 
-  if (!isAdmin && !isTechnician) {
+  // Early return for unauthorized users (no matching roles)
+  if (!isSuperAdmin && !isAdmin && !isTechnician && !isDesk) {
     return (
-      <Unauthorised
-        username={loginedUser?.username || ''}
-        currentRoles={roles}
-        notallowedRoles={['DESKROLE']}
-        allowedRoles={['ADMIN', 'TECHNICIAN']}
-      />
+      <div className="p-4 bg-gray-50 rounded-lg shadow-sm">
+        <Unauthorised
+          username={loginedUser?.username || ''}
+          currentRoles={roles}
+          notallowedRoles={roles}
+          allowedRoles={['SUPERADMIN', 'ADMIN', 'TECHNICIAN', 'DESKROLE']}
+        />
+      </div>
     );
   }
 
@@ -241,53 +247,61 @@ const Page = () => {
         <h1 className="text-2xl font-bold text-gray-800">Laboratory Settings</h1>
       </div>
 
-      <div className="relative">
-        <div className="flex space-x-1 border-b border-gray-200">
-          {tabsToShow.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setSelectedTab(tab.id)}
-              onMouseEnter={() => setHoveredTab(tab.id)}
-              onMouseLeave={() => setHoveredTab(null)}
-              className={`relative px-4 py-2.5 flex items-center gap-2 text-sm font-medium transition-all duration-200 ${selectedTab === tab.id ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'} ${tab.color}`}
-            >
-              <span className="z-10 flex items-center gap-2">
-                {tab.icon}
-                {tab.label}
-              </span>
-              {selectedTab === tab.id && (
-                <motion.div 
-                  layoutId="activeTab"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600"
-                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                />
-              )}
-              {hoveredTab === tab.id && selectedTab !== tab.id && (
-                <motion.div 
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-300"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+      {tabsToShow.length > 0 ? (
+        <>
+          <div className="relative">
+            <div className="flex space-x-1 border-b border-gray-200">
+              {tabsToShow.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedTab(tab.id)}
+                  onMouseEnter={() => setHoveredTab(tab.id)}
+                  onMouseLeave={() => setHoveredTab(null)}
+                  className={`relative px-4 py-2.5 flex items-center gap-2 text-sm font-medium transition-all duration-200 ${selectedTab === tab.id ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'} ${tab.color}`}
+                >
+                  <span className="z-10 flex items-center gap-2">
+                    {tab.icon}
+                    {tab.label}
+                  </span>
+                  {selectedTab === tab.id && (
+                    <motion.div 
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600"
+                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  {hoveredTab === tab.id && selectedTab !== tab.id && (
+                    <motion.div 
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-300"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <motion.div
-        key={selectedTab}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.2 }}
-        className="mt-6"
-      >
-        {selectedTab === 'Lab Create' && <Lab />}
-        {selectedTab === 'Lab List' && <LabList />}
-        {selectedTab === 'Download Test' && <TestPriceList />}
-        {selectedTab === 'Test Reference Parameters' && <TestReferanceList />}
-      </motion.div>
+          <motion.div
+            key={selectedTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="mt-6"
+          >
+            {selectedTab === 'Lab Create' && isSuperAdmin && <Lab />}
+            {selectedTab === 'Lab List' && (isSuperAdmin || isAdmin) && <LabList />}
+            {selectedTab === 'Download Test' && (isSuperAdmin || isAdmin || isDesk) && <TestPriceList />}
+            {selectedTab === 'Test Reference Parameters' && (isSuperAdmin || isAdmin || isTechnician) && <TestReferanceList />}
+          </motion.div>
+        </>
+      ) : (
+        <div className="mt-6 text-center text-gray-500">
+          No accessible tabs available for your role.
+        </div>
+      )}
     </div>
   );
 };

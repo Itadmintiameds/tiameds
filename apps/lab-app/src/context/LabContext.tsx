@@ -19,6 +19,8 @@ interface LabContextType {
     setRefreshLab: React.Dispatch<React.SetStateAction<boolean>>;
     loginedUser: UserLogedType;
     setLoginedUser: React.Dispatch<React.SetStateAction<UserLogedType>>;
+    refreshDocterList: boolean;
+    setRefreshDocterList: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const LabContext = createContext<LabContextType | undefined>(undefined);
@@ -38,7 +40,7 @@ const LabProvider = ({ children }: LabProviderProps) => {
         state: '',
         description: '',
     });
-    const[refreshlab, setRefreshLab] = useState<boolean>(false);
+    const [refreshlab, setRefreshLab] = useState<boolean>(false);
     const [loginedUser, setLoginedUser] = useState<UserLogedType>({
         username: '',
         email: '',
@@ -55,10 +57,27 @@ const LabProvider = ({ children }: LabProviderProps) => {
         enabled: false,
         is_verified: false,
     });
+    const [refreshDocterList, setRefreshDocterList] = useState<boolean>(false);
 
 
     return (
-        <LabContext.Provider value={{ labs, setLabs, currentLab, setCurrentLab, formData, setFormData, patientDetails, setPatientDetails,refreshlab, setRefreshLab , loginedUser, setLoginedUser }}>
+        <LabContext.Provider value={{
+            labs,
+            setLabs,
+            currentLab,
+            setCurrentLab,
+            formData,
+            setFormData,
+            patientDetails,
+            setPatientDetails,
+            refreshlab,
+            setRefreshLab,
+            loginedUser,
+            setLoginedUser,
+            refreshDocterList,
+            setRefreshDocterList
+
+        }}>
             {children}
         </LabContext.Provider>
     );

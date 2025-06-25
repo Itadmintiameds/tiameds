@@ -30,7 +30,7 @@ const visitSchema = z.object({
   visitType: z.string(),
   visitStatus: z.string(),
   visitDescription: z.string(),
-  doctorId: z.number().nullable(),
+  doctorId: z.string().nullable(),
   testIds: z.array(z.number()),
   packageIds: z.array(z.number()),
   insuranceIds: z.array(z.number()),

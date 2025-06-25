@@ -62,8 +62,6 @@
 
 
 
-
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -93,14 +91,16 @@ const Page = () => {
   const { loginedUser } = useLabs();
 
   const roles = loginedUser?.roles || [];
+  const isSuperAdmin = roles.includes('SUPERADMIN');
   const isAdmin = roles.includes('ADMIN');
   const isTechnician = roles.includes('TECHNICIAN');
-  // const isDeskRole = roles.includes('DESKROLE');
+  const isDeskRole = roles.includes('DESKROLE');
 
+  // Filter tabs based on user role
   const filteredTabs = allTabs.filter(tab => {
-    if (isAdmin) return true;
+    if (isSuperAdmin || isAdmin) return true; // Admins see all tabs
     if (isTechnician) return tab.id === 'test' || tab.id === 'test-referance-point';
-    return false;
+    return false; // Desk role and others see no tabs
   });
 
   // Set default tab if selected is not allowed
@@ -115,40 +115,56 @@ const Page = () => {
     setTimeout(() => {
       setSelectedTab(tabId);
       setLoading(false);
-    }, 300); // Optional simulated delay
+    }, 300);
   };
 
-  const isAuthorized = isAdmin || isTechnician;
-
-  return (
-    <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
-      {!isAuthorized ? (
+  // Authorization logic
+  if (isDeskRole) {
+    return (
+      <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
         <Unauthorised
           username={loginedUser?.username || ''}
           currentRoles={roles}
           notallowedRoles={['DESKROLE']}
-          allowedRoles={['TECHNICIAN', 'ADMIN']}
+          allowedRoles={['TECHNICIAN', 'ADMIN', 'SUPERADMIN']}
         />
-      ) : (
-        <>
-          <Tabs
-            tabs={filteredTabs}
-            selectedTab={selectedTab}
-            onTabChange={handleTabChange}
-          >
-            {loading ? (
-              <Loader />
-            ) : (
-              <>
-                {selectedTab === 'test' && <TestLists />}
-                {selectedTab === 'test-referance-point' && <TestReferancePoints />}
-                {selectedTab === 'upload' && isAdmin && <TestUpload />}
-                {selectedTab === 'upload-referance' && isAdmin && <UploadTestReference />}
-              </>
-            )}
-          </Tabs>
-        </>
-      )}
+      </div>
+    );
+  }
+
+  // Check if user has at least one authorized role
+  const isAuthorized = isAdmin || isTechnician || isSuperAdmin;
+  if (!isAuthorized) {
+    return (
+      <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
+        <Unauthorised
+          username={loginedUser?.username || ''}
+          currentRoles={roles}
+          notallowedRoles={roles}
+          allowedRoles={['TECHNICIAN', 'ADMIN', 'SUPER_ADMIN']}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
+      <Tabs
+        tabs={filteredTabs}
+        selectedTab={selectedTab}
+        onTabChange={handleTabChange}
+      >
+        {loading ? (
+          <Loader />
+        ) : (
+          <>
+            {selectedTab === 'test' && <TestLists />}
+            {selectedTab === 'test-referance-point' && <TestReferancePoints />}
+            {selectedTab === 'upload' && (isAdmin || isSuperAdmin) && <TestUpload />}
+            {selectedTab === 'upload-referance' && (isAdmin || isSuperAdmin) && <UploadTestReference />}
+          </>
+        )}
+      </Tabs>
     </div>
   );
 };

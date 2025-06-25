@@ -42,7 +42,6 @@
 
 
 'use client';
-
 import Tabs from '@/app/(admin)/component/common/TabComponent';
 import { useState } from 'react';
 import { FaPersonChalkboard, FaPersonCirclePlus } from 'react-icons/fa6';
@@ -67,7 +66,7 @@ const Page = () => {
   const { loginedUser } = useLabs();
 
   const roles = loginedUser?.roles || [];
-  const isAllowed = roles.includes('ADMIN');
+  const isAllowed = ['ADMIN', 'SUPERADMIN'].some(role => roles.includes(role));
   const notallowedRoles = ['TECHNICIAN', 'DESKROLE'];
 
   if (!isAllowed) {
@@ -76,7 +75,7 @@ const Page = () => {
         username={loginedUser?.username || ''}
         currentRoles={roles}
         notallowedRoles={notallowedRoles}
-        allowedRoles={['ADMIN']}
+        allowedRoles={['ADMIN', 'SUPERADMIN']}
       />
     );
   }
@@ -84,8 +83,9 @@ const Page = () => {
   return (
     <div className="p-4">
       <div className="bg-yellow-100 text-yellow-800 p-4 rounded-md mb-4 border border-yellow-300">
-        ⚠️ You are an <strong>Admin</strong> but not the <strong>creator</strong> of this lab. You can view the content, but certain actions may be restricted.
+        🔒 <strong>Access Restricted:</strong> This operation can only be performed by a <strong>Super Admin</strong>. Other roles, including Admins, Technicians, and Desk users, do not have the necessary permissions.
       </div>
+
       <Tabs
         tabs={tabs}
         selectedTab={selectedTab}

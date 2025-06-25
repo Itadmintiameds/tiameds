@@ -1779,8 +1779,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   });
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const { currentLab, setPatientDetails } = useLabs();
-  const [updatedocorlist, setUpdatedocorlist] = useState<boolean>(false);
+  const { currentLab, setPatientDetails, refreshDocterList } = useLabs();
   const [isGlobalDiscountHidden, setIsGlobalDiscountHidden] = useState<boolean>(false);
 
   useEffect(() => {
@@ -1808,7 +1807,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
       }
     };
     fetchData();
-  }, [currentLab, updatedocorlist]);
+  }, [currentLab,  refreshDocterList]);
 
 
   const calculateAmounts = () => {
@@ -2233,6 +2232,8 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
     }
   };
 
+
+
   if (!tests || !packages || !doctors || !insurances || !currentLab?.id) {
     return <Loader />;
   }
@@ -2258,8 +2259,6 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
           newPatient={newPatient}
           handleChange={handleChange}
           doctors={doctors}
-          updatedocorlist={updatedocorlist}
-          setUpdatedocorlist={setUpdatedocorlist}
         />
       </div>
 

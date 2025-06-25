@@ -1146,9 +1146,10 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
   const [selectedTests, setSelectedTests] = useState<TestList[]>([]);
   const [selectedPackages, setSelectedPackages] = useState<PackageType[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [updatedocorlist, setUpdatedocorlist] = useState<boolean>(false);
+  // const [updatedocorlist, setUpdatedocorlist] = useState<boolean>(false);
   const [isGlobalDiscountHidden, setIsGlobalDiscountHidden] = useState<boolean>(false);
-  const { currentLab, setPatientDetails } = useLabs();
+  // const { currentLab, setPatientDetails } = useLabs();
+  const { currentLab, setPatientDetails, refreshDocterList } = useLabs();
 
   const [editedPatient, setEditedPatient] = useState<Patient>({
     id: 0,
@@ -1351,7 +1352,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         fetchInitialData();
       }
     }
-  }, [editPatientDetails, currentLab]);
+  }, [editPatientDetails, currentLab, refreshDocterList]);
 
   useEffect(() => {
     const hasTestDiscounts = selectedTests.some(test =>
@@ -1648,8 +1649,8 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
           newPatient={editedPatient}
           handleChange={handleChange}
           doctors={doctors}
-          updatedocorlist={updatedocorlist}
-          setUpdatedocorlist={setUpdatedocorlist}
+          // updatedocorlist={updatedocorlist}
+          // setUpdatedocorlist={setUpdatedocorlist}
         />
       </div>
 

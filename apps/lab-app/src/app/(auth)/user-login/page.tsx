@@ -52,7 +52,7 @@ const LoginPage: React.FC = () => {
       // API call
       try {
         const response = await login(formData);
-        // console.log(response.data);
+        console.log(response.data);
         setLoginedUser({
           username: response.data.username,
           email: response.data.email,

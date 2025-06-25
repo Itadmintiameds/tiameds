@@ -76,7 +76,8 @@ import Unauthorised from '@/app/(admin)/component/Unauthorised';
 const Page = () => {
   const { loginedUser } = useLabs();
   const roles = loginedUser?.roles || [];
-  const isAdmin = ['ADMIN', 'DESKROLE'].some(role => roles.includes(role));
+  const isAdmin = ['ADMIN', 'DESKROLE','SUPERADMIN'].some(role => roles.includes(role));
+   
 
   if (!isAdmin) {
     return (

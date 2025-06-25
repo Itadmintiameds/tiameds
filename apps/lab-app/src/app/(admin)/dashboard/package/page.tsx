@@ -70,17 +70,18 @@ const Page = () => {
 
   const roles = loginedUser?.roles || [];
   const isAdmin = roles.includes('ADMIN');
+  const isSuperAdmin = roles.includes('SUPERADMIN');
 
   useEffect(() => {
     // Ensure selectedTab is valid in case role changes
-    if (!isAdmin && selectedTab !== '') {
+    if (!isAdmin && !isSuperAdmin) {
       setSelectedTab('');
     }
   }, [isAdmin]);
 
   return (
     <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
-      {isAdmin ? (
+      {isAdmin || isSuperAdmin ? (
         <Tabs
           tabs={allTabs}
           selectedTab={selectedTab}

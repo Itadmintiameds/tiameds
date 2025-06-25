@@ -306,9 +306,9 @@ const Lab = () => {
                 dataPrivacyAgreement: false,
                 isActive: false
             });
-            router.push('/dashboard');
+            await router.push('/dashboard');
             setErrors({});
-            setRefreshLab(!refreshlab); // Trigger refresh of labs context
+            setRefreshLab(!refreshlab);
             toast.success('Lab created successfully', {
                 position: 'top-right',
                 autoClose: 3000,

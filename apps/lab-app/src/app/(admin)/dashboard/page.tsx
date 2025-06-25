@@ -170,19 +170,19 @@ const Page = () => {
   const { loginedUser } = useLabs();
 
   // Check user roles
+  const isSuperAdmin = loginedUser?.roles?.includes('SUPERADMIN');
   const isAdmin = loginedUser?.roles?.includes('ADMIN');
   const isTechnician = loginedUser?.roles?.includes('TECHNICIAN');
   const isDeskRole = loginedUser?.roles?.includes('DESKROLE');
 
   // Filter tabs based on user role
   const filteredTabs = tabs.filter(tab => {
-    if (isAdmin) return true; // ADMIN gets all tabs
+    if (isAdmin || isSuperAdmin) return true; // ADMIN and SUPERADMIN see all tabs
     if (isTechnician) return tab.id === 'technician'; // TECHNICIAN only gets technician tab
     if (isDeskRole) return tab.id === 'patient'; // DESKROLE only gets patient tab
     return false;
   });
 
-  // Set default tab based on role if current selection isn't available
   useEffect(() => {
     if (filteredTabs.length > 0 && !filteredTabs.some(tab => tab.id === selectedTab)) {
       setSelectedTab(filteredTabs[0].id);
@@ -191,7 +191,7 @@ const Page = () => {
 
   // Render only the component the role should see
   const renderContent = () => {
-    if (isAdmin) {
+    if (isAdmin || isSuperAdmin) {
       switch (selectedTab) {
         case 'patient': return <PatientDashboard />;
         case 'dashboard': return <Statistics />;
@@ -208,7 +208,7 @@ const Page = () => {
     <div className="p-4">
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Show tabs only if user is ADMIN */}
-        {isAdmin && (
+        {isAdmin || isSuperAdmin ? (
           <div className="flex border-b border-gray-200 px-4">
             {tabs.map((tab) => (
               <TabButton
@@ -219,7 +219,7 @@ const Page = () => {
               />
             ))}
           </div>
-        )}
+        ) : null}
 
         {/* Tab Content with Smooth Transition */}
         <div className="px-2 py-4">

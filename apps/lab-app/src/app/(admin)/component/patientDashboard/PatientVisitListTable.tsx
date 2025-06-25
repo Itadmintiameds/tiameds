@@ -484,6 +484,7 @@ const PatientVisitListTable: React.FC = () => {
         modalClassName="max-w-4xl max-h-[90vh] rounded-lg  overflow-y-auto overflow-hidden"
       >
         <PatientDetailsViewComponent />
+      
       </Modal>
 
       <Modal
