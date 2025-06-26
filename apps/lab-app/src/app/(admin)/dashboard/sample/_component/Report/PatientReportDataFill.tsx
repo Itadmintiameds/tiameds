@@ -2976,7 +2976,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
             Reference Range Selection
           </h3>
           <p className="text-sm opacity-90">
-            Select appropriate reference ranges for this patient. You can remove ranges that aren't relevant.
+            Select appropriate reference ranges for this patient. You can remove ranges that aren&lsquo;t relevant.
           </p>
           {selectedPatient.dateOfBirth && (
             <p className="text-xs mt-2 bg-white/20 inline-block px-2 py-1 rounded">
@@ -3008,7 +3008,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
                   <div className="flex items-center text-yellow-800">
                     <TbInfoCircle className="mr-2" size={18} />
                     <div>
-                      <p className="font-medium">No reference ranges found for this patient's gender</p>
+                      <p className="font-medium">No reference ranges found for this patient&lsquo;s gender</p>
                       <p className="text-sm">Please check the test configuration or contact support</p>
                     </div>
                   </div>

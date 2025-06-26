@@ -778,7 +778,7 @@ interface Report {
 }
 
 const A4_WIDTH = 210; // mm
-const A4_HEIGHT = 297; // mm
+// const A4_HEIGHT = 297; // mm
 
 const LabReport = ({ viewPatient }: { viewPatient: PatientData | null }) => {
     const { currentLab } = useLabs();

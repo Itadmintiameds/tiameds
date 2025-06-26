@@ -658,7 +658,7 @@ const AddMemberOnLab = () => {
     }, [currentLab, refreshMembers]);
 
 
-    let isSuperAdmin = members.some(member => member.roles.includes('SUPERADMIN'));
+    const isSuperAdmin = members.some(member => member.roles.includes('SUPERADMIN'));
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });

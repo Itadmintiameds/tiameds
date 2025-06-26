@@ -6,14 +6,13 @@ import { useLabs } from '@/context/LabContext';
 import { Doctor } from '@/types/doctor/doctor';
 import { Packages } from '@/types/package/package';
 import { TestList } from '@/types/test/testlist';
-import { Button } from '@headlessui/react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import React, { useEffect, useRef, useState } from 'react';
-import { FaFilePdf, FaPrint, FaRupeeSign, FaFileInvoiceDollar } from 'react-icons/fa';
+import { FaFileInvoiceDollar, FaFilePdf, FaPrint, FaRupeeSign } from 'react-icons/fa';
 
 const A4_WIDTH = 210; // mm
-const A4_HEIGHT = 297; // mm
+// const A4_HEIGHT = 297; // mm
 
 const PatientDetailsViewComponent = () => {
   const { currentLab, patientDetails } = useLabs();
@@ -128,7 +127,7 @@ const PatientDetailsViewComponent = () => {
     setIsGeneratingPDF(true);
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const scale = 2; // Higher quality
+      // const scale = 2; // Higher quality
 
       const canvas = await html2canvas(invoiceRef.current, {
         useCORS: true,
