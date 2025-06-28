@@ -564,9 +564,8 @@ import Select, { MultiValue } from 'react-select';
 import { toast } from "react-toastify";
 import { createMember, getMembersOfLab, updateMember } from "../../../../../../services/technicianServices";
 import UpdateUserPassword from "./UpdateUserPassword";
+
 // import {memberSchema} from "@/schema/memberSchema";
-
-
 interface FormData {
     username: string;
     firstName: string;
@@ -658,7 +657,8 @@ const AddMemberOnLab = () => {
     }, [currentLab, refreshMembers]);
 
 
-    const isSuperAdmin = members.some(member => member.roles.includes('SUPERADMIN'));
+    const isSuperAdmin = members.some(member => member?.roles?.includes('SUPERADMIN'));
+    const isAdmin = members.some(member => member?.roles?.includes('ADMIN'));
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -711,7 +711,7 @@ const AddMemberOnLab = () => {
                     setRefreshMembers(prev => !prev);
                     toast.success("Member added successfully.");
                 } else {
-                    toast.error("Failed to add member.");
+                    toast.error(response?.error || "Failed to add member.");
                 }
             }
 
@@ -836,21 +836,53 @@ const AddMemberOnLab = () => {
             accessor: (member: Member) => (
                 <>
                     {
-                        !isSuperAdmin ? (<div className="flex space-x-2">
-                            <button
-                                onClick={() => handleEdit(member)}
-                                className="p-1 text-blue-600 hover:text-blue-800"
-                                title="Edit"
-                            >
-                                <FaEdit />
-                            </button>
-                            <button
-                                onClick={() => handleUpdatePassword(member)}
-                                className="p-1 text-red-600 hover:text-red-800"
-                                title="Update Password"
-                            >
-                                <TbLockPassword />
-                            </button>
+                        isSuperAdmin && isAdmin ? (<div className="flex space-x-2">
+                            {
+                                member.roles.includes('SUPERADMIN') ? (
+                                    <button
+                                        onClick={() =>
+                                            toast.error("Cannot edit Super Admin member.",
+                                                { autoClose: 3000, position: "top-center" }
+                                            )}
+
+                                        className="p-1 text-blue-600 hover:text-blue-800"
+                                        title="Edit"
+                                    >
+                                        <FaEdit />
+                                    </button>
+                                ) : (
+
+                                    <button
+                                        onClick={() => handleEdit(member)}
+                                        className="p-1 text-blue-600 hover:text-blue-800"
+                                        title="Edit"
+                                    >
+                                        <FaEdit />
+                                    </button>
+                                )
+                            }
+                            {
+                                member.roles.includes('SUPERADMIN') ? (
+                                    <button
+                                        onClick={() =>
+                                            toast.error("Cannot update password for Super Admin member.",
+                                                { autoClose: 3000, position: "top-center" }
+                                            )}
+                                        className="p-1 text-red-600 hover:text-red-800"
+                                        title="Update Password"
+                                    >
+                                        <TbLockPassword />
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => handleUpdatePassword(member)}
+                                        className="p-1 text-red-600 hover:text-red-800"
+                                        title="Update Password"
+                                    >
+                                        <TbLockPassword />
+                                    </button>
+                                )
+                            }
                         </div>) : ("")
                     }
                 </>
@@ -1027,7 +1059,7 @@ const AddMemberOnLab = () => {
 
                                 <div className="flex space-x-3 pt-4">
                                     {
-                                        isSuperAdmin && (<Button
+                                        isSuperAdmin && isAdmin && (<Button
                                             onClick={() => { }}
                                             type="submit"
                                             className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg"

@@ -1242,3 +1242,531 @@ const SideBar = ({ isOpen, setIsOpen }: SideBarProps) => {
 };
 
 export default SideBar;
+
+
+
+
+
+
+
+
+
+
+// import React from 'react';
+// import { Disclosure, DisclosureButton, DisclosurePanel } from "@headlessui/react";
+// import clsx from "clsx";
+// import Image from "next/image";
+// import Link from "next/link";
+// import { ArrowLeft, ArrowRight, ChevronRightIcon, Sparkles } from "lucide-react";
+// import { navigation } from "./Navigation";
+// import Button from '../common/Button';
+
+// interface SideBarProps {
+//   isOpen: boolean;
+//   setIsOpen: (isOpen: boolean) => void;
+// }
+
+// const SideBar = ({ isOpen, setIsOpen }: SideBarProps) => {
+//   return (
+//     <aside
+//       className={`fixed inset-y-0 left-0 z-30 bg-[#F0F4F8] shadow-2xl transform transition-all duration-300 ease-in-out flex flex-col ${
+//         isOpen ? "w-64" : "w-20"
+//       }`}
+//       style={{
+//         background: `linear-gradient(160deg, #F0F4F8 0%, #E6EDF5 100%)`
+//       }}
+//     >
+//       {/* Sidebar Header with Floating Effect */}
+//       <div className="flex items-center justify-between px-4 py-5 border-b border-gray-200 bg-[#2E4A7D] relative overflow-hidden">
+//         {/* Floating particles background */}
+//         <div className="absolute inset-0 opacity-10">
+//           {[...Array(10)].map((_, i) => (
+//             <div 
+//               key={i}
+//               className="absolute rounded-full bg-white"
+//               style={{
+//                 width: `${Math.random() * 6 + 2}px`,
+//                 height: `${Math.random() * 6 + 2}px`,
+//                 top: `${Math.random() * 100}%`,
+//                 left: `${Math.random() * 100}%`,
+//                 animation: `float ${Math.random() * 10 + 10}s linear infinite`,
+//                 animationDelay: `${Math.random() * 5}s`
+//               }}
+//             />
+//           ))}
+//         </div>
+        
+//         {isOpen ? (
+//           <Link href="/" className="flex items-center space-x-2 group relative z-10">
+//             <div className="relative">
+//               <Image 
+//                 src="/LOGO.svg" 
+//                 alt="Company Logo" 
+//                 width={140} 
+//                 height={40} 
+//                 className="transition-all duration-300 group-hover:opacity-90 drop-shadow-lg"
+//               />
+//               <div className="absolute inset-0 bg-white mix-blend-overlay opacity-0 group-hover:opacity-10 rounded-md transition-opacity duration-300"></div>
+//             </div>
+//           </Link>
+//         ) : (
+//           <Link href="/" className="mx-auto group relative z-10">
+//             <div className="p-1.5 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all relative overflow-hidden">
+//               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_white_0%,_transparent_70%)] opacity-0 group-hover:opacity-15 transition-opacity duration-500"></div>
+//               <Image 
+//                 src="/LOGO.svg"
+//                 alt="Company Logo" 
+//                 width={64} 
+//                 height={64} 
+//                 className="transition-all duration-300 group-hover:rotate-6 group-hover:scale-110"
+//               />
+//             </div>
+//           </Link>
+//         )}
+//         <Button
+//           text=""
+//           onClick={() => setIsOpen(!isOpen)}
+//           aria-label={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+//           className="p-2 hover:bg-white/30 rounded-full transition-all duration-200 shadow-lg backdrop-blur-sm z-10 group relative overflow-hidden"
+//           // tooltip={!isOpen ? "Expand" : undefined}
+//         >
+//           <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-15 transition-opacity duration-300"></div>
+//           {isOpen ? (
+//             <ArrowLeft size={18} className="text-white group-hover:text-gray-200 transition-colors" />
+//           ) : (
+//             <ArrowRight size={18} className="text-white group-hover:text-gray-200 transition-colors" />
+//           )}
+//         </Button>
+//       </div>
+
+//       {/* Navigation */}
+//       <nav className="flex-1 mt-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
+//         <ul className="space-y-2 px-3 py-4">
+//           {navigation.map((item) => (
+//             <li key={item.name}>
+//               {!item.children ? (
+//                 <Link
+//                   href={item.href ?? "#"}
+//                   className={clsx(
+//                     item.current 
+//                       ? "bg-[#2E4A7D] text-white shadow-md ring-1 ring-gray-300" 
+//                       : "text-gray-700 hover:bg-gray-100 hover:text-[#2E4A7D]",
+//                     "flex items-center gap-x-3 px-4 py-3 rounded-xl transition-all duration-200 group relative",
+//                     isOpen ? "justify-start" : "justify-center"
+//                   )}
+//                 >
+//                   {item.current && (
+//                     <div className="absolute -left-1 top-0 w-1 h-full bg-gradient-to-b from-white to-[#5B7FC8] rounded-r-full"></div>
+//                   )}
+//                   {item.icon && (
+//                     <div className={clsx(
+//                       "p-1.5 rounded-lg transition-all duration-200 relative",
+//                       item.current 
+//                         ? "bg-white/30 text-white" 
+//                         : "text-gray-600 group-hover:text-[#2E4A7D]",
+//                       item.current && "shadow-white-glow"
+//                     )}>
+//                       <item.icon className="h-5 w-5 flex-shrink-0" />
+//                       {item.current && (
+//                         <Sparkles className="absolute -right-1 -top-1 h-3 w-3 text-white animate-pulse" />
+//                       )}
+//                     </div>
+//                   )}
+//                   {isOpen && (
+//                     <span className="truncate font-medium transition-opacity duration-200">
+//                       {item.name}
+//                     </span>
+//                   )}
+//                   {!isOpen && (
+//                     <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#2E4A7D] text-white text-sm font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity shadow-xl z-50 whitespace-nowrap">
+//                       {item.name}
+//                       <div className="absolute w-2 h-2 bg-[#2E4A7D] rotate-45 -left-1 top-1/2 -translate-y-1/2"></div>
+//                     </div>
+//                   )}
+//                 </Link>
+//               ) : (
+//                 <Disclosure as="div">
+//                   {({ open }) => (
+//                     <>
+//                       <DisclosureButton
+//                         className={clsx(
+//                           item.current 
+//                             ? "bg-[#2E4A7D] text-white" 
+//                             : "text-gray-700 hover:bg-gray-100 hover:text-[#2E4A7D]",
+//                           "flex items-center w-full gap-x-3 px-4 py-3 rounded-xl transition-all duration-200 group relative",
+//                           isOpen ? "justify-between" : "justify-center"
+//                         )}
+//                       >
+//                         {item.current && (
+//                           <div className="absolute -left-1 top-0 w-1 h-full bg-gradient-to-b from-white to-[#5B7FC8] rounded-r-full"></div>
+//                         )}
+//                         <div className="flex items-center gap-x-3">
+//                           {item.icon && (
+//                             <div className={clsx(
+//                               "p-1.5 rounded-lg transition-all duration-200",
+//                               item.current 
+//                                 ? "bg-white/30 text-white" 
+//                                 : "text-gray-600 group-hover:text-[#2E4A7D]"
+//                             )}>
+//                               <item.icon className="h-5 w-5 flex-shrink-0" />
+//                             </div>
+//                           )}
+//                           {isOpen && (
+//                             <span className="truncate font-medium">
+//                               {item.name}
+//                             </span>
+//                           )}
+//                           {!isOpen && (
+//                             <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#2E4A7D] text-white text-sm font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity shadow-xl z-50 whitespace-nowrap">
+//                               {item.name}
+//                               <div className="absolute w-2 h-2 bg-[#2E4A7D] rotate-45 -left-1 top-1/2 -translate-y-1/2"></div>
+//                             </div>
+//                           )}
+//                         </div>
+//                         {isOpen && (
+//                           <ChevronRightIcon
+//                             className={clsx(
+//                               "h-4 w-4 flex-shrink-0 transition-transform duration-200",
+//                               open ? "rotate-90 transform text-white" : "text-gray-500"
+//                             )}
+//                           />
+//                         )}
+//                       </DisclosureButton>
+//                       {isOpen && (
+//                         <DisclosurePanel 
+//                           as="ul" 
+//                           className="mt-2 ml-3 space-y-2 pl-7 border-l border-gray-200"
+//                         >
+//                           {item.children?.map((subItem) => (
+//                             <li key={subItem.name}>
+//                               <Link
+//                                 href={subItem.href ?? "#"}
+//                                 className={clsx(
+//                                   subItem.current 
+//                                     ? "text-white bg-[#2E4A7D] ring-1 ring-gray-300" 
+//                                     : "text-gray-600 hover:text-[#2E4A7D] hover:bg-gray-100",
+//                                   "flex items-center gap-x-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-200 group"
+//                                 )}
+//                               >
+//                                 {subItem.icon && (
+//                                   <subItem.icon className="h-4 w-4 flex-shrink-0 text-gray-500 group-hover:text-[#2E4A7D]" />
+//                                 )}
+//                                 <span className="truncate">{subItem.name}</span>
+//                                 {subItem.current && (
+//                                   <Sparkles className="ml-auto h-3 w-3 text-white animate-pulse" />
+//                                 )}
+//                               </Link>
+//                             </li>
+//                           ))}
+//                         </DisclosurePanel>
+//                       )}
+//                     </>
+//                   )}
+//                 </Disclosure>
+//               )}
+//             </li>
+//           ))}
+//         </ul>
+//       </nav>
+
+//       {/* Sidebar Footer */}
+//       <div className={clsx(
+//         "p-4 border-t border-gray-200 bg-[#F0F4F8]/80 transition-all duration-300 backdrop-blur-sm",
+//         isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+//       )}>
+//         <div className="flex flex-col items-center">
+//           <div className="text-xs text-[#2E4A7D]/80 mb-1 font-mono flex items-center gap-1">
+//             <span className="inline-block w-2 h-2 rounded-full bg-[#2E4A7D] animate-pulse"></span>
+//             v2.0.0
+//           </div>
+//           <div className="text-[10px] text-[#2E4A7D]/60 tracking-wider">
+//             © {new Date().getFullYear()} TiaMeds Labs
+//           </div>
+//         </div>
+//       </div>
+
+//       <style jsx global>{`
+//         .custom-scrollbar::-webkit-scrollbar {
+//           width: 5px;
+//         }
+//         .custom-scrollbar::-webkit-scrollbar-track {
+//           background: rgba(255, 255, 255, 0.1);
+//         }
+//         .custom-scrollbar::-webkit-scrollbar-thumb {
+//           background: rgba(46, 74, 125, 0.4);
+//           border-radius: 6px;
+//         }
+//         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+//           background: rgba(46, 74, 125, 0.6);
+//         }
+//         .shadow-white-glow {
+//           box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+//         }
+//         @keyframes float {
+//           0% { transform: translateY(0) translateX(0); }
+//           50% { transform: translateY(-20px) translateX(5px); }
+//           100% { transform: translateY(0) translateX(0); }
+//         }
+//       `}</style>
+//     </aside>
+//   );
+// };
+
+// export default SideBar;
+
+
+
+
+
+
+
+
+
+
+// import React from 'react';
+// import { Disclosure, DisclosureButton, DisclosurePanel } from "@headlessui/react";
+// import clsx from "clsx";
+// import Image from "next/image";
+// import Link from "next/link";
+// import { ArrowLeft, ArrowRight, ChevronRightIcon, Sparkles } from "lucide-react";
+// import { navigation } from "./Navigation";
+// import Button from '../common/Button';
+
+// interface SideBarProps {
+//   isOpen: boolean;
+//   setIsOpen: (isOpen: boolean) => void;
+// }
+
+// const SideBar = ({ isOpen, setIsOpen }: SideBarProps) => {
+//   return (
+//     <aside
+//       className={`fixed inset-y-0 left-0 z-30 bg-white shadow-lg transform transition-all duration-300 ease-in-out flex flex-col ${
+//         isOpen ? "w-64" : "w-20"
+//       }`}
+//     >
+//       {/* Sidebar Header with Floating Effect */}
+//       <div className="flex items-center justify-between px-4 py-5 border-b border-gray-200 bg-white relative overflow-hidden">
+//         {/* Floating particles background */}
+//         <div className="absolute inset-0 opacity-10">
+//           {[...Array(10)].map((_, i) => (
+//             <div 
+//               key={i}
+//               className="absolute rounded-full bg-indigo-200"
+//               style={{
+//                 width: `${Math.random() * 6 + 2}px`,
+//                 height: `${Math.random() * 6 + 2}px`,
+//                 top: `${Math.random() * 100}%`,
+//                 left: `${Math.random() * 100}%`,
+//                 animation: `float ${Math.random() * 10 + 10}s linear infinite`,
+//                 animationDelay: `${Math.random() * 5}s`
+//               }}
+//             />
+//           ))}
+//         </div>
+        
+//         {isOpen ? (
+//           <Link href="/" className="flex items-center space-x-2 group relative z-10">
+//             <div className="relative">
+//               <Image 
+//                 src="/LOGO.svg" 
+//                 alt="Company Logo" 
+//                 width={140} 
+//                 height={40} 
+//                 className="transition-all duration-300 group-hover:opacity-90"
+//               />
+//               <div className="absolute inset-0 bg-indigo-100 mix-blend-overlay opacity-0 group-hover:opacity-10 rounded-md transition-opacity duration-300"></div>
+//             </div>
+//           </Link>
+//         ) : (
+//           <Link href="/" className="mx-auto group relative z-10">
+//             <div className="p-1.5 rounded-lg bg-indigo-50 group-hover:bg-indigo-100 transition-all relative overflow-hidden">
+//               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#6366F1_0%,_transparent_70%)] opacity-0 group-hover:opacity-10 transition-opacity duration-500"></div>
+//               <Image 
+//                 src="/LOGO.svg"
+//                 alt="Company Logo" 
+//                 width={64} 
+//                 height={64} 
+//                 className="transition-all duration-300 group-hover:rotate-6 group-hover:scale-110"
+//               />
+//             </div>
+//           </Link>
+//         )}
+//         <Button
+//           text=""
+//           onClick={() => setIsOpen(!isOpen)}
+//           aria-label={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+//           className="p-2 hover:bg-indigo-50 rounded-full transition-all duration-200 shadow-sm z-10 group relative overflow-hidden"
+//         >
+//           <div className="absolute inset-0 bg-indigo-100 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+//           {isOpen ? (
+//             <ArrowLeft size={18} className="text-indigo-600 group-hover:text-indigo-800 transition-colors" />
+//           ) : (
+//             <ArrowRight size={18} className="text-indigo-600 group-hover:text-indigo-800 transition-colors" />
+//           )}
+//         </Button>
+//       </div>
+
+//       {/* Navigation */}
+//       <nav className="flex-1 mt-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
+//         <ul className="space-y-1 px-3 py-4">
+//           {navigation.map((item) => (
+//             <li key={item.name}>
+//               {!item.children ? (
+//                 <Link
+//                   href={item.href ?? "#"}
+//                   className={clsx(
+//                     item.current 
+//                       ? "bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600" 
+//                       : "text-gray-600 hover:bg-indigo-50 hover:text-indigo-700",
+//                     "flex items-center gap-x-3 px-4 py-3 rounded-lg transition-all duration-200 group relative",
+//                     isOpen ? "justify-start" : "justify-center"
+//                   )}
+//                 >
+//                   {item.icon && (
+//                     <div className={clsx(
+//                       "p-1.5 rounded-lg transition-all duration-200 relative",
+//                       item.current 
+//                         ? "text-indigo-600" 
+//                         : "text-gray-500 group-hover:text-indigo-600",
+//                     )}>
+//                       <item.icon className="h-5 w-5 flex-shrink-0" />
+//                       {item.current && (
+//                         <Sparkles className="absolute -right-1 -top-1 h-3 w-3 text-indigo-400 animate-pulse" />
+//                       )}
+//                     </div>
+//                   )}
+//                   {isOpen && (
+//                     <span className="truncate font-medium transition-opacity duration-200">
+//                       {item.name}
+//                     </span>
+//                   )}
+//                   {!isOpen && (
+//                     <div className="absolute left-full ml-3 px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50 whitespace-nowrap">
+//                       {item.name}
+//                       <div className="absolute w-2 h-2 bg-indigo-600 rotate-45 -left-1 top-1/2 -translate-y-1/2"></div>
+//                     </div>
+//                   )}
+//                 </Link>
+//               ) : (
+//                 <Disclosure as="div">
+//                   {({ open }) => (
+//                     <>
+//                       <DisclosureButton
+//                         className={clsx(
+//                           item.current 
+//                             ? "bg-indigo-50 text-indigo-700" 
+//                             : "text-gray-600 hover:bg-indigo-50 hover:text-indigo-700",
+//                           "flex items-center w-full gap-x-3 px-4 py-3 rounded-lg transition-all duration-200 group relative",
+//                           isOpen ? "justify-between" : "justify-center"
+//                         )}
+//                       >
+//                         <div className="flex items-center gap-x-3">
+//                           {item.icon && (
+//                             <div className={clsx(
+//                               "p-1.5 rounded-lg transition-all duration-200",
+//                               item.current 
+//                                 ? "text-indigo-600" 
+//                                 : "text-gray-500 group-hover:text-indigo-600"
+//                             )}>
+//                               <item.icon className="h-5 w-5 flex-shrink-0" />
+//                             </div>
+//                           )}
+//                           {isOpen && (
+//                             <span className="truncate font-medium">
+//                               {item.name}
+//                             </span>
+//                           )}
+//                           {!isOpen && (
+//                             <div className="absolute left-full ml-3 px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50 whitespace-nowrap">
+//                               {item.name}
+//                               <div className="absolute w-2 h-2 bg-indigo-600 rotate-45 -left-1 top-1/2 -translate-y-1/2"></div>
+//                             </div>
+//                           )}
+//                         </div>
+//                         {isOpen && (
+//                           <ChevronRightIcon
+//                             className={clsx(
+//                               "h-4 w-4 flex-shrink-0 transition-transform duration-200",
+//                               open ? "rotate-90 transform text-indigo-600" : "text-gray-400"
+//                             )}
+//                           />
+//                         )}
+//                       </DisclosureButton>
+//                       {isOpen && (
+//                         <DisclosurePanel 
+//                           as="ul" 
+//                           className="mt-1 ml-3 space-y-1 pl-7 border-l border-gray-200"
+//                         >
+//                           {item.children?.map((subItem) => (
+//                             <li key={subItem.name}>
+//                               <Link
+//                                 href={subItem.href ?? "#"}
+//                                 className={clsx(
+//                                   subItem.current 
+//                                     ? "text-indigo-700 bg-indigo-50" 
+//                                     : "text-gray-600 hover:text-indigo-700 hover:bg-indigo-50",
+//                                   "flex items-center gap-x-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-200 group"
+//                                 )}
+//                               >
+//                                 {subItem.icon && (
+//                                   <subItem.icon className="h-4 w-4 flex-shrink-0 text-gray-500 group-hover:text-indigo-600" />
+//                                 )}
+//                                 <span className="truncate">{subItem.name}</span>
+//                                 {subItem.current && (
+//                                   <Sparkles className="ml-auto h-3 w-3 text-indigo-400 animate-pulse" />
+//                                 )}
+//                               </Link>
+//                             </li>
+//                           ))}
+//                         </DisclosurePanel>
+//                       )}
+//                     </>
+//                   )}
+//                 </Disclosure>
+//               )}
+//             </li>
+//           ))}
+//         </ul>
+//       </nav>
+
+//       {/* Sidebar Footer */}
+//       <div className={clsx(
+//         "p-4 border-t border-gray-200 bg-white transition-all duration-300",
+//         isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+//       )}>
+//         <div className="flex flex-col items-center">
+//           <div className="text-xs text-indigo-600/80 mb-1 font-mono flex items-center gap-1">
+//             <span className="inline-block w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+//             v2.0.0
+//           </div>
+//           <div className="text-[10px] text-gray-500 tracking-wider">
+//             © {new Date().getFullYear()} TiaMeds Labs
+//           </div>
+//         </div>
+//       </div>
+
+//       <style jsx global>{`
+//         .custom-scrollbar::-webkit-scrollbar {
+//           width: 5px;
+//         }
+//         .custom-scrollbar::-webkit-scrollbar-track {
+//           background: rgba(255, 255, 255, 0.1);
+//         }
+//         .custom-scrollbar::-webkit-scrollbar-thumb {
+//           background: rgba(99, 102, 241, 0.4);
+//           border-radius: 6px;
+//         }
+//         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+//           background: rgba(99, 102, 241, 0.6);
+//         }
+//         @keyframes float {
+//           0% { transform: translateY(0) translateX(0); }
+//           50% { transform: translateY(-20px) translateX(5px); }
+//           100% { transform: translateY(0) translateX(0); }
+//         }
+//       `}</style>
+//     </aside>
+//   );
+// };
+
+// export default SideBar;

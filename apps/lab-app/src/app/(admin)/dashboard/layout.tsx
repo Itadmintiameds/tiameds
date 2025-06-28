@@ -133,12 +133,12 @@
 "use client";
 import { getUsersLab } from "@/../services/labServices";
 import { useLabs } from '@/context/LabContext';
+import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import useUserStore from "../../../context/userStore";
 import SideBar from "../component/LayoutComponent/SideBar";
 import TopNav from "../component/LayoutComponent/TopNav";
-import { useRouter } from "next/navigation";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -147,7 +147,7 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const [isOpen, setIsOpen] = useState(true);
   const { user, initializeUser } = useUserStore();
-  const { labs, setLabs, currentLab, setCurrentLab, refreshlab} = useLabs();
+  const { labs, setLabs, currentLab, setCurrentLab, refreshlab,setLoginedUser,} = useLabs();
   const router = useRouter();
 
   useEffect(() => {
@@ -157,10 +157,12 @@ const Layout = ({ children }: LayoutProps) => {
         // Check local storage first
         const storedLab = localStorage.getItem('currentLab');
         const storedLabs = localStorage.getItem('userLabs');
+        const getlogedUser = localStorage.getItem('logedUser');
 
         if (storedLab && storedLabs) {
           setLabs(JSON.parse(storedLabs));
           setCurrentLab(JSON.parse(storedLab));
+          setLoginedUser(JSON.parse(getlogedUser || '{}'));
         }
         // Always fetch fresh data but don't wait for it
         const data = await getUsersLab();

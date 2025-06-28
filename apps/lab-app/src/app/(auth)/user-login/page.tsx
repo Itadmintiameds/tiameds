@@ -53,6 +53,8 @@ const LoginPage: React.FC = () => {
       try {
         const response = await login(formData);
         console.log(response.data);
+        // set in localstorage  response.data
+        localStorage.setItem('logedUser', JSON.stringify(response.data));
         setLoginedUser({
           username: response.data.username,
           email: response.data.email,
@@ -71,9 +73,8 @@ const LoginPage: React.FC = () => {
         });
         // Store token in cookies
         // document.cookie = `token=${response.token}; path=/; Secure; HttpOnly`;  // Add Secure and HttpOnly for better security
-  
+
         document.cookie = `token=${response.token}; path=/;`;
-        // console.log('Current Cookies:', document.cookie);
   
         localStorage.setItem('user', JSON.stringify(response?.data)); // Store user in localStorage
         router.push('/dashboard');

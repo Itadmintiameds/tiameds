@@ -327,6 +327,276 @@
 
 
 
+// import Loader from "@/app/(admin)/component/common/Loader";
+// import { useLabs } from "@/context/LabContext";
+// import { PatientData } from "@/types/sample/sample";
+// import { Button } from "@headlessui/react";
+// import html2canvas from "html2canvas";
+// import jsPDF from "jspdf";
+// import { useEffect, useRef, useState } from "react";
+// import { FaPrint } from "react-icons/fa";
+// import { getReportData } from "../../../../../../services/reportServices";
+
+// interface Report {
+//     reportId: number;
+//     id?: string;
+//     visitId: number;
+//     visit_id?: string;
+//     testName: string;
+//     testCategory: string;
+//     labId: number;
+//     patientName?: string;
+//     referenceDescription: string;
+//     referenceRange: string;
+//     referenceAgeRange?: string;
+//     referenceDataAge?: string;
+//     enteredValue: string;
+//     unit: string;
+//     createdBy: number;
+//     updatedBy: number;
+//     createdAt: string;
+//     updatedAt: string;
+// }
+
+// interface ReportViewProps {
+//     viewReportDetailsbyId: number;
+//     viewPatient: PatientData;
+// }
+
+// const A4_WIDTH = 210; // mm
+// const A4_HEIGHT = 297; // mm
+
+// const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => {
+//     const { currentLab } = useLabs();
+//     const [reports, setReports] = useState<Report[]>([]);
+//     const [loading, setLoading] = useState(false);
+//     const reportRef = useRef<HTMLDivElement>(null);
+
+//     useEffect(() => {
+//         if (!currentLab?.id || !viewReportDetailsbyId) return;
+
+//         const fetchData = async () => {
+//             setLoading(true);
+//             try {
+//                 const response = await getReportData(currentLab.id.toString(), viewReportDetailsbyId.toString());
+//                 if (Array.isArray(response)) {
+//                     setReports(response);
+//                 }
+//             } finally {
+//                 setLoading(false);
+//             }
+//         };
+
+//         fetchData();
+//     }, [currentLab, viewPatient]);
+
+//     const printReport = async () => {
+//         if (!reportRef.current) return;
+
+//         setLoading(true);
+
+//         try {
+//             const printElement = reportRef.current.cloneNode(true) as HTMLDivElement;
+//             printElement.style.position = 'absolute';
+//             printElement.style.left = '-9999px';
+//             document.body.appendChild(printElement);
+
+//             const canvas = await html2canvas(printElement, {
+//                 logging: false,
+//                 useCORS: true,
+//                 allowTaint: true
+//             });
+
+//             document.body.removeChild(printElement);
+
+//             const imgData = canvas.toDataURL('image/png');
+//             const pdf = new jsPDF('p', 'mm', 'a4');
+
+//             const imgWidth = A4_WIDTH - 20;
+//             const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+//             pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+
+//             const pdfBlob = pdf.output('blob');
+//             const pdfUrl = URL.createObjectURL(pdfBlob);
+//             window.open(pdfUrl, '_blank');
+
+//         } catch (error) {
+//             console.error('Error generating PDF:', error);
+//         } finally {
+//             setLoading(false);
+//         }
+//     };
+
+//     if (loading) return <Loader type="progress" fullScreen={false} text="Loading report data..." />;
+
+//     const groupedReports = reports.reduce((acc: Record<string, Report[]>, report) => {
+//         if (!acc[report.testName]) {
+//             acc[report.testName] = [];
+//         }
+//         acc[report.testName].push(report);
+//         return acc;
+//     }, {});
+
+//     function calculateAge(dateOfBirth: string): string {
+//         if (!dateOfBirth) return 'N/A';
+//         const dob = new Date(dateOfBirth);
+//         const today = new Date();
+//         let age = today.getFullYear() - dob.getFullYear();
+//         const monthDiff = today.getMonth() - dob.getMonth();
+//         if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+//             age--;
+//         }
+//         return age.toString();
+//     }
+
+//     return (
+//         <div className="max-w-4xl mx-auto">
+//             {/* Action Buttons */}
+//             <div className="flex justify-between items-center mb-4 print:hidden">
+//                 <div className="text-sm text-gray-600">
+//                     {Object.keys(groupedReports).length} tests found
+//                 </div>
+//                 <Button
+//                     onClick={printReport}
+//                     disabled={loading}
+//                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+//                 >
+//                     <FaPrint className="text-lg" />
+//                     {loading ? 'Generating PDF...' : 'Print Report'}
+//                 </Button>
+//             </div>
+
+//             {/* Report Container */}
+//             <div
+//                 ref={reportRef}
+//                 className="bg-white p-8 border border-gray-200 rounded-lg mb-6 shadow-sm"
+//                 style={{
+//                     width: `${A4_WIDTH}mm`,
+//                     minHeight: `${A4_HEIGHT}mm`,
+//                 }}
+//             >
+//                 {/* Watermark Background */}
+//                 <div className="absolute inset-0 opacity-5 pointer-events-none">
+//                     <div className="h-full w-full bg-[url('/tiamed1.svg')] bg-center bg-no-repeat bg-contain"></div>
+//                 </div>
+
+//                 {/* Header */}
+//                 <div className="flex justify-between items-start border-b border-blue-100 pb-6 mb-6">
+//                     <div className="flex items-center">
+//                         <img src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
+//                         <div>
+//                             <h1 className="text-2xl font-bold text-blue-800">{currentLab?.name || 'DIAGNOSTIC LAB'}</h1>
+//                             <p className="text-xs text-gray-600 mt-1">Accredited by NABL | ISO 15189:2012 Certified</p>
+//                         </div>
+//                     </div>
+//                     <div className="text-right bg-blue-50 p-3 rounded-lg">
+//                         <p className="text-xs font-medium text-blue-700">Patient ID: <span className="font-bold">{viewPatient?.visitId || 'N/A'}</span></p>
+//                         <p className="text-xs font-medium text-blue-700">Date: <span className="font-bold">{new Date().toLocaleDateString()}</span></p>
+//                         <p className="text-xs font-medium text-blue-700">Type: <span className="font-bold">{viewPatient?.visitType}</span></p>
+//                         <p className="text-xs font-medium text-blue-700">Statu: <span className="font-bold">{viewPatient?.visitStatus}</span></p>
+//                     </div>
+//                 </div>
+
+//                 {/* Patient Info */}
+//                 <div className="grid grid-cols-4 gap-4 mb-8 bg-blue-50 p-4 rounded-lg">
+//                     <div>
+//                         <p className="text-sm font-medium text-blue-800">Patient Name</p>
+//                         <p className="font-semibold text-gray-900">{viewPatient?.patientname || 'N/A'}</p>
+//                         <p className="text-xs text-gray-600 mt-1">{viewPatient?.contactNumber || ''}</p>
+//                     </div>
+//                     <div>
+//                         <p className="text-sm font-medium text-blue-800">Age/Gender</p>
+//                         <p className="font-semibold text-gray-900">
+//                             {calculateAge(viewPatient?.dateOfBirth || '')} / {viewPatient?.gender || 'N/A'}
+//                         </p>
+//                     </div>
+//                     <div>
+//                         <p className="text-sm font-medium text-blue-800">Referred By</p>
+//                         <p className="font-semibold text-gray-900">DR. SELF</p>
+//                     </div>
+//                     <div>
+//                         <p className="text-sm font-medium text-blue-800">Visit Date</p>
+//                         <p className="font-semibold text-gray-900">{viewPatient?.visitDate || 'N/A'}</p>
+//                     </div>
+//                 </div>
+
+//                 {/* All Test Results */}
+//                 {Object.entries(groupedReports).map(([testName, testResults], index) => (
+//                     <div key={index} className="mb-8">
+//                         {/* Test Header */}
+//                         <div className="mb-4">
+//                             <h2 className="text-xl font-bold text-blue-800 mb-2">{testName}</h2>
+//                             <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-100 rounded-full"></div>
+//                         </div>
+
+//                         {/* Test Results Table */}
+//                         <table className="w-full text-sm mb-6">
+//                             <thead>
+//                                 <tr className="bg-blue-600 text-white">
+//                                     <th className="text-left p-3 font-medium">Parameter</th>
+//                                     <th className="text-left p-3 font-medium">Value</th>
+//                                     <th className="text-left p-3 font-medium">Unit</th>
+//                                     <th className="text-left p-3 font-medium">Reference Range</th>
+//                                 </tr>
+//                             </thead>
+//                             <tbody>
+//                                 {testResults.map((param, idx) => (
+//                                     <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
+//                                         <td className="p-3 border-b border-gray-100 font-medium">{param.referenceDescription}</td>
+//                                         <td className="p-3 border-b border-gray-100 font-bold">{param.enteredValue}</td>
+//                                         <td className="p-3 border-b border-gray-100">{param.unit}</td>
+//                                         <td className="p-3 border-b border-gray-100">{param.referenceRange}</td>
+//                                     </tr>
+//                                 ))}
+//                             </tbody>
+//                         </table>
+//                     </div>
+//                 ))}
+
+//                 {/* Footer */}
+//                 <div className="mt-auto pt-6 border-t border-gray-200">
+//                     <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
+//                         <div className="text-center">
+//                             <p className="text-xs font-medium text-gray-700 mb-2">Lab Technician</p>
+//                             <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+//                                 <span className="text-xs text-gray-500">Signature/Stamp</span>
+//                             </div>
+//                         </div>
+//                         <div className="text-center">
+//                             <p className="text-xs font-medium text-gray-700 mb-2">Authorized Pathologist</p>
+//                             <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+//                                 <span className="text-xs text-gray-500">Dr. Signature/Stamp</span>
+//                             </div>
+//                         </div>
+//                     </div>
+
+//                     <div className="mt-4 text-center">
+//                         <p className="text-xs text-gray-600 mb-1">This is an electronically generated report. No physical signature required.</p>
+//                         <p className="text-xs text-gray-600">For queries: help@nextjen.com | +91 98765 43210 | www.nextjendl.com</p>
+//                         <p className="text-xs font-medium text-blue-600 mt-2">Thank you for choosing {currentLab?.name || 'OUR LAB'}</p>
+//                     </div>
+//                 </div>
+
+//                 {/* divider */}
+//                 <div className="flex justify-between items-center mt-4">
+//                     <div className="flex items-center">
+//                         <img src="/tiamed1.svg" alt="Tiamed Logo" className="h-6 mr-2 opacity-80" />
+//                         <span className="text-xs font-medium text-gray-600">Powered by Tiameds Technology</span>
+//                     </div>
+//                     <div className="text-right">
+//                         <p className="text-xs text-gray-500">Generated on: {new Date().toLocaleString()}</p>
+//                     </div>
+//                 </div>
+//             </div>
+//         </div>
+//     );
+// };
+
+// export default ReportView;
+
+
+
 import Loader from "@/app/(admin)/component/common/Loader";
 import { useLabs } from "@/context/LabContext";
 import { PatientData } from "@/types/sample/sample";
@@ -334,7 +604,8 @@ import { Button } from "@headlessui/react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useEffect, useRef, useState } from "react";
-import { FaPrint } from "react-icons/fa";
+import { FaPrint, FaExclamationTriangle } from "react-icons/fa";
+import { TbInfoCircle } from "react-icons/tb";
 import { getReportData } from "../../../../../../services/reportServices";
 
 interface Report {
@@ -370,6 +641,7 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
     const { currentLab } = useLabs();
     const [reports, setReports] = useState<Report[]>([]);
     const [loading, setLoading] = useState(false);
+    const [hasError, setHasError] = useState(false);
     const reportRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -377,18 +649,26 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
 
         const fetchData = async () => {
             setLoading(true);
+            setHasError(false);
             try {
                 const response = await getReportData(currentLab.id.toString(), viewReportDetailsbyId.toString());
+                // console.log("Fetched report data:", response);
                 if (Array.isArray(response)) {
                     setReports(response);
+                } else {
+                    setReports([]);
                 }
+            } catch (error) {
+                console.error('Error fetching report data:', error);
+                setHasError(true);
+                setReports([]);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchData();
-    }, [currentLab, viewPatient]);
+    }, [currentLab, viewPatient, viewReportDetailsbyId]);
 
     const printReport = async () => {
         if (!reportRef.current) return;
@@ -412,11 +692,13 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF('p', 'mm', 'a4');
 
-            const imgWidth = A4_WIDTH - 20;
+            const imgWidth = A4_WIDTH - 20; // Add margins
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
+            // Add image to PDF with proper positioning
             pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
 
+            // Open PDF in new tab
             const pdfBlob = pdf.output('blob');
             const pdfUrl = URL.createObjectURL(pdfBlob);
             window.open(pdfUrl, '_blank');
@@ -428,7 +710,66 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
         }
     };
 
-    if (loading) return <Loader type="progress" fullScreen={false} text="Loading report data..." />;
+    const calculateAge = (dateOfBirth?: string): string => {
+        if (!dateOfBirth) return 'N/A';
+        try {
+            const dob = new Date(dateOfBirth);
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const monthDiff = today.getMonth() - dob.getMonth();
+
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                age--;
+            }
+            return age.toString();
+        } catch (e) {
+            return 'N/A';
+        }
+    };
+
+    const formatDate = (dateString?: string): string => {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch (e) {
+            return 'N/A';
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center h-64">
+                <Loader type="progress" fullScreen={false} text="Loading report data..." />
+                <p className="mt-4 text-sm text-gray-500">Please wait while we fetch the report details</p>
+            </div>
+        );
+    }
+
+    if (hasError) {
+        return (
+            <div className="flex flex-col items-center justify-center h-64 p-6 text-center bg-red-50 rounded-md border border-red-200 shadow-sm">
+                <TbInfoCircle className="text-red-500 text-4xl mb-4" />
+                <h3 className="text-xl font-bold text-gray-700 mb-2">No Test Results Available</h3>
+                <p className="text-gray-600 mb-2 max-w-md">
+                    The report data for this patient is not available. This could be because:
+                </p>
+                <ul className="text-gray-600 text-sm mb-4 list-disc list-inside max-w-md text-left">
+                    <li>The tests are still being processed</li>
+                    <li>Results are provided as hard copies</li>
+                    <li>No tests were performed during this visit</li>
+                </ul>
+                <p className="text-gray-600 text-sm">
+                    Please check with the lab staff for more information.
+                </p>
+            </div>
+
+        );
+    }
 
     const groupedReports = reports.reduce((acc: Record<string, Report[]>, report) => {
         if (!acc[report.testName]) {
@@ -438,28 +779,18 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
         return acc;
     }, {});
 
-    function calculateAge(dateOfBirth: string): string {
-        if (!dateOfBirth) return 'N/A';
-        const dob = new Date(dateOfBirth);
-        const today = new Date();
-        let age = today.getFullYear() - dob.getFullYear();
-        const monthDiff = today.getMonth() - dob.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-            age--;
-        }
-        return age.toString();
-    }
+    const hasReports = reports.length > 0;
 
     return (
         <div className="max-w-4xl mx-auto">
             {/* Action Buttons */}
             <div className="flex justify-between items-center mb-4 print:hidden">
                 <div className="text-sm text-gray-600">
-                    {Object.keys(groupedReports).length} tests found
+                    {hasReports ? `${Object.keys(groupedReports).length} tests found` : 'No test data available'}
                 </div>
                 <Button
                     onClick={printReport}
-                    disabled={loading}
+                    disabled={loading || !hasReports}
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                     <FaPrint className="text-lg" />
@@ -470,124 +801,179 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
             {/* Report Container */}
             <div
                 ref={reportRef}
-                className="bg-white p-8 border border-gray-200 rounded-lg mb-6 shadow-sm"
+                className="bg-white p-8 border border-gray-200 rounded-lg mb-6 shadow-sm relative"
                 style={{
                     width: `${A4_WIDTH}mm`,
                     minHeight: `${A4_HEIGHT}mm`,
                 }}
             >
-                {/* Watermark Background */}
-                <div className="absolute inset-0 opacity-5 pointer-events-none">
-                    <div className="h-full w-full bg-[url('/tiamed1.svg')] bg-center bg-no-repeat bg-contain"></div>
-                </div>
-
-                {/* Header */}
-                <div className="flex justify-between items-start border-b border-blue-100 pb-6 mb-6">
-                    <div className="flex items-center">
-                        <img src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
-                        <div>
-                            <h1 className="text-2xl font-bold text-blue-800">{currentLab?.name || 'DIAGNOSTIC LAB'}</h1>
-                            <p className="text-xs text-gray-600 mt-1">Accredited by NABL | ISO 15189:2012 Certified</p>
-                        </div>
-                    </div>
-                    <div className="text-right bg-blue-50 p-3 rounded-lg">
-                        <p className="text-xs font-medium text-blue-700">Patient ID: <span className="font-bold">{viewPatient?.visitId || 'N/A'}</span></p>
-                        <p className="text-xs font-medium text-blue-700">Date: <span className="font-bold">{new Date().toLocaleDateString()}</span></p>
-                        <p className="text-xs font-medium text-blue-700">Type: <span className="font-bold">{viewPatient?.visitType}</span></p>
-                        <p className="text-xs font-medium text-blue-700">Statu: <span className="font-bold">{viewPatient?.visitStatus}</span></p>
-                    </div>
-                </div>
-
-                {/* Patient Info */}
-                <div className="grid grid-cols-4 gap-4 mb-8 bg-blue-50 p-4 rounded-lg">
-                    <div>
-                        <p className="text-sm font-medium text-blue-800">Patient Name</p>
-                        <p className="font-semibold text-gray-900">{viewPatient?.patientname || 'N/A'}</p>
-                        <p className="text-xs text-gray-600 mt-1">{viewPatient?.contactNumber || ''}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-blue-800">Age/Gender</p>
-                        <p className="font-semibold text-gray-900">
-                            {calculateAge(viewPatient?.dateOfBirth || '')} / {viewPatient?.gender || 'N/A'}
+                {!hasReports ? (
+                    <div className="flex flex-col items-center justify-center h-full py-20">
+                        <TbInfoCircle className="text-blue-500 text-5xl mb-4" />
+                        <h3 className="text-xl font-bold text-gray-700 mb-2">No Test Results Available</h3>
+                        <p className="text-gray-600 text-center max-w-md mb-4">
+                            The report data for this visit is not available. This could be because:
+                        </p>
+                        <ul className="list-disc text-gray-600 text-left max-w-md space-y-1 pl-5">
+                            <li>The tests are still being processed</li>
+                            <li>Results are provided as hard copies</li>
+                            <li>No tests were performed during this visit</li>
+                        </ul>
+                        <p className="text-gray-600 mt-6 text-center max-w-md">
+                            Please check with the lab staff for more information.
                         </p>
                     </div>
-                    <div>
-                        <p className="text-sm font-medium text-blue-800">Referred By</p>
-                        <p className="font-semibold text-gray-900">DR. SELF</p>
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-blue-800">Visit Date</p>
-                        <p className="font-semibold text-gray-900">{viewPatient?.visitDate || 'N/A'}</p>
-                    </div>
-                </div>
-
-                {/* All Test Results */}
-                {Object.entries(groupedReports).map(([testName, testResults], index) => (
-                    <div key={index} className="mb-8">
-                        {/* Test Header */}
-                        <div className="mb-4">
-                            <h2 className="text-xl font-bold text-blue-800 mb-2">{testName}</h2>
-                            <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-100 rounded-full"></div>
+                ) : (
+                    <>
+                        {/* Watermark Background */}
+                        <div className="absolute inset-0 opacity-5 pointer-events-none">
+                            <div className="h-full w-full bg-[url('/tiamed1.svg')] bg-center bg-no-repeat bg-contain"></div>
                         </div>
 
-                        {/* Test Results Table */}
-                        <table className="w-full text-sm mb-6">
-                            <thead>
-                                <tr className="bg-blue-600 text-white">
-                                    <th className="text-left p-3 font-medium">Parameter</th>
-                                    <th className="text-left p-3 font-medium">Value</th>
-                                    <th className="text-left p-3 font-medium">Unit</th>
-                                    <th className="text-left p-3 font-medium">Reference Range</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {testResults.map((param, idx) => (
-                                    <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
-                                        <td className="p-3 border-b border-gray-100 font-medium">{param.referenceDescription}</td>
-                                        <td className="p-3 border-b border-gray-100 font-bold">{param.enteredValue}</td>
-                                        <td className="p-3 border-b border-gray-100">{param.unit}</td>
-                                        <td className="p-3 border-b border-gray-100">{param.referenceRange}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                ))}
-
-                {/* Footer */}
-                <div className="mt-auto pt-6 border-t border-gray-200">
-                    <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
-                        <div className="text-center">
-                            <p className="text-xs font-medium text-gray-700 mb-2">Lab Technician</p>
-                            <div className="h-12 border-t border-gray-300 flex items-center justify-center">
-                                <span className="text-xs text-gray-500">Signature/Stamp</span>
+                        {/* Header */}
+                        <div className="flex justify-between items-start border-b border-blue-100 pb-6 mb-6">
+                            <div className="flex items-center">
+                                <img src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
+                                <div>
+                                    <h1 className="text-2xl font-bold text-blue-800">{currentLab?.name || 'DIAGNOSTIC LAB'}</h1>
+                                    <p className="text-xs text-gray-600 mt-1">Accredited by NABL | ISO 15189:2012 Certified</p>
+                                </div>
+                            </div>
+                            <div className="text-right bg-blue-50 p-3 rounded-lg">
+                                <p className="text-xs font-medium text-blue-700">Patient ID: <span className="font-bold">{viewPatient?.visitId || 'N/A'}</span></p>
+                                <p className="text-xs font-medium text-blue-700">Date: <span className="font-bold">{new Date().toLocaleDateString()}</span></p>
+                                <p className="text-xs font-medium text-blue-700">Type: <span className="font-bold">{viewPatient?.visitType || 'N/A'}</span></p>
+                                <p className="text-xs font-medium text-blue-700">Status: <span className="font-bold">{viewPatient?.visitStatus || 'N/A'}</span></p>
                             </div>
                         </div>
-                        <div className="text-center">
-                            <p className="text-xs font-medium text-gray-700 mb-2">Authorized Pathologist</p>
-                            <div className="h-12 border-t border-gray-300 flex items-center justify-center">
-                                <span className="text-xs text-gray-500">Dr. Signature/Stamp</span>
+
+                        {/* Patient Info */}
+                        <div className="grid grid-cols-4 gap-4 mb-8 bg-blue-50 p-4 rounded-lg">
+                            <div>
+                                <p className="text-sm font-medium text-blue-800">Patient Name</p>
+                                <p className="font-semibold text-gray-900">{viewPatient?.patientname || 'N/A'}</p>
+                                <p className="text-xs text-gray-600 mt-1">{viewPatient?.contactNumber || 'Contact not provided'}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-blue-800">Age/Gender</p>
+                                <p className="font-semibold text-gray-900">
+                                    {calculateAge(viewPatient?.dateOfBirth)} / {viewPatient?.gender || 'N/A'}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-blue-800">Referred By</p>
+                                <p className="font-semibold text-gray-900">DR. SELF</p>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-blue-800">Visit Date</p>
+                                <p className="font-semibold text-gray-900">{formatDate(viewPatient?.visitDate)}</p>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="mt-4 text-center">
-                        <p className="text-xs text-gray-600 mb-1">This is an electronically generated report. No physical signature required.</p>
-                        <p className="text-xs text-gray-600">For queries: help@nextjen.com | +91 98765 43210 | www.nextjendl.com</p>
-                        <p className="text-xs font-medium text-blue-600 mt-2">Thank you for choosing {currentLab?.name || 'OUR LAB'}</p>
-                    </div>
-                </div>
+                        {/* All Test Results */}
+                        {Object.entries(groupedReports).map(([testName, testResults], index) => (
+                            <div key={index} className="mb-8">
+                                {/* Test Header */}
+                                <div className="mb-4">
+                                    <h2 className="text-xl font-bold text-blue-800 mb-2">{testName}</h2>
+                                    <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-100 rounded-full"></div>
+                                </div>
 
-                {/* divider */}
-                <div className="flex justify-between items-center mt-4">
-                    <div className="flex items-center">
-                        <img src="/tiamed1.svg" alt="Tiamed Logo" className="h-6 mr-2 opacity-80" />
-                        <span className="text-xs font-medium text-gray-600">Powered by Tiameds Technology</span>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-xs text-gray-500">Generated on: {new Date().toLocaleString()}</p>
-                    </div>
-                </div>
+                                {/* Test Results Table */}
+                                <table className="w-full text-sm mb-6">
+                                    <thead>
+                                        <tr className="bg-blue-600 text-white">
+                                            <th className="text-left p-3 font-medium">Parameter</th>
+                                            <th className="text-left p-3 font-medium">Value</th>
+                                            <th className="text-left p-3 font-medium">Unit</th>
+                                            <th className="text-left p-3 font-medium">Reference Range</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {testResults.map((param, idx) => {
+                                            const hasNoDescription = !param.referenceDescription ||
+                                                param.referenceDescription === "No reference description available";
+                                            const hasNoUnit = !param.unit || param.unit === "N/A";
+                                            const hasNoReference = !param.referenceRange ||
+                                                param.referenceRange === "N/A - N/A";
+
+                                            return (
+                                                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
+                                                    <td className="p-3 border-b border-gray-100 font-medium">
+                                                        {hasNoDescription ? (
+                                                            <div className="flex items-center text-yellow-700">
+                                                                <FaExclamationTriangle className="mr-2 text-sm" />
+                                                                <span>Parameter not specified</span>
+                                                            </div>
+                                                        ) : (
+                                                            param.referenceDescription
+                                                        )}
+                                                    </td>
+                                                    <td className="p-3 border-b border-gray-100 font-bold">
+                                                        {param.enteredValue || 'N/A'}
+                                                    </td>
+                                                    <td className="p-3 border-b border-gray-100">
+                                                        {hasNoUnit ? (
+                                                            <span className="text-gray-500 italic">Not specified</span>
+                                                        ) : (
+                                                            param.unit
+                                                        )}
+                                                    </td>
+                                                    <td className="p-3 border-b border-gray-100">
+                                                        {hasNoReference ? (
+                                                            <span className="text-gray-500 italic">Not available</span>
+                                                        ) : (
+                                                            param.referenceRange
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ))}
+
+                        {/* Footer */}
+                        <div className="mt-auto pt-6 border-t border-gray-200">
+                            <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
+                                <div className="text-center">
+                                    <p className="text-xs font-medium text-gray-700 mb-2">Lab Technician</p>
+                                    <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+                                        <span className="text-xs text-gray-500">Signature/Stamp</span>
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-xs font-medium text-gray-700 mb-2">Authorized Pathologist</p>
+                                    <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+                                        <span className="text-xs text-gray-500">Dr. Signature/Stamp</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 text-center">
+                                <p className="text-xs text-gray-600 mb-1">This is an electronically generated report. No physical signature required.</p>
+                                <p className="text-xs text-gray-600">
+                                    For queries: {currentLab?.name || 'help@lab.com'} | {currentLab?.address || '+91 XXXXX XXXXX'}
+                                </p>
+                                <p className="text-xs font-medium text-blue-600 mt-2">
+                                    Thank you for choosing {currentLab?.name || 'OUR LABORATORY'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Footer divider */}
+                        <div className="flex justify-between items-center mt-4">
+                            <div className="flex items-center">
+                                <img src="/tiamed1.svg" alt="Tiamed Logo" className="h-6 mr-2 opacity-80" />
+                                <span className="text-xs font-medium text-gray-600">Powered by Tiameds Technology</span>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs text-gray-500">Generated on: {new Date().toLocaleString()}</p>
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

@@ -761,12 +761,17 @@
 
 
 
+
+
+
 import { useRef, useState, useEffect } from "react";
 import { useLabs } from "@/context/LabContext";
 import { PatientData } from "@/types/sample/sample";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { getReportData } from "../../../../../../../services/reportServices";
+import { TbInfoCircle, TbAlertTriangle } from "react-icons/tb";
+import { toast } from "react-toastify";
 
 interface Report {
     reportId: number;
@@ -778,7 +783,6 @@ interface Report {
 }
 
 const A4_WIDTH = 210; // mm
-// const A4_HEIGHT = 297; // mm
 
 const LabReport = ({ viewPatient }: { viewPatient: PatientData | null }) => {
     const { currentLab } = useLabs();
@@ -794,7 +798,12 @@ const LabReport = ({ viewPatient }: { viewPatient: PatientData | null }) => {
                 const response = await getReportData(currentLab.id.toString(), viewPatient.visitId.toString());
                 if (Array.isArray(response)) {
                     setReports(response);
+                } else {
+                    setReports([]);
                 }
+            } catch (error) {
+                console.error("Error fetching report data:", error);
+                setReports([]);
             } finally {
                 setLoading(false);
             }
@@ -806,11 +815,9 @@ const LabReport = ({ viewPatient }: { viewPatient: PatientData | null }) => {
     const printReport = async () => {
         if (!reportRef.current) return;
 
-        // Show loading state
         setLoading(true);
         
         try {
-            // Create a clone of the report element for printing
             const printElement = reportRef.current.cloneNode(true) as HTMLDivElement;
             printElement.style.position = 'absolute';
             printElement.style.left = '-9999px';
@@ -827,20 +834,18 @@ const LabReport = ({ viewPatient }: { viewPatient: PatientData | null }) => {
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF('p', 'mm', 'a4');
             
-            // Calculate dimensions to fit the page
             const imgWidth = A4_WIDTH - 20;
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
             
-            // Add image to PDF
             pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
             
-            // Open PDF in new tab
             const pdfBlob = pdf.output('blob');
             const pdfUrl = URL.createObjectURL(pdfBlob);
             window.open(pdfUrl, '_blank');
             
         } catch (error) {
             console.error('Error generating PDF:', error);
+            toast.error("Failed to generate PDF");
         } finally {
             setLoading(false);
         }
@@ -863,16 +868,29 @@ const LabReport = ({ viewPatient }: { viewPatient: PatientData | null }) => {
         return acc;
     }, {});
 
+    // Calculate patient age if date of birth is available
+    const calculateAge = (dob: string) => {
+        if (!dob) return null;
+        const birthDate = new Date(dob);
+        const now = new Date();
+        let years = now.getFullYear() - birthDate.getFullYear();
+        if (now.getMonth() < birthDate.getMonth() || 
+            (now.getMonth() === birthDate.getMonth() && now.getDate() < birthDate.getDate())) {
+            years--;
+        }
+        return years;
+    };
+
     return (
         <div className="max-w-4xl mx-auto">
             {/* Print Button */}
             <div className="flex justify-between items-center mb-4 print:hidden">
                 <div className="text-sm text-gray-600">
-                    {Object.keys(groupedReports).length} tests found
+                    {reports.length > 0 ? `${Object.keys(groupedReports).length} tests found` : 'No test data available'}
                 </div>
                 <button
                     onClick={printReport}
-                    disabled={loading}
+                    disabled={loading || reports.length === 0}
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center disabled:opacity-50"
                 >
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -891,115 +909,159 @@ const LabReport = ({ viewPatient }: { viewPatient: PatientData | null }) => {
                     minHeight: '297mm',
                 }}
             >
-                {/* Watermark Background */}
-                <div className="absolute inset-0 opacity-5 pointer-events-none">
-                    <div className="h-full w-full bg-[url('/tiamed1.svg')] bg-center bg-no-repeat bg-contain"></div>
-                </div>
+                {/* Show message if no reports available */}
+                {reports.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full py-20">
+                        <TbInfoCircle className="text-blue-500 text-5xl mb-4" />
+                        <h3 className="text-xl font-bold text-gray-700 mb-2">No Test Results Available</h3>
+                        <p className="text-gray-600 text-center max-w-md">
+                            The report data for this visit is not available. This could be because:
+                        </p>
+                        <ul className="list-disc text-gray-600 mt-2 pl-5 text-left max-w-md">
+                            <li>The tests are still being processed</li>
+                            <li>Results are provided as hard copies</li>
+                            <li>No tests were performed during this visit</li>
+                        </ul>
+                        <p className="text-gray-600 mt-4 text-center max-w-md">
+                            Please check with the lab staff for more information.
+                        </p>
+                    </div>
+                )}
 
-                {/* Header */}
-                <div className="flex justify-between items-start border-b border-blue-100 pb-6 mb-6">
-                    <div className="flex items-center">
-                        <img src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
-                        <div>
-                            <h1 className="text-2xl font-bold text-blue-800">NEXTJEN DIAGNOSTICS</h1>
-                            <p className="text-xs text-gray-600 mt-1">Accredited by NABL | ISO 15189:2012 Certified</p>
-                        </div>
-                    </div>
-                    <div className="text-right bg-blue-50 p-3 rounded-lg">
-                        <p className="text-xs font-medium text-blue-700">Report ID: <span className="font-bold">{viewPatient?.visitId || 'N/A'}</span></p>
-                        <p className="text-xs font-medium text-blue-700">Date: <span className="font-bold">{new Date().toLocaleDateString()}</span></p>
-                    </div>
-                </div>
-
-                {/* Patient Info */}
-                <div className="grid grid-cols-3 gap-4 mb-8 bg-blue-50 p-4 rounded-lg">
-                    <div>
-                        <p className="text-sm font-medium text-blue-800">Patient Name</p>
-                        <p className="text-lg font-semibold text-gray-900">{viewPatient?.patientname || 'N/A'}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-blue-800">Age/Gender</p>
-                        <p className="text-lg font-semibold text-gray-900">35 / Male</p>
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-blue-800">Referred By</p>
-                        <p className="text-lg font-semibold text-gray-900">DR. SELF</p>
-                    </div>
-                </div>
-
-                {/* All Test Results */}
-                {Object.entries(groupedReports).map(([testName, testResults], index) => (
-                    <div key={index} className="mb-8">
-                        {/* Test Header */}
-                        <div className="mb-4">
-                            <h2 className="text-xl font-bold text-blue-800 mb-2">{testName}</h2>
-                            <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-100 rounded-full"></div>
+                {/* Only show report content if there are reports */}
+                {reports.length > 0 && (
+                    <>
+                        {/* Watermark Background */}
+                        <div className="absolute inset-0 opacity-5 pointer-events-none">
+                            <div className="h-full w-full bg-[url('/tiamed1.svg')] bg-center bg-no-repeat bg-contain"></div>
                         </div>
 
-                        {/* Test Results Table */}
-                        <table className="w-full text-sm mb-6">
-                            <thead>
-                                <tr className="bg-blue-600 text-white">
-                                    <th className="text-left p-3 font-medium">Parameter</th>
-                                    <th className="text-left p-3 font-medium">Value</th>
-                                    <th className="text-left p-3 font-medium">Unit</th>
-                                    <th className="text-left p-3 font-medium">Reference Range</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {testResults.map((param, idx) => {
-                                    // Implement your actual range checking logic here
-                                    const isOutOfRange = false; // Replace with actual range check
-                                    return (
-                                        <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
-                                            <td className="p-3 border-b border-gray-100 font-medium">{param.referenceDescription}</td>
-                                            <td className={`p-3 border-b border-gray-100 ${isOutOfRange ? 'font-bold text-red-600' : ''}`}>
-                                                {param.enteredValue}
-                                            </td>
-                                            <td className="p-3 border-b border-gray-100">{param.unit}</td>
-                                            <td className="p-3 border-b border-gray-100">{param.referenceRange}</td>
+                        {/* Header */}
+                        <div className="flex justify-between items-start border-b border-blue-100 pb-6 mb-6">
+                            <div className="flex items-center">
+                                <img src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
+                                <div>
+                                    <h1 className="text-2xl font-bold text-blue-800">NEXTJEN DIAGNOSTICS</h1>
+                                    <p className="text-xs text-gray-600 mt-1">Accredited by NABL | ISO 15189:2012 Certified</p>
+                                </div>
+                            </div>
+                            <div className="text-right bg-blue-50 p-3 rounded-lg">
+                                <p className="text-xs font-medium text-blue-700">Report ID: <span className="font-bold">{viewPatient?.visitId || 'N/A'}</span></p>
+                                <p className="text-xs font-medium text-blue-700">Date: <span className="font-bold">{new Date().toLocaleDateString()}</span></p>
+                            </div>
+                        </div>
+
+                        {/* Patient Info */}
+                        <div className="grid grid-cols-3 gap-4 mb-8 bg-blue-50 p-4 rounded-lg">
+                            <div>
+                                <p className="text-sm font-medium text-blue-800">Patient Name</p>
+                                <p className="text-lg font-semibold text-gray-900">{viewPatient?.patientname || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-blue-800">Age/Gender</p>
+                                <p className="text-lg font-semibold text-gray-900">
+                                    {viewPatient?.dateOfBirth ? `${calculateAge(viewPatient.dateOfBirth)} years` : 'N/A'} / {viewPatient?.gender || 'N/A'}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-blue-800">Referred By</p>
+                                <p className="text-lg font-semibold text-gray-900">DR. SELF</p>
+                            </div>
+                        </div>
+
+                        {/* All Test Results */}
+                        {Object.entries(groupedReports).map(([testName, testResults], index) => (
+                            <div key={index} className="mb-8">
+                                {/* Test Header */}
+                                <div className="mb-4">
+                                    <h2 className="text-xl font-bold text-blue-800 mb-2">{testName}</h2>
+                                    <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-100 rounded-full"></div>
+                                </div>
+
+                                {/* Test Results Table */}
+                                <table className="w-full text-sm mb-6">
+                                    <thead>
+                                        <tr className="bg-blue-600 text-white">
+                                            <th className="text-left p-3 font-medium">Parameter</th>
+                                            <th className="text-left p-3 font-medium">Value</th>
+                                            <th className="text-left p-3 font-medium">Unit</th>
+                                            <th className="text-left p-3 font-medium">Reference Range</th>
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                ))}
+                                    </thead>
+                                    <tbody>
+                                        {testResults.map((param, idx) => {
+                                            const hasNoDescription = !param.referenceDescription || 
+                                                param.referenceDescription === "No reference description available";
+                                            
+                                            const isOutOfRange = false; // Replace with actual range check
+                                            
+                                            return (
+                                                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
+                                                    <td className="p-3 border-b border-gray-100 font-medium">
+                                                        {hasNoDescription ? (
+                                                            <div className="flex items-center text-yellow-700">
+                                                                <TbAlertTriangle className="mr-1" />
+                                                                <span>Parameter not specified</span>
+                                                            </div>
+                                                        ) : (
+                                                            param.referenceDescription
+                                                        )}
+                                                    </td>
+                                                    <td className={`p-3 border-b border-gray-100 ${isOutOfRange ? 'font-bold text-red-600' : ''}`}>
+                                                        {param.enteredValue}
+                                                    </td>
+                                                    <td className="p-3 border-b border-gray-100">
+                                                        {param.unit || 'N/A'}
+                                                    </td>
+                                                    <td className="p-3 border-b border-gray-100">
+                                                        {param.referenceRange || (
+                                                            <span className="text-gray-500 italic">Not available</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ))}
 
-                {/* Footer */}
-                <div className="mt-auto pt-6 border-t border-gray-200">
-                    <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
-                        <div className="text-center">
-                            <p className="text-xs font-medium text-gray-700 mb-2">Lab Technician</p>
-                            <div className="h-12 border-t border-gray-300 flex items-center justify-center">
-                                <span className="text-xs text-gray-500">Signature/Stamp</span>
+                        {/* Footer */}
+                        <div className="mt-auto pt-6 border-t border-gray-200">
+                            <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
+                                <div className="text-center">
+                                    <p className="text-xs font-medium text-gray-700 mb-2">Lab Technician</p>
+                                    <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+                                        <span className="text-xs text-gray-500">Signature/Stamp</span>
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-xs font-medium text-gray-700 mb-2">Authorized Pathologist</p>
+                                    <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+                                        <span className="text-xs text-gray-500">Dr. Signature/Stamp</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 text-center">
+                                <p className="text-xs text-gray-600 mb-1">This is an electronically generated report. No physical signature required.</p>
+                                <p className="text-xs text-gray-600">For queries: help@nextjen.com | +91 98765 43210 | www.nextjendl.com</p>
+                                <p className="text-xs font-medium text-blue-600 mt-2">Thank you for choosing NEXTJEN DIAGNOSTICS</p>
                             </div>
                         </div>
-                        <div className="text-center">
-                            <p className="text-xs font-medium text-gray-700 mb-2">Authorized Pathologist</p>
-                            <div className="h-12 border-t border-gray-300 flex items-center justify-center">
-                                <span className="text-xs text-gray-500">Dr. Signature/Stamp</span>
+
+                        {/* divider */}
+                        <div className="flex justify-between items-center mt-4">
+                            <div className="flex items-center">
+                                <img src="/tiamed1.svg" alt="Tiamed Logo" className="h-6 mr-2 opacity-80" />
+                                <span className="text-xs font-medium text-gray-600">Powered by Tiameds Technology</span>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs text-gray-500">Generated on: {new Date().toLocaleString()}</p>
                             </div>
                         </div>
-                    </div>
-
-                    <div className="mt-4 text-center">
-                        <p className="text-xs text-gray-600 mb-1">This is an electronically generated report. No physical signature required.</p>
-                        <p className="text-xs text-gray-600">For queries: help@nextjen.com | +91 98765 43210 | www.nextjendl.com</p>
-                        <p className="text-xs font-medium text-blue-600 mt-2">Thank you for choosing NEXTJEN DIAGNOSTICS</p>
-                    </div>
-                </div>
-
-                {/* divider */}
-                <div className="flex justify-between items-center mt-4">
-                    <div className="flex items-center">
-                        <img src="/tiamed1.svg" alt="Tiamed Logo" className="h-6 mr-2 opacity-80" />
-                        <span className="text-xs font-medium text-gray-600">Powered by Tiameds Technology</span>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-xs text-gray-500">Generated on: {new Date().toLocaleString()}</p>
-                    </div>
-                </div>
+                    </>
+                )}
             </div>
         </div>
     );

@@ -2,6 +2,26 @@ import api from '@/utils/api';
 
 import { Patient } from '@/types/patient/patient';
 
+interface ApiResponse {
+    data: Patient[];
+    message: string;
+    status: string;
+}
+
+export const getAllPatientVisitsByDateRange = async (labId: number, startDate: string, endDate: string): Promise<Patient[]> => {
+    try {
+        const response = await api.get<ApiResponse>(`/lab/${labId}/datewise-lab-visits`, {
+            params: {
+                startDate,
+                endDate
+            }
+        });
+        return response.data.data || [];
+    } catch (error: unknown) {
+        throw new Error('An error occurred while fetching visits by date range.');
+    }
+}
+
 export const getPatient = async (labId: number) => {
     try {
         const response = await api.get(`/lab/${labId}/patients`);
@@ -42,6 +62,21 @@ export const getAllVisits = async (labId: number) => {
 }
 
 
+// get all patient visits by  data range
+export const getAllPatientVisitsByDateRangeoflab = async (labId: number, startDate: string, endDate: string) => {
+    try {
+        const response = await api.get(`/lab/${labId}/datewise-lab-visits`, {
+            params: {
+                startDate,
+                endDate
+            }
+        });
+        // Ensure we always return an array, even if data is missing
+        return Array.isArray(response.data?.data) ? response.data.data : [];
+    } catch (error: unknown) {
+        throw new Error('An error occurred while fetching visits by date range.');
+    }
+}
 // /lab/2/add-patient
 export const addPatient = async (labId: number, patient: Patient) => {
     console.log(patient, 'patient in addPatient');
