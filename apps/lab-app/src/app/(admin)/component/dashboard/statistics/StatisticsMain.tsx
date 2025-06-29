@@ -409,7 +409,7 @@ import {
 } from 'react-icons/fa';
 import { getLabStatsData } from '../../../../../../services/statusServices';
 import Loader from '../../common/Loader';
-import BarGraph from "./BarGraph";
+// import BarGraph from "./BarGraph";
 import PieChartStatus from "./PieChartStatus";
 
 const TopStats = ({ stats }: { stats: { name: string; value: number | string; icon: JSX.Element }[] }) => {
