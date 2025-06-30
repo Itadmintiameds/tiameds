@@ -28,12 +28,19 @@ export interface TestReferancePoint {
     minReferenceRange: number;
     maxReferenceRange: number;
     ageMin: number;
-    ageMax: number;
-    createdBy: string;
-    updatedBy: string;
-    createdAt: string;
-    updatedAt: string;
-    minAgeUnit: string;
-    maxAgeUnit: string;
+    // ageMax: number;
+    // createdBy: string;
+    // updatedBy: string;
+    // createdAt: string;
+    // updatedAt: string;
+    // minAgeUnit: string;
+    // maxAgeUnit: string;
+    ageMax?: number; // Made optional
+    createdBy?: string; // Made optional
+    updatedBy?: string; // Made optional
+    createdAt?: string; // Made optional
+    updatedAt?: string; // Made optional
+    minAgeUnit?: string; // Made optional
+    maxAgeUnit?: string; // Made optional
 
 }
