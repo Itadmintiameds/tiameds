@@ -232,7 +232,7 @@ const Unauthorised = ({
               className="space-y-3"
             >
               <Link
-                href="/"
+                href="/dashboard"
                 className={`flex items-center justify-center px-6 py-3 rounded-lg bg-${color}-600 text-white hover:bg-${color}-700 transition-colors text-sm font-medium shadow-sm`}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />

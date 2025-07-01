@@ -105,8 +105,8 @@ const TableComponent = <T,>({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {data.length > 0 ? (
-              data.map((item, rowIndex) => (
+            {data?.length > 0 ? (
+              data?.map((item, rowIndex) => (
                 <tr 
                   key={rowIndex} 
                   className={`transition-colors duration-150 ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100`}

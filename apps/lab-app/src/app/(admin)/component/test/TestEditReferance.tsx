@@ -38,7 +38,7 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                         <input
                             type="text"
                             name="testDescription"
-                            value={formData.testDescription}
+                            value={formData.testDescription.toLocaleUpperCase()}
                             onChange={handleChange}
                             className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
                             placeholder="Test description"
@@ -56,7 +56,7 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                         >
                             <option value="M">Male</option>
                             <option value="F">Female</option>
-                            <option value="O">Unisex</option>
+                            {/* <option value="O">Unisex</option> */}
                         </select>
                     </div>
 
@@ -108,8 +108,6 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                 type="number"
                                 name="ageMax"
                                 min="0"
-                                // max={formData.ageMin || 100} // Ensure max age is not less than min age
-                                max={100} // Assuming a max age limit of 100 for simplicity
                                 value={formData.ageMax}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
@@ -137,7 +135,7 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                 type="number"
                                 name="minReferenceRange"
                                 min={0}
-                                max={100}
+                                // max={100}
                                 value={formData.minReferenceRange}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"

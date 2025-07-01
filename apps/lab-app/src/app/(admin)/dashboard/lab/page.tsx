@@ -1,193 +1,18 @@
-// 'use client';
-// import Tabs from '@/app/(admin)/component/common/TabComponent';
-// import { useState } from 'react';
-// import { FaFlask } from "react-icons/fa6";
-// import { GrDocumentTest } from "react-icons/gr";
-// import Lab from '../../component/lab/Lab';
-// import LabList from '../../component/lab/LabList';
-// import { FaDownload } from "react-icons/fa";
-// import { MdLibraryBooks } from "react-icons/md";
-// import TestPriceList from '../../component/lab/TestPriceList';
-// import TestReferanceList from '../../component/lab/TestReferanceList';
-
-// interface Lab {
-//   id: string;
-//   label: string;
-//   icon: JSX.Element;
-// }
-// const tabs: Lab[] = [
-//   { id: 'Lab Create', label: 'Create New Lab', icon: <FaFlask className="text-xl" /> },
-//   { id: 'Lab List', label: 'Lab List', icon: <GrDocumentTest className="text-xl" /> },
-//   { id: 'Download Test', label: 'Test Price List', icon: <FaDownload className="text-xl" /> },
-//   { id: 'Test Reference Parameters', label: 'Test Reference Parameters', icon: <MdLibraryBooks className="text-xl" /> },
-// ];
-
-// const Page = () => {
-//   const [selectedTab, setSelectedTab] = useState<string>('Lab Create');
-
-//   return (
-//     <>
-//       <Tabs
-//         tabs={tabs}
-//         selectedTab={selectedTab}
-//         onTabChange={setSelectedTab}
-//       >
-//         {selectedTab === 'Lab Create' && <Lab />}
-//         {selectedTab === 'Lab List' && <LabList />}
-//         {selectedTab === 'Download Test' && <TestPriceList />}
-//         {selectedTab === 'Test Reference Parameters' && <TestReferanceList />}
-//       </Tabs>
-//     </>
-//   );
-// };
-
-// export default Page;
-
-
-// 'use client';
-
-// import { useState } from 'react';
-// import { FaFlask, FaDownload } from "react-icons/fa";
-// import { GrDocumentTest } from "react-icons/gr";
-// import { MdLibraryBooks } from "react-icons/md";
-// import { RiTestTubeFill } from "react-icons/ri";
-// import { motion } from 'framer-motion';
-
-// import Lab from '../../component/lab/Lab';
-// import LabList from '../../component/lab/LabList';
-// import TestPriceList from '../../component/lab/TestPriceList';
-// import TestReferanceList from '../../component/lab/TestReferanceList';
-// import Unauthorised from '@/app/(admin)/component/Unauthorised';
-// import { useLabs } from '@/context/LabContext';
-
-// interface LabTab {
-//   id: string;
-//   label: string;
-//   icon: JSX.Element;
-//   color: string;
-// }
-
-// const allTabs: LabTab[] = [
-//   { id: 'Lab Create', label: 'Create New Lab', icon: <FaFlask className="text-xl" />, color: 'text-blue-500 hover:text-blue-600' },
-//   { id: 'Lab List', label: 'Lab List', icon: <GrDocumentTest className="text-xl" />, color: 'text-green-500 hover:text-green-600' },
-//   { id: 'Download Test', label: 'Test Price List', icon: <FaDownload className="text-xl" />, color: 'text-purple-500 hover:text-purple-600' },
-//   { id: 'Test Reference Parameters', label: 'Test Reference', icon: <MdLibraryBooks className="text-xl" />, color: 'text-orange-500 hover:text-orange-600' },
-// ];
-
-// const Page = () => {
-//   const { loginedUser } = useLabs();
-//   const roles = loginedUser?.roles || [];
-
-//   const isAdmin = roles.includes('ADMIN');
-//   const isTechnician = roles.includes('TECHNICIAN');
-//   // const isDesk = roles.includes('DESKROLE');
-
-//   // Show Unauthorised for DeskRole or any unknown roles
-//   if (!isAdmin && !isTechnician) {
-//     return (
-//       <Unauthorised
-//         username={loginedUser?.username || ''}
-//         currentRoles={roles}
-//         notallowedRoles={['DESKROLE']}
-//         allowedRoles={['ADMIN', 'TECHNICIAN']}
-//       />
-//     );
-//   }
-
-//   // Tabs to display based on role
-//   const tabsToShow = isAdmin
-//     ? allTabs
-//     : isTechnician
-//     ? allTabs.filter(tab =>
-//         ['Download Test', 'Test Reference Parameters'].includes(tab.id)
-//       )
-//     : [];
-
-//   // const [selectedTab, setSelectedTab] = useState<string>(tabsToShow[0]?.id || '');
-//   const [selectedTab, setSelectedTab] = useState<string>(tabsToShow[0]?.id || '');
-//   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
-
-//   return (
-//     <div className="p-4 bg-gray-50 rounded-lg shadow-sm">
-//       <div className="mb-6 flex items-center gap-3">
-//         <RiTestTubeFill className="text-3xl text-indigo-600" />
-//         <h1 className="text-2xl font-bold text-gray-800">Laboratory Settings</h1>
-//       </div>
-
-//       <div className="relative">
-//         <div className="flex space-x-1 border-b border-gray-200">
-//           {tabsToShow.map((tab) => (
-//             <button
-//               key={tab.id}
-//               onClick={() => setSelectedTab(tab.id)}
-//               onMouseEnter={() => setHoveredTab(tab.id)}
-//               onMouseLeave={() => setHoveredTab(null)}
-//               className={`relative px-4 py-2.5 flex items-center gap-2 text-sm font-medium transition-all duration-200 ${selectedTab === tab.id ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'} ${tab.color}`}
-//             >
-//               <span className="z-10 flex items-center gap-2">
-//                 {tab.icon}
-//                 {tab.label}
-//               </span>
-//               {selectedTab === tab.id && (
-//                 <motion.div 
-//                   layoutId="activeTab"
-//                   className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600"
-//                   transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-//                 />
-//               )}
-//               {hoveredTab === tab.id && selectedTab !== tab.id && (
-//                 <motion.div 
-//                   className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-300"
-//                   initial={{ opacity: 0 }}
-//                   animate={{ opacity: 1 }}
-//                   exit={{ opacity: 0 }}
-//                 />
-//               )}
-//             </button>
-//           ))}
-//         </div>
-//       </div>
-
-//       <motion.div
-//         key={selectedTab}
-//         initial={{ opacity: 0, y: 10 }}
-//         animate={{ opacity: 1, y: 0 }}
-//         exit={{ opacity: 0, y: -10 }}
-//         transition={{ duration: 0.2 }}
-//         className="mt-6"
-//       >
-//         {selectedTab === 'Lab Create' && <Lab />}
-//         {selectedTab === 'Lab List' && <LabList />}
-//         {selectedTab === 'Download Test' && <TestPriceList />}
-//         {selectedTab === 'Test Reference Parameters' && <TestReferanceList />}
-//       </motion.div>
-//     </div>
-//   );
-// };
-
-// export default Page;
-
-
-
-
-
-
-
 'use client';
 
-import { useState } from 'react';
-import { FaFlask, FaDownload } from "react-icons/fa";
+import React, { useEffect } from 'react';
+import Tabs from '@/app/(admin)/component/common/TabComponent';
+import Loader from '../../component/common/Loader';
+import Unauthorised from '../../component/Unauthorised';
+import { useLabs } from '@/context/LabContext';
+import { FaFlask } from "react-icons/fa6";
 import { GrDocumentTest } from "react-icons/gr";
+import { FaDownload } from "react-icons/fa";
 import { MdLibraryBooks } from "react-icons/md";
-import { RiTestTubeFill } from "react-icons/ri";
-import { motion } from 'framer-motion';
-
 import Lab from '../../component/lab/Lab';
 import LabList from '../../component/lab/LabList';
 import TestPriceList from '../../component/lab/TestPriceList';
 import TestReferanceList from '../../component/lab/TestReferanceList';
-import Unauthorised from '@/app/(admin)/component/Unauthorised';
-import { useLabs } from '@/context/LabContext';
 
 interface LabTab {
   id: string;
@@ -197,111 +22,97 @@ interface LabTab {
 }
 
 const allTabs: LabTab[] = [
-  { id: 'Lab Create', label: 'Create New Lab', icon: <FaFlask className="text-xl" />, color: 'text-blue-500 hover:text-blue-600' },
-  { id: 'Lab List', label: 'Lab List', icon: <GrDocumentTest className="text-xl" />, color: 'text-green-500 hover:text-green-600' },
-  { id: 'Download Test', label: 'Test Price List', icon: <FaDownload className="text-xl" />, color: 'text-purple-500 hover:text-purple-600' },
-  { id: 'Test Reference Parameters', label: 'Test Reference', icon: <MdLibraryBooks className="text-xl" />, color: 'text-orange-500 hover:text-orange-600' },
+  {
+    id: 'Lab Create',
+    label: 'Create New Lab',
+    icon: <FaFlask className="text-xl" />,
+    color: 'text-blue-500 hover:text-blue-600',
+  },
+  {
+    id: 'Lab List',
+    label: 'Lab List',
+    icon: <GrDocumentTest className="text-xl" />,
+    color: 'text-green-500 hover:text-green-600',
+  },
+  {
+    id: 'Download Test',
+    label: 'Test Price List',
+    icon: <FaDownload className="text-xl" />,
+    color: 'text-purple-500 hover:text-purple-600',
+  },
+  {
+    id: 'Test Reference Parameters',
+    label: 'Test Reference',
+    icon: <MdLibraryBooks className="text-xl" />,
+    color: 'text-orange-500 hover:text-orange-600',
+  },
 ];
 
 const Page = () => {
+  const [selectedTab, setSelectedTab] = React.useState<string>('Lab Create');
+  const [loading, setLoading] = React.useState<boolean>(false);
   const { loginedUser } = useLabs();
-  const roles = loginedUser?.roles || [];
 
+  const roles = loginedUser?.roles || [];
   const isSuperAdmin = roles.includes('SUPERADMIN');
   const isAdmin = roles.includes('ADMIN');
-  const isTechnician = roles.includes('TECHNICIAN');
-  const isDesk = roles.includes('DESKROLE');
+  // const isTechnician = roles.includes('TECHNICIAN');
+  // const isDeskRole = roles.includes('DESKROLE');
 
   // Filter tabs based on user role
-  const tabsToShow = isSuperAdmin
-    ? allTabs // SUPERADMIN sees all tabs
-    : isAdmin
-    ? allTabs.filter(tab => tab.id !== 'Lab Create') // ADMIN sees all except Lab Create
-    : isTechnician
-    ? allTabs.filter(tab => tab.id === 'Test Reference Parameters') // TECHNICIAN only sees Test Reference
-    : isDesk
-    ? allTabs.filter(tab => tab.id === 'Download Test') // DESKROLE only sees Test Price List
-    : [];
+  const filteredTabs = allTabs.filter(tab => {
+    if (isSuperAdmin) return true; // Super admin sees all tabs
+    if (isAdmin) return ['Download Test', 'Test Reference Parameters'].includes(tab.id); // Admin sees only last two tabs
+    return false; // Others see nothing
+  });
 
-  const [selectedTab, setSelectedTab] = useState<string>(tabsToShow[0]?.id || '');
-  const [hoveredTab, setHoveredTab] = useState<string | null>(null);
+  // Set default tab if selected is not allowed
+  useEffect(() => {
+    if (filteredTabs.length > 0 && !filteredTabs.some(tab => tab.id === selectedTab)) {
+      setSelectedTab(filteredTabs[0].id);
+    }
+  }, [filteredTabs, selectedTab]);
 
-  // Early return for unauthorized users (no matching roles)
-  if (!isSuperAdmin && !isAdmin && !isTechnician && !isDesk) {
+  const handleTabChange = (tabId: string) => {
+    setLoading(true);
+    setTimeout(() => {
+      setSelectedTab(tabId);
+      setLoading(false);
+    }, 300);
+  };
+
+  // Authorization logic - Only SUPERADMIN and ADMIN allowed
+  if (!isSuperAdmin && !isAdmin) {
     return (
-      <div className="p-4 bg-gray-50 rounded-lg shadow-sm">
+      <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
         <Unauthorised
           username={loginedUser?.username || ''}
           currentRoles={roles}
-          notallowedRoles={roles}
-          allowedRoles={['SUPERADMIN', 'ADMIN', 'TECHNICIAN', 'DESKROLE']}
+          notallowedRoles={['TECHNICIAN', 'DESKROLE']}
+          allowedRoles={['SUPERADMIN', 'ADMIN']}
         />
       </div>
     );
   }
 
   return (
-    <div className="p-4 bg-gray-50 rounded-lg shadow-sm">
-      <div className="mb-6 flex items-center gap-3">
-        <RiTestTubeFill className="text-3xl text-indigo-600" />
-        <h1 className="text-2xl font-bold text-gray-800">Laboratory Settings</h1>
-      </div>
-
-      {tabsToShow.length > 0 ? (
-        <>
-          <div className="relative">
-            <div className="flex space-x-1 border-b border-gray-200">
-              {tabsToShow.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setSelectedTab(tab.id)}
-                  onMouseEnter={() => setHoveredTab(tab.id)}
-                  onMouseLeave={() => setHoveredTab(null)}
-                  className={`relative px-4 py-2.5 flex items-center gap-2 text-sm font-medium transition-all duration-200 ${selectedTab === tab.id ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'} ${tab.color}`}
-                >
-                  <span className="z-10 flex items-center gap-2">
-                    {tab.icon}
-                    {tab.label}
-                  </span>
-                  {selectedTab === tab.id && (
-                    <motion.div 
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600"
-                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                  {hoveredTab === tab.id && selectedTab !== tab.id && (
-                    <motion.div 
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-300"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                    />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <motion.div
-            key={selectedTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="mt-6"
-          >
+    <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
+      <Tabs
+        tabs={filteredTabs}
+        selectedTab={selectedTab}
+        onTabChange={handleTabChange}
+      >
+        {loading ? (
+          <Loader />
+        ) : (
+          <>
             {selectedTab === 'Lab Create' && isSuperAdmin && <Lab />}
-            {selectedTab === 'Lab List' && (isSuperAdmin || isAdmin) && <LabList />}
-            {selectedTab === 'Download Test' && (isSuperAdmin || isAdmin || isDesk) && <TestPriceList />}
-            {selectedTab === 'Test Reference Parameters' && (isSuperAdmin || isAdmin || isTechnician) && <TestReferanceList />}
-          </motion.div>
-        </>
-      ) : (
-        <div className="mt-6 text-center text-gray-500">
-          No accessible tabs available for your role.
-        </div>
-      )}
+            {selectedTab === 'Lab List' && isSuperAdmin && <LabList />}
+            {selectedTab === 'Download Test' && (isSuperAdmin || isAdmin) && <TestPriceList />}
+            {selectedTab === 'Test Reference Parameters' && (isSuperAdmin || isAdmin) && <TestReferanceList />}
+          </>
+        )}
+      </Tabs>
     </div>
   );
 };

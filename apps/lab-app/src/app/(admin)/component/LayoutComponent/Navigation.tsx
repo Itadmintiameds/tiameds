@@ -1,6 +1,6 @@
 import { NavigationItem } from "@/types/NavigationItem";
 import { CogIcon, DocumentTextIcon, HomeIcon, ShoppingCartIcon, UserGroupIcon } from "@heroicons/react/24/outline";
-import { ClipboardListIcon, CreditCardIcon, FlaskConical, UserIcon } from "lucide-react";
+import { ClipboardListIcon, FlaskConical, UserIcon } from "lucide-react";
 import { FaPeriscope } from "react-icons/fa";
 import { FaUserDoctor } from "react-icons/fa6";
 import { MdMan } from "react-icons/md";
@@ -18,7 +18,7 @@ export const navigation: NavigationItem[] = [
       { name: "Tests", href: "/dashboard/test", current: false, icon: ClipboardListIcon },
       { name: "Packages", href: "/dashboard/package", current: false, icon: PiPackageFill },
       { name: "Doctors", href: "/dashboard/doctor", current: false, icon: FaUserDoctor },
-      { name: "Add Sample", href: "/dashboard/sample/add", current: false, icon: FaPeriscope },
+      { name: "Sample List", href: "/dashboard/sample/add", current: false, icon: FaPeriscope },
       { name: "Sample Collection", href: "/dashboard/sample", current: false, icon: ClipboardListIcon },
       {name : "Patient Details",href : "/dashboard/patientdetails", current: false, icon: MdMan},
     ],
@@ -47,17 +47,17 @@ export const navigation: NavigationItem[] = [
       { name: "Detail Reports", href: "/dashboard/detailreports", current: false, icon: ClipboardListIcon },
     ],
   },
-  {
-    name: "Billing",
-    icon: CreditCardIcon,
-    current: false,
-    children: [
-      // { name: "Invoices", href: "#", current: false, icon: ClipboardListIcon },
-      { name: "Billing Summary", href: "/dashboard/billsummary", current: false, icon: ClipboardListIcon },
+  // {
+  //   name: "Billing",
+  //   icon: CreditCardIcon,
+  //   current: false,
+  //   children: [
+  //     // { name: "Invoices", href: "#", current: false, icon: ClipboardListIcon },
+  //     { name: "Billing Summary", href: "/dashboard/billsummary", current: false, icon: ClipboardListIcon },
     
      
-    ],
-  },
+  //   ],
+  // },
   {
     name: "Settings",
     icon: CogIcon,

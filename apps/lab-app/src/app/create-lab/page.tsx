@@ -84,7 +84,7 @@ const Lab = () => {
     const [shouldRedirect, setShouldRedirect] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [formData, setFormData] = useState<LabFormDataNew>(initialFormData);
-    const {  setRefreshLab } = useLabs();
+    const { setRefreshLab } = useLabs();
     const router = useRouter();
 
     useEffect(() => {
@@ -103,6 +103,8 @@ const Lab = () => {
         });
         localStorage.removeItem("user");
         localStorage.removeItem("logedUser");
+        localStorage.removeItem("currentLab");
+        localStorage.removeItem("userLabs");
         document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         window.location.replace("/user-login");
     };

@@ -21,7 +21,7 @@ const SubscriptionPlans = () => {
   const [teamMembers, setTeamMembers] = useState(5);
   const [email, setEmail] = useState('abhishekritu810219@gmail.com');
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
-  const [billsUsed, setBillsUsed] = useState(187);
+  const [billsUsed] = useState(187);
 
   const plans: Record<PlanKey, Plan> = {
     basic: {
@@ -93,7 +93,7 @@ const SubscriptionPlans = () => {
           Lab Management <span className="text-purple-600">Subscription</span>
         </h1>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto relative z-10">
-          Select the perfect plan that matches your research team's workflow and budget
+          Select the perfect plan that matches your research team&lsquo;s workflow and budget
         </p>
         
         {/* Billing Toggle with smooth transition */}
@@ -258,7 +258,7 @@ const SubscriptionPlans = () => {
                 </div>
                 {teamMembers >= 5 && (
                   <p className="text-sm text-purple-700 mt-2 flex items-center">
-                    <FaInfoCircle className="mr-1" /> You've reached the maximum team members for this plan
+                    <FaInfoCircle className="mr-1" /> You&lsquo;ve reached the maximum team members for this plan
                   </p>
                 )}
               </div>
@@ -289,11 +289,11 @@ const SubscriptionPlans = () => {
                     `You have ${maxBills - billsUsed} bills remaining this month`
                   ) : billsUsed < maxBills ? (
                     <span className="text-yellow-600">
-                      You've used {Math.round((billsUsed/maxBills)*100)}% of your monthly allocation
+                      You&lsquo;ve used {Math.round((billsUsed/maxBills)*100)}% of your monthly allocation
                     </span>
                   ) : (
                     <span className="text-red-600">
-                      You've exceeded your monthly bill limit
+                      You&lsquo;ve exceeded your monthly bill limit
                     </span>
                   )}
                 </p>
@@ -467,7 +467,7 @@ const SubscriptionPlans = () => {
         <div className="fixed bottom-6 right-6 bg-white p-4 rounded-lg shadow-xl border border-gray-200 max-w-xs z-50">
           <h4 className="font-bold text-purple-600 mb-1">Team Members</h4>
           <p className="text-sm text-gray-700">
-            This shows how many team members you've invited versus your plan limit.
+            This shows how many team members you&lsquo;ve invited versus your plan limit.
             The Professional plan allows up to 5 team members to collaborate.
           </p>
         </div>

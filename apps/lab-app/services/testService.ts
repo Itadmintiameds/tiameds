@@ -202,7 +202,7 @@ export const updateTestReferanceRange = async (labId: string, testReferenceId: s
   }
 }
 
-export const deleteTestReferanceRange = async (labId: string, testReferenceId: Number) => {
+export const deleteTestReferanceRange = async (labId: Number, testReferenceId: Number) => {
   try {
     await api.delete(`lab/test-reference/${labId}/${testReferenceId}`);
   } catch (error: unknown) {

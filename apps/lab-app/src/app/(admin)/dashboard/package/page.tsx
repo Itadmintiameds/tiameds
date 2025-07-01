@@ -45,8 +45,6 @@
 
 
 
-
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -74,10 +72,10 @@ const Page = () => {
 
   useEffect(() => {
     // Ensure selectedTab is valid in case role changes
-    if (!isAdmin && !isSuperAdmin) {
-      setSelectedTab('');
+    if (isAdmin && isSuperAdmin) {
+      setSelectedTab('package'); // Default to package tab for admins
     }
-  }, [isAdmin]);
+  }, []);
 
   return (
     <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
