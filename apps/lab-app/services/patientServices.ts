@@ -90,7 +90,6 @@ export const addPatient = async (labId: number, patient: Patient) => {
 
 
 export const updatePatientDetails = async (labId: number, patient: Patient) => {
-    console.log(patient, 'patient in addPatient');
     try {
         const response = await api.put(`/lab/${labId}/update-patient-details/${patient.id}`, patient);
         return response.data;

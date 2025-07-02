@@ -853,7 +853,7 @@ const AddMemberOnLab = () => {
                     setFormData(initialFormState);
                     setSelectedRoles([]);
                 } else {
-                    toast.error(response?.error || "Failed to add member.");
+                    toast.error(response?.message);
                 }
             }
         } catch (error) {
@@ -1203,7 +1203,7 @@ const AddMemberOnLab = () => {
                                     </div>
 
                                     <div className="flex space-x-3 pt-4">
-                                        {isSuperAdmin && isAdmin && (
+                                        {/* {isSuperAdmin && isAdmin && (
                                             <Button
                                                 onClick={() => { }}
                                                 type="submit"
@@ -1213,7 +1213,16 @@ const AddMemberOnLab = () => {
                                             >
                                                 <FaUserPlus className="mr-2" />
                                             </Button>
-                                        )}
+                                        )} */}
+                                        <Button
+                                            onClick={() => { }}
+                                            type="submit"
+                                            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg"
+                                            text={isEditing ? "Update Member" : "Add Member"}
+                                            disabled={loading}
+                                        >
+                                            <FaUserPlus className="mr-2" />
+                                        </Button>
                                         {isEditing && (
                                             <Button
                                                 type="button"

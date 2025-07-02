@@ -1720,6 +1720,24 @@ enum Gender {
   Other = 'other',
 }
 
+
+enum DiscountReason {
+  None = 'None',
+  SeniorCitizen = 'Senior Citizen',
+  Student = 'Student',
+  HealthcareWorker = 'Healthcare Worker',
+  CorporateTieUp = 'Corporate Tie-up',
+  Referral = 'Referral',
+  PreventiveCheckupCamp = 'Preventive Checkup Camp',
+  Loyalty = 'Loyalty',
+  DisabilitySupport = 'Disability Support',
+  BelowPovertyLine = 'Below Poverty Line (BPL)',
+  FestiveOffer = 'Festive or Seasonal Offer',
+  PackageDiscount = 'Package Discount + Additional Test Discount',
+}
+
+
+
 interface AddPatientComponentProps {
   setAddPatientModal: React.Dispatch<React.SetStateAction<boolean>>;
   setAddUpdatePatientListVist: React.Dispatch<React.SetStateAction<boolean>>;
@@ -1762,7 +1780,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
       insuranceIds: [],
       billing: {
         totalAmount: 0,
-        paymentStatus: PaymentStatus.PENDING,
+        paymentStatus: PaymentStatus.PAID,
         paymentMethod: PaymentMethod.CASH,
         paymentDate: new Date().toISOString().split('T')[0],
         discount: 0,
@@ -1772,7 +1790,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         sgstAmount: 0,
         igstAmount: 0,
         netAmount: 0,
-        discountReason: '',
+        discountReason: DiscountReason.None,
         discountPercentage: 0,
       },
     },

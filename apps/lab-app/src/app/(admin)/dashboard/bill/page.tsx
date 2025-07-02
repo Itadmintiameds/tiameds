@@ -127,7 +127,8 @@ const Page = () => {
     const fetchDoctor = async () => {
       try {
         if (patientDetails?.visit?.doctorId && currentLab?.id) {
-          const doctorResult = await doctorGetById(currentLab.id.toString(), patientDetails.visit.doctorId);
+          // const doctorResult = await doctorGetById(currentLab.id.toString(), patientDetails.visit.doctorId);
+          const doctorResult = await doctorGetById(currentLab.id.toString(),  Number(patientDetails.visit.doctorId));
           setDoctor(doctorResult.data);
         }
       } catch (error) {

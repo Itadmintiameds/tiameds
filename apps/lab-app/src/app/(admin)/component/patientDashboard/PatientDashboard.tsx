@@ -1,12 +1,9 @@
-
 import React from 'react'
 import PatientVisitListTable from './PatientVisitListTable'
 
 const PatientDashboard = () => {
   return (
-    <>
-      <PatientVisitListTable />
-    </>
+    <PatientVisitListTable />
   )
 }
 export default PatientDashboard

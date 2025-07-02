@@ -49,7 +49,8 @@ const PatientVisitDetails = ({ patinetVisitDetails }: PatientVisitDetailsProps) 
         const fetchDoctor = async () => {
             try {
                 if (patinetVisitDetails?.visit?.doctorId && currentLab?.id) {
-                    const doctorResult = await doctorGetById(currentLab.id.toString(), patinetVisitDetails.visit.doctorId);
+                    // const doctorResult = await doctorGetById(currentLab.id.toString(), patinetVisitDetails.visit.doctorId);
+                    const doctorResult = await doctorGetById(currentLab.id.toString(), Number(patinetVisitDetails.visit.doctorId));
                     setDoctor(doctorResult.data);
                 }
             } catch (error) {

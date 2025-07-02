@@ -28,7 +28,7 @@ export type Visit = {
   visitType: VisitType;
   visitStatus: VisitStatus;
   visitDescription: string;
-  doctorId: number;
+  doctorId: number | string | null;
   testIds: number[];
   packageIds: number[];
   insuranceIds: number[];
@@ -75,7 +75,6 @@ export enum PaymentMethod {
   PHONEPE = 'PhonePe',
   UPI = 'UPI',
   OTHER = 'Other',
-  // Represents an unknown payment method
 }
 
 // Enum for Visit Types

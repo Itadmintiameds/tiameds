@@ -1118,7 +1118,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import Button from '../common/Button';
 import Loader from '../common/Loader';
-import PatientBilling from './component/PatientBilling';
+import PatientBillingEdit from './component/PatientBillingEdit';
 import PatientTestPackage from './component/PatientTestPackage';
 import PatientVisit from './component/PatientVisit';
 import EditPatientFrom from './editpatient/EditPatientFrom';
@@ -1126,7 +1126,21 @@ import EditPatientFrom from './editpatient/EditPatientFrom';
 enum Gender {
   Male = 'male',
   Female = 'female',
-  // Other = 'other',
+}
+
+enum DiscountReason {
+  None = 'None',
+  SeniorCitizen = 'Senior Citizen',
+  Student = 'Student',
+  HealthcareWorker = 'Healthcare Worker',
+  CorporateTieUp = 'Corporate Tie-up',
+  Referral = 'Referral',
+  PreventiveCheckupCamp = 'Preventive Checkup Camp',
+  Loyalty = 'Loyalty',
+  DisabilitySupport = 'Disability Support',
+  BelowPovertyLine = 'Below Poverty Line (BPL)',
+  FestiveOffer = 'Festive or Seasonal Offer',
+  PackageDiscount = 'Package Discount + Additional Test Discount',
 }
 
 interface EditPatientDetailsProps {
@@ -1146,11 +1160,8 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
   const [selectedTests, setSelectedTests] = useState<TestList[]>([]);
   const [selectedPackages, setSelectedPackages] = useState<PackageType[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  // const [updatedocorlist, setUpdatedocorlist] = useState<boolean>(false);
   const [isGlobalDiscountHidden, setIsGlobalDiscountHidden] = useState<boolean>(false);
-  // const { currentLab, setPatientDetails } = useLabs();
   const { currentLab, setPatientDetails, refreshDocterList } = useLabs();
-
   const [editedPatient, setEditedPatient] = useState<Patient>({
     id: 0,
     firstName: '',
@@ -1167,20 +1178,20 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     visit: {
       visitId: 0,
       visitDate: new Date().toISOString().split('T')[0],
-      visitType: VisitType.OUT_PATIENT,
-      visitStatus: VisitStatus.PENDING,
+      visitType: editPatientDetails?.visit?.visitType || VisitType.OUT_PATIENT,
+      visitStatus: editPatientDetails?.visit?.visitStatus || VisitStatus.PENDING,
       visitDescription: '',
       listofeachtestdiscount: [],
-      doctorId: 0,
+      doctorId: editPatientDetails?.visit?.doctorId || null,
       testIds: [],
       packageIds: [],
       insuranceIds: [],
       billing: {
         billingId: 0,
         totalAmount: 0,
-        paymentStatus: PaymentStatus.PENDING,
-        paymentMethod: PaymentMethod.CASH,
-        paymentDate: new Date().toISOString().split('T')[0],
+        paymentStatus: editPatientDetails?.visit?.billing?.paymentStatus || PaymentStatus.PENDING,
+        paymentMethod: editPatientDetails?.visit?.billing?.paymentMethod || PaymentMethod.CASH,
+        paymentDate: editPatientDetails?.visit?.billing?.paymentDate || new Date().toISOString().split('T')[0],
         discount: 0,
         gstRate: 0,
         gstAmount: 0,
@@ -1188,7 +1199,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         sgstAmount: 0,
         igstAmount: 0,
         netAmount: 0,
-        discountReason: '',
+        discountReason: editPatientDetails?.visit?.billing?.discountReason || DiscountReason.None,
         discountPercentage: 0,
       },
     },
@@ -1226,7 +1237,6 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         }
       }
     }
-
     return { isDuplicate: false, message: '' };
   };
 
@@ -1366,6 +1376,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
   ) => {
     if ('target' in event && Array.isArray(event.target.value)) {
+    
       const { name, value } = event.target;
       setEditedPatient(prev => {
         const newState = { ...prev };
@@ -1531,47 +1542,106 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     );
   };
 
-  const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }) => {
-    const { name, value } = e.target;
-    const numericValue = parseFloat(Array.isArray(value) ? value[0] ?? '0' : value) || 0;
+  // const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }) => {
+  //   const { name, value } = e.target;
 
-    setEditedPatient(prev => {
-      const totalAmount = prev.visit.billing.totalAmount;
-      let discount = prev.visit.billing.discount;
-      let discountPercentage = prev.visit.billing.discountPercentage;
+  //   // Only convert to number for numeric fields
+  //   const isNumericField = name.includes('discount') || name.includes('Amount') || name.includes('Percentage');
+  //   const processedValue = isNumericField ? (parseFloat(Array.isArray(value) ? value[0] ?? '0' : value) || 0) : value;
 
-      if (name === 'visit.billing.discountPercentage') {
-        const percentage = Math.min(100, numericValue);
-        discount = parseFloat(((percentage / 100) * totalAmount).toFixed(2));
-        discountPercentage = percentage;
-      } else if (name === 'visit.billing.discount') {
-        discount = Math.min(totalAmount, numericValue);
-        discountPercentage = totalAmount > 0 ?
-          parseFloat(((discount / totalAmount) * 100).toFixed(2)) : 0;
+  //   setEditedPatient(prev => {
+  //     if (name === 'visit.billing.discountPercentage' || name === 'visit.billing.discount') {
+  //       const totalAmount = prev.visit.billing.totalAmount;
+  //       let discount = prev.visit.billing.discount;
+  //       let discountPercentage = prev.visit.billing.discountPercentage;
+
+  //       if (name === 'visit.billing.discountPercentage') {
+  //         const percentage = Math.min(100, Number(processedValue));
+  //         discount = parseFloat(((percentage / 100) * totalAmount).toFixed(2));
+  //         discountPercentage = percentage;
+  //       } else if (name === 'visit.billing.discount') {
+  //         discount = Math.min(totalAmount, Number(processedValue));
+  //         discountPercentage = totalAmount > 0 ?
+  //           parseFloat(((discount / totalAmount) * 100).toFixed(2)) : 0;
+  //       }
+        
+
+  //       const netAmount = parseFloat((totalAmount - discount).toFixed(2));
+
+  //       return {
+  //         ...prev,
+  //         visit: {
+  //           ...prev.visit,
+  //           billing: {
+  //             ...prev.visit.billing,
+  //             discount,
+  //             discountPercentage,
+  //             netAmount
+  //           }
+  //         }
+  //       };
+  //     }
+
+  //     // For non-numeric fields, update directly
+  //     return {
+  //       ...prev,
+  //       visit: {
+  //         ...prev.visit,
+  //         billing: {
+  //           ...prev.visit.billing,
+  //           [name.split('.')[2]]: processedValue
+  //         }
+  //       }
+  //     };
+  //   });
+  // };
+  
+   const handleDiscountChange = (
+      event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
+    ) => {
+      const { name, value } = 'target' in event ? event.target : { name: '', value: [] };
+  
+      if (name === 'visit.insuranceIds') {
+         setEditedPatient(prevState => ({
+          ...prevState,
+          visit: {
+            ...prevState.visit,
+            insuranceIds: Array.isArray(value) ? value.map(Number) : [],
+          },
+        }));
+      } else if (name.startsWith('visit.billing')) {
+         setEditedPatient(prevState => ({
+          ...prevState,
+          visit: {
+            ...prevState.visit,
+            billing: {
+              ...prevState.visit.billing,
+              [name.split('.')[2]]: value,
+            },
+          },
+        }));
+      } else if (name.startsWith('visit.')) {
+       setEditedPatient(prevState => ({
+          ...prevState,
+          visit: {
+            ...prevState.visit,
+            [name.split('.')[1]]: value,
+          },
+        }));
+      } else {
+        setEditedPatient(prevState => ({
+          ...prevState,
+          [name]: Array.isArray(value) ? value.map(Number) : value,
+        }));
       }
-
-      const netAmount = parseFloat((totalAmount - discount).toFixed(2));
-
-      return {
-        ...prev,
-        visit: {
-          ...prev.visit,
-          billing: {
-            ...prev.visit.billing,
-            [name.split('.')[2]]: numericValue,
-            discount,
-            discountPercentage,
-            netAmount
-          }
-        }
-      };
-    });
-  };
+    };
 
   const handleUpdatePatient = async () => {
     try {
       setLoading(true);
+      console.log('Edited Patient Data:', editedPatient);
       const validationResult = EditPatientSchema.safeParse(editedPatient);
+
       if (!validationResult.success) {
         const errors = validationResult.error.errors.map(err => err.message).join(', ');
         console.error('Validation errors:', validationResult.error.errors);
@@ -1582,7 +1652,6 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         toast.error('Lab ID is missing');
         return;
       }
-
       if (editedPatient.visit.testIds.length === 0 && editedPatient.visit.packageIds.length === 0) {
         toast.error('Please select at least one test or package.');
         return;
@@ -1594,6 +1663,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         ...editedPatient,
         visit: {
           ...editedPatient.visit,
+          //  doctorId: editedPatient.visit.doctorId || null, 
           billing: {
             ...editedPatient.visit.billing,
             totalAmount,
@@ -1649,8 +1719,6 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
           newPatient={editedPatient}
           handleChange={handleChange}
           doctors={doctors}
-          // updatedocorlist={updatedocorlist}
-          // setUpdatedocorlist={setUpdatedocorlist}
         />
       </div>
 
@@ -1674,7 +1742,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         handleTestDiscountChange={handleTestDiscountChange}
       />
 
-      <PatientBilling
+      <PatientBillingEdit
         selectedPackages={selectedPackages}
         newPatient={editedPatient}
         handleChange={handleDiscountChange}
@@ -1706,3 +1774,18 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
 };
 
 export default EditPatientDetails;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
