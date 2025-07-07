@@ -71,9 +71,6 @@ const Page = () => {
     }
   }, [setLoginedUser]);
 
-
-
-
   // Check user roles
   const isSuperAdmin = loginedUser?.roles?.includes('SUPERADMIN');
   const isAdmin = loginedUser?.roles?.includes('ADMIN');

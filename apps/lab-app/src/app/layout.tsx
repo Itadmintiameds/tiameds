@@ -20,8 +20,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "TiaMeds",
-  description: "TiaMeds",
+  title: "TiaMeds Labs",
+  metadataBase: new URL("https://tiameds.com"),
+  description: "TiaMeds Labs is a platform for Lab Managment, providing tools for managing lab data, experiments, and results.",
 };
 
 export default function RootLayout({
