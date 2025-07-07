@@ -1628,5 +1628,4 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
         </div>
     );
 };
-
 export default ReportView;

@@ -2334,5 +2334,4 @@ const PatientDetailsViewComponent = () => {
     </>
   );
 };
-
 export default PatientDetailsViewComponent;
