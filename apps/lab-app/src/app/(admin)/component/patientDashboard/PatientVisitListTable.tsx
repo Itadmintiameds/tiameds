@@ -1,7 +1,7 @@
-import { getAllPatientVisitsByDateRangeoflab  } from '@/../services/patientServices';
+import { getAllPatientVisitsByDateRangeoflab } from '@/../services/patientServices';
 import { useLabs } from '@/context/LabContext';
 import { Patient } from '@/types/patient/patient';
-import { PlusIcon, SearchIcon } from 'lucide-react';
+import { PlusIcon, SearchIcon, XIcon } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { FaEdit } from "react-icons/fa";
 import { FaFilterCircleXmark } from "react-icons/fa6";
@@ -17,6 +17,8 @@ import AddPatientComponent from './AddPatientComponent';
 import EditPatientDetails from './EditPatientDetails';
 import PatientDetailsViewComponent from './PatientDetailsViewComponent';
 import ReportView from './Report/ReportView';
+import DeletePatient from './DeletePatient';
+import DuePayment from './DuePayment';
 
 enum VisitStatus {
   PENDING = 'Pending',
@@ -29,7 +31,6 @@ enum VisitType {
   IN_PATIENT = 'In-Patient',
   OUT_PATIENT = 'Out-Patient',
 }
-
 const statusColorMap: Record<VisitStatus, string> = {
   [VisitStatus.PENDING]: 'bg-yellow-100 text-yellow-800',
   [VisitStatus.COMPLETED]: 'bg-green-100 text-green-800',
@@ -38,8 +39,7 @@ const statusColorMap: Record<VisitStatus, string> = {
 };
 
 const PatientVisitListTable: React.FC = () => {
-  const { currentLab, setPatientDetails } = useLabs();
-  // const [patientList, setPatientList] = useState<Patient[]>([]);
+  const { currentLab, setPatientDetails, patientDetails } = useLabs();
   const [patientList, setPatientList] = useState<Patient[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(10);
@@ -48,7 +48,7 @@ const PatientVisitListTable: React.FC = () => {
   const [dateRangeFilter, setDateRangeFilter] = useState<string>('last24hours');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
-  const [addPatientModal, setAddPatientModal] = useState<boolean>(false);
+  const [showAddPatientForm, setShowAddPatientForm] = useState<boolean>(false);
   const [viewPatientModal, setViewPatientModal] = useState<boolean>(false);
   const [editPatientDetailsModal, setEditPatientDetailsModal] = useState<boolean>(false);
   const [editPatientDetails, setEditPatientDetails] = useState<Patient | null>(null);
@@ -58,6 +58,9 @@ const PatientVisitListTable: React.FC = () => {
   const [viewReportModal, setViewReportModal] = useState<boolean>(false);
   const [viewReportDetails, setViewReportDetails] = useState<Patient | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [deletePatientModal, setDeletePatientModal] = useState<boolean>(false);
+  const [duePaymentModal, setDuePaymentModal] = useState<boolean>(false);
+  const [patientVisitDetails, setPatientVisitDetails] = useState<Patient | null>(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -68,7 +71,6 @@ const PatientVisitListTable: React.FC = () => {
       try {
         setIsLoading(true);
         if (currentLab?.id) {
-          // Calculate date range based on filters
           const now = new Date();
           let startDate: string = '';
           let endDate: string = '';
@@ -110,13 +112,12 @@ const PatientVisitListTable: React.FC = () => {
               break;
           }
 
-          const response = await getAllPatientVisitsByDateRangeoflab (
+          const response = await getAllPatientVisitsByDateRangeoflab(
             currentLab.id,
             startDate,
             endDate
           );
-          console.log('Fetched visits:', response);
-          setPatientList(response || []); // response is now the array
+          setPatientList(response || []);
         }
       } catch (error: unknown) {
         toast.error((error as Error).message || 'An error occurred while fetching visits', {
@@ -133,7 +134,6 @@ const PatientVisitListTable: React.FC = () => {
   const now = new Date();
   let startDate: Date | null = null;
   let endDate: Date | null = now;
-
   switch (dateRangeFilter) {
     case 'today':
       startDate = new Date(now.setHours(0, 0, 0, 0));
@@ -167,7 +167,6 @@ const PatientVisitListTable: React.FC = () => {
       break;
   }
 
-  // check the patientList is not null or undefined before filtering
   if (!patientList) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -177,10 +176,9 @@ const PatientVisitListTable: React.FC = () => {
   }
 
   const filteredPatients = patientList?.filter((visit) => {
-      if (!visit) return false;
+    if (!visit) return false;
     let isValid = true;
 
-    // Add null checks
     if (!visit?.visit) return false;
 
     const visitDate = new Date(visit?.visit?.visitDate);
@@ -201,7 +199,6 @@ const PatientVisitListTable: React.FC = () => {
       isValid = false;
     }
 
-    // Search filter with null checks
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const nameMatch = `${visit?.firstName || ''} ${visit?.lastName || ''}`.toLowerCase().includes(query);
@@ -213,6 +210,7 @@ const PatientVisitListTable: React.FC = () => {
 
     return isValid;
   }) || [];
+
   const sortedPatients = [...filteredPatients].sort((a, b) =>
     new Date(b?.visit?.visitDate).getTime() - new Date(a?.visit?.visitDate).getTime()
   );
@@ -224,7 +222,10 @@ const PatientVisitListTable: React.FC = () => {
   );
 
   const handleView = (visit: Patient) => () => {
+    // setPatientDetails(visit);
+
     setPatientDetails(visit);
+    setPatientVisitDetails(visit);
     setViewPatientModal(true);
   };
 
@@ -239,7 +240,11 @@ const PatientVisitListTable: React.FC = () => {
   };
 
   const handleAddPatient = () => {
-    setAddPatientModal(true);
+    setShowAddPatientForm(true);
+  };
+
+  const handleCancelAddPatient = () => {
+    setShowAddPatientForm(false);
   };
 
   const handleClearFilters = () => {
@@ -275,7 +280,7 @@ const PatientVisitListTable: React.FC = () => {
       header: 'Patient Name',
       accessor: (row: Patient) => (
         <div className="flex flex-col min-w-[120px]">
-          <span className="font-medium text-gray-900 truncate">{`${row?.firstName} ${row?.lastName}`}</span>
+          <span className="font-medium text-gray-900 truncate">{`${row?.firstName}`}</span>
           <span className="text-xs text-gray-500">{row?.phone}</span>
         </div>
       ),
@@ -305,7 +310,7 @@ const PatientVisitListTable: React.FC = () => {
       className: 'whitespace-nowrap'
     },
     {
-      header: 'Status',
+      header: 'Report Status',
       accessor: (row: Patient) => {
         const status = row?.visit?.visitStatus as string;
         return (
@@ -313,6 +318,39 @@ const PatientVisitListTable: React.FC = () => {
             }`}>
             {status}
           </span>
+        );
+      },
+      className: 'whitespace-nowrap'
+    },
+    {
+      header: 'Payment Status',
+      accessor: (row: Patient) => {
+        const paymentStatus = row?.visit?.billing?.paymentStatus;
+        const dueAmount = row?.visit?.billing?.due_amount || 0;
+
+        return (
+          <div className="flex flex-col">
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${paymentStatus === 'PAID'
+                ? 'bg-green-100 text-green-800'
+                : dueAmount > 0
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+              {paymentStatus}
+              {dueAmount > 0 && ` (₹${dueAmount.toFixed(2)})`}
+            </span>
+            {paymentStatus === 'DUE' && (
+              <button
+                onClick={() => {
+                  setPatientDetails(row);
+                  setDuePaymentModal(true);
+                }}
+                className="mt-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                Collect Due
+              </button>
+            )}
+          </div>
         );
       },
       className: 'whitespace-nowrap'
@@ -374,10 +412,10 @@ const PatientVisitListTable: React.FC = () => {
               <Button
                 text=""
                 className="px-2 py-1 text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200"
-                onClick={() => toast.error('Delete action is not implemented yet', {
-                  autoClose: 2000,
-                  className: 'bg-red-50 text-red-800'
-                })}
+                onClick={() => {
+                  setDeletePatientModal(true);
+                  setPatientDetails(row);
+                }}
               >
                 <MdOutlineDeleteSweep size={14} />
               </Button>
@@ -389,179 +427,190 @@ const PatientVisitListTable: React.FC = () => {
     },
   ];
 
+  console.log('Patient List:', patientList);
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-        <div className="flex flex-wrap justify-between items-center gap-4">
-          <div>
-            <div className="flex flex-wrap items-center gap-4">
-              {/* Search Field */}
-              <div className="flex flex-col min-w-[240px]">
-                <label className="text-xs font-medium text-gray-600 mb-1">Search by Name/Phone</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <SearchIcon className="h-4 w-4 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Search patients..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 border border-gray-300 px-3 py-2 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                  />
-                </div>
-              </div>
-
-              {/* Status Filter */}
-              <div className="flex flex-col min-w-[160px]">
-                <label className="text-xs font-medium text-gray-600 mb-1">Status</label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="border border-gray-300 px-3 py-2 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                >
-                  <option value="">All Statuses</option>
-                  {Object.values(VisitStatus).map((status) => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Visit Type Filter */}
-              <div className="flex flex-col min-w-[160px]">
-                <label className="text-xs font-medium text-gray-600 mb-1">Visit Type</label>
-                <select
-                  value={visitTypeFilter}
-                  onChange={(e) => setVisitTypeFilter(e.target.value)}
-                  className="border border-gray-300 px-3 py-2 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                >
-                  <option value="">All Types</option>
-                  {Object.values(VisitType).map((type) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Date Range Filter */}
-              <div className="flex flex-col min-w-[160px]">
-                <label className="text-xs font-medium text-gray-600 mb-1">Date Range</label>
-                <select
-                  value={dateRangeFilter}
-                  onChange={(e) => setDateRangeFilter(e.target.value)}
-                  className="border border-gray-300 px-3 py-2 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                >
-                  <option value="last24hours">Last 24 Hours</option>
-                  <option value="today">Today</option>
-                  <option value="yesterday">Yesterday</option>
-                  <option value="last7days">Last 7 Days</option>
-                  <option value="thismonth">This Month</option>
-                  <option value="thisyear">This Year</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </div>
-
-              {/* Custom Date Range */}
-              {dateRangeFilter === 'custom' && (
-                <>
-                  <div className="flex flex-col min-w-[160px]">
-                    <label className="text-xs font-medium text-gray-600 mb-1">From Date</label>
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="border border-gray-300 px-3 py-2 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                    />
-                  </div>
-
-                  <div className="flex flex-col min-w-[160px]">
-                    <label className="text-xs font-medium text-gray-600 mb-1">To Date</label>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="border border-gray-300 px-3 py-2 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Clear Filters */}
-              {(statusFilter || visitTypeFilter || dateRangeFilter !== 'last24hours' || searchQuery) && (
-                <button
-                  onClick={handleClearFilters}
-                  className="flex items-center gap-2 px-3 py-2 mt-5 text-sm text-red-600 hover:text-red-800 transition-colors duration-200 bg-white border border-gray-300 rounded-md shadow-sm"
-                  title="Clear all filters"
-                >
-                  <FaFilterCircleXmark className="text-base" />
-                  <span>Reset Filters</span>
-                </button>
-              )}
-            </div>
-          </div>
+      {/* Compact Header */}
+      <div className="p-3 border-b border-gray-200 flex justify-between items-center">
+        <h2 className="text-lg font-semibold text-gray-800">{
+          showAddPatientForm ? 'Register New Patient' : 'Patient Visits'
+        }</h2>
+        {showAddPatientForm ? (
           <Button
-            text=''
+            text=""
+            onClick={handleCancelAddPatient}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors duration-200 rounded-md"
+          >
+            <XIcon size={16} />
+            <span>Cancel</span>
+          </Button>
+        ) : (
+          <Button
+            text=""
             onClick={handleAddPatient}
-            className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-md"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors duration-200 rounded-md"
           >
             <PlusIcon size={16} />
             <span>New Patient</span>
           </Button>
-        </div>
+        )}
       </div>
 
-      <div className="p-4">
+      {/* Filters Section - Only shown when not in add patient mode */}
+      {!showAddPatientForm && (
+        <div className="p-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search Field */}
+            <div className="flex-1 min-w-[200px]">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <SearchIcon className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search patients..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <div className="min-w-[150px]">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+              >
+                <option value="">All Statuses</option>
+                {Object.values(VisitStatus).map((status) => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Visit Type Filter */}
+            <div className="min-w-[150px]">
+              <select
+                value={visitTypeFilter}
+                onChange={(e) => setVisitTypeFilter(e.target.value)}
+                className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+              >
+                <option value="">All Types</option>
+                {Object.values(VisitType).map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date Range Filter */}
+            <div className="min-w-[150px]">
+              <select
+                value={dateRangeFilter}
+                onChange={(e) => setDateRangeFilter(e.target.value)}
+                className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+              >
+                <option value="last24hours">Last 24 Hours</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="last7days">Last 7 Days</option>
+                <option value="thismonth">This Month</option>
+                <option value="thisyear">This Year</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            {/* Custom Date Range */}
+            {dateRangeFilter === 'custom' && (
+              <>
+                <div className="min-w-[150px]">
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                  />
+                </div>
+
+                <div className="min-w-[150px]">
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Clear Filters */}
+            {(statusFilter || visitTypeFilter || dateRangeFilter !== 'last24hours' || searchQuery) && (
+              <button
+                onClick={handleClearFilters}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:text-red-800 transition-colors duration-200 bg-white border border-gray-300 rounded-md shadow-sm"
+                title="Clear all filters"
+              >
+                <FaFilterCircleXmark className="text-base" />
+                <span>Reset</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Main Content Area */}
+      <div className="p-3">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64">
             <Loader type="progress" fullScreen={false} text="Loading patient visits..." />
-            <p className="mt-4 text-sm text-gray-500">Fetching the latest visit data...</p>
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <TableComponent
-                columns={columns}
-                data={paginatedPatients}
+            {showAddPatientForm ? (
+              <AddPatientComponent
+                setAddPatientModal={setShowAddPatientForm}
+                setAddUpdatePatientListVist={setAddUpdatePatientListVist}
+                addUpdatePatientListVist={addUpdatePatientListVist}
               />
-            </div>
-
-            {filteredPatients.length > 0 && (
-              <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded">
-                  Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                  <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredPatients.length)}</span> of{' '}
-                  <span className="font-medium">{filteredPatients.length}</span> visits
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <TableComponent
+                    columns={columns}
+                    data={paginatedPatients}
+                  />
                 </div>
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
+
+                {filteredPatients.length > 0 && (
+                  <div className="mt-3 flex flex-col sm:flex-row justify-between items-center gap-3">
+                    <div className="text-sm text-gray-600">
+                      Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                      <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredPatients.length)}</span> of{' '}
+                      <span className="font-medium">{filteredPatients.length}</span> visits
+                    </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
       </div>
 
-      <Modal
-        isOpen={addPatientModal}
-        onClose={() => setAddPatientModal(false)}
-        title="Register New Patient"
-        modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
-      >
-        <AddPatientComponent
-          setAddPatientModal={setAddPatientModal}
-          setAddUpdatePatientListVist={setAddUpdatePatientListVist}
-          addUpdatePatientListVist={addUpdatePatientListVist}
-        />
-      </Modal>
-
+      {/* Modals */}
       <Modal
         isOpen={viewPatientModal}
         onClose={() => setViewPatientModal(false)}
         title="Invoice Details"
         modalClassName="max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
       >
-        <PatientDetailsViewComponent />
+        <PatientDetailsViewComponent patient={patientDetails}  />
       </Modal>
 
       <Modal
@@ -600,9 +649,33 @@ const PatientVisitListTable: React.FC = () => {
               packageIds: viewReportDetails.visit?.packageIds ?? [],
               dateOfBirth: viewReportDetails.dateOfBirth ?? '',
               visitType: viewReportDetails.visit?.visitType ?? VisitType.OUT_PATIENT,
+              doctorId: viewReportDetails.visit?.doctorId !== undefined && viewReportDetails.visit?.doctorId !== null
+                ? Number(viewReportDetails.visit?.doctorId)
+                : 0,
             }}
           />
         )}
+      </Modal>
+
+      <Modal
+        isOpen={deletePatientModal}
+        onClose={() => setDeletePatientModal(false)}
+        title="Delete Patient"
+        modalClassName="max-w-md rounded-lg overflow-hidden"
+      >
+        <DeletePatient
+          isOpen={deletePatientModal}
+          onClose={() => setDeletePatientModal(false)}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={duePaymentModal}
+        onClose={() => setDuePaymentModal(false)}
+        title="Due Payment"
+        modalClassName="max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+      >
+        {patientDetails && <DuePayment patient={patientDetails} onClose={() => setDuePaymentModal(false)} />}
       </Modal>
     </div>
   );

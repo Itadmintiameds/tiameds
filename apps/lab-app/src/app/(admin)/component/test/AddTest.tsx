@@ -1,3 +1,4 @@
+
 import { addTest } from '@/../services/testService';
 import { useLabs } from '@/context/LabContext';
 import { testFormDataSchema } from '@/schema/testFormDataSchema';
@@ -8,6 +9,7 @@ import { toast } from 'react-toastify';
 import { z } from 'zod';
 import Button from '../common/Button';
 import { Plus } from 'lucide-react';
+import Loader from '../common/Loader';
 
 interface AddTestProps {
   closeModal: () => void;
@@ -15,11 +17,20 @@ interface AddTestProps {
   setUpdateList: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
+// interface TestForm {
+//   category: string;
+//   name: string;
+//   price?: number; // Changed from number to optional
+
+// }
+
+
 const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [formData, setFormData] = useState<TestForm>({
     category: '',
     name: '',
-    price: 0,
+    price: undefined, // Changed from 0 to undefined
   });
   const { currentLab } = useLabs();
 
@@ -27,7 +38,7 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === 'price' ? Number(value) : value,
+      [name]: name === 'price' ? (value === '' ? undefined : Number(value)) : value.toUpperCase(),
     }));
   };
 
@@ -40,14 +51,16 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
         id: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        price: formData.price || 0, // Ensure price is 0 if undefined when submitting
       };
       if (currentLab) {
+        setIsLoading(true);
         await addTest(currentLab.id.toString(), testListData);
         setUpdateList(!updateList);
+        setIsLoading(false);
         toast.success('Test added successfully!', { autoClose: 2000 });
-        setFormData({ category: '', name: '', price: 0 });
+        setFormData({ category: '', name: '', price: undefined });
         closeModal();
-
       } else {
         toast.error('Current lab is not selected.');
       }
@@ -58,7 +71,8 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
         toast.error((err as Error).message);
       }
     }
-  };
+  }
+
   return (
     <div className="flex justify-center items-center  ">
       <div className=" rounded-lg p-2 w-full max-w-lg">
@@ -77,7 +91,7 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
                 id="category"
                 type="text"
                 name="category"
-                value={formData.category.toLocaleUpperCase()}
+                value={formData.category}
                 onChange={handleInputChange}
                 className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
                 placeholder="Enter category"
@@ -96,7 +110,7 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
                 id="name"
                 type="text"
                 name="name"
-                value={formData.name.toLocaleUpperCase()}
+                value={formData.name}
                 onChange={handleInputChange}
                 className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
                 placeholder="Enter test name"
@@ -115,7 +129,7 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
                 id="price"
                 type="number"
                 name="price"
-                value={formData.price}
+                value={formData.price || ''}
                 onChange={handleInputChange}
                 className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
                 placeholder="Enter price"
@@ -123,23 +137,22 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
             </div>
           </div>
 
-          {/* Submit Button */}
-          {/* <button
-            type="submit"
-            className="w-full bg-indigo-800 text-white py-3 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition text-sm font-medium"
-          >
-            Add Test
-          </button> */}
-
-          <Button
-            text="Add Test"
-            onClick={() => { }}
-            type='submit'
-            className="flex items-center justify-center px-4 py-1 w-full text-xs bg-primary text-textzinc rounded-md hover:bg-primarylight focus:outline-none"
-          >
-            <Plus className="h-4" />
-          </Button>
-
+          {
+            isLoading ? (
+              <div className="flex justify-center items-center">
+                <Loader />
+              </div>
+            ) : (
+              <Button
+                text="Add Test"
+                onClick={() => { }}
+                type='submit'
+                className="flex items-center justify-center px-4 py-1 w-full text-xs bg-primary text-textzinc rounded-md hover:bg-primarylight focus:outline-none"
+              >
+                <Plus className="h-4" />
+              </Button>
+            )
+          }
         </form>
       </div>
     </div>

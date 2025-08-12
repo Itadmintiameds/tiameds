@@ -14,18 +14,18 @@ import { toast } from 'react-toastify';
 enum VisitType {
     INPATIENT = 'In-Patient',
     OUTPATIENT = 'Out-Patient',
+    DAYCARE = 'Day-Care',
+    WAKING = 'Waking',
 }
 
 interface PatientVisitProps {
     newPatient: Patient;
     handleChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }) => void;
     doctors: Doctor[];
-    
-
 }
 
-const PatientVisit = ({ newPatient, handleChange, doctors}: PatientVisitProps) => {
-    const { currentLab, refreshDocterList,setRefreshDocterList } = useLabs();
+const PatientVisit = ({ newPatient, handleChange, doctors }: PatientVisitProps) => {
+    const { currentLab, refreshDocterList, setRefreshDocterList } = useLabs();
     const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
     const [isDoctorAddedLoading, setIsDoctorAddedLoading] = useState(false);
     const [doctor, setDoctor] = useState<Doctor>({
@@ -44,50 +44,12 @@ const PatientVisit = ({ newPatient, handleChange, doctors}: PatientVisitProps) =
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-
-    // const handleAddDoctor = async (doctor: Doctor) => {
-    //     setIsDoctorAddedLoading(true);
-    //     if (currentLab?.id) {
-    //         createDoctor(currentLab.id, doctor).then((res) => {
-    //             if (res?.status === 'success') {
-    //                 toast.success('Doctor added successfully!');
-    //                 setUpdatedocorlist(true);
-    //             } else {
-    //                 toast.error('Failed to add doctor!');
-    //             }
-    //         });
-    //     }
-    //     else {
-    //         toast.error('No lab selected!');
-    //     }
-    //     setIsDoctorModalOpen(false);
-    //     setErrors({});
-    //     setIsDoctorAddedLoading(false);
-    //     setUpdatedocorlist(false);
-    //     setDoctor({
-    //         id: undefined,
-    //         name: '',
-    //         email: '',
-    //         speciality: '',
-    //         qualification: '',
-    //         hospitalAffiliation: '',
-    //         licenseNumber: '',
-    //         phone: 0,
-    //         address: '',
-    //         city: '',
-    //         state: '',
-    //         country: '',
-    //     });
-    // };
-
-
     const handleAddDoctor = async (doctor: Doctor) => {
         setIsDoctorAddedLoading(true);
-
         try {
             if (currentLab?.id) {
                 const res = await createDoctor(currentLab.id, doctor);
-        
+
                 if (res?.status === 'success') {
                     setRefreshDocterList(!refreshDocterList);
                     toast.success('Doctor added successfully!');
@@ -99,9 +61,8 @@ const PatientVisit = ({ newPatient, handleChange, doctors}: PatientVisitProps) =
             }
         } catch (error) {
             console.error('Error adding doctor:', error);
-            toast.error('Doctor already exists!',{autoClose: 1000});
+            toast.error('Doctor already exists!', { autoClose: 1000 });
 
-        
         } finally {
             setIsDoctorModalOpen(false);
             setErrors({});
@@ -124,12 +85,9 @@ const PatientVisit = ({ newPatient, handleChange, doctors}: PatientVisitProps) =
         }
     };
 
-
-
-
     return (
         <section className="flex space-x-4 w-full max-w-md">
-            <div className="w-full p-3 border rounded-lg border-gray-200 shadow-sm bg-white">
+            <div className="w-full p-3 border rounded-lg border-gray-200 shadow-sm  bg-gray-50">
                 <div className="flex justify-between items-center mb-3">
                     <h2 className="text-xs font-semibold text-gray-700 flex items-center">
                         <FaCalendarAlt className="mr-1.5 text-purple-500 text-sm" />
@@ -149,6 +107,7 @@ const PatientVisit = ({ newPatient, handleChange, doctors}: PatientVisitProps) =
                                 onChange={handleChange}
                                 className="border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                 required
+                                disabled
                             />
                             <FaCalendar className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-purple-500 text-xs pointer-events-none" />
                         </div>
@@ -171,17 +130,7 @@ const PatientVisit = ({ newPatient, handleChange, doctors}: PatientVisitProps) =
                             ))}
                         </select>
                     </div>
-                    {/* <div className="flex flex-col">
-                        <label className="text-xs font-medium mb-1 text-gray-600">Description</label>
-                        <textarea
-                            name="visit.visitDescription"
-                            value={newPatient.visit?.visitDescription || ""}
-                            onChange={handleChange}
-                            rows={2}
-                            className="border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Enter visit description"
-                        />
-                    </div> */}
+
                     <div className="flex flex-col">
                         <div className="flex justify-between items-center mb-1">
                             <label className="text-xs font-medium text-gray-600">Doctor</label>
@@ -200,6 +149,7 @@ const PatientVisit = ({ newPatient, handleChange, doctors}: PatientVisitProps) =
                                 value={newPatient.visit?.doctorId || ""}
                                 onChange={handleChange}
                                 className="border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                                style={{ maxHeight: '100px', overflowY: 'auto' }}
                             >
                                 <option value="">Select doctor</option>
                                 {doctors.map((doctor) => (
@@ -210,6 +160,7 @@ const PatientVisit = ({ newPatient, handleChange, doctors}: PatientVisitProps) =
                             </select>
                             <FaUserDoctor className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-purple-500 text-xs pointer-events-none" />
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -250,6 +201,8 @@ const PatientVisit = ({ newPatient, handleChange, doctors}: PatientVisitProps) =
 };
 
 export default PatientVisit;
+
+
 
 
 

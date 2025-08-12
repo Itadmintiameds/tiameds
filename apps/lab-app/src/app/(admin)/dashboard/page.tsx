@@ -126,7 +126,7 @@ const Page = () => {
         ) : null}
 
         {/* Tab Content with Smooth Transition */}
-        <div className="px-2 py-4">
+        <div className="py-4 px-2">
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedTab}

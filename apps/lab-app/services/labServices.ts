@@ -1,11 +1,8 @@
 import api from '@/utils/api';
 
-import { LabResponse } from '@/types/Lab';
-import { LabFormData,LabFormDataNew } from '@/types/LabFormData';
+import { LabResponse ,LabNewResponse} from '@/types/Lab';
+import { LabFormDataNew } from '@/types/LabFormData';
 import { toast } from 'react-toastify';
-
-
-
 
 export const getLabs = async (): Promise<LabResponse[]> => {
   try {
@@ -17,7 +14,6 @@ export const getLabs = async (): Promise<LabResponse[]> => {
     throw new Error(message);
   }
 };
-
 
 export const getUsersLab = async (): Promise<LabResponse[]> => {
   try {
@@ -31,7 +27,6 @@ export const getUsersLab = async (): Promise<LabResponse[]> => {
   }
 }
 
-
 export const createLab = async (formData: LabFormDataNew): Promise<LabResponse> => {
   try {
     const response = await api.post<{ data: LabResponse; message: string; status: string }>('lab/admin/add-lab', formData);
@@ -44,9 +39,6 @@ export const createLab = async (formData: LabFormDataNew): Promise<LabResponse> 
   }
 }
 
-
-// /lab/admin/get-labs
-
 export const getLabList = async (): Promise<LabResponse[]> => {
   try {
     const response = await api.get<{ data: LabResponse[]; message: string; status: string }>('lab/admin/get-labs');
@@ -58,4 +50,16 @@ export const getLabList = async (): Promise<LabResponse[]> => {
   }
 }
 
+
+export const getLabById = async (labId: string): Promise<LabNewResponse> => {
+  try {
+    // const response = await api.get<{ data: LabResponse; message: string; status: string }>(`lab/admin/get-lab/${labId}`);4
+    const response = await api.get<{ data: LabNewResponse; message: string; status: string }>(`lab/admin/get-lab/${labId}`);
+    return response.data.data;
+  } catch (error: any) {
+    const message = error.response?.data?.message || 'An error occurred while fetching the lab.';
+    toast.error(message);
+    throw new Error(message);
+  }
+}
 

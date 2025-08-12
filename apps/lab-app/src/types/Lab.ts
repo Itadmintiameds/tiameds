@@ -10,34 +10,33 @@ export interface LabResponse {
     createdByName: string;
 }
 
-
-// export interface LabResponse {
-//     id: number;
-//     name: string;
-//     logo: string;
-//     address: string;
-//     city: string;
-//     state: string;
-//     isActive: boolean;
-//     description: string;
-//     labZip: string;
-//     labCountry: string;
-//     labPhone: string;
-//     labEmail: string;
-//     licenseNumber: string;
-//     labType: string;
-//     createdByName: string;
-//     createdAt: string; 
-//     updatedAt: string; 
-//     directorName: string;
-//     directorEmail: string;
-//     directorPhone: string;
-//     certificationBody: string;
-//     labCertificate: string;
-//     directorGovtId: string;
-//     labBusinessRegistration: string;
-//     labLicense: string;
-//     taxId: string;
-//     labAccreditation: string;
-//     dataPrivacyAgreement: boolean;
-// }
+export interface LabNewResponse {
+  id: number;
+  name: string;
+  logo: string;
+  address: string;
+  city: string;
+  state: string;
+  isActive: boolean;
+  description: string;
+  labZip: string;
+  labCountry: string;
+  labPhone: string;
+  labEmail: string;
+  licenseNumber: string;
+  labType: string;
+  createdByName: string;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  directorName: string;
+  directorEmail: string;
+  directorPhone: string;
+  certificationBody: string;
+  labCertificate: string;
+  directorGovtId: string;
+  labBusinessRegistration: string;
+  labLicense: string;
+  taxId: string;
+  labAccreditation: string;
+  dataPrivacyAgreement: boolean;
+}

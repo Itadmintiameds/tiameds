@@ -19,6 +19,7 @@ export type Patient = {
   zip: string;
   bloodGroup: string;
   dateOfBirth: string;
+  age: string;
   visit: Visit;
 };
 
@@ -27,6 +28,11 @@ export type Visit = {
   visitDate: string;
   visitType: VisitType;
   visitStatus: VisitStatus;
+  visitCancellationReason?: string; // Optional field for cancellation reason
+  visitCancellationDate?: string; // Optional field for cancellation date
+  vistCancellationBy?: string; // Optional field for who cancelled the visit
+  visitCancellationTime?: string; // Optional field for cancellation time
+  visitTime?: string; // Optional field for visit time
   visitDescription: string;
   doctorId: number | string | null;
   testIds: number[];
@@ -38,19 +44,21 @@ export type Visit = {
 
 export type Billing = {
   billingId?: number;
-  totalAmount: number;
+  totalAmount: number | null;
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
   paymentDate: string;
-  discount: number;
-  gstRate: number;
-  gstAmount: number;
-  cgstAmount: number;
-  sgstAmount: number;
-  igstAmount: number;
-  netAmount: number;
-  discountReason : string;
-  discountPercentage: number;
+  discount: number | null;
+  netAmount: number | null;
+  discountReason: string;
+  discountPercentage: number | null;
+  upi_id?: string;
+  received_amount?: number | null;
+  refund_amount?: number | null;
+  upi_amount?: number | null;
+  card_amount?: number | null;
+  cash_amount?: number | null;
+  due_amount?: number | null;
 };
 
 
@@ -64,17 +72,16 @@ interface listofDiscounts {
 // Enum for Payment Statuses
 export enum PaymentStatus {
   PAID = 'PAID',
-  UNPAID = 'UNPAID',
-  PENDING = 'PENDING',// Represents an unknown payment status
+  DUE = 'DUE',// Represents an unknown payment status
 }
 
 // Enum for Payment Methods
 export enum PaymentMethod {
-  CASH = 'Cash',
-  CARD = 'Card',
-  PHONEPE = 'PhonePe',
+  CASH = 'CASH',
+  CARD = 'CARD',
   UPI = 'UPI',
-  OTHER = 'Other',
+  UPI_CASH = 'UPI+CASH',
+  CARD_CASH = 'CARD+CASH',
 }
 
 // Enum for Visit Types
@@ -91,15 +98,22 @@ export enum VisitStatus {
   Collected = 'Collected',
 }
 
-// Enum for Blood Groups
-export enum BloodGroup {
-  A_POSITIVE = 'A+',
-  A_NEGATIVE = 'A-',
-  B_POSITIVE = 'B+',
-  B_NEGATIVE = 'B-',
-  O_POSITIVE = 'O+',
-  O_NEGATIVE = 'O-',
-  AB_POSITIVE = 'AB+',
-  AB_NEGATIVE = 'AB-',
-  UNKNOWN = 'UNKNOWN', // Represents an unknown blood group
+export enum Gender {
+  Male = 'male',
+  Female = 'female',
+  Other = 'other',
+}
+export enum DiscountReason {
+  None = 'None',
+  SeniorCitizen = 'Senior Citizen',
+  Student = 'Student',
+  HealthcareWorker = 'Healthcare Worker',
+  CorporateTieUp = 'Corporate Tie-up',
+  Referral = 'Referral',
+  PreventiveCheckupCamp = 'Preventive Checkup Camp',
+  Loyalty = 'Loyalty',
+  DisabilitySupport = 'Disability Support',
+  BelowPovertyLine = 'Below Poverty Line (BPL)',
+  FestiveOffer = 'Festive or Seasonal Offer',
+  PackageDiscount = 'Package Discount + Additional Test Discount',
 }

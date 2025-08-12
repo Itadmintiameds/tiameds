@@ -11,7 +11,7 @@ export interface TestList {
 export interface TestForm {
     category: string;
     name: string;
-    price: number;
+    price?: number;
 }
 
 export interface TestReferancePoint {

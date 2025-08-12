@@ -1126,6 +1126,8 @@ import { FaPrint, FaExclamationTriangle } from "react-icons/fa";
 import { TbInfoCircle } from "react-icons/tb";
 import { getReportData } from "../../../../../../services/reportServices";
 import { createRoot } from "react-dom/client";
+import { Doctor } from '@/types/doctor/doctor';
+import { doctorGetById } from "../../../../../../services/doctorServices";
 
 interface Report {
     reportId: number;
@@ -1146,6 +1148,7 @@ interface Report {
     updatedBy: number;
     createdAt: string;
     updatedAt: string;
+    doctorId?: number;
 }
 
 interface ReportViewProps {
@@ -1175,15 +1178,27 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const reportRef = useRef<HTMLDivElement>(null);
+    const [doctor, setDoctor] = useState<Doctor>();
 
     useEffect(() => {
         if (!currentLab?.id || !viewReportDetailsbyId) return;
+
+        //  // Fetch doctor
+        //         if (viewPatient?.doctorId && currentLab.id) {
+        //           const doctorResult = doctorGetById(currentLab.id.toString(), Number(viewPatient.doctorId));
+        //           setDoctor(doctorResult?.data);
+        //         }
 
         const fetchData = async () => {
             setLoading(true);
             setHasError(false);
             try {
                 const response = await getReportData(currentLab.id.toString(), viewReportDetailsbyId.toString());
+                // Fetch doctor details if doctorId is present
+                if (viewPatient?.doctorId && currentLab.id) {
+                    const doctorResult = await doctorGetById(currentLab.id.toString(), Number(viewPatient.doctorId));
+                    setDoctor(doctorResult?.data);
+                }
                 if (Array.isArray(response)) {
                     setReports(response);
                 } else {
@@ -1334,7 +1349,12 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
                         </div>
                         <div>
                             <p className="text-sm font-medium text-blue-800">Referred By</p>
-                            <p className="font-semibold text-gray-900">DR. SELF</p>
+                            <p className="font-semibold text-gray-900">
+                                {doctor?.name || 'DR. SELF'}
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">
+                                {doctor?.phone || 'Contact not provided'}
+                            </p>
                         </div>
                         <div>
                             <p className="text-sm font-medium text-blue-800">Visit Date</p>
@@ -1549,6 +1569,8 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
     //     await generatePDF('download');
     // };
 
+    console.log('Doctor:', doctor); 
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center h-64">
@@ -1580,7 +1602,7 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
 
     return (
         <div className="max-w-4xl mx-auto">
-            {/* Action Buttons */}
+            Action Buttons
             <div className="flex justify-between items-center mb-4 print:hidden">
                 <div className="text-sm text-gray-600">
                     {reports.length > 0 ? `${reports.length} parameters found` : 'No test data available'}
@@ -1626,6 +1648,21 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
                 )}
             </div>
         </div>
+     
     );
 };
 export default ReportView;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
