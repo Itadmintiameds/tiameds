@@ -83,7 +83,7 @@ export const TestLists = () => {
     }
 
     return results;
-  }, [tests, searchTerm, category, sortOrder, activeFilter, updateList]);
+  }, [tests, searchTerm, category, sortOrder, activeFilter]);
 
   // Pagination
   const paginatedTests = useMemo(() => {

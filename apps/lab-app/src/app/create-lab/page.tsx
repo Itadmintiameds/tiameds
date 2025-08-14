@@ -33,6 +33,7 @@ import { FaDatabase } from 'react-icons/fa6';
 import { createLab } from "@/../services/labServices";
 import { useLabs } from '@/context/LabContext';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 type LabFormField = keyof LabFormDataNew;
 
@@ -692,7 +693,7 @@ const Lab = () => {
                             <div className="flex flex-col items-center text-center">
                                 <div className="w-32 h-32 bg-white rounded-full shadow-md flex items-center justify-center mb-4 border-4 border-white">
                                     {formData.labLogo ? (
-                                        <img src={formData.labLogo} alt="Lab Logo" className="w-full h-full rounded-full object-cover" />
+                                        <Image src={formData.labLogo} alt="Lab Logo" className="w-full h-full rounded-full object-cover" />
                                     ) : (
                                         <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center">
                                             <FaFlask className="text-purple-400 text-4xl" />

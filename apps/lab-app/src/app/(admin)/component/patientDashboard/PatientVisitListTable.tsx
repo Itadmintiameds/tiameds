@@ -1,6 +1,6 @@
 import { getAllPatientVisitsByDateRangeoflab } from '@/../services/patientServices';
 import { useLabs } from '@/context/LabContext';
-import { Patient } from '@/types/patient/patient';
+import { Patient, VisitType, BillingTransaction } from '@/types/patient/patient';
 import { PlusIcon, SearchIcon, XIcon } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { FaEdit } from "react-icons/fa";
@@ -26,11 +26,6 @@ enum VisitStatus {
   CANCELLED = 'Cancelled',
   COLLECTED = 'Collected',
 }
-
-enum VisitType {
-  IN_PATIENT = 'In-Patient',
-  OUT_PATIENT = 'Out-Patient',
-}
 const statusColorMap: Record<VisitStatus, string> = {
   [VisitStatus.PENDING]: 'bg-yellow-100 text-yellow-800',
   [VisitStatus.COMPLETED]: 'bg-green-100 text-green-800',
@@ -39,7 +34,14 @@ const statusColorMap: Record<VisitStatus, string> = {
 };
 
 const PatientVisitListTable: React.FC = () => {
-  const { currentLab, setPatientDetails, patientDetails } = useLabs();
+  const { currentLab, setPatientDetails, patientDetails, loginedUser } = useLabs();
+  
+  // Check user roles for filter access
+  const roles = loginedUser?.roles || [];
+  const isAdmin = roles.includes('ADMIN');
+  const isSuperAdmin = roles.includes('SUPERADMIN');
+  const canAccessCancelledFilter = isAdmin || isSuperAdmin;
+  
   const [patientList, setPatientList] = useState<Patient[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(10);
@@ -60,74 +62,75 @@ const PatientVisitListTable: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [deletePatientModal, setDeletePatientModal] = useState<boolean>(false);
   const [duePaymentModal, setDuePaymentModal] = useState<boolean>(false);
-  const [patientVisitDetails, setPatientVisitDetails] = useState<Patient | null>(null);
+  // Removed unused state variable
 
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, visitTypeFilter, dateRangeFilter, customStartDate, customEndDate, searchQuery]);
 
-  useEffect(() => {
-    const fetchVisits = async () => {
-      try {
-        setIsLoading(true);
-        if (currentLab?.id) {
-          const now = new Date();
-          let startDate: string = '';
-          let endDate: string = '';
+  const fetchVisits = async () => {
+    try {
+      setIsLoading(true);
+      if (currentLab?.id) {
+        const now = new Date();
+        let startDate: string = '';
+        let endDate: string = '';
 
-          switch (dateRangeFilter) {
-            case 'today':
-              startDate = new Date(now.setHours(0, 0, 0, 0)).toISOString().split('T')[0];
-              endDate = new Date().toISOString().split('T')[0];
-              break;
-            case 'yesterday':
-              const yesterday = new Date();
-              yesterday.setDate(yesterday.getDate() - 1);
-              startDate = yesterday.toISOString().split('T')[0];
-              endDate = yesterday.toISOString().split('T')[0];
-              break;
-            case 'last7days':
-              const lastWeek = new Date();
-              lastWeek.setDate(now.getDate() - 7);
-              startDate = lastWeek.toISOString().split('T')[0];
-              endDate = new Date().toISOString().split('T')[0];
-              break;
-            case 'thismonth':
-              startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-              endDate = new Date().toISOString().split('T')[0];
-              break;
-            case 'thisyear':
-              startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-              endDate = new Date().toISOString().split('T')[0];
-              break;
-            case 'custom':
-              startDate = customStartDate;
-              endDate = customEndDate;
-              break;
-            case 'last24hours':
-            default:
-              const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-              startDate = last24Hours.toISOString().split('T')[0];
-              endDate = new Date().toISOString().split('T')[0];
-              break;
-          }
-
-          const response = await getAllPatientVisitsByDateRangeoflab(
-            currentLab.id,
-            startDate,
-            endDate
-          );
-          setPatientList(response || []);
+        switch (dateRangeFilter) {
+          case 'today':
+            startDate = new Date(now.setHours(0, 0, 0, 0)).toISOString().split('T')[0];
+            endDate = new Date().toISOString().split('T')[0];
+            break;
+          case 'yesterday':
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            startDate = yesterday.toISOString().split('T')[0];
+            endDate = yesterday.toISOString().split('T')[0];
+            break;
+          case 'last7days':
+            const lastWeek = new Date();
+            lastWeek.setDate(now.getDate() - 7);
+            startDate = lastWeek.toISOString().split('T')[0];
+            endDate = new Date().toISOString().split('T')[0];
+            break;
+          case 'thismonth':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+            endDate = new Date().toISOString().split('T')[0];
+            break;
+          case 'thisyear':
+            startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+            endDate = new Date().toISOString().split('T')[0];
+            break;
+          case 'custom':
+            startDate = customStartDate;
+            endDate = customEndDate;
+            break;
+          case 'last24hours':
+          default:
+            const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            startDate = last24Hours.toISOString().split('T')[0];
+            endDate = new Date().toISOString().split('T')[0];
+            break;
         }
-      } catch (error: unknown) {
-        toast.error((error as Error).message || 'An error occurred while fetching visits', {
-          autoClose: 2000,
-          className: 'bg-red-50 text-red-800'
-        });
-      } finally {
-        setIsLoading(false);
+
+        const response = await getAllPatientVisitsByDateRangeoflab(
+          currentLab.id,
+          startDate,
+          endDate
+        );
+        setPatientList(response || []);
       }
-    };
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'An error occurred while fetching visits', {
+        autoClose: 2000,
+        className: 'bg-red-50 text-red-800'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchVisits();
   }, [currentLab, updatePatientListVist, addUpdatePatientListVist, dateRangeFilter, customStartDate, customEndDate]);
 
@@ -211,9 +214,21 @@ const PatientVisitListTable: React.FC = () => {
     return isValid;
   }) || [];
 
-  const sortedPatients = [...filteredPatients].sort((a, b) =>
-    new Date(b?.visit?.visitDate).getTime() - new Date(a?.visit?.visitDate).getTime()
-  );
+  // Sort patients by visit date (latest first) and then by visit ID (latest first) as fallback
+  const sortedPatients = [...filteredPatients].sort((a, b) => {
+    const dateA = new Date(a?.visit?.visitDate || 0);
+    const dateB = new Date(b?.visit?.visitDate || 0);
+    
+    // First sort by visit date (latest first)
+    const dateComparison = dateB.getTime() - dateA.getTime();
+    
+    // If dates are equal, sort by visit ID (latest first)
+    if (dateComparison === 0) {
+      return (b?.visit?.visitId || 0) - (a?.visit?.visitId || 0);
+    }
+    
+    return dateComparison;
+  });
 
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
   const paginatedPatients = sortedPatients.slice(
@@ -222,10 +237,7 @@ const PatientVisitListTable: React.FC = () => {
   );
 
   const handleView = (visit: Patient) => () => {
-    // setPatientDetails(visit);
-
     setPatientDetails(visit);
-    setPatientVisitDetails(visit);
     setViewPatientModal(true);
   };
 
@@ -299,14 +311,33 @@ const PatientVisitListTable: React.FC = () => {
     },
     {
       header: 'Visit Type',
-      accessor: (row: Patient) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${row?.visit?.visitType === VisitType.IN_PATIENT
-          ? 'bg-purple-100 text-purple-800'
-          : 'bg-indigo-100 text-indigo-800'
-          }`}>
-          {row?.visit?.visitType}
-        </span>
-      ),
+      accessor: (row: Patient) => {
+        const visitType = row?.visit?.visitType;
+        let bgColor = 'bg-gray-100 text-gray-800';
+        
+        switch (visitType) {
+          case VisitType.IN_PATIENT:
+            bgColor = 'bg-purple-100 text-purple-800';
+            break;
+          case VisitType.OUT_PATIENT:
+            bgColor = 'bg-indigo-100 text-indigo-800';
+            break;
+          case VisitType.DAYCARE:
+            bgColor = 'bg-green-100 text-green-800';
+            break;
+          case VisitType.WAKING:
+            bgColor = 'bg-orange-100 text-orange-800';
+            break;
+          default:
+            bgColor = 'bg-gray-100 text-gray-800';
+        }
+        
+        return (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColor}`}>
+            {visitType}
+          </span>
+        );
+      },
       className: 'whitespace-nowrap'
     },
     {
@@ -326,20 +357,28 @@ const PatientVisitListTable: React.FC = () => {
       header: 'Payment Status',
       accessor: (row: Patient) => {
         const paymentStatus = row?.visit?.billing?.paymentStatus;
-        const dueAmount = row?.visit?.billing?.due_amount || 0;
-
+ 
+        // Derive status from transactions to reflect overpayment/complete payment
+        const txns = (row?.visit?.billing?.transactions ?? []) as BillingTransaction[];
+        const totalReceived = txns.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.received_amount || 0), 0);
+        const totalRefund = txns.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.refund_amount || 0), 0);
+        const net = Number(row?.visit?.billing?.netAmount || 0);
+        const remainingDue = Math.max(0, net - (totalReceived - totalRefund));
+        const isPaid = net > 0 && remainingDue === 0;
+ 
+        const badgeClass = isPaid
+          ? 'bg-green-100 text-green-800'
+          : remainingDue > 0
+            ? 'bg-amber-100 text-amber-800'
+            : 'bg-gray-100 text-gray-800';
+ 
         return (
           <div className="flex flex-col">
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${paymentStatus === 'PAID'
-                ? 'bg-green-100 text-green-800'
-                : dueAmount > 0
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-gray-100 text-gray-800'
-              }`}>
-              {paymentStatus}
-              {dueAmount > 0 && ` (₹${dueAmount.toFixed(2)})`}
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
+              {isPaid ? 'PAID' : (paymentStatus || 'DUE')}
+              {!isPaid && remainingDue > 0 && ` (₹${remainingDue.toFixed(2)})`}
             </span>
-            {paymentStatus === 'DUE' && (
+            {!isPaid && (paymentStatus === 'DUE' || remainingDue > 0) && (
               <button
                 onClick={() => {
                   setPatientDetails(row);
@@ -400,7 +439,7 @@ const PatientVisitListTable: React.FC = () => {
       header: 'Actions',
       accessor: (row: Patient) => (
         <div className="flex gap-2 whitespace-nowrap">
-          {row?.visit?.visitStatus === 'Pending' && (
+          {row?.visit?.billing?.paymentStatus === 'PAID' && (
             <>
               <Button
                 text=""
@@ -426,8 +465,6 @@ const PatientVisitListTable: React.FC = () => {
       className: 'whitespace-nowrap'
     },
   ];
-
-  console.log('Patient List:', patientList);
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -486,7 +523,10 @@ const PatientVisitListTable: React.FC = () => {
               >
                 <option value="">All Statuses</option>
                 {Object.values(VisitStatus).map((status) => (
-                  <option key={status} value={status}>{status}</option>
+                  // Hide "Cancelled" option for non-admin users
+                  (status === VisitStatus.CANCELLED && !canAccessCancelledFilter) ? null : (
+                    <option key={status} value={status}>{status}</option>
+                  )
                 ))}
               </select>
             </div>
@@ -610,7 +650,7 @@ const PatientVisitListTable: React.FC = () => {
         title="Invoice Details"
         modalClassName="max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
       >
-        <PatientDetailsViewComponent patient={patientDetails}  />
+        {patientDetails && <PatientDetailsViewComponent patient={patientDetails} />}
       </Modal>
 
       <Modal
@@ -648,7 +688,7 @@ const PatientVisitListTable: React.FC = () => {
               testIds: viewReportDetails.visit?.testIds ?? [],
               packageIds: viewReportDetails.visit?.packageIds ?? [],
               dateOfBirth: viewReportDetails.dateOfBirth ?? '',
-              visitType: viewReportDetails.visit?.visitType ?? VisitType.OUT_PATIENT,
+                             visitType: viewReportDetails.visit?.visitType ?? VisitType.OUT_PATIENT,
               doctorId: viewReportDetails.visit?.doctorId !== undefined && viewReportDetails.visit?.doctorId !== null
                 ? Number(viewReportDetails.visit?.doctorId)
                 : 0,
@@ -666,17 +706,35 @@ const PatientVisitListTable: React.FC = () => {
         <DeletePatient
           isOpen={deletePatientModal}
           onClose={() => setDeletePatientModal(false)}
+          onPatientDeleted={fetchVisits}
         />
       </Modal>
 
-      <Modal
-        isOpen={duePaymentModal}
-        onClose={() => setDuePaymentModal(false)}
-        title="Due Payment"
-        modalClassName="max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
-      >
-        {patientDetails && <DuePayment patient={patientDetails} onClose={() => setDuePaymentModal(false)} />}
-      </Modal>
+             <Modal
+         isOpen={duePaymentModal}
+         onClose={() => setDuePaymentModal(false)}
+         title="Due Payment"
+         modalClassName="max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+       >
+         {patientDetails && (
+           <DuePayment 
+             patient={patientDetails!} 
+             onClose={() => setDuePaymentModal(false)}
+             onPaymentSuccess={() => {
+               // Refresh the patient list to get updated data
+               fetchVisits();
+               // Close the modal
+               setDuePaymentModal(false);
+               // Show success message
+               toast.success('Payment processed successfully!', {
+                 autoClose: 3000,
+                 className: 'bg-green-50 text-green-800'
+               });
+             }}
+             currentUser={{ username: loginedUser?.username || 'current_user' }}
+           />
+         )}
+       </Modal>
     </div>
   );
 };

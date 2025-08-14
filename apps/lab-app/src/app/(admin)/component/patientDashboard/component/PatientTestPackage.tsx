@@ -28,7 +28,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
   packages,
   selectedTests,
   selectedPackages,
-  setSelectedTests,
+  // setSelectedTests,
   selectedCategory,
   handleCategoryChange,
   searchTestTerm,
@@ -41,13 +41,13 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
   handleTestDiscountChange,
 }) => {
   // State management
-  const [showTestList, setShowTestList] = useState(false);
-  const [showPackageList, setShowPackageList] = useState(false);
+  const [showTestList, setShowTestList] = useState(true);
+  const [showPackageList, setShowPackageList] = useState(true);
   const [searchPackageTerm, setSearchPackageTerm] = useState('');
   const [hoveredPackage, setHoveredPackage] = useState<PackageType | null>(null);
   const [highlightedTestIndex, setHighlightedTestIndex] = useState(-1);
   const [highlightedPackageIndex, setHighlightedPackageIndex] = useState(-1);
-  
+
   // Refs
   const testListRef = useRef<HTMLDivElement>(null);
   const packageListRef = useRef<HTMLDivElement>(null);
@@ -58,8 +58,8 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
   // Filter packages based on search term
   const filteredPackages = searchPackageTerm
     ? packages.filter(pkg =>
-        pkg.packageName.toLowerCase().includes(searchPackageTerm.toLowerCase()))
-      : packages;
+      pkg.packageName.toLowerCase().includes(searchPackageTerm.toLowerCase()))
+    : packages;
 
   // Handle package search input
   const handlePackageSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,7 +98,8 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
     handleTestSelection(test);
     handleTestSearch({ target: { value: '' } } as React.ChangeEvent<HTMLInputElement>);
     setHighlightedTestIndex(-1);
-    setShowTestList(false);
+    // Keep the list open for multiple selections
+    // setShowTestList(false);
     testSearchRef.current?.focus();
   };
 
@@ -107,7 +108,8 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
     handlePackageSelection(pkg);
     setSearchPackageTerm('');
     setHighlightedPackageIndex(-1);
-    setShowPackageList(false);
+    // Keep the list open for multiple selections
+    // setShowPackageList(false);
     packageSearchRef.current?.focus();
   };
 
@@ -198,7 +200,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
     } else {
       setHighlightedTestIndex(-1);
     }
-  }, [filteredTests, searchTestTerm]);
+  }, [filteredTests, searchTestTerm, setShowTestList, setHighlightedTestIndex]);
 
   useEffect(() => {
     if (searchPackageTerm && filteredPackages.length > 0) {
@@ -207,7 +209,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
     } else {
       setHighlightedPackageIndex(-1);
     }
-  }, [filteredPackages, searchPackageTerm]);
+  }, [filteredPackages, searchPackageTerm, setShowPackageList, setHighlightedPackageIndex]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -218,11 +220,13 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
     };
   }, []);
 
+
+
   // Styling functions
   const getTestItemStyle = (test: TestList, index: number) => {
     const isSelected = selectedTests.some(t => t.id === test.id);
     const isHighlighted = index === highlightedTestIndex;
-    
+
     if (isSelected) return 'bg-blue-50 border border-blue-200';
     if (isHighlighted) return 'bg-purple-100 border border-purple-300';
     return 'hover:bg-gray-50 border border-transparent';
@@ -231,7 +235,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
   const getPackageItemStyle = (pkg: PackageType, index: number) => {
     const isSelected = selectedPackages.some(p => p.id === pkg.id);
     const isHighlighted = index === highlightedPackageIndex;
-    
+
     if (isSelected) return 'bg-green-50 border border-green-200';
     if (isHighlighted) return 'bg-teal-100 border border-teal-300';
     return 'hover:bg-gray-50 border border-transparent';
@@ -320,7 +324,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                           <p className="text-sm font-medium truncate">{test.name}</p>
                           <p className="text-xs text-gray-500 truncate">{test.category}</p>
                         </div>
-                        <p className="text-sm font-medium whitespace-nowrap ml-2">₹{test.price}</p>
+                        <p className="text-sm font-medium whitespace-nowrap ml-2">₹{isNaN(Number(test.price)) ? 'N/A' : Number(test.price).toFixed(2)}</p>
                       </div>
                     </div>
                   ))}
@@ -331,7 +335,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                 {searchTestTerm ? (
                   <div className="flex flex-col items-center">
                     <FaSearch className="text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-500">No tests found for "{searchTestTerm}"</p>
+                    <p className="text-sm text-gray-500">No tests found for &quot;{searchTestTerm}&quot;</p>
                     <button
                       onClick={() => handleTestSearch({ target: { value: '' } } as React.ChangeEvent<HTMLInputElement>)}
                       className="text-blue-500 text-xs mt-1 flex items-center hover:text-blue-700"
@@ -423,12 +427,12 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                       <div className="flex justify-between items-center">
                         <p className="text-sm font-medium truncate">{pkg.packageName}</p>
                         <div className="flex items-center space-x-2 whitespace-nowrap ml-2">
-                          <p className="text-sm font-medium">₹{pkg.price}</p>
-                          {pkg.discount && (
+                          <p className="text-sm font-medium">₹{isNaN(Number(pkg.price)) ? 'N/A' : Number(pkg.price).toFixed(2)}</p>
+                          {/* {(pkg.discount && pkg.discount > 0) && (
                             <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
                               {pkg.discount}% Off
                             </span>
-                          )}
+                          )} */}
                           <FaListUl className="text-gray-400 hover:text-blue-500 cursor-pointer" />
                         </div>
                       </div>
@@ -441,7 +445,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                 {searchPackageTerm ? (
                   <div className="flex flex-col items-center">
                     <FaSearch className="text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-500">No packages found for "{searchPackageTerm}"</p>
+                    <p className="text-sm text-gray-500">No packages found for &quot;{searchPackageTerm}&quot;</p>
                     <button
                       onClick={() => setSearchPackageTerm('')}
                       className="text-blue-500 text-xs mt-1 flex items-center hover:text-blue-700"
@@ -485,42 +489,76 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                       <div className="flex flex-col items-end min-w-[80px]">
                         {test.discountAmount ? (
                           <>
-                            <p className="text-xs line-through text-gray-400">₹{test.price}</p>
+                            <p className="text-xs line-through text-gray-400">₹{isNaN(Number(test.price)) ? 'N/A' : Number(test.price).toFixed(2)}</p>
                             <p className="text-sm font-medium text-green-600">
                               ₹{typeof test.discountedPrice === 'number' ? test.discountedPrice.toFixed(2) : '0'}
                             </p>
                           </>
                         ) : (
-                          <p className="text-sm font-medium">₹{test.price}</p>
+                          <p className="text-sm font-medium">₹{isNaN(Number(test.price)) ? 'N/A' : Number(test.price).toFixed(2)}</p>
                         )}
                       </div>
 
                       <div className="flex items-center space-x-2 min-w-[160px]">
                         <div className="flex items-center">
                           <span className="text-xs text-gray-500 mr-1">%:</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            className="w-12 border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                            value={test.discountPercent || 0}
-                            onChange={(e) =>
-                              handleTestDiscountChange(test.id, 'percent', parseFloat(e.target.value) || 0)
-                            }
-                          />
+                                                     <input
+                             type="number"
+                             min="0"
+                             max="100"
+                             className="w-12 border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                             value={test.discountPercent || 0}
+                                                           onChange={(e) => {
+                                const value = e.target.value;
+                                const numValue = value === '' ? 0 : parseFloat(value) || 0;
+                                handleTestDiscountChange(test.id, 'percent', numValue);
+                              }}
+                              onInput={(e) => {
+                                const input = e.target as HTMLInputElement;
+                                let value = input.value;
+                                
+                                // Remove leading zeros immediately
+                                if (value.length > 1 && value.startsWith('0')) {
+                                  value = value.replace(/^0+/, '');
+                                  // If all zeros were removed, set to 0
+                                  if (value === '') {
+                                    value = '0';
+                                  }
+                                  // Update the input value directly
+                                  input.value = value;
+                                }
+                              }}
+                           />
                         </div>
                         <div className="flex items-center">
                           <span className="text-xs text-gray-500 mr-1">₹:</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max={test.price}
-                            className="w-16 border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                            value={test.discountAmount || 0}
-                            onChange={(e) =>
-                              handleTestDiscountChange(test.id, 'amount', parseFloat(e.target.value) || 0)
-                            }
-                          />
+                                                     <input
+                             type="number"
+                             min="0"
+                             max={test.price}
+                             className="w-16 border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                             value={test.discountAmount || 0}
+                                                           onChange={(e) => {
+                                const value = e.target.value;
+                                const numValue = value === '' ? 0 : parseFloat(value) || 0;
+                                handleTestDiscountChange(test.id, 'amount', numValue);
+                              }}
+                              onInput={(e) => {
+                                const input = e.target as HTMLInputElement;
+                                let value = input.value;
+                                
+                                // Remove leading zeros immediately
+                                if (value.length > 1 && value.startsWith('0')) {
+                                  value = value.replace(/^0+/, '');
+                                  // If all zeros were removed, set to 0
+                                  if (value === '') {
+                                    value = '0';
+                                  }
+                                  // Update the input value directly
+                                  input.value = value;
+                                }
+                              }}
+                           />
                         </div>
                       </div>
 
@@ -555,7 +593,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                     <div className="flex justify-between items-center">
                       <p className="text-sm font-medium truncate">{pkg.packageName}</p>
                       <div className="flex items-center space-x-2">
-                        <p className="text-sm font-medium">₹{pkg.price}</p>
+                        <p className="text-sm font-medium">₹{isNaN(Number(pkg.price)) ? 'N/A' : Number(pkg.price).toFixed(2)}</p>
                         <button
                           onClick={() => removePackage(pkg.id.toString())}
                           className="text-red-500 hover:text-red-700 p-1 focus:outline-none focus:ring-1 focus:ring-red-500 rounded"
@@ -589,7 +627,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
             <h3 className="text-sm font-semibold text-teal-700 truncate">{hoveredPackage.packageName}</h3>
             <div className="flex justify-between items-center mt-1">
               <span className="text-xs text-gray-600">Includes {hoveredPackage.tests?.length || 0} tests</span>
-              <span className="text-sm font-bold text-teal-700">₹{hoveredPackage.price}</span>
+              <span className="text-sm font-bold text-teal-700">₹{isNaN(Number(hoveredPackage.price)) ? 'N/A' : Number(hoveredPackage.price).toFixed(2)}</span>
             </div>
           </div>
           <div className="max-h-60 overflow-y-auto">
@@ -600,15 +638,15 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                     <p className="text-sm font-medium text-gray-800">{test.name}</p>
                     <p className="text-xs text-gray-500">{test.category}</p>
                   </div>
-                  <p className="text-sm font-medium">₹{test.price}</p>
+                  <p className="text-sm font-medium">₹{isNaN(Number(test.price)) ? 'N/A' : Number(test.price).toFixed(2)}</p>
                 </div>
               </div>
             ))}
           </div>
-          {hoveredPackage.discount && (
+          {(hoveredPackage.discount && hoveredPackage.discount > 0) && (
             <div className="px-3 py-2 bg-green-50 border-t border-green-100">
               <p className="text-xs text-green-700 font-medium">
-                {hoveredPackage.discount}% discount applied (Save ₹{(hoveredPackage.price * hoveredPackage.discount / 100).toFixed(2)})
+                {hoveredPackage.discount}% discount applied (Save ₹{isNaN(Number(hoveredPackage.price)) ? 'N/A' : (Number(hoveredPackage.price) * hoveredPackage.discount / 100).toFixed(2)})
               </p>
             </div>
           )}

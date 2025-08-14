@@ -1128,6 +1128,7 @@ import { getReportData } from "../../../../../../services/reportServices";
 import { createRoot } from "react-dom/client";
 import { Doctor } from '@/types/doctor/doctor';
 import { doctorGetById } from "../../../../../../services/doctorServices";
+import Image from 'next/image';
 
 interface Report {
     reportId: number;
@@ -1321,7 +1322,7 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
                 {/* Lab Header - On EVERY page */}
                 <div className="flex justify-between items-start border-b border-blue-100 pb-6 mb-6">
                     <div className="flex items-center">
-                        <img src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
+                        <Image src="/tiamed1.svg" alt="Lab Logo" width={56} height={56} className="mr-4" />
                         <div>
                             <h1 className="text-2xl font-bold text-blue-800">{currentLab?.name || 'DIAGNOSTIC LAB'}</h1>
                             <p className="text-xs text-gray-600 mt-1">Accredited by NABL | ISO 15189:2012 Certified</p>
@@ -1468,7 +1469,7 @@ const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => 
 
                         <div className="flex justify-between items-center mt-4">
                             <div className="flex items-center">
-                                <img src="/tiamed1.svg" alt="Tiamed Logo" className="h-6 mr-2 opacity-80" />
+                                <Image src="/tiamed1.svg" alt="Tiamed Logo" width={24} height={24} className="mr-2 opacity-80" />
                                 <span className="text-xs font-medium text-gray-600">Powered by Powered by TiaMeds Technologies Pvt. Ltd</span>
                             </div>
                             <div className="text-right">

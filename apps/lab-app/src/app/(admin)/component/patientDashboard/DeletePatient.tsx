@@ -1,382 +1,14 @@
-// 'use client';
-// import React, { useState, useRef, useEffect } from 'react';
-// import { useLabs } from '@/context/LabContext';
-// import { FaTrash, FaUser, FaInfoCircle, FaCalendarAlt, FaClock, FaChevronDown, FaSearch, FaTimes } from 'react-icons/fa';
-// import { useRouter } from 'next/navigation';
-// import Loader from '../common/Loader';
-// import { format } from 'date-fns';
-
-// const PREDEFINED_REASONS = [
-//   "Patient requested cancellation",
-//   "Doctor unavailable",
-//   "Lab technical issues",
-//   "Duplicate appointment",
-//   "Insurance issues",
-//   "Patient no longer needs test",
-//   "Other (please specify)",
-
-// ];
-
-// interface DeletePatientModalProps {
-//   isOpen: boolean;
-//   onClose: () => void;
-// }
-
-// const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose }) => {
-//   const { currentLab, patientDetails } = useLabs();
-//   const [isDeleting, setIsDeleting] = useState(false);
-//   const [error, setError] = useState<string | null>(null);
-//   const [cancellationReason, setCancellationReason] = useState('');
-//   const [showReasonDropdown, setShowReasonDropdown] = useState(false);
-//   const [selectedPredefinedReason, setSelectedPredefinedReason] = useState('');
-//   const [isManualReason, setIsManualReason] = useState(false);
-//   const [searchTerm, setSearchTerm] = useState('');
-//   const modalRef = useRef<HTMLDivElement>(null);
-//   const dropdownRef = useRef<HTMLDivElement>(null);
-//   const router = useRouter();
-
-//   // Reset form when modal opens/closes
-//   useEffect(() => {
-//     if (!isOpen) {
-//       setCancellationReason('');
-//       setSelectedPredefinedReason('');
-//       setIsManualReason(false);
-//       setSearchTerm('');
-//       setError(null);
-//     }
-//   }, [isOpen]);
-
-//   // Close dropdown when clicking outside
-//   useEffect(() => {
-//     const handleClickOutside = (event: MouseEvent) => {
-//       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-//         setShowReasonDropdown(false);
-//       }
-//       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-//         onClose();
-//       }
-//     };
-
-//     if (isOpen) {
-//       document.addEventListener('mousedown', handleClickOutside);
-//     }
-//     return () => {
-//       document.removeEventListener('mousedown', handleClickOutside);
-//     };
-//   }, [isOpen, onClose]);
-
-//   const filteredReasons = PREDEFINED_REASONS.filter(reason =>
-//     reason.toLowerCase().includes(searchTerm.toLowerCase())
-//   );
-
-//   const handleReasonSelect = (reason: string) => {
-//     if (reason === "Other (please specify)") {
-//       setIsManualReason(true);
-//       setSelectedPredefinedReason(reason);
-//       setCancellationReason('');
-//     } else {
-//       setIsManualReason(false);
-//       setCancellationReason(reason);
-//       setSelectedPredefinedReason(reason);
-//     }
-//     setSearchTerm('');
-//     setShowReasonDropdown(false);
-//   };
-
-//   const handleDelete = async () => {
-//     // Validate before deletion
-//     if (patientDetails?.visit?.visitId) {
-//       if (!cancellationReason) {
-//         setError("Please provide a cancellation reason");
-//         return;
-//       }
-//       if (isManualReason && cancellationReason.length < 20) {
-//         setError("Please provide at least 20 characters for the cancellation reason");
-//         return;
-//       }
-//     }
-
-//     setIsDeleting(true);
-//     setError(null);
-
-//     try {
-//       // Simulate API call
-//       await new Promise(resolve => setTimeout(resolve, 1500));
-
-//       // In a real app, uncomment and use these:
-//       // await deletePatient(currentLab.id, patientDetails.id);
-//       // if (patientDetails.visit?.visitId) {
-//       //   await cancelVisit(...);
-//       // }
-
-//       router.push('/patients');
-//       onClose();
-//     } catch (err) {
-//       console.error("Delete failed:", err);
-//       setError(err instanceof Error ? err.message : "Failed to delete patient");
-//     } finally {
-//       setIsDeleting(false);
-//     }
-//   };
-
-//   if (!isOpen) return null;
-
-//   console.log("Rendering DeletePatientModal with patientDetails:", patientDetails);
-
-//   return (
-//     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-//       <div 
-//         ref={modalRef}
-//         className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"
-//       >
-//         {/* Modal Header */}
-//         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-//           <div className="flex items-center">
-//             <FaUser className="text-red-600 mr-3 text-xl" />
-//             <h2 className="text-2xl font-bold text-gray-800">Delete Patient Record</h2>
-//           </div>
-//           <button
-//             onClick={onClose}
-//             className="text-gray-500 hover:text-gray-700 transition-colors"
-//             aria-label="Close modal"
-//           >
-//             <FaTimes className="text-xl" />
-//           </button>
-//         </div>
-
-//         {/* Modal Body */}
-//         <div className="overflow-y-auto p-6 flex-1">
-//           {/* Warning Section */}
-//           <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r">
-//             <div className="flex items-start">
-//               <FaInfoCircle className="text-red-500 mr-3 mt-1 flex-shrink-0 text-lg" />
-//               <div>
-//                 <h3 className="text-lg font-semibold text-red-800 mb-2">Warning: Permanent Deletion</h3>
-//                 <p className="text-sm text-red-700 mb-2">
-//                   This action will permanently delete all records associated with this patient.
-//                 </p>
-//                 <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
-//                   <li>All patient profile information</li>
-//                   <li>Complete visit history and test results</li>
-//                   <li>Billing records and payment history</li>
-//                 </ul>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Patient Summary */}
-//           {patientDetails && (
-//             <div className="mb-8">
-//               <h3 className="text-lg font-semibold text-gray-800 mb-3">Patient Summary</h3>
-//               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-//                 <div>
-//                   <p className="text-gray-500">Patient Name</p>
-//                   <p className="font-medium">{patientDetails.firstName || 'Not specified'}</p>
-//                 </div>
-//                 <div>
-//                   <p className="text-gray-500">Patient ID</p>
-//                   <p className="font-medium">{patientDetails.id || 'Not specified'}</p>
-//                 </div>
-//                 <div>
-//                   <p className="text-gray-500">Date of Birth</p>
-//                   <p className="font-medium">
-//                     {patientDetails.dateOfBirth ? format(new Date(patientDetails.dateOfBirth), 'MMM dd, yyyy') : 'Not specified'}
-//                   </p>
-//                 </div>
-//                 <div>
-//                   <p className="text-gray-500">Gender</p>
-//                   <p className="font-medium">{patientDetails.gender || 'Not specified'}</p>
-//                 </div>
-//               </div>
-//             </div>
-//           )}
-
-//           {/* Visit Cancellation Section */}
-//           {patientDetails?.visit?.visitId && (
-//             <div className="mb-8">
-//               <h3 className="text-lg font-semibold text-gray-800 mb-3">Visit Cancellation Details</h3>
-
-//               <div className="space-y-4">
-//                 <div>
-//                   <label className="block text-sm font-medium text-gray-700 mb-1">
-//                     Cancellation Reason *
-//                   </label>
-
-//                   <div className="relative" ref={dropdownRef}>
-//                     <button
-//                       type="button"
-//                       onClick={() => setShowReasonDropdown(!showReasonDropdown)}
-//                       className="w-full flex justify-between items-center p-3 border border-gray-300 rounded-lg text-left bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                     >
-//                       <span className="truncate">
-//                         {selectedPredefinedReason || "Select a reason..."}
-//                       </span>
-//                       <FaChevronDown 
-//                         className={`ml-2 transition-transform duration-200 ${showReasonDropdown ? 'transform rotate-180' : ''}`}
-//                       />
-//                     </button>
-
-//                     {showReasonDropdown && (
-//                       <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-72 overflow-hidden">
-//                         <div className="sticky top-0 bg-white p-2 border-b">
-//                           <div className="relative">
-//                             <FaSearch className="absolute left-3 top-3 text-gray-400" />
-//                             <input
-//                               type="text"
-//                               placeholder="Search reasons..."
-//                               className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                               value={searchTerm}
-//                               onChange={(e) => setSearchTerm(e.target.value)}
-//                               autoFocus
-//                             />
-//                           </div>
-//                         </div>
-
-//                         <div className="overflow-y-auto max-h-60">
-//                           {filteredReasons.map((reason) => (
-//                             <button
-//                               key={reason}
-//                               type="button"
-//                               className={`w-full text-left p-3 hover:bg-gray-100 cursor-pointer text-sm ${selectedPredefinedReason === reason ? 'bg-blue-50 text-blue-800 font-medium' : ''}`}
-//                               onClick={() => handleReasonSelect(reason)}
-//                             >
-//                               {reason}
-//                             </button>
-//                           ))}
-//                         </div>
-//                       </div>
-//                     )}
-//                   </div>
-
-//                   {isManualReason && (
-//                     <div className="mt-4">
-//                       <label className="block text-sm font-medium text-gray-700 mb-1">
-//                         Please specify the reason *
-//                       </label>
-//                       <textarea
-//                         value={cancellationReason}
-//                         onChange={(e) => setCancellationReason(e.target.value)}
-//                         className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-//                         rows={4}
-//                         placeholder="Provide detailed cancellation reason (minimum 20 characters)..."
-//                         required
-//                         minLength={20}
-//                       />
-//                       <p className={`mt-1 text-sm ${
-//                         cancellationReason.length >= 20 ? 'text-green-600' : 'text-red-600'
-//                       }`}>
-//                         {cancellationReason.length < 20 
-//                           ? `${20 - cancellationReason.length} more characters required`
-//                           : "✓ Reason meets minimum length"}
-//                       </p>
-//                     </div>
-//                   )}
-//                 </div>
-
-//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//                   <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-//                     <FaCalendarAlt className="text-gray-500 mr-3 text-lg" />
-//                     <div>
-//                       <p className="text-xs text-gray-500">Cancellation Date</p>
-//                       <p className="font-medium">
-//                         {format(new Date(), 'MMMM dd, yyyy')}
-//                       </p>
-//                     </div>
-//                   </div>
-//                   <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-//                     <FaClock className="text-gray-500 mr-3 text-lg" />
-//                     <div>
-//                       <p className="text-xs text-gray-500">Cancellation Time</p>
-//                       <p className="font-medium">
-//                         {format(new Date(), 'hh:mm a')}
-//                       </p>
-//                     </div>
-//                   </div>
-//                 </div>
-//               </div>
-//             </div>
-//           )}
-
-//           {/* Confirmation Check */}
-//           <div className="mt-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r">
-//             <div className="flex items-start">
-//               <FaInfoCircle className="text-yellow-500 mr-3 mt-0.5 flex-shrink-0" />
-//               <div>
-//                 <p className="text-sm font-medium text-yellow-800">
-//                   Please confirm you want to permanently delete this patient record.
-//                 </p>
-//                 <p className="text-sm text-yellow-700 mt-1">
-//                   This action cannot be undone. All data will be permanently removed.
-//                 </p>
-//               </div>
-//             </div>
-//           </div>
-
-//           {error && (
-//             <div className="mt-4 p-3 bg-red-100 border-l-4 border-red-500 rounded-r text-sm text-red-700">
-//               {error}
-//             </div>
-//           )}
-//         </div>
-
-//         {/* Modal Footer */}
-//         <div className="flex justify-between items-center p-6 border-t border-gray-200">
-//           <button
-//             onClick={onClose}
-//             className="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-//           >
-//             Cancel
-//           </button>
-//           <button
-//             onClick={handleDelete}
-//             disabled={isDeleting}
-//             className="px-5 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-70 disabled:cursor-not-allowed transition-colors flex items-center"
-//           >
-//             {isDeleting ? (
-//               <>
-//                 <Loader type="spinner" />
-//                 Deleting...
-//               </>
-//             ) : (
-//               <>
-//                 <FaTrash className="mr-2" />
-//                 Confirm Deletion
-//               </>
-//             )}
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default DeletePatientModal;
-
-
-
-
-// export const cancelPatientVisit = async (labId: number, visitId: number, cancellationData: any) => {
-//     try {
-//         const response = await api.post(`/lab/${labId}/visit/${visitId}/cancel`, cancellationData);
-//         return response.data;
-//     } catch (error: unknown) {
-//         throw new Error('An error occurred while canceling patient visit.');
-//     }
-// }
-
-
-//===============
-
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { useLabs } from '@/context/LabContext';
 import { FaTrash, FaUser, FaInfoCircle, FaCalendarAlt, FaClock, FaChevronDown, FaSearch, FaTimes } from 'react-icons/fa';
-import { useRouter } from 'next/navigation';
+
 import Loader from '../common/Loader';
 import { format } from 'date-fns';
 import { getTestById } from '@/../services/testService';
 import { getHealthPackageById } from '@/../services/packageServices';
 import { updateVisitCancellation } from '@/../services/patientServices';
+import { toast } from 'react-toastify';
 
 
 
@@ -408,12 +40,13 @@ interface Packages {
 interface DeletePatientModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onPatientDeleted?: () => void; // Add callback for refreshing data
 }
 
 
 
-const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose }) => {
-  const { currentLab, patientDetails } = useLabs();
+const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose, onPatientDeleted }) => {
+  const { currentLab, patientDetails, setRefreshLab } = useLabs();
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cancellationReason, setCancellationReason] = useState('');
@@ -426,7 +59,6 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
   const [isLoadingData, setIsLoadingData] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -557,8 +189,20 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
 
       console.log('Sending cancellation data to backend:', cancellationData);
 
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      router.push('/dashboard');
+      // Trigger refresh of patient data
+      setRefreshLab(prev => !prev);
+      
+      // Call the callback to refresh parent component data
+      if (onPatientDeleted) {
+        onPatientDeleted();
+      }
+
+      // Show success message
+      toast.success('Patient visit cancelled successfully!', {
+        autoClose: 3000,
+        className: 'bg-green-50 text-green-800'
+      });
+
       onClose();
     } catch (err) {
       console.error("Delete failed:", err);

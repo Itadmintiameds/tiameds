@@ -306,11 +306,6 @@ const PatientVisitDetails = ({ patinetVisitDetails }: PatientVisitDetailsProps) 
                                 { label: "Payment Method", value: patientVisitDetails?.visit?.billing?.paymentMethod },
                                 { label: "Payment Date", value: patientVisitDetails?.visit?.billing?.paymentDate },
                                 { label: "Discount", value: patientVisitDetails?.visit?.billing?.discount },
-                                { label: "GST Rate", value: patientVisitDetails?.visit?.billing?.gstRate },
-                                { label: "GST Amount", value: patientVisitDetails?.visit?.billing?.gstAmount },
-                                { label: "CGST Amount", value: patientVisitDetails?.visit?.billing?.cgstAmount },
-                                { label: "SGST Amount", value: patientVisitDetails?.visit?.billing?.sgstAmount },
-                                { label: "IGST Amount", value: patientVisitDetails?.visit?.billing?.igstAmount },
                                 { label: "Net Amount", value: patientVisitDetails?.visit?.billing?.netAmount },
                             ].map((item, idx) => (
                                 <div key={idx} className="flex justify-between items-center py-2 border-b border-gray-200">

@@ -868,7 +868,7 @@
 
 
 import { Patient, Gender } from '@/types/patient/patient';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 
 interface PatientFormProps {
@@ -966,7 +966,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
     }
 
     // Format the age string with full words and proper pluralization
-    let ageParts = [];
+    const ageParts = [];
     if (years > 0) ageParts.push(`${years} year${years !== 1 ? 's' : ''}`);
     if (months > 0) ageParts.push(`${months} month${months !== 1 ? 's' : ''}`);
     if (days > 0) ageParts.push(`${days} day${days !== 1 ? 's' : ''}`);
@@ -982,51 +982,85 @@ const PatientForm: React.FC<PatientFormProps> = ({
 
   // Parse age string into years, months, days (handles both full and abbreviated formats)
   const parseAgeString = (ageString: string) => {
-    const parts = ageString.split(' ');
-    const result = { years: '', months: '', days: '' };
-
-    for (let i = 0; i < parts.length; i += 2) {
-      const value = parts[i];
-      const unit = parts[i+1]?.toLowerCase();
-
-      if (unit?.startsWith('year') || unit === 'yr') result.years = value;
-      else if (unit?.startsWith('month') || unit === 'mo') result.months = value;
-      else if (unit?.startsWith('day')) result.days = value;
+    // console removed
+    
+    if (!ageString || ageString === 'null') {
+    // console removed
+      return { years: '', months: '', days: '' };
     }
 
+    const result = { years: '', months: '', days: '' };
+    
+    // Handle complex formats like "25 years 7 months and 11 days"
+    // First, normalize the string by removing "and" and extra spaces
+    const normalizedString = ageString.toLowerCase()
+      .replace(/\s+and\s+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // console removed
+    
+    // Split by spaces and process each part
+    const parts = normalizedString.split(' ');
+    // console removed
+    
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      
+      // Check if this part is a number
+      if (!isNaN(Number(part))) {
+        const value = part;
+        const nextPart = parts[i + 1]?.toLowerCase();
+        
+        // console removed
+        
+        if (nextPart?.startsWith('year') || nextPart === 'yr' || nextPart === 'y') {
+          result.years = value;
+          // console removed
+        } else if (nextPart?.startsWith('month') || nextPart === 'mo' || nextPart === 'm') {
+          result.months = value;
+          // console removed
+        } else if (nextPart?.startsWith('day') || nextPart === 'd') {
+          result.days = value;
+          // console removed
+        }
+      }
+    }
+
+    // console removed
     return result;
   };
 
   // Validate phone number
-  const validatePhone = (phone: string) => {
+  const validatePhone = useCallback((phone: string) => {
     if (!phone) return 'Phone number is required';
     if (!/^\d{10}$/.test(phone)) return 'Phone number must be 10 digits';
     return '';
-  };
+  }, []);
 
   // Validate name
-  const validateName = (name: string) => {
+  const validateName = useCallback((name: string) => {
     if (!name) return 'Patient name is required';
     if (!/^[a-zA-Z\s.'-]+$/.test(name)) return 'Name contains invalid characters';
     if (name.length < 2) return 'Name is too short';
     return '';
-  };
+  }, []);
 
   // Validate city
-  const validateCity = (city: string) => {
+  const validateCity = useCallback((city: string) => {
     if (!city) return 'City is required';
     if (!/^[a-zA-Z\s.'-]+$/.test(city)) return 'City contains invalid characters';
     return '';
-  };
+  }, []);
 
   // Validate prefix
-  const validatePrefix = (prefix: string) => {
+  const validatePrefix = useCallback((prefix: string) => {
     if (!prefix && currentFirstName) return 'Prefix is required when name is provided';
     return '';
-  };
+  }, [currentFirstName]);
 
   // Validate date of birth
-  const validateDOB = (dob: string) => {
+  const validateDOB = useCallback((dob: string) => {
     if (!dob) return 'Date of birth is required';
 
     const date = parseDateInput(dobInput);
@@ -1042,7 +1076,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
     if (date < hundredYearsAgo) return 'Date cannot be more than 100 years ago';
 
     return '';
-  };
+  }, [dobInput]);
 
   // Format date to DD/MM/YYYY
   const formatDate = (dateString: string) => {
@@ -1086,12 +1120,14 @@ const PatientForm: React.FC<PatientFormProps> = ({
 
   // Initialize dobInput and ageDetails when component mounts or newPatient changes
   useEffect(() => {
+    
     if (newPatient.dateOfBirth) {
       setDobInput(formatDate(newPatient.dateOfBirth));
       setAgeInputMode('dob');
       
       if (newPatient.age) {
         const parsed = parseAgeString(newPatient.age);
+        console.log('Parsed age from dateOfBirth:', parsed);
         setAgeDetails({
           years: parsed.years,
           months: parsed.months,
@@ -1102,6 +1138,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
       setDobInput('');
       if (newPatient.age) {
         const parsed = parseAgeString(newPatient.age);
+        console.log('Parsed age from age field:', parsed);
         setAgeDetails({
           years: parsed.years,
           months: parsed.months,
@@ -1119,17 +1156,15 @@ const PatientForm: React.FC<PatientFormProps> = ({
 
   // Validate all fields when they change
   useEffect(() => {
-    setValidationErrors({
+    setValidationErrors(prev => ({
+      ...prev,
       phone: validatePhone(newPatient.phone),
       prefix: validatePrefix(currentPrefix),
       firstName: validateName(currentFirstName),
       city: validateCity(newPatient.city),
-      years: validationErrors.years,
-      months: validationErrors.months,
-      days: validationErrors.days,
       dob: validateDOB(dobInput)
-    });
-  }, [newPatient.phone, currentPrefix, currentFirstName, newPatient.city, dobInput]);
+    }));
+  }, [newPatient.phone, currentPrefix, currentFirstName, newPatient.city, dobInput, validateDOB, validatePrefix, validatePhone, validateName, validateCity]);
 
   // Handle field blur events
   const handleBlur = (field: keyof typeof touchedFields) => {
@@ -1294,7 +1329,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
         handleChange(ageEvent);
       }
     }
-  }, [newPatient.dateOfBirth, lastChanged]);
+  }, [newPatient.dateOfBirth, lastChanged, handleChange, newPatient.age]);
 
   const handleAgeDetailChange = (field: 'years' | 'months' | 'days') =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1361,7 +1396,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
           handleChange(dobEvent);
           setDobInput(formatDate(dob));
 
-          let ageParts = [];
+          const ageParts = [];
           if (newAgeDetails.years) ageParts.push(`${newAgeDetails.years} year${newAgeDetails.years !== '1' ? 's' : ''}`);
           if (newAgeDetails.months) ageParts.push(`${newAgeDetails.months} month${newAgeDetails.months !== '1' ? 's' : ''}`);
           if (newAgeDetails.days) ageParts.push(`${newAgeDetails.days} day${newAgeDetails.days !== '1' ? 's' : ''}`);

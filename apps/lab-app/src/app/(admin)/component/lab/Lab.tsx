@@ -783,6 +783,7 @@ import { FaDatabase } from 'react-icons/fa6';
 import { useRouter } from 'next/navigation';
 import { createLab } from '../../../../../services/labServices';
 import { useLabs } from '@/context/LabContext';
+import Image from 'next/image';
 
 type LabFormField = keyof LabFormDataNew;
 
@@ -1077,7 +1078,7 @@ const Lab = () => {
             className="w-32 h-32 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 transition-colors relative overflow-hidden"
           >
             {formData.labLogo ? (
-              <img
+              <Image
                 src={formData.labLogo}
                 alt="Lab Logo"
                 className="w-full h-full object-cover"
@@ -1361,7 +1362,7 @@ const Lab = () => {
               <div className="flex flex-col items-center text-center">
                 <div className="w-32 h-32 bg-white rounded-full shadow-md flex items-center justify-center mb-4 border-4 border-white">
                   {formData.labLogo ? (
-                    <img src={formData.labLogo} alt="Lab Logo" className="w-full h-full rounded-full object-cover" />
+                    <Image src={formData.labLogo} alt="Lab Logo" className="w-full h-full rounded-full object-cover" />
                   ) : (
                     <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center">
                       <FaFlask className="text-indigo-400 text-4xl" />

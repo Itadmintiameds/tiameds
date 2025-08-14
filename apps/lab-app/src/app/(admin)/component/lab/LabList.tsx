@@ -14,9 +14,11 @@ const LabList = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const { currentLab } = useLabs();
   const [editPopup, setEditPopup] = useState(false);
-  const [updateTest, setUpdateTest] = useState<LabResponse>();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_updateTest, setUpdateTest] = useState<LabResponse>();
   const [viewLabPopup, setViewLabPopup] = useState(false);
-  const [viewLabDetails, setViewLabDetails] = useState<LabResponse>();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_viewLabDetails, setViewLabDetails] = useState<LabResponse>();
 
   useEffect(() => {
     setLoading(true);
@@ -26,16 +28,10 @@ const LabList = () => {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [currentLab]);
+  }, [currentLab, setLabs]);
+  
 
-  console.log(labs, 'labs');
-  console.log(updateTest, 'updateTest');
-  console.log(viewLabDetails, 'viewLabDetails');
-
-  // const handleUpdateLab = (lab: LabResponse) => {
-  //   setUpdateTest(lab);
-  //   setEditPopup(true);
-  // }
+  
 
   const columns = [
     { header: 'ID', accessor: (item: LabResponse) => item.id },
