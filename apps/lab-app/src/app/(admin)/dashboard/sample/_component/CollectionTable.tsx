@@ -139,6 +139,7 @@ const CollectionTable: React.FC = () => {
         formatDateForAPI(endDate),
         'Collected'
       );
+      console.log("Fetched Visits:", response);
 
       const collectedVisits = response
         .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
@@ -291,7 +292,7 @@ const CollectionTable: React.FC = () => {
       header: 'Tests',
       accessor: (row: Patient) => (
         <div className="flex flex-wrap gap-1 max-w-[200px]">
-          {row.testIds.map((testId) => {
+          {row?.testIds?.map((testId) => {
             const test = tests.find((t) => t.id === testId);
             return test ? (
               <span key={test.id} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs truncate">

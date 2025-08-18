@@ -21,7 +21,6 @@ import PatientTestPackage from './component/PatientTestPackage';
 import PatientVisit from './component/PatientVisit';
 import { Gender, DiscountReason } from '@/types/patient/patient';
 
-
 interface AddPatientComponentProps {
   setAddPatientModal: React.Dispatch<React.SetStateAction<boolean>>;
   setAddUpdatePatientListVist: React.Dispatch<React.SetStateAction<boolean>>;
@@ -733,18 +732,3 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
 };
 
 export default AddPatientComponent;
-
-
-
-
-
-
-
-
-
-
-
-
-
-//=====================================
-
