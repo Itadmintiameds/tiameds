@@ -55,6 +55,7 @@ const CollectionTable: React.FC = () => {
   const barcodeRef = useRef<HTMLDivElement>(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedTest, setSelectedTest] = useState<TestList | null>(null);
   const [updateCollectionTable, setUpdateCollectionTable] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilterOption>('today');
   const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
@@ -232,9 +233,14 @@ const CollectionTable: React.FC = () => {
     }
   };
 
-  const handleOpenReportModal = (patient: Patient) => {
-    if (!patient) return;
+  const handleOpenReportModal = (patient: Patient, testId: number) => {
+    if (!patient || !testId) return;
+    
+    const test = tests.find((t) => t.id === testId);
+    if (!test) return;
+    
     setSelectedPatient(patient);
+    setSelectedTest(test);
     setShowModal(true);
   };
 
@@ -291,13 +297,28 @@ const CollectionTable: React.FC = () => {
     {
       header: 'Tests',
       accessor: (row: Patient) => (
+<<<<<<< HEAD
         <div className="flex flex-wrap gap-1 max-w-[200px]">
           {row?.testIds?.map((testId) => {
+=======
+        <div className="flex flex-wrap items-center gap-2 min-w-[300px] max-w-[400px]">
+          {row.testIds.map((testId) => {
+>>>>>>> b51e296d48d776212477b7111f26d195bc1756f7
             const test = tests.find((t) => t.id === testId);
             return test ? (
-              <span key={test.id} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs truncate">
-                {test.name}
-              </span>
+              <div key={test.id} className="flex items-center gap-1">
+                <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
+                  {test.name}
+                </span>
+                <button
+                  onClick={() => handleOpenReportModal(row, testId)}
+                  className="flex items-center gap-1 bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap"
+                  title={`View result for ${test.name}`}
+                >
+                  <PlusIcon className="w-2.5 h-2.5 text-white" /> 
+                  <span className='text-white text-xs'>Result</span>
+                </button>
+              </div>
             ) : null;
           }).filter(Boolean)}
         </div>
@@ -391,18 +412,7 @@ const CollectionTable: React.FC = () => {
         )
       }
     },
-    {
-      header: 'Actions',
-      accessor: (row: Patient) => (
-        <button
-          onClick={() => handleOpenReportModal(row)}
-          className="flex items-center gap-1 bg-blue-500 texSt-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap"
-        >
-          <PlusIcon className="w-3 h-3 text-white" /> 
-          <span className='text-white'>Reference</span>
-        </button>
-      )
-    }
+
   ];
 
   if (isFetching) {
@@ -422,7 +432,16 @@ const CollectionTable: React.FC = () => {
           <p className="text-xs text-gray-500">Manage collected patient samples</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative">
+          <div 
+            className="relative"
+            onBlur={(e) => {
+              // Close dropdown when clicking outside
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setShowCustomDatePicker(false);
+              }
+            }}
+            tabIndex={-1}
+          >
             <button
               className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               onClick={() => setShowCustomDatePicker(!showCustomDatePicker)}
@@ -521,16 +540,21 @@ const CollectionTable: React.FC = () => {
             />
           </div>
 
-          {showModal && selectedPatient && (
-            <Modal isOpen={showModal} title="Enter Report Data" onClose={() => setShowModal(false)} modalClassName="max-w-5xl">
-              <PatientReportDataFill
-                selectedPatient={selectedPatient}
-                updateCollectionTable={updateCollectionTable}
-                setUpdateCollectionTable={setUpdateCollectionTable}
-                setShowModal={setShowModal}
-              />
-            </Modal>
-          )}
+                     {showModal && selectedPatient && selectedTest && (
+             <Modal isOpen={showModal} title={`Enter Report Data - ${selectedTest.name}`} onClose={() => {
+               setShowModal(false);
+               setSelectedPatient(null);
+               setSelectedTest(null);
+             }} modalClassName="max-w-5xl">
+               <PatientReportDataFill
+                 selectedPatient={selectedPatient}
+                 selectedTest={selectedTest}
+                 updateCollectionTable={updateCollectionTable}
+                 setUpdateCollectionTable={setUpdateCollectionTable}
+                 setShowModal={setShowModal}
+               />
+             </Modal>
+           )}
 
           {totalPages > 1 && (
             <div className="mt-4 flex justify-center">

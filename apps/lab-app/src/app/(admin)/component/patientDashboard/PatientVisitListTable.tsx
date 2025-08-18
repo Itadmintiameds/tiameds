@@ -47,7 +47,7 @@ const PatientVisitListTable: React.FC = () => {
   const [itemsPerPage] = useState<number>(10);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [visitTypeFilter, setVisitTypeFilter] = useState<string>('');
-  const [dateRangeFilter, setDateRangeFilter] = useState<string>('last24hours');
+  const [dateRangeFilter, setDateRangeFilter] = useState<string>('today');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [showAddPatientForm, setShowAddPatientForm] = useState<boolean>(false);
@@ -78,8 +78,14 @@ const PatientVisitListTable: React.FC = () => {
 
         switch (dateRangeFilter) {
           case 'today':
-            startDate = new Date(now.setHours(0, 0, 0, 0)).toISOString().split('T')[0];
-            endDate = new Date().toISOString().split('T')[0];
+            // Today: Use current date for both start and end
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const todayString = `${year}-${month}-${day}`;
+            startDate = todayString;
+            endDate = todayString;
             break;
           case 'yesterday':
             const yesterday = new Date();
@@ -105,14 +111,22 @@ const PatientVisitListTable: React.FC = () => {
             startDate = customStartDate;
             endDate = customEndDate;
             break;
-          case 'last24hours':
           default:
-            const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            startDate = last24Hours.toISOString().split('T')[0];
-            endDate = new Date().toISOString().split('T')[0];
+            // Default to today
+            const defaultToday = new Date();
+            const defaultYear = defaultToday.getFullYear();
+            const defaultMonth = String(defaultToday.getMonth() + 1).padStart(2, '0');
+            const defaultDay = String(defaultToday.getDate()).padStart(2, '0');
+            const defaultTodayString = `${defaultYear}-${defaultMonth}-${defaultDay}`;
+            startDate = defaultTodayString;
+            endDate = defaultTodayString;
             break;
         }
 
+        console.log('Date Range Filter:', dateRangeFilter);
+        console.log('Start Date:', startDate);
+        console.log('End Date:', endDate);
+        
         const response = await getAllPatientVisitsByDateRangeoflab(
           currentLab.id,
           startDate,
@@ -139,8 +153,10 @@ const PatientVisitListTable: React.FC = () => {
   let endDate: Date | null = now;
   switch (dateRangeFilter) {
     case 'today':
-      startDate = new Date(now.setHours(0, 0, 0, 0));
-      endDate = new Date();
+      startDate = new Date(now);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(now);
+      endDate.setHours(23, 59, 59, 999);
       break;
     case 'yesterday':
       startDate = new Date();
@@ -164,9 +180,12 @@ const PatientVisitListTable: React.FC = () => {
       if (customStartDate) startDate = new Date(customStartDate);
       if (customEndDate) endDate = new Date(customEndDate);
       break;
-    case 'last24hours':
     default:
-      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      // Default to today
+      startDate = new Date(now);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(now);
+      endDate.setHours(23, 59, 59, 999);
       break;
   }
 
@@ -262,7 +281,7 @@ const PatientVisitListTable: React.FC = () => {
   const handleClearFilters = () => {
     setStatusFilter('');
     setVisitTypeFilter('');
-    setDateRangeFilter('last24hours');
+    setDateRangeFilter('today');
     setCustomStartDate('');
     setCustomEndDate('');
     setSearchQuery('');
@@ -552,7 +571,6 @@ const PatientVisitListTable: React.FC = () => {
                 onChange={(e) => setDateRangeFilter(e.target.value)}
                 className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
               >
-                <option value="last24hours">Last 24 Hours</option>
                 <option value="today">Today</option>
                 <option value="yesterday">Yesterday</option>
                 <option value="last7days">Last 7 Days</option>

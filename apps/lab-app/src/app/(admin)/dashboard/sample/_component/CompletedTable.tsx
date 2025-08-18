@@ -318,7 +318,16 @@ const CompletedTable = () => {
                     <p className="text-xs text-gray-500">View and manage completed test reports</p>
                 </div>
 
-                <div className="relative">
+                <div 
+                    className="relative"
+                    onBlur={(e) => {
+                        // Close dropdown when clicking outside
+                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                            setShowDateFilter(false);
+                        }
+                    }}
+                    tabIndex={-1}
+                >
                     <button
                         onClick={() => setShowDateFilter(!showDateFilter)}
                         className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"

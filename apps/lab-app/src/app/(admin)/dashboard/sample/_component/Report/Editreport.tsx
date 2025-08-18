@@ -2181,7 +2181,11 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
                             <div className="flex-1">
                               <div className="flex items-center mb-1">
                                 <TbNumbers className="text-gray-500 mr-2" size={18} />
-                                <p className="font-medium text-gray-600">Enter Value</p>
+                                <p className="font-medium text-gray-600">Enter Value
+
+
+
+                                </p>
                               </div>
                               <div className="flex items-center">
                                 {getStatusIcon(status)}
