@@ -73,18 +73,14 @@ export const EditPatientSchema = z.object({
     packageIds: z.array(z.number().min(0)),
     // insuranceIds: z.array(z.number().min(0)),
     billing: z.object({
-      totalAmount: z.number().min(0).max(100000),
+      totalAmount: z.coerce.number().min(0).max(100000),
       paymentStatus: z.string().transform((val) => val.toLowerCase()), // Normalize to lowercase
       paymentMethod: z.string().transform((val) => val.toLowerCase()), // Normalize to lowercase
       paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Payment date must be in YYYY-MM-DD format" }),
       discount: z.coerce.number().min(0),
-      gstRate: z.coerce.number().min(0).max(100),
-      gstAmount: z.number().min(0),
-      cgstAmount: z.number().min(0),
-      sgstAmount: z.number().min(0),
-      igstAmount: z.number().min(0),
-      netAmount: z.number().min(0),
-      discountReason: z.string().optional()
+      netAmount: z.coerce.number().min(0),
+      discountReason: z.string().optional(),
+      discountPercentage: z.coerce.number().min(0).optional()
     }),
   }),
 });

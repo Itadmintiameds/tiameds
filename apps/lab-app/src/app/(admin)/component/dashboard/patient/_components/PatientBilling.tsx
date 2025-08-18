@@ -24,8 +24,8 @@ const PatientBilling = ({ newPatient, handleChange }: PatientBillingProps) => {
     <div className="mt-6 p-4 border rounded-xl shadow-lg bg-white">
       <h2 className="text-lg font-semibold text-gray-800 mb-4">Billing Details</h2>
 
-      {/* Discount and GST Rate Inputs */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      {/* Discount Input */}
+      <div className="grid grid-cols-1 gap-4 mb-4">
         <div className="flex flex-col">
           <label htmlFor="discount" className="text-xs font-medium text-gray-700">Discount (%)</label>
           <input
@@ -36,30 +36,14 @@ const PatientBilling = ({ newPatient, handleChange }: PatientBillingProps) => {
             className="w-full border border-gray-300 p-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div className="flex flex-col">
-          <label htmlFor="gstRate" className="text-xs font-medium text-gray-700">GST Rate (%)</label>
-          <input
-            type="number"
-            name="visit.billing.gstRate" // Ensure nested path
-            value={newPatient.visit?.billing.gstRate ?? 0}
-            onChange={handleChange}
-            className="w-full border border-gray-300 p-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
       </div>
 
-      {/* Total, GST, and Net Amount */}
-      <div className="grid grid-cols-3 gap-4 mb-4 text-center">
+      {/* Total and Net Amount */}
+      <div className="grid grid-cols-2 gap-4 mb-4 text-center">
         <div className="flex flex-col items-center">
           <p className="text-xs font-medium text-gray-600">Total Amount</p>
           <p className="text-sm font-semibold text-gray-800">
             ₹ {newPatient.visit?.billing?.totalAmount ?? 0}
-          </p>
-        </div>
-        <div className="flex flex-col items-center">
-          <p className="text-xs font-medium text-gray-600">GST Amount</p>
-          <p className="text-sm font-semibold text-gray-800">
-            ₹ {newPatient.visit?.billing?.gstAmount ?? 0}
           </p>
         </div>
         <div className="flex flex-col items-center">
@@ -117,28 +101,6 @@ const PatientBilling = ({ newPatient, handleChange }: PatientBillingProps) => {
           className="w-full border border-gray-300 p-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         />
-      </div>
-
-      {/* GST Breakdown */}
-      <div className="grid grid-cols-3 gap-4 text-center">
-        <div className="flex flex-col items-center">
-          <p className="text-xs font-medium text-gray-600">CGST Amount</p>
-          <p className="text-sm font-semibold text-gray-800">
-            ₹ {newPatient.visit?.billing?.cgstAmount ?? 0}
-          </p>
-        </div>
-        <div className="flex flex-col items-center">
-          <p className="text-xs font-medium text-gray-600">SGST Amount</p>
-          <p className="text-sm font-semibold text-gray-800">
-            ₹ {newPatient.visit?.billing?.sgstAmount ?? 0}
-          </p>
-        </div>
-        <div className="flex flex-col items-center">
-          <p className="text-xs font-medium text-gray-600">IGST Amount</p>
-          <p className="text-sm font-semibold text-gray-800">
-            ₹ {newPatient.visit?.billing?.igstAmount ?? 0}
-          </p>
-        </div>
       </div>
     </div>
   )

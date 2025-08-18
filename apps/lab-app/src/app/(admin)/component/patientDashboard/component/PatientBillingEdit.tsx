@@ -181,9 +181,6 @@ const PatientBillingEdit = ({
         selectedPackages.length === 0 && !isGlobalDiscountHidden;
 
 
-    console.log('Current discount reason:', newPatient.visit?.billing?.discountReason);
-
-
     return (
         <section className="bg-white rounded-lg border border-gray-200 shadow-xs overflow-hidden">
             <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
@@ -286,7 +283,7 @@ const PatientBillingEdit = ({
                         </label>
                         <select
                             name="visit.billing.paymentStatus"
-                            value={newPatient.visit?.billing?.paymentStatus ?? PaymentStatus.PENDING}
+                            value={newPatient.visit?.billing?.paymentStatus ?? PaymentStatus.DUE}
                             onChange={handleFieldChange}
                             className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
                             required

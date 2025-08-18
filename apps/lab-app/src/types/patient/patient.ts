@@ -59,6 +59,8 @@ export type Billing = {
   card_amount?: number | null;
   cash_amount?: number | null;
   due_amount?: number | null;
+  transactions?: BillingTransaction[];
+  gstRate?: number | null;
 };
 
 
@@ -71,8 +73,8 @@ interface listofDiscounts {
 
 // Enum for Payment Statuses
 export enum PaymentStatus {
-  PAID = 'PAID',
   DUE = 'DUE',// Represents an unknown payment status
+  PAID = 'PAID',
 }
 
 // Enum for Payment Methods
@@ -88,6 +90,8 @@ export enum PaymentMethod {
 export enum VisitType {
   IN_PATIENT = 'In-Patient',
   OUT_PATIENT = 'Out-Patient',
+  DAYCARE = 'Day-Care',
+  WAKING = 'Waking',
 }
 
 // Enum for Visit Statuses
@@ -117,3 +121,19 @@ export enum DiscountReason {
   FestiveOffer = 'Festive or Seasonal Offer',
   PackageDiscount = 'Package Discount + Additional Test Discount',
 }
+
+export type BillingTransaction = {
+  id?: number;
+  billing_id?: number;
+  payment_method: PaymentMethod;
+  upi_id?: string | null;
+  upi_amount?: number | null;
+  card_amount?: number | null;
+  cash_amount?: number | null;
+  received_amount: number;
+  refund_amount?: number | null;
+  due_amount: number;
+  payment_date?: string;
+  created_at?: string;
+  createdBy?: string;
+};

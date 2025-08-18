@@ -11,7 +11,7 @@ import { Package as PackageType } from '@/types/package/package';
 import { Patient, PaymentMethod, PaymentStatus, VisitStatus, VisitType } from "@/types/patient/patient";
 import { TestList } from '@/types/test/testlist';
 import { Plus, XIcon } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import Button from '../common/Button';
 import Loader from '../common/Loader';
@@ -20,6 +20,7 @@ import PatientFrom from './component/PatientFrom';
 import PatientTestPackage from './component/PatientTestPackage';
 import PatientVisit from './component/PatientVisit';
 import { Gender, DiscountReason } from '@/types/patient/patient';
+
 
 interface AddPatientComponentProps {
   setAddPatientModal: React.Dispatch<React.SetStateAction<boolean>>;
@@ -119,9 +120,10 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   }, [currentLab, refreshDocterList]);
 
 
-  const calculateAmounts = () => {
+  const calculateAmounts = useCallback(() => {
+    
     // 1. Calculate original test prices (no discounts)
-    const totalOriginalTestAmount = selectedTests.reduce((acc, test) => acc + test.price, 0);
+    // const totalOriginalTestAmount = selectedTests.reduce((acc, test) => acc + test.price, 0);
 
     // 2. Calculate package prices (no discounts)
     const totalPackageAmount = selectedPackages.reduce((acc, pkg) => acc + pkg.price, 0);
@@ -148,8 +150,8 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
     const globalDiscountAmount = newPatient.visit?.billing.discount || 0;
     const netAmount = Math.max(0, totalAfterTestDiscounts - globalDiscountAmount);
 
-    return {
-      totalAmount: totalOriginalTestAmount + totalPackageAmount,
+    const result = {
+      totalAmount: totalAfterTestDiscounts, // Amount after individual test discounts but before global discount
       netAmount: parseFloat(netAmount.toFixed(2)),
       amountAfterTestDiscounts: totalAfterTestDiscounts,
       globalDiscountAmount,
@@ -161,27 +163,34 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         finalPrice: test.finalPrice
       }))
     };
-  };
+    
+    return result;
+  }, [selectedTests, selectedPackages, newPatient.visit?.billing.discount]);
 
   useEffect(() => {
     const { totalAmount, netAmount } = calculateAmounts();
 
-    setNewPatient(prevState => ({
-      ...prevState,
-      visit: {
-        ...prevState.visit,
-        billing: {
-          ...prevState.visit.billing,
-          totalAmount,
-          netAmount,
-          // gstAmount: 0,
-          // cgstAmount: 0,
-          // sgstAmount: 0,
-          // igstAmount: 0,
+    setNewPatient(prevState => {
+      const updatedState = {
+        ...prevState,
+        visit: {
+          ...prevState.visit,
+          billing: {
+            ...prevState.visit.billing,
+            totalAmount,
+            netAmount,
+            // gstAmount: 0,
+            // cgstAmount: 0,
+            // sgstAmount: 0,
+            // igstAmount: 0,
+          },
         },
-      },
-    }));
-  }, [selectedTests, selectedPackages, newPatient.visit?.billing.discount]);
+      };
+      return updatedState;
+    });
+  }, [calculateAmounts]);
+
+
 
   useEffect(() => {
     const hasTestDiscounts = selectedTests.some(test =>
@@ -191,7 +200,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
     setIsGlobalDiscountHidden(hasTestDiscounts);
   }, [selectedTests]);
 
-  const handleChange = (
+  const handleChange = useCallback((
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
   ) => {
     const { name, value } = 'target' in event ? event.target : { name: '', value: [] };
@@ -229,7 +238,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         [name]: Array.isArray(value) ? value.map(Number) : value,
       }));
     }
-  };
+  }, []);
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedCategory(e.target.value);
@@ -366,8 +375,8 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   };
 
   const handleTestDiscountChange = (testId: number, field: 'percent' | 'amount', value: number) => {
-    setSelectedTests(prevTests =>
-      prevTests.map(test => {
+    setSelectedTests(prevTests => {
+      const updatedTests = prevTests.map(test => {
         if (test.id === testId) {
           const originalPrice = test.price;
           let discountAmount = 0;
@@ -381,31 +390,37 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
             discountPercent = (discountAmount / originalPrice) * 100;
           }
 
-          return {
+          const updatedTest = {
             ...test,
             discountAmount,
             discountPercent,
             discountedPrice: originalPrice - discountAmount
           };
+          
+          return updatedTest;
         }
         return test;
-      })
-    );
+      });
+      
+      return updatedTests;
+    });
+
+    // Clear global discount when test-level discount is applied
+    if (value > 0) {
+      setNewPatient(prevState => ({
+        ...prevState,
+        visit: {
+          ...prevState.visit,
+          billing: {
+            ...prevState.visit?.billing,
+            discount: 0,
+            discountPercentage: 0
+          }
+        }
+      }));
+    }
   };
 
-  // useEffect(() => {
-  //   if (searchTerm) {
-  //     const filtered = patient.filter(p =>
-  //       p.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //       p.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //       p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //       p.phone.includes(searchTerm)
-  //     );
-  //     setFilteredPatients(filtered);
-  //   } else {
-  //     setFilteredPatients([]);
-  //   }
-  // }, [searchTerm, patient]);
 
 
   useEffect(() => {
@@ -413,10 +428,8 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
       const fetchFilteredPatients = async () => {
         try {
           const response = await searchPatientByPhone(currentLab.id, searchTerm);
-          console.log(response.data, 'response.data');
           setFilteredPatients(response.data);
         } catch (error) {
-          console.error('Error fetching filtered patients:', error);
           toast.error('An error occurred while searching for patients.');
         }
       };
@@ -431,6 +444,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   };
 
   const handlePatientSelect = (selectedPatient: Patient) => {
+    
     setNewPatient({
       ...newPatient,
       firstName: selectedPatient.firstName,
@@ -442,8 +456,8 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
       state: '',
       zip: '',
       bloodGroup: '',
-      // dateOfBirth: selectedPatient.dateOfBirth,
-      age: selectedPatient.age || 'null',
+      dateOfBirth: selectedPatient.dateOfBirth || '',
+      age: selectedPatient.age || '',
       gender: selectedPatient.gender,
     });
     setSearchTerm('');
@@ -451,120 +465,62 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   };
 
   const handleClearPatient = () => {
-    // setNewPatient({
-    //   firstName: '',
-    //   lastName: '',
-    //   email: '',
-    //   phone: '',
-    //   address: '',
-    //   city: '',
-    //   state: '',
-    //   zip: '',
-    //   bloodGroup: '',
-    //   dateOfBirth: '',
-    //   age: '',
-    //   gender: '',
-    //   visit: {
-    //     visitDate: new Date().toISOString().split('T')[0],
-    //     visitType: VisitType.OUT_PATIENT,
-    //     visitStatus: VisitStatus.PENDING,
-    //     visitDescription: '',
-    //     // listofDiscounts: [],
-    //     doctorId: 0,
-    //     testIds: [],
-    //     packageIds: [],
-    //     insuranceIds: [],
-    //     billing: {
-    //       totalAmount: 0,
-    //       paymentStatus: PaymentStatus.PAID,
-    //       paymentMethod: PaymentMethod.CASH,
-    //       paymentDate: new Date().toISOString().split('T')[0],
-    //       discount: 0,
-    //       netAmount: 0,
-    //       discountReason: '',
-    //       discountPercentage: 0,
-    //       upi_id: '',
-    //       received_amount: null,
-    //       refund_amount: null,
-    //       upi_amount: null,
-    //       card_amount: null,
-    //       cash_amount: null,
-    //       due_amount: null,
-
-    //     },
-    //   },
-    // });
     setSearchTerm('');
     setFilteredPatients([]);
     setSelectedTests([]);
     setSelectedPackages([]);
     setSelectedCategory('');
-    setNewPatient(newPatient)
+    setSearchTestTerm('');
+    
+    // Reset the patient state to initial values
+    setNewPatient({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      bloodGroup: '',
+      dateOfBirth: '',
+      age: '',
+      gender: Gender.Female,
+      visit: {
+        visitDate: new Date().toISOString().split('T')[0],
+        visitType: VisitType.OUT_PATIENT,
+        visitStatus: VisitStatus.PENDING,
+        visitDescription: '',
+        visitCancellationReason: '',
+        visitCancellationDate: '',
+        vistCancellationBy: '',
+        visitCancellationTime: '',
+        doctorId: '',
+        testIds: [],
+        packageIds: [],
+        insuranceIds: [],
+        billing: {
+          totalAmount: null,
+          paymentStatus: PaymentStatus.PAID,
+          paymentMethod: PaymentMethod.CASH,
+          paymentDate: new Date().toISOString().split('T')[0],
+          discount: null,
+          netAmount: null,
+          discountReason: DiscountReason.None,
+          discountPercentage: null,
+          upi_id: '',
+          received_amount: null,
+          refund_amount: null,
+          upi_amount: null,
+          card_amount: null,
+          cash_amount: null,
+          due_amount: null,
+        },
+      },
+    });
   };
 
-  // const handleAddPatient = async () => {
-  //   try {
-  //     setLoading(true);
-  //     const validationResult = patientSchema.safeParse(newPatient);
 
-  //     // check if it contains any test id or package id
-  //     if (newPatient.visit.testIds.length === 0 && newPatient.visit.packageIds.length === 0) {
-  //       toast.error('Please select at least one test or package.');
-  //       return;
-  //     }
-
-  //     if (!validationResult.success) {
-  //       const error = validationResult.error;
-  //       toast.error(error.errors.map((err) => err.message).join(', '));
-  //       return;
-  //     }
-  //     const labId = currentLab?.id;
-  //     if (labId === undefined) {
-  //       toast.error('Lab ID is undefined.');
-  //       return;
-  //     }
-
-  //     const { totalAmount, netAmount, globalDiscountAmount } = calculateAmounts();
-
-  //     const patientData = {
-  //       ...newPatient,
-  //       visit: {
-  //         ...newPatient.visit,
-  //         billing: {
-  //           ...newPatient.visit.billing,
-  //           totalAmount,
-  //           netAmount,
-  //           discount: Number(globalDiscountAmount),
-  //           // discountPercentage: Number(globalDiscountPercent)
-  //         },
-  //         listofeachtestdiscount: selectedTests.map(test => ({
-  //           id: test.id,
-  //           discountAmount: test.discountAmount || 0,
-  //           discountPercent: test.discountPercent || 0,
-  //           finalPrice: test.discountedPrice || test.price
-
-  //         }))
-  //       }
-  //     };
-
-  //     // console.log('Patient Data:', patientData);
-  //     const response = await addPatient(labId, patientData);
-  //     setPatientDetails(response.data);
-  //     if (response.status === 'success') {
-  //       toast.success('Patient added successfully.', { autoClose: 2000, position: 'top-right' });
-  //       handleClearPatient();
-  //       setAddUpdatePatientListVist(!addUpdatePatientListVist);
-  //       setAddPatientModal(false);
-  //     } else {
-  //       toast.error('An error occurred while adding the patient.');
-  //     }
-  //   } catch (error) {
-  //     console.error('Error adding patient:', error);
-  //     toast.error('An error occurred while adding the patient.');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const handleAddPatient = async () => {
     try {
@@ -591,25 +547,29 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
       const { totalAmount, netAmount, globalDiscountAmount } = calculateAmounts();
       const billing = newPatient.visit.billing || {};
 
-      const cashAmount = Number(billing.cash_amount || 0);
-      const cardAmount = Number(billing.card_amount || 0);
-      const upiAmount = Number(billing.upi_amount || 0);
-      const receivedAmount = Number(billing.received_amount || 0);
-      const refundAmount = Number(billing.refund_amount || 0);
-      const dueAmount = Number(billing.due_amount || 0);
+      // Normalize amounts from state; treat empty/undefined as 0
+      const cashAmount = Number(billing.cash_amount ?? 0);
+      const cardAmount = Number(billing.card_amount ?? 0);
+      const upiAmount = Number(billing.upi_amount ?? 0);
+      const receivedAmount = Number(billing.received_amount ?? 0);
+
+      // Derive refund/due from netAmount and received amount to guarantee correctness
+      const computedDueAmount = Math.max(0, Number(netAmount ?? 0) - receivedAmount);
+      const computedRefundAmount = Math.max(0, receivedAmount - Number(netAmount ?? 0));
+
       const paymentDate = billing.paymentDate || new Date().toISOString().split("T")[0];
 
       const transactions = [];
        transactions.push({
         payment_method: billing.paymentMethod || PaymentMethod.CASH,
-        received_amount: receivedAmount,
+         received_amount: receivedAmount,
         date: paymentDate,
         upi_id: billing.upi_id || '',
         card_amount: cardAmount,
         cash_amount: cashAmount,
         upi_amount: upiAmount,
-        refund_amount: refundAmount,
-        due_amount: dueAmount,
+         refund_amount: computedRefundAmount,
+         due_amount: computedDueAmount,
         remarks: "paid by " + (billing.paymentMethod || PaymentMethod.CASH)
       });
 
@@ -617,11 +577,19 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         ...newPatient,
         visit: {
           ...newPatient.visit,
+          testResult: selectedTests.map(test => ({
+            testId: test.id,
+            isFilled: false
+          })),
           billing: {
             ...billing,
             totalAmount,
             netAmount,
             discount: Number(globalDiscountAmount),
+            // Ensure backend always receives explicit amounts, even if user didn't type them
+            received_amount: receivedAmount,
+            refund_amount: computedRefundAmount,
+            due_amount: computedDueAmount,
             transactions: transactions
           },
           listofeachtestdiscount: selectedTests.map(test => ({
@@ -632,8 +600,6 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
           }))
         }
       };
-
-      console.log('Patient Data:----------------------', patientData);
 
       const response = await addPatient(labId, patientData);
       setPatientDetails(response.data);
@@ -647,7 +613,6 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         toast.error('An error occurred while adding the patient.');
       }
     } catch (error) {
-      console.error('Error adding patient:', error);
       toast.error('An error occurred while adding the patient.');
     } finally {
       setLoading(false);
@@ -702,6 +667,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
 
       <PatientBilling
         selectedPackages={selectedPackages}
+        setSelectedTests={setSelectedTests}
         newPatient={newPatient}
         handleChange={handleChange}
         isGlobalDiscountHidden={isGlobalDiscountHidden}
@@ -732,3 +698,6 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
 };
 
 export default AddPatientComponent;
+
+
+

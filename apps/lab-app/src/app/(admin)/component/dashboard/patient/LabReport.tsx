@@ -10,7 +10,7 @@ import ViewReport from '@/app/(admin)/dashboard/sample/_component/Report/ViewRep
 import { useLabs } from '@/context/LabContext';
 import { PatientData } from '@/types/sample/sample';
 import { TestList } from '@/types/test/testlist';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { TbEdit, TbReport } from 'react-icons/tb';
 import { toast } from 'react-toastify';
 import { getAllVisitssamples } from '../../../../../../services/sampleServices';
@@ -44,46 +44,57 @@ const LabReport: React.FC = () => {
     const [viewPatient, setViewPatient] = useState<Patient | null>(null);
 
 
-    const fetchVisits = async () => {
+    const fetchVisits = useCallback(async () => {
         try {
-            if (currentLab?.id) {
-                const response: Patient[] = await getAllVisitssamples(currentLab.id);
-                const collectedVisits = response.filter((visit) => visit.visitStatus === 'Completed');
-                setPatientList(collectedVisits);
-
-                const uniqueTestIds = Array.from(new Set(collectedVisits.flatMap((visit) => visit.testIds)));
-                const fetchedTests = await Promise.all(
-                    uniqueTestIds.map((testId) => getTestById(currentLab.id.toString(), testId))
-                );
-                setTests(fetchedTests);
-
-                const uniquePackageIds = Array.from(new Set(collectedVisits.flatMap((visit) => visit.packageIds)));
-                const fetchedPackages = await Promise.all(
-                    uniquePackageIds.map((packageId) => getHealthPackageById(currentLab.id, packageId))
-                );
-                setHealthPackages(fetchedPackages.map((pkg) => pkg.data));
-            }
+          if (currentLab?.id) {
+            const response: Patient[] = await getAllVisitssamples(currentLab.id);
+            const collectedVisits = response.filter(
+              (visit) => visit.visitStatus === 'Completed'
+            );
+            setPatientList(collectedVisits);
+      
+            const uniqueTestIds = Array.from(
+              new Set(collectedVisits.flatMap((visit) => visit.testIds))
+            );
+            const fetchedTests = await Promise.all(
+              uniqueTestIds.map((testId) =>
+                getTestById(currentLab.id.toString(), testId)
+              )
+            );
+            setTests(fetchedTests);
+      
+            const uniquePackageIds = Array.from(
+              new Set(collectedVisits.flatMap((visit) => visit.packageIds))
+            );
+            const fetchedPackages = await Promise.all(
+              uniquePackageIds.map((packageId) =>
+                getHealthPackageById(currentLab.id, packageId)
+              )
+            );
+            setHealthPackages(fetchedPackages.map((pkg) => pkg.data));
+          }
         } catch (error) {
-            toast.error((error as Error).message || 'Error fetching visits', { autoClose: 2000 });
+          toast.error((error as Error).message || 'Error fetching visits', {
+            autoClose: 2000,
+          });
         }
-    };
-
-    useEffect(() => {
+      }, [currentLab]); 
+      
+      useEffect(() => {
         fetchVisits();
-    }, [currentLab]);
+      }, [fetchVisits]);
+      
 
     const totalPages = Math.ceil(patientList.length / itemsPerPage);
     const paginatedPatients = patientList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const handleOpenReportModal = (patient: Patient) => {
-        // Handle report view logic
         setViewModel(true);
         setViewPatient(patient);
     };
 
-    const handleEditReport = (patient: Patient) => {
+    const handleEditReport = () => {
         setEditModel(true);
-        console.log('Edit Report', patient);
     };
 
     const columns = [
@@ -148,7 +159,7 @@ const LabReport: React.FC = () => {
                     {/* Edit Report */}
                     <Button
                         text="Edit"
-                        onClick={() => handleEditReport(row)}
+                        onClick={() => handleEditReport()}
                         className="flex items-center px-2 py-1 text-white bg-edit rounded text-xs hover:bg-edithover"
                     >
                         <TbEdit className="text-sm mr-1" />

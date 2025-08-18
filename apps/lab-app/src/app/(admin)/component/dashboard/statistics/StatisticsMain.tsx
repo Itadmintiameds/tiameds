@@ -389,7 +389,7 @@
 
 import { useLabs } from '@/context/LabContext';
 import dayjs from 'dayjs';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import DatePicker from "react-datepicker";
 import 'react-datepicker/dist/react-datepicker.css';
 import {
@@ -443,19 +443,15 @@ const StatisticsMain = () => {
   });
   const { currentLab } = useLabs();
 
-  useEffect(() => {
-    if (currentLab?.id) {
-      fetchStats();
-    }
-  }, [currentLab, selectedFilter, customRange]);
-
-  const fetchStats = async () => {
+  
+  
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       const now = dayjs();
       let startDate = now.startOf('day').format('YYYY-MM-DD');
       let endDate = now.endOf('day').format('YYYY-MM-DD');
-
+  
       if (selectedFilter === 'last7Days') {
         startDate = now.subtract(7, 'days').format('YYYY-MM-DD');
       } else if (selectedFilter === 'thisMonth') {
@@ -466,12 +462,12 @@ const StatisticsMain = () => {
         startDate = dayjs(customRange.startDate).format('YYYY-MM-DD');
         endDate = dayjs(customRange.endDate).format('YYYY-MM-DD');
       }
-
+  
       let data;
       if (currentLab?.id) {
         data = await getLabStatsData(currentLab.id.toString(), startDate, endDate);
       }
-
+  
       if (data) {
         setStats([
           { name: 'Patients', value: data.numberOfVisits, icon: <FaUserInjured className="text-purple-600 w-5 h-5" /> },
@@ -480,11 +476,11 @@ const StatisticsMain = () => {
           { name: 'Paid Visits', value: data.paidVisits, icon: <FaMoneyBillWave className="text-green-600 w-5 h-5" /> },
           { name: 'Total Sales', value: `₹${data.totalSales.toLocaleString()}`, icon: <FaMoneyBillWave className="text-emerald-600 w-5 h-5" /> },
           { name: 'Products Sold', value: data.productsSold, icon: <FaBox className="text-indigo-600 w-5 h-5" /> },
-          { name: 'Avg Order Value', value: `₹${data.averageOrderValue}`, icon: <FaWallet className="text-orange-500 w-5 h-5" /> },
+          { name: 'Avg Order Value', value: `₹${Number(data.averageOrderValue).toFixed(2)}`, icon: <FaWallet className="text-orange-500 w-5 h-5" /> },
           { name: 'Total Tests', value: data.totalTests, icon: <FaVial className="text-cyan-600 w-5 h-5" /> },
           { name: 'Health Packages', value: data.totalHealthPackages, icon: <FaBriefcaseMedical className="text-teal-600 w-5 h-5" /> },
           { name: 'Doctors', value: data.totalDoctors, icon: <FaUserMd className="text-violet-600 w-5 h-5" /> },
-          { name: 'Total Discounts', value: `₹${data.totalDiscounts}`, icon: <FaPercentage className="text-red-500 w-5 h-5" /> },
+          { name: 'Total Discounts', value: `₹${Number(data.totalDiscounts).toFixed(2)}`, icon: <FaPercentage className="text-red-500 w-5 h-5" /> },
           { name: 'Gross Sales', value: `₹${data.totalGrossSales.toLocaleString()}`, icon: <FaChartLine className="text-purple-600 w-5 h-5" /> },
         ]);
       }
@@ -493,7 +489,14 @@ const StatisticsMain = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedFilter, customRange, currentLab]);
+
+  useEffect(() => {
+    if (currentLab?.id) {
+      fetchStats();
+    }
+  }, [currentLab, selectedFilter, customRange, fetchStats]);
+  
 
   if (loading) return <Loader />;
 

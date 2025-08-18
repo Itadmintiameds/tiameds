@@ -3,98 +3,32 @@ import { Patient, PaymentMethod, PaymentStatus } from '@/types/patient/patient';
 import Button from '../common/Button';
 import { toast } from 'react-toastify';
 import {
-  FaCreditCard,
-  FaMoneyBillWave,
-  FaGooglePay,
   FaPhoneAlt,
   FaUser,
   FaCalendarAlt,
   FaIdCard,
   FaCity,
   FaVenusMars,
-  FaFileInvoiceDollar,
   FaRupeeSign,
   FaHistory
 } from 'react-icons/fa';
-import { FiCheck, FiX, FiDollarSign, FiPercent, FiInfo } from 'react-icons/fi';
+import { FiCheck, FiX, FiInfo } from 'react-icons/fi';
 import { makePartialPayment } from '@/../services/patientServices';
 import { useLabs } from '@/context/LabContext';
 import Decimal from 'decimal.js';
 
-// Type Definitions
-interface BillingTransaction {
-  id?: number;
-  billing_id?: number;
-  payment_method: PaymentMethod;
-  upi_id?: string | null;
-  upi_amount?: number | null;
-  card_amount?: number | null;
-  cash_amount?: number | null;
-  received_amount: number;
-  refund_amount?: number | null;
-  due_amount: number;
-  payment_date: string;
-  remarks?: string | null;
-  created_at?: string;
-  createdBy: string;
-}
 
-interface VisitBilling {
-  billingId: number;
-  totalAmount: number;
-  paymentStatus: PaymentStatus;
-  paymentMethod: PaymentMethod;
-  paymentDate: string;
-  discount: number;
-  netAmount: number;
-  discountReason?: string | null;
-  createdBy: string;
-  billingTime: string;
-  billingDate: string;
-  updatedBy?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-  transactions: BillingTransaction[];
-  received_amount: number;
-  due_amount: number;
-}
 
-interface PatientVisit {
-  visitId: number;
-  visitDate: string;
-  visitType: string;
-  visitStatus: string;
-  visitDescription: string;
-  doctorId: number | null;
-  testIds: number[];
-  packageIds: number[];
-  billing: VisitBilling;
-  createdBy: string;
-  updatedBy?: string | null;
-  visitCancellationReason?: string;
-  visitCancellationDate?: string | null;
-  visitCancellationBy?: string | null;
-  visitCancellationTime?: string | null;
-  listofeachtestdiscount?: Array<{
-    discountAmount: number;
-    discountPercent: number;
-    finalPrice: number;
-    createdBy: string;
-    updatedBy: string;
-    id: number;
-  }>;
-  insuranceIds?: number[];
-}
-
-interface EnhancedPatient extends Omit<Patient, 'visit'> {
-  visit: PatientVisit;
-}
+ 
+// interface EnhancedPatient extends Omit<Patient, 'visit'> {
+//   visit: PatientVisit;
+// }
 
 interface DuePaymentProps {
-  onPaymentSuccess?: (updatedPatient: EnhancedPatient) => void;
-  patient: EnhancedPatient;
+  onPaymentSuccess?: (updatedPatient: Patient) => void;
+  patient: Patient;
   onClose: () => void;
-  currentUser: { username: string };
+  currentUser?: { username: string };
 }
 
 // Utility functions
@@ -109,9 +43,9 @@ const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
-const formatTime = (timeString: string) => {
-  return new Date(`2000-01-01T${timeString}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-};
+// const formatTime = (timeString: string) => {
+//   return new Date(`2000-01-01T${timeString}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+// };
 
 const calculateRefundDueAmounts = (received: Decimal, due: Decimal) => {
   if (received.gte(due)) {
@@ -126,7 +60,7 @@ const calculateRefundDueAmounts = (received: Decimal, due: Decimal) => {
   };
 };
 
-const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSuccess, currentUser }) => {
+const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSuccess }) => {
   const { currentLab } = useLabs();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [paymentData, setPaymentData] = useState({
@@ -135,7 +69,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
     cardAmount: new Decimal(0),
     cashAmount: new Decimal(0),
     receivedAmount: new Decimal(0),
-    remarks: 'Partial payment'
+    remarks: ''
   });
   const [loading, setLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -158,7 +92,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
       setPaymentData(prev => ({
         ...prev,
         upiId: lastTransaction.upi_id || '',
-        remarks: lastTransaction.remarks || 'Partial payment'
+        // remarks: lastTransaction.remarks || 'Partial payment'
       }));
     }
   }, [billing]);
@@ -199,9 +133,9 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
   };
 
 
-  console.log(patient, "patient")
 
-  const constructPaymentPayload = (): any => {
+
+  const constructPaymentPayload = () => {
     const newReceivedAmount = paymentData.receivedAmount;
     const currentReceived = getSafeDecimal(billing?.received_amount);
     const totalReceived = currentReceived.add(newReceivedAmount);
@@ -227,7 +161,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
         refund_amount: isFullyPaid ? Math.abs(newDueAmount.toNumber()) : null,
         due_amount: isFullyPaid ? 0 : newDueAmount.toNumber(),
         payment_date: new Date().toISOString().split('T')[0],
-        remarks: paymentData.remarks || `Payment via ${paymentMethod}`,
+        // remarks: paymentData.remarks || `Payment via ${paymentMethod}`,
 
       }
     };
@@ -250,14 +184,12 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
 
     try {
       const payload = constructPaymentPayload();
-      console.log("Constructed Payment Payload:", payload);
       const response = await makePartialPayment(
-        currentLab?.id as number,
-        billing.billingId,
+        Number(currentLab?.id),
+        Number(billing.billingId),
         payload
       );
 
-      toast.success("Payment processed successfully");
       setPaymentSuccess(true);
 
       if (onPaymentSuccess) {
@@ -269,8 +201,9 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
           }
         });
       }
-    } catch (error: any) {
-      toast.error(error.message || "Payment failed");
+    } catch (error) {
+      const message = (error as { message?: string })?.message || 'Payment failed';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -283,7 +216,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
           <FiX size={48} className="mx-auto" />
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">No Billing Information</h3>
-        <p className="text-gray-600">This patient visit doesn't have any billing information available.</p>
+        <p className="text-gray-600">This patient visit doesn&apos;t have any billing information available.</p>
       </div>
     );
   }
@@ -522,6 +455,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
                 placeholder="Payment notes..."
               />
             </div>
+
           </div>
 
           {/* Payment Amount Fields */}

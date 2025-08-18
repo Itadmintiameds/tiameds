@@ -15,7 +15,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import Button from '../common/Button';
 import Loader from '../common/Loader';
-import PatientBillingEdit from './component/PatientBillingEdit';
+import PatientBilling from './component/PatientBilling';
 import PatientTestPackage from './component/PatientTestPackage';
 import PatientVisit from './component/PatientVisit';
 import EditPatientFrom from './editpatient/EditPatientFrom';
@@ -48,7 +48,6 @@ interface EditPatientDetailsProps {
 }
 
 const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, setUpdatePatientListVist, updatePatientListVist }: EditPatientDetailsProps) => {
-  console.log('EditPatientDetails component rendered', editPatientDetails);
   const [tests, setTests] = useState<TestList[]>([]);
   const [packages, setPackages] = useState<PackageType[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -72,6 +71,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     zip: '',
     bloodGroup: '',
     dateOfBirth: '',
+    age: '',
     gender: Gender.Male,
     visit: {
       visitId: 0,
@@ -87,15 +87,10 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
       billing: {
         billingId: 0,
         totalAmount: 0,
-        paymentStatus: editPatientDetails?.visit?.billing?.paymentStatus || PaymentStatus.PENDING,
+        paymentStatus: editPatientDetails?.visit?.billing?.paymentStatus || PaymentStatus.DUE,
         paymentMethod: editPatientDetails?.visit?.billing?.paymentMethod || PaymentMethod.CASH,
         paymentDate: editPatientDetails?.visit?.billing?.paymentDate || new Date().toISOString().split('T')[0],
         discount: 0,
-        gstRate: 0,
-        gstAmount: 0,
-        cgstAmount: 0,
-        sgstAmount: 0,
-        igstAmount: 0,
         netAmount: 0,
         discountReason: editPatientDetails?.visit?.billing?.discountReason || DiscountReason.None,
         discountPercentage: 0,
@@ -140,7 +135,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
 
   const calculateAmounts = useCallback(() => {
     // 1. Calculate original test prices (no discounts)
-    const totalOriginalTestAmount = selectedTests.reduce((acc, test) => acc + test.price, 0);
+    // const totalOriginalTestAmount = selectedTests.reduce((acc, test) => acc + test.price, 0);
 
     // 2. Calculate package prices (no discounts)
     const totalPackageAmount = selectedPackages.reduce((acc, pkg) => acc + pkg.price, 0);
@@ -168,7 +163,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     const netAmount = Math.max(0, totalAfterTestDiscounts - globalDiscountAmount);
 
     return {
-      totalAmount: totalOriginalTestAmount + totalPackageAmount,
+      totalAmount: totalAfterTestDiscounts,
       netAmount: parseFloat(netAmount.toFixed(2)),
       amountAfterTestDiscounts: totalAfterTestDiscounts,
       globalDiscountAmount,
@@ -193,10 +188,6 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
           ...prev.visit.billing,
           totalAmount,
           netAmount,
-          gstAmount: 0,
-          cgstAmount: 0,
-          sgstAmount: 0,
-          igstAmount: 0,
         },
       },
     }));
@@ -251,7 +242,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
             setDoctors(doctorData?.data || []);
 
           } catch (error) {
-            console.error("Error fetching initial data:", error);
+
             toast.error("Failed to load initial data");
           } finally {
             setLoading(false);
@@ -274,7 +265,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
   ) => {
     if ('target' in event && Array.isArray(event.target.value)) {
-    
+
       const { name, value } = event.target;
       setEditedPatient(prev => {
         const newState = { ...prev };
@@ -438,6 +429,21 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         };
       })
     );
+
+    // Clear global discount when test-level discount is applied
+    if (value > 0) {
+      setEditedPatient(prevState => ({
+        ...prevState,
+        visit: {
+          ...prevState.visit,
+          billing: {
+            ...prevState.visit?.billing,
+            discount: 0,
+            discountPercentage: 0
+          }
+        }
+      }));
+    }
   };
 
   // const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }) => {
@@ -462,7 +468,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
   //         discountPercentage = totalAmount > 0 ?
   //           parseFloat(((discount / totalAmount) * 100).toFixed(2)) : 0;
   //       }
-        
+
 
   //       const netAmount = parseFloat((totalAmount - discount).toFixed(2));
 
@@ -493,56 +499,58 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
   //     };
   //   });
   // };
-  
-   const handleDiscountChange = (
-      event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
-    ) => {
-      const { name, value } = 'target' in event ? event.target : { name: '', value: [] };
-  
-      if (name === 'visit.insuranceIds') {
-         setEditedPatient(prevState => ({
-          ...prevState,
-          visit: {
-            ...prevState.visit,
-            insuranceIds: Array.isArray(value) ? value.map(Number) : [],
+
+  const handleDiscountChange = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
+  ) => {
+    const { name, value } = 'target' in event ? event.target : { name: '', value: [] };
+
+    if (name === 'visit.insuranceIds') {
+      setEditedPatient(prevState => ({
+        ...prevState,
+        visit: {
+          ...prevState.visit,
+          insuranceIds: Array.isArray(value) ? value.map(Number) : [],
+        },
+      }));
+    } else if (name.startsWith('visit.billing')) {
+      setEditedPatient(prevState => ({
+        ...prevState,
+        visit: {
+          ...prevState.visit,
+          billing: {
+            ...prevState.visit.billing,
+            [name.split('.')[2]]: value,
           },
-        }));
-      } else if (name.startsWith('visit.billing')) {
-         setEditedPatient(prevState => ({
-          ...prevState,
-          visit: {
-            ...prevState.visit,
-            billing: {
-              ...prevState.visit.billing,
-              [name.split('.')[2]]: value,
-            },
-          },
-        }));
-      } else if (name.startsWith('visit.')) {
-       setEditedPatient(prevState => ({
-          ...prevState,
-          visit: {
-            ...prevState.visit,
-            [name.split('.')[1]]: value,
-          },
-        }));
-      } else {
-        setEditedPatient(prevState => ({
-          ...prevState,
-          [name]: Array.isArray(value) ? value.map(Number) : value,
-        }));
-      }
-    };
+        },
+      }));
+    } else if (name.startsWith('visit.')) {
+      setEditedPatient(prevState => ({
+        ...prevState,
+        visit: {
+          ...prevState.visit,
+          [name.split('.')[1]]: value,
+        },
+      }));
+    } else {
+      setEditedPatient(prevState => ({
+        ...prevState,
+        [name]: Array.isArray(value) ? value.map(Number) : value,
+      }));
+    }
+  };
 
   const handleUpdatePatient = async () => {
     try {
       setLoading(true);
-      console.log('Edited Patient Data:', editedPatient);
+
+
+
       const validationResult = EditPatientSchema.safeParse(editedPatient);
 
       if (!validationResult.success) {
         const errors = validationResult.error.errors.map(err => err.message).join(', ');
-        console.error('Validation errors:', validationResult.error.errors);
+
         toast.error(`Validation failed: ${errors}`);
         return;
       }
@@ -557,16 +565,56 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
 
       const { totalAmount, netAmount, globalDiscountAmount } = calculateAmounts();
 
+      // Build transactions similar to AddPatient flow
+      const billing = editedPatient.visit.billing || ({} as typeof editedPatient.visit.billing);
+      const cashAmount = Number(billing.cash_amount || 0);
+      const cardAmount = Number(billing.card_amount || 0);
+      const upiAmount = Number(billing.upi_amount || 0);
+      const receivedAmount = Number(billing.received_amount || 0);
+      const refundAmount = Number(billing.refund_amount || 0);
+      const dueAmount = Number(billing.due_amount || 0);
+      const paymentDate = billing.paymentDate || new Date().toISOString().split('T')[0];
+
+      const transactions: Array<{
+        payment_method: PaymentMethod;
+        received_amount: number;
+        date: string;
+        upi_id: string;
+        card_amount: number;
+        cash_amount: number;
+        upi_amount: number;
+        refund_amount: number;
+        due_amount: number;
+        remarks: string;
+      }> = [];
+      transactions.push({
+        payment_method: billing.paymentMethod || PaymentMethod.CASH,
+        received_amount: receivedAmount,
+        date: paymentDate,
+        upi_id: billing.upi_id || '',
+        card_amount: cardAmount,
+        cash_amount: cashAmount,
+        upi_amount: upiAmount,
+        refund_amount: refundAmount,
+        due_amount: dueAmount,
+        remarks: 'paid by ' + (billing.paymentMethod || PaymentMethod.CASH),
+      });
+
       const patientData = {
         ...editedPatient,
         visit: {
           ...editedPatient.visit,
-          //  doctorId: editedPatient.visit.doctorId || null, 
+          //  doctorId: editedPatient.visit.doctorId || null,
+          testResult: selectedTests.map(test => ({
+            testId: test.id,
+            isFilled: false,
+          })),
           billing: {
             ...editedPatient.visit.billing,
             totalAmount,
             netAmount,
             discount: Number(globalDiscountAmount),
+            transactions: transactions,
           },
           listofeachtestdiscount: selectedTests.map(test => ({
             id: test.id,
@@ -640,10 +688,11 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         handleTestDiscountChange={handleTestDiscountChange}
       />
 
-      <PatientBillingEdit
+      <PatientBilling
         selectedPackages={selectedPackages}
         newPatient={editedPatient}
         handleChange={handleDiscountChange}
+        setSelectedTests={setSelectedTests}
         isGlobalDiscountHidden={isGlobalDiscountHidden}
       />
 

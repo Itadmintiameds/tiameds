@@ -109,7 +109,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                     </td>
                     <td className="border p-2">{test.name}</td>
                     <td className="border p-2">{test.category}</td>
-                    <td className="border p-2">{test.price}</td>
+                                           <td className="border p-2">₹{isNaN(Number(test.price)) ? 'N/A' : Number(test.price).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -142,7 +142,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                       />
                     </td>
                     <td className="border p-2">{pkg.packageName}</td>
-                    <td className="border p-2">{pkg.price}</td>
+                                           <td className="border p-2">₹{isNaN(Number(pkg.price)) ? 'N/A' : Number(pkg.price).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -152,7 +152,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
 
         {/* Selected Tests */}
         {selectedTests.length > 0 && (
-          <div>
+          <div> 
             <h3 className="text-xs font-semibold text-gray-700 my-2">Selected Tests</h3>
             <div className="h-40 overflow-y-auto border rounded-lg bg-gray-50">
               <table className="w-full border-collapse border text-gray-700  text-xs">
@@ -167,7 +167,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                   {selectedTests.map((test) => (
                     <tr key={test.id}>
                       <td className="border p-2">{test.name}</td>
-                      <td className="border p-2">{test.price}</td>
+                      <td className="border p-2">₹{isNaN(Number(test.price)) ? 'N/A' : Number(test.price).toFixed(2)}</td>
                       <td className="border p-2 text-center">
                         <button onClick={() => handleRemoveTest(test.id.toString())}>
                           <FaTrashAlt size={16} className="text-red-500" />
@@ -198,7 +198,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                   {selectedPackages.map((pkg) => (
                     <tr key={pkg.id}>
                       <td className="border p-2">{pkg.packageName}</td>
-                      <td className="border p-2">{pkg.price}</td>
+                      <td className="border p-2">₹{isNaN(Number(pkg.price)) ? 'N/A' : Number(pkg.price).toFixed(2)}</td>
                       <td className="border p-2 text-center">
                         <button onClick={() => handleRemovePackage(pkg.id.toString())}>
                           <FaTrashAlt size={16} className="text-red-500" />

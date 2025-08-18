@@ -123,7 +123,7 @@ const PackageOrder = () => {
                                         <td className="border px-4 py-2">{selectedPackage.name}</td>
                                         <td className="border px-4 py-2">{test.name}</td>
                                         <td className="border px-4 py-2">{test.qty}</td>
-                                        <td className="border px-4 py-2">{test.price}</td>
+                                        <td className="border px-4 py-2">₹{Number(test.price).toFixed(2)}</td>
                                         <td className="border px-4 py-2">{test.discountPercent}</td>
                                         <td className="border px-4 py-2">{test.gstPercent}</td>
                                     </tr>
