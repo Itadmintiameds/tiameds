@@ -140,23 +140,23 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
     return (
       <div className="mt-6 pt-4 border-t border-gray-200 print:mt-4 print:pt-2">
-        <h3 className="font-bold text-gray-800 mb-3 text-lg print:mb-2">PAYMENT TRANSACTIONS</h3>
+        <h3 className="font-bold text-gray-800 mb-3 text-lg print:mb-2">PAYMENT TRANSACTIONS123</h3>
         <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full text-xs border-collapse print:table-fixed print:w-full">
-            <thead>
-              <tr className="bg-gray-200 text-gray-800">
-                <th className="p-1 font-medium text-left align-top">ID</th>
-                <th className="p-1 font-medium text-left align-top">Method</th>
-                <th className="p-1 font-medium text-left align-top">UPI</th>
-                <th className="p-1 font-medium text-left align-top">Card</th>
-                <th className="p-1 font-medium text-left align-top">Cash</th>
-                <th className="p-1 font-medium text-left align-top">Received</th>
-                <th className="p-1 font-medium text-left align-top">Refund</th>
-                <th className="p-1 font-medium text-left align-top">Due</th>
-                <th className="p-1 font-medium text-left align-top">Date/Time</th>
-                <th className="p-1 font-medium text-left align-top">Received by</th>
-              </tr>
-            </thead>
+                    <thead>
+          <tr className="bg-gray-200 text-gray-800">
+            <th className="p-1 font-medium text-left align-top">ID</th>
+            <th className="p-1 font-medium text-left align-top">Method</th>
+            <th className="p-1 font-medium text-left align-top">UPI</th>
+            <th className="p-1 font-medium text-left align-top">Card</th>
+            <th className="p-1 font-medium text-left align-top">Cash</th>
+            <th className="p-1 font-medium text-left align-top">Received</th>
+            {/* <th className="p-1 font-medium text-left align-top">Refund</th> */}
+            <th className="p-1 font-medium text-left align-top">Due</th>
+            <th className="p-1 font-medium text-left align-top">Date/Time</th>
+            <th className="p-1 font-medium text-left align-top">Received by</th>
+          </tr>
+        </thead>
             <tbody>
               {[...transactions]
                 .sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
@@ -188,13 +188,13 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                       >
                         ₹{txn.received_amount}
                       </td>
-                      <td className="p-1 border-b border-gray-100 align-top">
+                      {/* <td className="p-1 border-b border-gray-100 align-top">
                         {Number(txn.refund_amount ?? 0) > 0 ? (
                           <span className="text-red-600">-₹{Number(txn.refund_amount ?? 0).toFixed(2)}</span>
                         ) : (
                           <span>₹{Number(txn.refund_amount ?? 0).toFixed(2)}</span>
                         )}
-                      </td>
+                      </td> */}
                       <td
                         className={`p-1 border-b border-gray-100 align-top ${Number(txn.due_amount ?? 0) > 0 ? 'text-red-600' : ''}`}
                       >
@@ -239,9 +239,9 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                     ₹{totalReceived.toFixed(2)}
                   </td>
                   {/* Refund total */}
-                  <td className={`p-1 font-bold align-top ${totalRefund > 0 ? 'text-red-600' : ''}`}>
+                  {/* <td className={`p-1 font-bold align-top ${totalRefund > 0 ? 'text-red-600' : ''}`}>
                     {totalRefund > 0 ? `-₹${totalRefund.toFixed(2)}` : `₹${totalRefund.toFixed(2)}`}
-                  </td>
+                  </td> */}
                   {/* Remaining due (computed) */}
                   <td
                     className={`p-1 font-bold align-top ${remainingDue > 0 ? 'text-red-600' : ''}`}
@@ -253,7 +253,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                   <td className="p-1 align-top"></td>
                 </tr>
                 <tr className="bg-gray-50 font-medium ">
-                  <td colSpan={9} className="p-1 align-top text-right">Net Amount:</td>
+                  <td colSpan={8} className="p-1 align-top text-right">Net Amount:</td>
                   <td className="p-1 text-blue-600 font-bold align-top" colSpan={3}>
                     ₹{Number(patient?.visit?.billing?.netAmount || 0).toFixed(2)}
                   </td>

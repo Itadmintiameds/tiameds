@@ -157,6 +157,8 @@ const PendingTable: React.FC = () => {
     fetchVisits();
   }, [currentLab, dateFilter, customStartDate, customEndDate, loading]);
 
+
+
   const handleDateFilterChange = (filter: DateFilterOption) => {
     setDateFilter(filter);
     if (filter !== 'custom') {
@@ -338,7 +340,16 @@ const PendingTable: React.FC = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative">
+          <div 
+            className="relative"
+            onBlur={(e) => {
+              // Close dropdown when clicking outside
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setShowCustomDatePicker(false);
+              }
+            }}
+            tabIndex={-1}
+          >
             <button
               className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               onClick={() => setShowCustomDatePicker(!showCustomDatePicker)}
