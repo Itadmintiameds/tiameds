@@ -767,6 +767,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useLabs } from "@/context/LabContext";
 import { PatientData } from "@/types/sample/sample";
+import { calculateAge } from "@/utils/ageUtils";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { getReportData } from "../../../../../../../services/reportServices";
@@ -868,18 +869,7 @@ const LabReport = ({ viewPatient }: { viewPatient: PatientData | null }) => {
         return acc;
     }, {});
 
-    // Calculate patient age if date of birth is available
-    const calculateAge = (dob: string) => {
-        if (!dob) return null;
-        const birthDate = new Date(dob);
-        const now = new Date();
-        let years = now.getFullYear() - birthDate.getFullYear();
-        if (now.getMonth() < birthDate.getMonth() || 
-            (now.getMonth() === birthDate.getMonth() && now.getDate() < birthDate.getDate())) {
-            years--;
-        }
-        return years;
-    };
+
 
     return (
         <div className="max-w-4xl mx-auto">

@@ -6,6 +6,8 @@ import Pagination from '@/app/(admin)/component/common/Pagination';
 import TableComponent from '@/app/(admin)/component/common/TableComponent';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
+import { calculateAge } from '@/utils/ageUtils';
+import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, formatDisplayDate, getDateRange } from '@/utils/dateUtils';
 import html2canvas from 'html2canvas';
 import { CalendarDays, ChevronDown, Edit, PlusIcon, Download } from 'lucide-react';
 import React, { useEffect, useState, useRef } from 'react';
@@ -41,7 +43,7 @@ interface UpdateSample {
   visitId: number;
   sampleNames: string[];
 }
-type DateFilterOption = 'today' | 'yesterday' | 'last7days' | 'thisMonth' | 'thisYear' | 'custom';
+
 
 const CollectionTable: React.FC = () => {
   const { currentLab } = useLabs();
@@ -63,74 +65,14 @@ const CollectionTable: React.FC = () => {
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
 
-  const getDateRange = (filter: DateFilterOption) => {
-    const now = new Date();
-    let startDate = new Date();
-    let endDate = new Date();
 
-    switch (filter) {
-      case 'today':
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'yesterday':
-        startDate.setDate(startDate.getDate() - 1);
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setDate(endDate.getDate() - 1);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'last7days':
-        startDate.setDate(endDate.getDate() - 7);
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'thisMonth':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        startDate.setHours(0, 0, 0, 0);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'thisYear':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        startDate.setHours(0, 0, 0, 0);
-        endDate = new Date(now.getFullYear(), 11, 31);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'custom':
-        if (!customStartDate || !customEndDate) {
-          toast.warning("Please select both start and end dates");
-          return { startDate: null, endDate: null };
-        }
-        startDate = new Date(customStartDate);
-        endDate = new Date(customEndDate);
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      default:
-        break;
-    }
-    return { startDate, endDate };
-  };
-
-  const formatDateForAPI = (date: Date) => {
-    return date.toISOString().split('T')[0];
-  };
-
-  const formatDisplayDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
 
   const fetchVisits = async () => {
     try {
       if (!currentLab?.id) return;
 
       setIsFetching(true);
-      const { startDate, endDate } = getDateRange(dateFilter);
+      const { startDate, endDate } = getDateRange(dateFilter, customStartDate, customEndDate);
 
       if (!startDate || !endDate) return;
 
@@ -142,7 +84,14 @@ const CollectionTable: React.FC = () => {
       );
 
       const collectedVisits = response
-        .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
+        .sort((a, b) => {
+          // First sort by visit date (latest first)
+          const dateComparison = new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime();
+          if (dateComparison !== 0) return dateComparison;
+          
+          // If dates are the same, sort by visit ID (highest first for latest)
+          return b.visitId - a.visitId;
+        });
 
       setPatientList(
         collectedVisits.map((visit) => ({
@@ -234,35 +183,18 @@ const CollectionTable: React.FC = () => {
 
   const handleOpenReportModal = (patient: Patient, testId: number) => {
     if (!patient || !testId) return;
-    
+
     const test = tests.find((t) => t.id === testId);
     if (!test) return;
-    
+
     setSelectedPatient(patient);
     setSelectedTest(test);
     setShowModal(true);
   };
 
-  const filterOptions = [
-    { value: 'today', label: 'Today' },
-    { value: 'yesterday', label: 'Yesterday' },
-    { value: 'last7days', label: 'Last 7 Days' },
-    { value: 'thisMonth', label: 'This Month' },
-    { value: 'thisYear', label: 'This Year' },
-    { value: 'custom', label: 'Custom Range' },
-  ];
 
-  const calculateAge = (dob: string | undefined) => {
-    if (!dob) return 'N/A';
-    const birthDate = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  };
+
+
 
   const columns = [
     {
@@ -309,7 +241,7 @@ const CollectionTable: React.FC = () => {
                   className="flex items-center gap-1 bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap"
                   title={`View result for ${test.name}`}
                 >
-                  <PlusIcon className="w-2.5 h-2.5 text-white" /> 
+                  <PlusIcon className="w-2.5 h-2.5 text-white" />
                   <span className='text-white text-xs'>Result</span>
                 </button>
               </div>
@@ -392,7 +324,7 @@ const CollectionTable: React.FC = () => {
                 height={40}
                 displayValue={true}
                 fontSize={10}
-                
+
               />
             </div>
             <button
@@ -426,7 +358,7 @@ const CollectionTable: React.FC = () => {
           <p className="text-xs text-gray-500">Manage collected patient samples</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <div 
+          <div
             className="relative"
             onBlur={(e) => {
               // Close dropdown when clicking outside
@@ -441,7 +373,7 @@ const CollectionTable: React.FC = () => {
               onClick={() => setShowCustomDatePicker(!showCustomDatePicker)}
             >
               <CalendarDays className="w-3 h-3 text-gray-500" />
-              <span>{filterOptions.find(opt => opt.value === dateFilter)?.label || 'Filter'}</span>
+              <span>{DATE_FILTER_OPTIONS.find(opt => opt.value === dateFilter)?.label || 'Filter'}</span>
               <ChevronDown className="w-3 h-3 text-gray-500" />
             </button>
 
@@ -455,7 +387,7 @@ const CollectionTable: React.FC = () => {
                       onChange={(e) => handleDateFilterChange(e.target.value as DateFilterOption)}
                       className="w-full p-1.5 border border-gray-300 rounded-md text-xs"
                     >
-                      {filterOptions.map(option => (
+                      {DATE_FILTER_OPTIONS.map(option => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
@@ -534,21 +466,21 @@ const CollectionTable: React.FC = () => {
             />
           </div>
 
-                     {showModal && selectedPatient && selectedTest && (
-             <Modal isOpen={showModal} title={`Enter Report Data - ${selectedTest.name}`} onClose={() => {
-               setShowModal(false);
-               setSelectedPatient(null);
-               setSelectedTest(null);
-             }} modalClassName="max-w-5xl">
-               <PatientReportDataFill
-                 selectedPatient={selectedPatient}
-                 selectedTest={selectedTest}
-                 updateCollectionTable={updateCollectionTable}
-                 setUpdateCollectionTable={setUpdateCollectionTable}
-                 setShowModal={setShowModal}
-               />
-             </Modal>
-           )}
+          {showModal && selectedPatient && selectedTest && (
+            <Modal isOpen={showModal} title={`Enter Report Data - ${selectedTest.name}`} onClose={() => {
+              setShowModal(false);
+              setSelectedPatient(null);
+              setSelectedTest(null);
+            }} modalClassName="max-w-5xl">
+              <PatientReportDataFill
+                selectedPatient={selectedPatient}
+                selectedTest={selectedTest}
+                updateCollectionTable={updateCollectionTable}
+                setUpdateCollectionTable={setUpdateCollectionTable}
+                setShowModal={setShowModal}
+              />
+            </Modal>
+          )}
 
           {totalPages > 1 && (
             <div className="mt-4 flex justify-center">

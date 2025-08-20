@@ -7,7 +7,9 @@ import Pagination from '@/app/(admin)/component/common/Pagination';
 import TableComponent from '@/app/(admin)/component/common/TableComponent';
 import PatientInvoice from '@/app/(admin)/component/patientDashboard/invoice/PatientInvoice';
 import { useLabs } from '@/context/LabContext';
-import { DateFilterOption, HealthPackage, Patient } from '@/types/pendingTable/PendingTatbleDataType';
+import { HealthPackage, Patient } from '@/types/pendingTable/PendingTatbleDataType';
+import { calculateAge } from '@/utils/ageUtils';
+import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, formatDisplayDateWithWeekday, getDateRange } from '@/utils/dateUtils';
 import { TestList } from '@/types/test/testlist';
 import React, { useEffect, useState } from 'react';
 import DatePicker from 'react-datepicker';
@@ -37,83 +39,16 @@ const PendingTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(8);
 
-  const getDateRange = (filter: DateFilterOption) => {
-    const now = new Date();
-    let startDate = new Date();
-    let endDate = new Date();
 
-    switch (filter) {
-      case 'today':
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'yesterday':
-        startDate.setDate(startDate.getDate() - 1);
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setDate(endDate.getDate() - 1);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'last7days':
-        startDate.setDate(endDate.getDate() - 7);
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'thisMonth':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        startDate.setHours(0, 0, 0, 0);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'thisYear':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        startDate.setHours(0, 0, 0, 0);
-        endDate = new Date(now.getFullYear(), 11, 31);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'custom':
-        if (!customStartDate || !customEndDate) {
-          toast.warning("Please select both start and end dates");
-          return { startDate: null, endDate: null };
-        }
-        startDate = new Date(customStartDate);
-        endDate = new Date(customEndDate);
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      default:
-        break;
-    }
 
-    return { startDate, endDate };
-  };
 
-  const formatDateForAPI = (date: Date) => {
-    return date.toISOString().split('T')[0];
-  };
-
-  const formatDisplayDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
-  const calculateAge = (dob: string) => {
-    const birthDate = new Date(dob);
-    const difference = Date.now() - birthDate.getTime();
-    const ageDate = new Date(difference);
-    return Math.abs(ageDate.getUTCFullYear() - 1970);
-  };
 
   const fetchVisits = async () => {
     if (!currentLab?.id) return;
 
     try {
       setIsFetching(true);
-      const { startDate, endDate } = getDateRange(dateFilter);
+      const { startDate, endDate } = getDateRange(dateFilter, customStartDate, customEndDate);
 
       if (!startDate || !endDate) return;
 
@@ -239,7 +174,7 @@ const PendingTable: React.FC = () => {
       accessor: (row: Patient) => (
         <div className="flex items-center gap-1 text-gray-600 -ml-8">
           <FaCalendarAlt className="text-xs opacity-70" />
-          <span>{formatDisplayDate(row.visitDetailDto.visitDate)}</span>
+          <span>{formatDisplayDateWithWeekday(row.visitDetailDto.visitDate)}</span>
         </div>
       ),
     },
@@ -313,14 +248,7 @@ const PendingTable: React.FC = () => {
     },
   ];
 
-  const filterOptions = [
-    { value: 'today', label: 'Today' },
-    { value: 'yesterday', label: 'Yesterday' },
-    { value: 'last7days', label: 'Last 7 Days' },
-    { value: 'thisMonth', label: 'This Month' },
-    { value: 'thisYear', label: 'This Year' },
-    { value: 'custom', label: 'Custom Range' },
-  ];
+
 
   if (isFetching) {
     return (
@@ -355,7 +283,7 @@ const PendingTable: React.FC = () => {
               onClick={() => setShowCustomDatePicker(!showCustomDatePicker)}
             >
               <FaFilter className="text-gray-500" />
-              <span>{filterOptions.find(opt => opt.value === dateFilter)?.label || 'Filter'}</span>
+              <span>{DATE_FILTER_OPTIONS.find(opt => opt.value === dateFilter)?.label || 'Filter'}</span>
               <FaChevronDown className="text-xs text-gray-500" />
             </button>
 
@@ -369,7 +297,7 @@ const PendingTable: React.FC = () => {
                       onChange={(e) => handleDateFilterChange(e.target.value as DateFilterOption)}
                       className="w-full p-2 border border-gray-300 rounded-md text-sm"
                     >
-                      {filterOptions.map(option => (
+                      {DATE_FILTER_OPTIONS.map(option => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>

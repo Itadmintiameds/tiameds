@@ -12,6 +12,7 @@ import { Doctor } from '@/types/doctor/doctor';
 import { Packages } from '@/types/package/package';
 import { Insurance } from '@/types/insurance/insurance';
 import { useLabs } from '@/context/LabContext';
+import { calculateAge } from '@/utils/ageUtils';
 import { FaUser, FaEnvelope, FaTint, FaCity, FaMapMarkerAlt, FaBirthdayCake, FaPhone, FaMapPin, FaUserMd, FaShieldAlt, FaNotesMedical } from 'react-icons/fa';
 import Button from '../../../common/Button';
 import { IoPrintOutline } from 'react-icons/io5';
@@ -113,13 +114,7 @@ const PatientVisitDetails = ({ patinetVisitDetails }: PatientVisitDetailsProps) 
 
     console.log("Insurance", insurance);
 
-    // Calculate Age from DOB
-    const calculateAge = (dateOfBirth: string) => {
-        const dob = new Date(dateOfBirth);
-        const diff_ms = Date.now() - dob.getTime();
-        const age_dt = new Date(diff_ms);
-        return Math.abs(age_dt.getUTCFullYear() - 1970);
-    };
+
 
     console.log(insurance, "insurance");
     console.log(healthPackage, "healthPackage");

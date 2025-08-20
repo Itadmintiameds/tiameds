@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Patient, PaymentMethod, PaymentStatus } from '@/types/patient/patient';
+import { Patient, PaymentMethod, PaymentStatus, BillingTransaction } from '@/types/patient/patient';
 import Button from '../common/Button';
 import { toast } from 'react-toastify';
 import {
@@ -75,11 +75,17 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const billing = patient?.visit?.billing;
-  const dueAmount = getSafeDecimal(billing?.due_amount);
   const netAmount = getSafeDecimal(billing?.netAmount);
   const totalAmount = getSafeDecimal(billing?.totalAmount);
   const discountAmount = getSafeDecimal(billing?.discount);
-  const paidAmount = netAmount.sub(dueAmount);
+  
+  // Calculate actual due amount from transactions
+  const txns = (billing?.transactions ?? []) as BillingTransaction[];
+  const totalReceived = txns.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.received_amount || 0), 0);
+  const totalRefund = txns.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.refund_amount || 0), 0);
+  const actualPaidAmount = getSafeDecimal(totalReceived - totalRefund);
+  const dueAmount = getSafeDecimal(Math.max(0, netAmount.sub(actualPaidAmount).toNumber()));
+  
   const { refund, due } = calculateRefundDueAmounts(paymentData.receivedAmount, dueAmount);
 
   useEffect(() => {
@@ -137,7 +143,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
 
   const constructPaymentPayload = () => {
     const newReceivedAmount = paymentData.receivedAmount;
-    const currentReceived = getSafeDecimal(billing?.received_amount);
+    const currentReceived = actualPaidAmount; // Use the calculated actual paid amount
     const totalReceived = currentReceived.add(newReceivedAmount);
     const newDueAmount = dueAmount.sub(newReceivedAmount);
     const isFullyPaid = newDueAmount.lte(0);
@@ -329,7 +335,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Paid:</span>
-            <span className="text-green-600">₹{paidAmount.toFixed(2)}</span>
+            <span className="text-green-600">₹{actualPaidAmount.toFixed(2)}</span>
           </div>
           <div className="flex justify-between border-t border-gray-100 pt-1.5">
             <span className="text-gray-700 font-medium">Due:</span>
@@ -376,9 +382,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
                       <td className="px-2 py-1">{t.billing_id}</td>
                       <td className="px-2 py-1">
                         {t.payment_method}
-                        {t.upi_id && (
-                          <div className="text-xs text-gray-500">{t.upi_id}</div>
-                        )}
+                      
                       </td>
                       <td className="px-2 py-1 text-right">₹{getSafeDecimal(t.upi_amount).toFixed(2)}</td>
                       <td className="px-2 py-1 text-right">₹{getSafeDecimal(t.card_amount).toFixed(2)}</td>

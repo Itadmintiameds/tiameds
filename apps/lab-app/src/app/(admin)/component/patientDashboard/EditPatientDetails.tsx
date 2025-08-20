@@ -18,7 +18,7 @@ import Loader from '../common/Loader';
 import PatientBilling from './component/PatientBilling';
 import PatientTestPackage from './component/PatientTestPackage';
 import PatientVisit from './component/PatientVisit';
-import EditPatientFrom from './editpatient/EditPatientFrom';
+import PatientForm from './component/PatientFrom';
 
 enum Gender {
   Male = 'male',
@@ -446,59 +446,6 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     }
   };
 
-  // const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }) => {
-  //   const { name, value } = e.target;
-
-  //   // Only convert to number for numeric fields
-  //   const isNumericField = name.includes('discount') || name.includes('Amount') || name.includes('Percentage');
-  //   const processedValue = isNumericField ? (parseFloat(Array.isArray(value) ? value[0] ?? '0' : value) || 0) : value;
-
-  //   setEditedPatient(prev => {
-  //     if (name === 'visit.billing.discountPercentage' || name === 'visit.billing.discount') {
-  //       const totalAmount = prev.visit.billing.totalAmount;
-  //       let discount = prev.visit.billing.discount;
-  //       let discountPercentage = prev.visit.billing.discountPercentage;
-
-  //       if (name === 'visit.billing.discountPercentage') {
-  //         const percentage = Math.min(100, Number(processedValue));
-  //         discount = parseFloat(((percentage / 100) * totalAmount).toFixed(2));
-  //         discountPercentage = percentage;
-  //       } else if (name === 'visit.billing.discount') {
-  //         discount = Math.min(totalAmount, Number(processedValue));
-  //         discountPercentage = totalAmount > 0 ?
-  //           parseFloat(((discount / totalAmount) * 100).toFixed(2)) : 0;
-  //       }
-
-
-  //       const netAmount = parseFloat((totalAmount - discount).toFixed(2));
-
-  //       return {
-  //         ...prev,
-  //         visit: {
-  //           ...prev.visit,
-  //           billing: {
-  //             ...prev.visit.billing,
-  //             discount,
-  //             discountPercentage,
-  //             netAmount
-  //           }
-  //         }
-  //       };
-  //     }
-
-  //     // For non-numeric fields, update directly
-  //     return {
-  //       ...prev,
-  //       visit: {
-  //         ...prev.visit,
-  //         billing: {
-  //           ...prev.visit.billing,
-  //           [name.split('.')[2]]: processedValue
-  //         }
-  //       }
-  //     };
-  //   });
-  // };
 
   const handleDiscountChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
@@ -652,7 +599,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
   return (
     <div className="space-y-6">
       <div className="flex gap-4">
-        <EditPatientFrom
+        <PatientForm
           newPatient={editedPatient}
           handleChange={handleChange}
           isEditMode={true}

@@ -7,6 +7,7 @@ import { Doctor } from '@/types/doctor/doctor';
 import { Packages } from '@/types/package/package';
 import { TestList } from '@/types/test/testlist';
 import { Patient, BillingTransaction } from '@/types/patient/patient';
+import { calculateAge } from '@/utils/ageUtils';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import React, { useEffect, useRef, useState } from 'react';
@@ -73,19 +74,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
     fetchData();
   }, [patient, currentLab]);
 
-  const calculateAge = (dateOfBirth: string) => {
-    if (!dateOfBirth) return 'N/A';
-    const birthDate = new Date(dateOfBirth);
-    const currentDate = new Date();
-    let age = currentDate.getFullYear() - birthDate.getFullYear();
-    if (
-      currentDate.getMonth() < birthDate.getMonth() ||
-      (currentDate.getMonth() === birthDate.getMonth() && currentDate.getDate() < birthDate.getDate())
-    ) {
-      age--;
-    }
-    return age;
-  };
+
 
   const getTestDiscount = (testId: number) => {
     if (!patient?.visit?.listofeachtestdiscount) return { discountAmount: 0, finalPrice: 0 };
@@ -140,23 +129,23 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
     return (
       <div className="mt-6 pt-4 border-t border-gray-200 print:mt-4 print:pt-2">
-        <h3 className="font-bold text-gray-800 mb-3 text-lg print:mb-2">PAYMENT TRANSACTIONS123</h3>
+        <h3 className="font-bold text-gray-800 mb-3 text-lg print:mb-2">PAYMENT TRANSACTIONS</h3>
         <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full text-xs border-collapse print:table-fixed print:w-full">
-                    <thead>
-          <tr className="bg-gray-200 text-gray-800">
-            <th className="p-1 font-medium text-left align-top">ID</th>
-            <th className="p-1 font-medium text-left align-top">Method</th>
-            <th className="p-1 font-medium text-left align-top">UPI</th>
-            <th className="p-1 font-medium text-left align-top">Card</th>
-            <th className="p-1 font-medium text-left align-top">Cash</th>
-            <th className="p-1 font-medium text-left align-top">Received</th>
-            {/* <th className="p-1 font-medium text-left align-top">Refund</th> */}
-            <th className="p-1 font-medium text-left align-top">Due</th>
-            <th className="p-1 font-medium text-left align-top">Date/Time</th>
-            <th className="p-1 font-medium text-left align-top">Received by</th>
-          </tr>
-        </thead>
+            <thead>
+              <tr className="bg-gray-200 text-gray-800">
+                <th className="p-1 font-medium text-left align-top">ID</th>
+                <th className="p-1 font-medium text-left align-top">Method</th>
+                <th className="p-1 font-medium text-left align-top">UPI</th>
+                <th className="p-1 font-medium text-left align-top">Card</th>
+                <th className="p-1 font-medium text-left align-top">Cash</th>
+                <th className="p-1 font-medium text-left align-top">Received</th>
+                {/* <th className="p-1 font-medium text-left align-top">Refund</th> */}
+                <th className="p-1 font-medium text-left align-top">Due</th>
+                <th className="p-1 font-medium text-left align-top">Date/Time</th>
+                <th className="p-1 font-medium text-left align-top">Received by</th>
+              </tr>
+            </thead>
             <tbody>
               {[...transactions]
                 .sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
@@ -170,9 +159,6 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                       <td className="p-1 border-b border-gray-100 align-top">{txn.id}</td>
                       <td className="p-1 border-b border-gray-100 font-medium align-top">
                         {formatPaymentMethod(txn.payment_method)}
-                        {txn.upi_id && (
-                          <div className="text-xs text-gray-500 mt-1">{txn.upi_id}</div>
-                        )}
                       </td>
                       <td className="p-1 border-b border-gray-100 align-top">
                         {Number(txn.upi_amount ?? 0) > 0 ? `₹${Number(txn.upi_amount ?? 0)}` : '-'}
@@ -491,8 +477,8 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                       {summaryTxn
                         ? (summaryTxn.created_at ? new Date(summaryTxn.created_at).toLocaleString() : (summaryTxn.payment_date || 'N/A'))
                         : (patient?.visit?.billing?.paymentDate
-                            ? new Date(patient.visit.billing.paymentDate).toLocaleDateString()
-                            : 'N/A')}
+                          ? new Date(patient.visit.billing.paymentDate).toLocaleDateString()
+                          : 'N/A')}
                     </span>
                   </div>
                 </div>
