@@ -7,8 +7,9 @@ import Loader from '@/app/(admin)/component/common/Loader';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
 import { PlusIcon, SearchIcon, TagIcon } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { FaPlus, FaTimes } from 'react-icons/fa';
+import { debounce } from '@/utils/debounce';
 
 interface PackageData {
   id: number;
@@ -34,10 +35,20 @@ const UpdatePackage = ({
   const [filteredTests, setFilteredTests] = useState<TestList[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
+  const [isSearching, setIsSearching] = useState<boolean>(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const { currentLab } = useLabs();
   const [categories, setCategories] = useState<string[]>([]);
   const [subtotal, setSubtotal] = useState<number>(0);
+
+  // Create debounced search function using the utility
+  const debouncedSearch = useRef(
+    debounce((searchValue: string) => {
+      setDebouncedSearchTerm(searchValue);
+      setIsSearching(false);
+    }, 300)
+  ).current;
 
   const fetchAvailableTests = useCallback(async () => {
     setIsLoading(true);
@@ -47,32 +58,25 @@ const UpdatePackage = ({
       
       const uniqueCategories = ['All', ...Array.from(new Set(fetchedTests.map(test => test.category)))];
       setCategories(uniqueCategories);
-      
-      // Apply filters directly here instead of calling applyFilters
-      let results = [...fetchedTests];
-      
-      if (selectedCategory !== 'All') {
-        results = results.filter(test => test.category === selectedCategory);
-      }
-      
-      if (searchTerm) {
-        results = results.filter(test =>
-          test.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-      
-      setFilteredTests(results);
     } catch (error) {
       console.error('Failed to fetch tests:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [currentLab, selectedCategory, searchTerm]);
+  }, [currentLab]);
 
   useEffect(() => {
     setPackageDetails(packageData);
     fetchAvailableTests();
   }, [packageData, currentLab, fetchAvailableTests]);
+
+  // Handle search term changes with debouncing
+  useEffect(() => {
+    if (searchTerm !== debouncedSearchTerm) {
+      setIsSearching(true);
+      debouncedSearch(searchTerm);
+    }
+  }, [searchTerm, debouncedSearchTerm, debouncedSearch]);
 
   const applyFilters = useCallback(() => {
     let results = [...allTests];
@@ -81,14 +85,14 @@ const UpdatePackage = ({
       results = results.filter(test => test.category === selectedCategory);
     }
     
-    if (searchTerm) {
+    if (debouncedSearchTerm) {
       results = results.filter(test =>
-        test.name.toLowerCase().includes(searchTerm.toLowerCase())
+        test.name.toLowerCase().startsWith(debouncedSearchTerm.toLowerCase())
       );
     }
     
     setFilteredTests(results);
-  }, [allTests, selectedCategory, searchTerm]);
+  }, [allTests, selectedCategory, debouncedSearchTerm]);
 
   useEffect(() => {
     applyFilters();
@@ -113,7 +117,20 @@ const UpdatePackage = ({
     const { name, value } = e.target;
     setPackageDetails(prev => ({
       ...prev,
-      [name]: name === 'discount' ? parseFloat(value) : value
+      [name]: name === 'discount' ? Math.min(100, Math.max(0, parseFloat(value) || 0)) : value
+    }));
+  };
+
+  const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Remove leading zeros and non-numeric characters except decimal point
+    const cleanValue = value.replace(/^0+/, '').replace(/[^\d.]/g, '');
+    const numValue = parseFloat(cleanValue) || 0;
+    const clampedValue = Math.min(100, Math.max(0, numValue));
+    
+    setPackageDetails(prev => ({
+      ...prev,
+      discount: clampedValue
     }));
   };
 
@@ -166,15 +183,15 @@ const UpdatePackage = ({
               Discount Percentage
             </label>
             <div className="relative">
-              <input
-                type="number"
-                name="discount"
-                value={packageDetails.discount}
-                onChange={handleFieldChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="0"
-              />
-              <span className="absolute right-3 top-2 text-gray-500">%</span>
+                             <input
+                 type="text"
+                 name="discount"
+                 value={packageDetails.discount || ''}
+                 onChange={handleDiscountChange}
+                 className="w-full px-4 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 placeholder="0"
+               />
+              <span className="absolute right-8 top-2 text-gray-500">%</span>
             </div>
           </div>
           
@@ -253,18 +270,23 @@ const UpdatePackage = ({
         </h2>
         
         <div className="search-filters mb-6">
-          <div className="relative mb-3">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <SearchIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search tests..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+                     <div className="relative mb-3">
+             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+               <SearchIcon className="h-5 w-5 text-gray-400" />
+             </div>
+                           <input
+                type="text"
+                placeholder="Search tests..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+             {isSearching && (
+               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+               </div>
+             )}
+           </div>
           
           <div className="category-filter">
             <label className="block text-sm font-medium text-gray-700 mb-1">

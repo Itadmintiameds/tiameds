@@ -29,6 +29,7 @@ import {
 } from 'react-icons/fa';
 
 import { useLabs } from '@/context/LabContext';
+import { calculateAge } from '@/utils/ageUtils';
 import { GrStatusInfoSmall } from "react-icons/gr";
 import Button from '../../component/common/Button';
 
@@ -162,18 +163,7 @@ const Page = () => {
     fetchHealthPackage();
   }, [patientDetails, currentLab]);
 
-  const calculateAge = (dateOfBirth: string) => {
-    const birthDate = new Date(dateOfBirth);
-    const currentDate = new Date();
-    let age = currentDate.getFullYear() - birthDate.getFullYear();
-    if (
-      currentDate.getMonth() < birthDate.getMonth() ||
-      (currentDate.getMonth() === birthDate.getMonth() && currentDate.getDate() < birthDate.getDate())
-    ) {
-      age--;
-    }
-    return age;
-  };
+  
 
   const handlePrint = () => {
     setBillingData({
@@ -215,7 +205,7 @@ const Page = () => {
       })),
       patient: {
         name: `${patientDetails?.firstName || ''} ${patientDetails?.lastName || ''}`,
-        age: calculateAge(patientDetails?.dateOfBirth || ''),
+        age: parseInt(calculateAge(patientDetails?.dateOfBirth || '')) || 0,
         email: patientDetails?.email || 'N/A',
         phone: patientDetails?.phone || 'N/A',
         address: `${patientDetails?.address || 'N/A'}, ${patientDetails?.city || 'N/A'}, ${patientDetails?.state || 'N/A'}, ${patientDetails?.zip || 'N/A'}`,

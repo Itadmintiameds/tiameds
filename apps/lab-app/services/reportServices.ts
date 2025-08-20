@@ -75,12 +75,35 @@ export const getReportData = async (labId: string, visitId: string): Promise<Rep
   }
 };
 
+
+/*  OLD ONE API FOR REPORT  */
 export const createReport = async (labId: string, reportData: ReportData[]): Promise<ReportData[]> => {
   try {
     const response = await api.post<{ data: ReportData[]; message: string; status: string }>(`lab/${labId}/report`, reportData);
     return response.data.data; // Return the created reports
   }
   catch (error: unknown) {
+    let errorMessage = 'An error occurred while creating the report.';
+
+    if (error instanceof Error) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
+    throw new Error(errorMessage);
+  }
+}
+
+/* NEW ONE API FOR REPORT WITH TEST RESULT -- USE THIS ONE */
+export const createReportWithTestResult = async (labId: string, reportPayload: { testData: ReportData[]; testResult: { testId: number; isFilled: boolean } }): Promise<ReportData[]> => {
+  try {
+    const response = await api.post<{ data: ReportData[]; message: string; status: string }>(`lab/${labId}/report`, reportPayload);
+    return response.data.data; 
+  } catch (error: unknown) {
     let errorMessage = 'An error occurred while creating the report.';
 
     if (error instanceof Error) {

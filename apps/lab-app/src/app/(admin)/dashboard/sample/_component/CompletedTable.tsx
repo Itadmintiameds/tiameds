@@ -6,6 +6,7 @@ import Pagination from '@/app/(admin)/component/common/Pagination';
 import TableComponent from '@/app/(admin)/component/common/TableComponent';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
+import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, formatDisplayDate, getDateRange } from '@/utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -34,11 +35,11 @@ interface HealthPackage {
     packageName: string;
 }
 
-const DATE_FILTER_OPTIONS = ['all', 'today', 'yesterday', 'last7days', 'thisMonth', 'thisYear', 'custom'] as const;
-type DateFilterOption = typeof DATE_FILTER_OPTIONS[number];
+
 
 const CompletedTable = () => {
     const { currentLab } = useLabs();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [patientList, setPatientList] = useState<Patient[]>([]);
     const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
     const [tests, setTests] = useState<TestList[]>([]);
@@ -55,86 +56,27 @@ const CompletedTable = () => {
     const [showDateFilter, setShowDateFilter] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    const getDateRange = (filter: DateFilterOption) => {
-        const now = new Date();
-        let startDate = new Date();
-        let endDate = new Date();
 
-        switch (filter) {
-            case 'today':
-                startDate.setHours(0, 0, 0, 0);
-                endDate.setHours(23, 59, 59, 999);
-                break;
-            case 'yesterday':
-                startDate.setDate(startDate.getDate() - 1);
-                startDate.setHours(0, 0, 0, 0);
-                endDate.setDate(endDate.getDate() - 1);
-                endDate.setHours(23, 59, 59, 999);
-                break;
-            case 'last7days':
-                startDate.setDate(endDate.getDate() - 7);
-                startDate.setHours(0, 0, 0, 0);
-                endDate.setHours(23, 59, 59, 999);
-                break;
-            case 'thisMonth':
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                startDate.setHours(0, 0, 0, 0);
-                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                endDate.setHours(23, 59, 59, 999);
-                break;
-            case 'thisYear':
-                startDate = new Date(now.getFullYear(), 0, 1);
-                startDate.setHours(0, 0, 0, 0);
-                endDate = new Date(now.getFullYear(), 11, 31);
-                endDate.setHours(23, 59, 59, 999);
-                break;
-            case 'custom':
-                if (!customStartDate || !customEndDate) return { startDate: null, endDate: null };
-                startDate = new Date(customStartDate);
-                endDate = new Date(customEndDate);
-                startDate.setHours(0, 0, 0, 0);
-                endDate.setHours(23, 59, 59, 999);
-                break;
-            default:
-                return { startDate: null, endDate: null };
-        }
 
-        return { startDate, endDate };
-    };
+    // const applyDateFilter = () => {
+    //     const { startDate, endDate } = getDateRange(dateFilter, customStartDate, customEndDate);
 
-    const formatDateForDisplay = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-        });
-    };
+    //     if (!startDate || !endDate) {
+    //         if (dateFilter === 'custom') {
+    //             toast.warning("Please select valid date range");
+    //         }
+    //         return;
+    //     }
 
-    const applyDateFilter = () => {
-        if (dateFilter === 'all') {
-            setFilteredPatients(patientList);
-            return;
-        }
+    //     const filtered = patientList.filter(patient => {
+    //         const visitDate = new Date(patient.visitDate);
+    //         return visitDate >= startDate && visitDate <= endDate;
+    //     });
 
-        const { startDate, endDate } = getDateRange(dateFilter);
-
-        if (!startDate || !endDate) {
-            if (dateFilter === 'custom') {
-                toast.warning("Please select valid date range");
-            }
-            return;
-        }
-
-        const filtered = patientList.filter(patient => {
-            const visitDate = new Date(patient.visitDate);
-            return visitDate >= startDate && visitDate <= endDate;
-        });
-
-        setFilteredPatients(filtered);
-        setCurrentPage(1);
-        setShowDateFilter(false);
-    };
+    //     setFilteredPatients(filtered);
+    //     setCurrentPage(1);
+    //     setShowDateFilter(false);
+    // };
 
     const handleFilterChange = (filter: DateFilterOption) => {
         setDateFilter(filter);
@@ -143,19 +85,24 @@ const CompletedTable = () => {
         }
     };
 
+
+
     const fetchVisits = async () => {
         try {
             if (!currentLab?.id) return;
 
             setIsLoading(true);
-            const { startDate, endDate } = getDateRange(dateFilter);
-            const formattedStart = startDate?.toISOString().split('T')[0];
-            const formattedEnd = endDate?.toISOString().split('T')[0];
+            const { startDate, endDate } = getDateRange(dateFilter, customStartDate, customEndDate);
+            
+            if (!startDate || !endDate) return;
+            
+            const formattedStart = formatDateForAPI(startDate);
+            const formattedEnd = formatDateForAPI(endDate);
 
             const response = await getAllVisitssamples(
                 currentLab.id,
-                dateFilter !== 'all' ? formattedStart : undefined,
-                dateFilter !== 'all' ? formattedEnd : undefined,
+                formattedStart,
+                formattedEnd,
                 'Completed'
             );
 
@@ -195,13 +142,7 @@ const CompletedTable = () => {
     useEffect(() => {
         localStorage.setItem('completedTestsDateFilter', dateFilter);
         fetchVisits();
-    }, [currentLab, dateFilter]);
-
-    useEffect(() => {
-        if (dateFilter === 'custom' && (customStartDate || customEndDate)) {
-            applyDateFilter();
-        }
-    }, [customStartDate, customEndDate]);
+    }, [currentLab, dateFilter, customStartDate, customEndDate]);
 
     const totalPages = useMemo(() => Math.ceil(filteredPatients.length / itemsPerPage), [filteredPatients.length]);
     const paginatedPatients = useMemo(() => {
@@ -235,7 +176,7 @@ const CompletedTable = () => {
             cell: (value: string) => (
                 <div className="flex items-center gap-1 text-gray-600 bg-blue-50 px-2 py-1 rounded-full">
                     <FiCalendar className="w-3 h-3 opacity-70" />
-                    <span className="text-xs font-medium">{formatDateForDisplay(value)}</span>
+                                         <span className="text-xs font-medium">{formatDisplayDate(value)}</span>
                 </div>
             )
         },
@@ -353,8 +294,8 @@ const CompletedTable = () => {
                                         className="w-full p-1.5 border border-gray-300 rounded-md text-xs"
                                     >
                                         {DATE_FILTER_OPTIONS.map(option => (
-                                            <option key={option} value={option}>
-                                                {option.charAt(0).toUpperCase() + option.slice(1).replace(/([A-Z])/g, ' $1')}
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
                                             </option>
                                         ))}
                                     </select>
@@ -389,15 +330,23 @@ const CompletedTable = () => {
                                                 placeholderText="Select end date"
                                             />
                                         </div>
-                                        <button
-                                            onClick={() => {
-                                                applyDateFilter();
-                                                setShowDateFilter(false);
-                                            }}
-                                            className="w-full bg-blue-600 text-white py-1.5 rounded-md text-xs font-medium hover:bg-blue-700 transition-colors"
-                                        >
-                                            Apply Custom Filter
-                                        </button>
+                                                                                 <button
+                                             onClick={() => {
+                                                 if (!customStartDate || !customEndDate) {
+                                                     toast.warning("Please select both start and end dates");
+                                                     return;
+                                                 }
+                                                 if (customStartDate > customEndDate) {
+                                                     toast.warning("Start date cannot be after end date");
+                                                     return;
+                                                 }
+                                                 setDateFilter('custom');
+                                                 setShowDateFilter(false);
+                                             }}
+                                             className="w-full bg-blue-600 text-white py-1.5 rounded-md text-xs font-medium hover:bg-blue-700 transition-colors"
+                                         >
+                                             Apply Custom Filter
+                                         </button>
                                     </div>
                                 )}
                             </div>

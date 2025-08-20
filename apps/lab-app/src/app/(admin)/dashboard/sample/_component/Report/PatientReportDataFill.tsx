@@ -1,9 +1,10 @@
 
-import { createReport } from '@/../services/reportServices';
+import {  createReportWithTestResult } from '@/../services/reportServices';
 import { getTestReferanceRangeByTestName } from '@/../services/testService';
 import Loader from '@/app/(admin)/component/common/Loader';
 import { useLabs } from '@/context/LabContext';
 import { TestList, TestReferancePoint } from '@/types/test/testlist';
+import { calculateAgeObject } from '@/utils/ageUtils';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   TbArrowDownCircle,
@@ -48,6 +49,15 @@ interface ReportData {
   referenceAgeRange: string;
   enteredValue: string;
   unit: string;
+  description: string;
+}
+
+interface ReportPayload {
+  testData: ReportData[];
+  testResult: {
+    testId: number;
+    isFilled: boolean;
+  };
 }
 
 interface PatientReportDataFillProps {
@@ -62,34 +72,16 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
   const { currentLab } = useLabs();
   const [loading, setLoading] = useState(false);
   const [referencePoints, setReferencePoints] = useState<Record<string, TestReferancePoint[]>>({});
-  const [inputValues, setInputValues] = useState<Record<string, Record<number, string>>>({});
+  const [inputValues, setInputValues] = useState<Record<string, Record<string | number, string>>>({});
   const [allTests, setAllTests] = useState<TestList[]>([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
   const [removedReferences, setRemovedReferences] = useState<Record<string, number[]>>({});
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [reportPreview, setReportPreview] = useState<ReportData[]>([]);
+  const [reportPreview, setReportPreview] = useState<ReportPayload>({ testData: [], testResult: { testId: 0, isFilled: false } });
   const [hasMissingDescriptions, setHasMissingDescriptions] = useState(false);
+  const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({});
 
-  const calculateAge = (dob: string) => {
-    const birthDate = new Date(dob);
-    const now = new Date();
-    let years = now.getFullYear() - birthDate.getFullYear();
-    let months = now.getMonth() - birthDate.getMonth();
-    let days = now.getDate() - birthDate.getDate();
 
-    if (days < 0) {
-      months--;
-      const lastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-      days += lastMonth.getDate();
-    }
-
-    if (months < 0) {
-      years--;
-      months += 12;
-    }
-
-    return { years, months, days };
-  };
 
   const formatAgeDisplay = (age: { years: number; months: number; days: number }) => {
     if (age.years > 0) {
@@ -101,15 +93,15 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
     }
   };
 
-  const filterReferenceData = (referenceData: Record<string, TestReferancePoint[]>,
-    patientGender: string) => {
+  const filterReferenceData = (referenceData: Record<string, TestReferancePoint[]>) => {
     const filteredData: Record<string, TestReferancePoint[]> = {};
 
     Object.keys(referenceData).forEach((testName) => {
-      filteredData[testName] = referenceData[testName].filter((point) => {
-        const referenceGender = point.gender === 'M' ? 'male' : point.gender === 'F' ? 'female' : 'U';
-        return referenceGender === patientGender.toLowerCase() || referenceGender === 'U';
-      });
+      const testPoints = referenceData[testName];
+      
+      // For tests with multiple input types (like ABSOLUTE LYMPHOCYTE COUNT),
+      // show all input types regardless of gender
+      filteredData[testName] = testPoints;
     });
 
     return filteredData;
@@ -140,7 +132,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
         <span>Normal Range</span>
       </div>
       <div className="flex items-center text-sm">
-        <TbArrowDownCircle className="text-yellow-500 mr-2" size={18} />
+        <TbArrowDownCircle className="text-red-500 mr-2" size={18} />
         <span>Below Normal</span>
       </div>
       <div className="flex items-center text-sm">
@@ -182,6 +174,20 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
     }
   };
 
+  // Helper function to check if titles should be hidden for a given test description
+  const shouldHideTitles = (testDescription: string) => {
+    return [
+      'DESCRIPTION',
+      'DROPDOWN',
+      'DROPDOWN-POSITIVE/NEGATIVE',
+      'DROPDOWN-PRESENT/ABSENT',
+      'DROPDOWN-REACTIVE/NONREACTIVE',
+      'DROPDOWN-PERCENTAGE',
+      'DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE',
+      'DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT'
+    ].includes(testDescription);
+  };
+
 
 
   const fetchTestDataAndPackage = useCallback(async () => {
@@ -198,8 +204,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
       referenceData[selectedTest.name] = Array.isArray(refPoints) ? refPoints : [refPoints];
 
       const filteredReferenceData = filterReferenceData(
-        referenceData,
-        selectedPatient.gender
+        referenceData
       );
 
       setReferencePoints(filteredReferenceData);
@@ -214,9 +219,9 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
 
   useEffect(() => {
     fetchTestDataAndPackage();
-  }, [selectedPatient, selectedTest,fetchTestDataAndPackage]);
+  }, [selectedTest, selectedPatient.gender]);
 
-  const handleInputChange = (testName: string, index: number, value: string) => {
+  const handleInputChange = (testName: string, index: number | string, value: string) => {
     setInputValues((prev) => ({
       ...prev,
       [testName]: {
@@ -233,6 +238,270 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
     }
   };
 
+  // Dynamic input field renderer based on testDescription
+  const renderDynamicInput = (testName: string, index: number, point: TestReferancePoint) => {
+    const currentValue = inputValues[testName]?.[index] || '';
+    const hasError = validationErrors[`${testName}-${index}`];
+    // const inputKey = `${testName}-${index}`;
+
+    // Check if this input type should hide titles
+    const hideTitles = shouldHideTitles(point.testDescription);
+
+    const getDropdownOptions = (type: string) => {
+      switch (type) {
+        case 'DROPDOWN':
+          return [
+            { value: 'A+', label: 'A+' },
+            { value: 'A-', label: 'A-' },
+            { value: 'B+', label: 'B+' },
+            { value: 'B-', label: 'B-' },
+            { value: 'AB+', label: 'AB+' },
+            { value: 'AB-', label: 'AB-' },
+            { value: 'O+', label: 'O+' },
+            { value: 'O-', label: 'O-' }
+          ];
+        case 'DROPDOWN-POSITIVE/NEGATIVE':
+          return [
+            { value: 'Positive', label: 'Positive' },
+            { value: 'Negative', label: 'Negative' }
+          ];
+        case 'DROPDOWN-PRESENT/ABSENT':
+          return [
+            { value: 'Present', label: 'Present' },
+            { value: 'Absent', label: 'Absent' }
+          ];
+        case 'DROPDOWN-REACTIVE/NONREACTIVE':
+          return [
+            { value: 'Reactive', label: 'Reactive' },
+            { value: 'Non-Reactive', label: 'Non-Reactive' }
+          ];
+        case 'DROPDOWN-PERCENTAGE':
+          return [
+            { value: '0%', label: '0%' },
+            { value: '10%', label: '10%' },
+            { value: '20%', label: '20%' },
+            { value: '30%', label: '30%' },
+            { value: '40%', label: '40%' },
+            { value: '50%', label: '50%' },
+            { value: '60%', label: '60%' },
+            { value: '70%', label: '70%' },
+            { value: '80%', label: '80%' },
+            { value: '90%', label: '90%' },
+            { value: '100%', label: '100%' }
+          ];
+        default:
+          return [];
+      }
+    };
+
+    const renderInputField = () => {
+      const inputType = point.testDescription;
+
+      switch (inputType) {
+        case 'TEXT':
+          return (
+            <input
+              type="text"
+              className={`w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 ${hasError ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+              placeholder="Enter value"
+              value={currentValue}
+              onChange={(e) => handleInputChange(testName, index, e.target.value)}
+              required
+            />
+          );
+
+        case 'DESCRIPTION':
+          return (
+            <textarea
+              className={`w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none ${hasError ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+              placeholder="Enter description"
+              value={currentValue}
+              onChange={(e) => handleInputChange(testName, index, e.target.value)}
+              rows={3}
+              required
+            />
+          );
+
+        case 'DROPDOWN':
+        case 'DROPDOWN-POSITIVE/NEGATIVE':
+        case 'DROPDOWN-PRESENT/ABSENT':
+        case 'DROPDOWN-REACTIVE/NONREACTIVE':
+          const options = getDropdownOptions(inputType);
+          return (
+            <select
+              className={`w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 ${hasError ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+              value={currentValue}
+              onChange={(e) => handleInputChange(testName, index, e.target.value)}
+              required
+            >
+              <option value="">Select option</option>
+              {options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          );
+
+        case 'DROPDOWN-PERCENTAGE':
+          const percentageOptions = [
+            { value: '0%', label: '0%' },
+            { value: '5%', label: '5%' },
+            { value: '10%', label: '10%' },
+            { value: '15%', label: '15%' },
+            { value: '20%', label: '20%' },
+            { value: '25%', label: '25%' },
+            { value: '30%', label: '30%' },
+            { value: '35%', label: '35%' },
+            { value: '40%', label: '40%' },
+            { value: '45%', label: '45%' },
+            { value: '50%', label: '50%' },
+            { value: '55%', label: '55%' },
+            { value: '60%', label: '60%' },
+            { value: '65%', label: '65%' },
+            { value: '70%', label: '70%' },
+            { value: '75%', label: '75%' },
+            { value: '80%', label: '80%' },
+            { value: '85%', label: '85%' },
+            { value: '90%', label: '90%' },
+            { value: '95%', label: '95%' },
+            { value: '100%', label: '100%' }
+          ];
+          
+          const dropdownKey = `${testName}-${index}`;
+          const isDropdownOpen = openDropdowns[dropdownKey];
+          
+          return (
+            <div className="relative w-full">
+              <input
+                type="text"
+                className={`w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 ${hasError ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                placeholder="Type percentage (1-100%) or select from dropdown"
+                value={currentValue}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow typing numbers and % symbol
+                  if (value === '' || /^\d*%?$/.test(value)) {
+                    handleInputChange(testName, index, value);
+                  }
+                }}
+                onFocus={() => {
+                  setOpenDropdowns(prev => ({ ...prev, [dropdownKey]: true }));
+                }}
+                onBlur={() => {
+                  // Delay hiding to allow click on dropdown items
+                  setTimeout(() => {
+                    setOpenDropdowns(prev => ({ ...prev, [dropdownKey]: false }));
+                  }, 150);
+                }}
+                required
+              />
+              {isDropdownOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {percentageOptions.map((option) => (
+                    <div
+                      key={option.value}
+                      className="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer"
+                      onClick={() => {
+                        handleInputChange(testName, index, option.value);
+                        setOpenDropdowns(prev => ({ ...prev, [dropdownKey]: false }));
+                      }}
+                    >
+                      {option.label}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+
+        case 'DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE':
+          return (
+            <div className="w-full space-y-2">
+              <select
+                className={`w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 ${hasError ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                value={currentValue}
+                onChange={(e) => handleInputChange(testName, index, e.target.value)}
+                required
+              >
+                <option value="">Select option</option>
+                <option value="Reactive">Reactive</option>
+                <option value="Non-Reactive">Non-Reactive</option>
+              </select>
+              <textarea
+                className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none border-gray-300"
+                placeholder="Additional description (optional)"
+                value={inputValues[testName]?.[`${index}_description`] || ''}
+                onChange={(e) => handleInputChange(testName, `${index}_description`, e.target.value)}
+                rows={2}
+              />
+            </div>
+          );
+
+        case 'DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT':
+          return (
+            <div className="w-full space-y-2">
+              <select
+                className={`w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 ${hasError ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                value={currentValue}
+                onChange={(e) => handleInputChange(testName, index, e.target.value)}
+                required
+              >
+                <option value="">Select option</option>
+                <option value="Present">Present</option>
+                <option value="Absent">Absent</option>
+              </select>
+              <textarea
+                className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none border-gray-300"
+                placeholder="Additional description (optional)"
+                value={inputValues[testName]?.[`${index}_description`] || ''}
+                onChange={(e) => handleInputChange(testName, `${index}_description`, e.target.value)}
+                rows={2}
+              />
+            </div>
+          );
+
+        
+
+        default:
+          // Fallback to regular text input for unknown types
+          return (
+            <input
+              type="text"
+              className={`w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 ${hasError ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+              placeholder="Enter value"
+              value={currentValue}
+              onChange={(e) => handleInputChange(testName, index, e.target.value)}
+              required
+            />
+          );
+      }
+    };
+
+    return (
+      <div className="flex items-center">
+        <div className="flex-1">
+          {!hideTitles && (
+            <div className="flex items-center mb-1">
+              <TbNumbers className="text-gray-500 mr-2" size={18} />
+              <p className="font-medium text-gray-600">Enter Value</p>
+              {hasError && (
+                <span className="ml-2 text-xs text-red-500">(Required)</span>
+              )}
+            </div>
+          )}
+          <div className="flex items-center">
+            {!hideTitles && getStatusIcon(getValueStatus(currentValue, point.minReferenceRange, point.maxReferenceRange))}
+            {renderInputField()}
+          </div>
+          {hasError && (
+            <p className="text-red-500 text-xs mt-1">Please enter a value for this field</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const validateForm = () => {
     const errors: Record<string, boolean> = {};
     let isValid = true;
@@ -247,6 +516,8 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
 
         // Skip validation if description is "No reference available for this test"
         if (point.testDescription === "No reference available for this test") return;
+
+
 
         // Validate all other fields with descriptions
         if (point.testDescription && point.testDescription.trim() !== '' &&
@@ -274,7 +545,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
     return isValid;
   };
 
-  const prepareReportPreview = () => {
+    const prepareReportPreview = () => {
     if (!validateForm()) {
       return;
     }
@@ -293,25 +564,79 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
         // 1. There's a value entered, OR
         // 2. There's a description (even if no value)
         if (testInputs[index] || (point.testDescription && point.testDescription !== "No reference available for this test")) {
-          if (!point.testDescription || point.testDescription === "No reference available for this test") {
+          if (!point.testDescription || point.testDescription === "No reference description available") {
             hasMissingDesc = true;
           }
+
+          // Format test name and category
+          const formattedTestName = test.name
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+          
+          const formattedCategory = test.category
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+
+          // Handle different input types
+          let finalValue = testInputs[index] || "N/A";
+          let description = "N/A";
+          let unit = "N/A";
+          let referenceRange = "N/A";
+
+          // Check if this is a dropdown with description type
+          const descriptionKey = `${index}_description`;
+          const hasDescription = testInputs[descriptionKey] && testInputs[descriptionKey].trim();
+
+          if (point.testDescription === "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE" || 
+              point.testDescription === "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT") {
+            // For dropdowns with descriptions, set unit to N/A and separate description
+            unit = "N/A";
+            description = hasDescription ? testInputs[descriptionKey] : "N/A";
+            finalValue = testInputs[index] || "N/A";
+            referenceRange = "N/A";
+          } else if (["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT", 
+                      "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DESCRIPTION"].includes(point.testDescription)) {
+            // For other dropdown types and description types, set unit to N/A
+            unit = "N/A";
+            description = "N/A";
+            finalValue = testInputs[index] || "N/A";
+            referenceRange = "N/A";
+          } else {
+            // For regular text inputs, use the original unit and reference range
+            unit = point.units || "N/A";
+            description = "N/A";
+            finalValue = testInputs[index] || "N/A";
+            referenceRange = `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`;
+          }
+            
           generatedReportData.push({
             visit_id: selectedPatient.visitId.toString(),
-            testName: test.name,
-            testCategory: test.category,
+            testName: formattedTestName,
+            testCategory: formattedCategory,
             patientName: selectedPatient.patientname,
             referenceDescription: point.testDescription || "No reference description available",
-            referenceRange: `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`,
+            referenceRange: referenceRange,
+            enteredValue: finalValue,
             referenceAgeRange: `${point.ageMin ?? "N/A"} ${point.minAgeUnit ?? "YEARS"} - ${point.ageMax ?? "N/A"} ${point.maxAgeUnit ?? "YEARS"}`,
-            enteredValue: testInputs[index] || "N/A",
-            unit: point.units || "N/A",
+            unit: unit,
+            description: description
           });
         }
       });
     });
 
-    setReportPreview(generatedReportData);
+    // Create the complete payload with separated testData and testResult
+    const completePayload: ReportPayload = {
+      testData: generatedReportData,
+      testResult: {
+        testId: selectedTest.id,
+        isFilled: true
+      }
+    };
+
+    setReportPreview(completePayload);
     setHasMissingDescriptions(hasMissingDesc);
     setShowConfirmation(true);
   };
@@ -320,7 +645,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
     setLoading(true);
 
     try {
-      if (reportPreview.length === 0) {
+      if (reportPreview.testData.length === 0) {
         // Update the report status to 'completed' since it might be given as hard copy
         setUpdateCollectionTable(true);
         await createReportbyId(currentLab?.id.toString() || '', selectedPatient.visitId.toString());
@@ -329,8 +654,10 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
         toast.success("Report marked as completed (results will be provided separately)");
         return;
       }
+
+      // Send the complete payload with separated testData and testResult
       setUpdateCollectionTable(true);
-      await createReport(currentLab?.id.toString() || '', reportPreview);
+      await createReportWithTestResult(currentLab?.id.toString() || '', reportPreview);
       setUpdateCollectionTable(false);
       setShowModal(false);
       toast.success("Report created successfully");
@@ -349,7 +676,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
     </div>
   );
 
-  const patientAge = selectedPatient.dateOfBirth ? calculateAge(selectedPatient.dateOfBirth) : { years: 0, months: 0, days: 0 };
+  const patientAge = selectedPatient.dateOfBirth ? calculateAgeObject(selectedPatient.dateOfBirth) : { years: 0, months: 0, days: 0 };
 
   return (
     <div className="bg-white shadow-lg rounded-xl overflow-hidden h-[500px] overflow-y-auto p-5">
@@ -464,46 +791,46 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
                             <TbX size={18} />
                           </button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                          <div className="flex items-start">
-                            <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="font-medium text-gray-600">Description</p>
-                              <p className="text-gray-800 italic">This test doesn&lsquo;t have digital references. Results will be provided separately.</p>
-                            </div>
+                                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="flex items-start">
+                          <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-medium text-gray-600">Description</p>
+                            <p className="text-gray-800 italic">This test doesn&lsquo;t have digital references. Results will be provided separately.</p>
                           </div>
-                          <div className="flex items-start">
-                            <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="font-medium text-gray-600">Reference Range</p>
-                              <p className="text-gray-800">
-                                {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
-                                  <span className="text-gray-500 flex items-center">
-                                    <TbRuler className="ml-1" size={14} />
-                                  </span>
-                                )}
-                              </p>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="flex-1">
+                            <div className="flex items-center mb-1">
+                              <TbNumbers className="text-gray-500 mr-2" size={18} />
+                              <p className="font-medium text-gray-600">Enter Value</p>
                             </div>
-                          </div>
-                          <div className="flex items-center">
-                            <div className="flex-1">
-                              <div className="flex items-center mb-1">
-                                <TbNumbers className="text-gray-500 mr-2" size={18} />
-                                <p className="font-medium text-gray-600">Enter Value</p>
-                              </div>
-                              <div className="flex items-center">
-                                {getStatusIcon(status)}
-                                <input
-                                  type="text"
-                                  className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300"
-                                  placeholder="Enter value"
-                                  value={currentValue}
-                                  onChange={(e) => handleInputChange(test.name, index, e.target.value)}
-                                />
-                              </div>
+                            <div className="flex items-center">
+                              {getStatusIcon(status)}
+                              <input
+                                type="text"
+                                className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300"
+                                placeholder="Enter value"
+                                value={currentValue}
+                                onChange={(e) => handleInputChange(test.name, index, e.target.value)}
+                              />
                             </div>
                           </div>
                         </div>
+                        <div className="flex items-start">
+                          <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-medium text-gray-600">Reference Range</p>
+                            <p className="text-gray-800">
+                              {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
+                                <span className="text-gray-500 flex items-center">
+                                  <TbRuler className="ml-1" size={14} />
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                       </div>
                     );
                   }
@@ -560,7 +887,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
                       className={`p-4 rounded-lg border ${getStatusColor(status)} transition-all ${hasError ? 'border-red-500' : ''} relative`}
                       data-input-id={inputKey}
                     >
-                      <div className="absolute top-2 right-2">
+                      {/* <div className="absolute top-2 right-2">
                         <button
                           onClick={() => removeReference(test.name, index)}
                           className="text-gray-500 hover:text-red-600 p-1 rounded-full hover:bg-gray-100"
@@ -568,54 +895,32 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
                         >
                           <TbX size={18} />
                         </button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div className="flex items-start">
-                          <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-gray-600">Description</p>
-                            <p className="text-gray-800">{point.testDescription}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start">
-                          <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-gray-600">Reference Range</p>
-                            <p className="text-gray-800">
-                              {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
-                                <span className="text-gray-500 flex items-center">
-                                  <TbRuler className="ml-1" size={14} />
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center">
-                          <div className="flex-1">
-                            <div className="flex items-center mb-1">
-                              <TbNumbers className="text-gray-500 mr-2" size={18} />
-                              <p className="font-medium text-gray-600">Enter Value</p>
-                              {hasError && (
-                                <span className="ml-2 text-xs text-red-500">(Required)</span>
-                              )}
-                            </div>
-                            <div className="flex items-center">
-                              {getStatusIcon(status)}
-                              <input
-                                type="text"
-                                className={`w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 ${hasError ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                                placeholder="Enter value"
-                                value={currentValue}
-                                onChange={(e) => handleInputChange(test.name, index, e.target.value)}
-                                required
-                              />
-                            </div>
-                            {hasError && (
-                              <p className="text-red-500 text-xs mt-1">Please enter a value for this field</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      </div> */}
+                                             <div className={`grid grid-cols-1 md:${shouldHideTitles(point.testDescription) ? 'grid-cols-2' : 'grid-cols-3'} gap-4 text-sm`}>
+                         <div className="flex items-start">
+                           <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
+                           <div>
+                             <p className="font-medium text-gray-600">Description</p>
+                             <p className="text-gray-800">{point.testDescription}</p>
+                           </div>
+                         </div>
+                         {renderDynamicInput(test.name, index, point)}
+                         {!shouldHideTitles(point.testDescription) && (
+                           <div className="flex items-start ml-10">
+                             <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
+                             <div>
+                               <p className="font-medium text-gray-600">Reference Range</p>
+                               <p className="text-gray-800">
+                                 {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
+                                   <span className="text-gray-500 flex items-center">
+                                     <TbRuler className="ml-1" size={14} />
+                                   </span>
+                                 )}
+                               </p>
+                             </div>
+                           </div>
+                         )}
+                       </div>
                     </div>
                   );
                 })
@@ -655,12 +960,12 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
                       <p className="text-sm text-yellow-700 font-medium mb-2">
                         Note about tests without reference descriptions:
                       </p>
-                      <ul className="list-disc pl-5 space-y-1 text-sm text-yellow-700">
-                        <li>Some tests ({reportPreview.filter(item => !item.referenceDescription || item.referenceDescription === "No reference description available").length}) don&lsquo;t have digital references available</li>
-                        <li>These tests might be machine-generated or have hard copy references</li>
-                        <li>The results will be provided separately at the reception</li>
-                        <li>Please inform the patient to collect all results from the reception desk</li>
-                      </ul>
+                                             <ul className="list-disc pl-5 space-y-1 text-sm text-yellow-700">
+                         <li>Some tests ({reportPreview.testData.filter(item => !item.referenceDescription || item.referenceDescription === "No reference description available").length}) don&lsquo;t have digital references available</li>
+                         <li>These tests might be machine-generated or have hard copy references</li>
+                         <li>The results will be provided separately at the reception</li>
+                         <li>Please inform the patient to collect all results from the reception desk</li>
+                       </ul>
                     </div>
                   </div>
                 </div>
@@ -679,7 +984,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
                 </div>
               )}
 
-              {reportPreview.length > 0 ? (
+              {reportPreview.testData.length > 0 ? (
                 <div className="mb-6">
                   <h4 className="font-medium mb-2">Report Preview:</h4>
                   <div className="border rounded-lg overflow-hidden">
@@ -689,16 +994,18 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ selectedP
                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test</th>
                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Additional Description</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {reportPreview.map((item, idx) => (
+                        {reportPreview.testData.map((item, idx) => (
                           <tr key={idx} className={!item.referenceDescription || item.referenceDescription === "No reference description available" ? "bg-yellow-50" : ""}>
                             <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{item.testName}</td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                               {item.referenceDescription || "Reference details not available - will be provided separately"}
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.enteredValue} {item.unit}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.description !== "N/A" ? item.description : "-"}</td>
                           </tr>
                         ))}
                       </tbody>

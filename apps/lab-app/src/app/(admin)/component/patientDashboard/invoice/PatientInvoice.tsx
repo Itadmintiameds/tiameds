@@ -1,6 +1,7 @@
 'use client';
 import { useLabs } from '@/context/LabContext';
 import { Doctor } from '@/types/doctor/doctor';
+import { calculateAge } from '@/utils/ageUtils';
 import { Packages } from '@/types/package/package';
 import { TestList } from '@/types/test/testlist';
 import { PrinterIcon } from 'lucide-react';
@@ -87,19 +88,7 @@ const PatientInvoice = ({ viewPatientDetails }: PatientDetails) => {
     fetchData();
   }, [viewPatientDetails, currentLab]);
 
-  const calculateAge = (dateOfBirth: string) => {
-    if (!dateOfBirth) return 'N/A';
-    const birthDate = new Date(dateOfBirth);
-    const currentDate = new Date();
-    let age = currentDate.getFullYear() - birthDate.getFullYear();
-    if (
-      currentDate.getMonth() < birthDate.getMonth() ||
-      (currentDate.getMonth() === birthDate.getMonth() && currentDate.getDate() < birthDate.getDate())
-    ) {
-      age--;
-    }
-    return age;
-  };
+
 
   const handlePrint = () => {
     const printContent = document.getElementById('printable-content');

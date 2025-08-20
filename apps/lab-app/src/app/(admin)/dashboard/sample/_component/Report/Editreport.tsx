@@ -1675,6 +1675,7 @@ import {
 import { toast } from 'react-toastify';
 import Loader from '@/app/(admin)/component/common/Loader';
 import { useLabs } from '@/context/LabContext';
+import { calculateAgeObject } from '@/utils/ageUtils';
 import { getHealthPackageById } from '@/../services/packageServices';
 import { getReportData, updateReports } from '@/../services/reportServices';
 import { getTestById, getTestReferanceRangeByTestName } from '@/../services/testService';
@@ -1749,27 +1750,7 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
   const [reportPreview, setReportPreview] = useState<ReportData[]>([]);
   const [hasMissingDescriptions, setHasMissingDescriptions] = useState(false);
 
-  const calculateAge = (dob: string) => {
-    if (!dob) return { years: 0, months: 0, days: 0 };
-    const birthDate = new Date(dob);
-    const now = new Date();
-    let years = now.getFullYear() - birthDate.getFullYear();
-    let months = now.getMonth() - birthDate.getMonth();
-    let days = now.getDate() - birthDate.getDate();
 
-    if (days < 0) {
-      months--;
-      const lastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-      days += lastMonth.getDate();
-    }
-
-    if (months < 0) {
-      years--;
-      months += 12;
-    }
-
-    return { years, months, days };
-  };
 
   const formatAgeDisplay = (age: { years: number; months: number; days: number }) => {
     if (age.years > 0) {
@@ -2036,7 +2017,7 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
     </div>
   );
 
-  const patientAge = editPatient.dateOfBirth ? calculateAge(editPatient.dateOfBirth) : { years: 0, months: 0, days: 0 };
+  const patientAge = editPatient.dateOfBirth ? calculateAgeObject(editPatient.dateOfBirth) : { years: 0, months: 0, days: 0 };
 
   return (
     <div className="bg-white shadow-lg rounded-xl overflow-hidden h-[500px] overflow-y-auto p-5">

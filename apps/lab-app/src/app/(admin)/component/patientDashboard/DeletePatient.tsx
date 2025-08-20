@@ -288,8 +288,8 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
         {/* Modal Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center">
-            <FaUser className="text-red-600 mr-3 text-xl" />
-            <h2 className="text-2xl font-bold text-gray-800">Delete Patient Record</h2>
+            <FaUser className="text-orange-600 mr-3 text-xl" />
+            <h2 className="text-2xl font-bold text-gray-800">Cancel Patient Visit</h2>
           </div>
           <button
             onClick={onClose}
@@ -303,18 +303,18 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
         {/* Modal Body */}
         <div className="overflow-y-auto p-6 flex-1">
           {/* Warning Section */}
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r">
+          <div className="bg-orange-50 border-l-4 border-orange-500 p-4 mb-6 rounded-r">
             <div className="flex items-start">
-              <FaInfoCircle className="text-red-500 mr-3 mt-1 flex-shrink-0 text-lg" />
+              <FaInfoCircle className="text-orange-500 mr-3 mt-1 flex-shrink-0 text-lg" />
               <div>
-                <h3 className="text-lg font-semibold text-red-800 mb-2">Warning: Permanent Deletion</h3>
-                <p className="text-sm text-red-700 mb-2">
-                  This action will permanently delete all records associated with this patient.
+                <h3 className="text-lg font-semibold text-orange-800 mb-2">Warning: Visit Cancellation</h3>
+                <p className="text-sm text-orange-700 mb-2">
+                  This action will cancel the patient visit and mark it as cancelled in the system.
                 </p>
-                <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
-                  <li>All patient profile information</li>
-                  <li>Complete visit history and test results</li>
-                  <li>Billing records and payment history</li>
+                <ul className="text-sm text-orange-700 list-disc list-inside space-y-1">
+                  <li>Visit status will be changed to &quot;Cancelled&quot;</li>
+                  <li>Patient data will be preserved for record keeping</li>
+                  <li>Cancellation reason and timestamp will be recorded</li>
                 </ul>
               </div>
             </div>
@@ -461,10 +461,10 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
               <FaInfoCircle className="text-yellow-500 mr-3 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-yellow-800">
-                  Please confirm you want to permanently delete this patient record.
+                  Please confirm you want to cancel this patient visit.
                 </p>
                 <p className="text-sm text-yellow-700 mt-1">
-                  This action cannot be undone. All data will be permanently removed.
+                  This action will mark the visit as cancelled. Patient data will be preserved.
                 </p>
               </div>
             </div>
@@ -488,17 +488,17 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="px-5 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-70 disabled:cursor-not-allowed transition-colors flex items-center"
+            className="px-5 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-70 disabled:cursor-not-allowed transition-colors flex items-center"
           >
             {isDeleting ? (
               <>
                 <Loader type="spinner" />
-                Deleting...
+                Cancelling...
               </>
             ) : (
               <>
                 <FaTrash className="mr-2" />
-                Confirm Deletion
+                Confirm Cancellation
               </>
             )}
           </button>
