@@ -235,10 +235,10 @@ const CollectionTable: React.FC = () => {
 
   const handleOpenReportModal = (patient: Patient, testId: number) => {
     if (!patient || !testId) return;
-    
+
     const test = tests.find((t) => t.id === testId);
     if (!test) return;
-    
+
     setSelectedPatient(patient);
     setSelectedTest(test);
     setShowModal(true);
@@ -297,13 +297,8 @@ const CollectionTable: React.FC = () => {
     {
       header: 'Tests',
       accessor: (row: Patient) => (
-<<<<<<< HEAD
-        <div className="flex flex-wrap gap-1 max-w-[200px]">
-          {row?.testIds?.map((testId) => {
-=======
         <div className="flex flex-wrap items-center gap-2 min-w-[300px] max-w-[400px]">
           {row.testIds.map((testId) => {
->>>>>>> b51e296d48d776212477b7111f26d195bc1756f7
             const test = tests.find((t) => t.id === testId);
             return test ? (
               <div key={test.id} className="flex items-center gap-1">
@@ -315,7 +310,7 @@ const CollectionTable: React.FC = () => {
                   className="flex items-center gap-1 bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap"
                   title={`View result for ${test.name}`}
                 >
-                  <PlusIcon className="w-2.5 h-2.5 text-white" /> 
+                  <PlusIcon className="w-2.5 h-2.5 text-white" />
                   <span className='text-white text-xs'>Result</span>
                 </button>
               </div>
@@ -398,7 +393,7 @@ const CollectionTable: React.FC = () => {
                 height={40}
                 displayValue={true}
                 fontSize={10}
-                
+
               />
             </div>
             <button
@@ -432,7 +427,7 @@ const CollectionTable: React.FC = () => {
           <p className="text-xs text-gray-500">Manage collected patient samples</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <div 
+          <div
             className="relative"
             onBlur={(e) => {
               // Close dropdown when clicking outside
@@ -540,21 +535,21 @@ const CollectionTable: React.FC = () => {
             />
           </div>
 
-                     {showModal && selectedPatient && selectedTest && (
-             <Modal isOpen={showModal} title={`Enter Report Data - ${selectedTest.name}`} onClose={() => {
-               setShowModal(false);
-               setSelectedPatient(null);
-               setSelectedTest(null);
-             }} modalClassName="max-w-5xl">
-               <PatientReportDataFill
-                 selectedPatient={selectedPatient}
-                 selectedTest={selectedTest}
-                 updateCollectionTable={updateCollectionTable}
-                 setUpdateCollectionTable={setUpdateCollectionTable}
-                 setShowModal={setShowModal}
-               />
-             </Modal>
-           )}
+          {showModal && selectedPatient && selectedTest && (
+            <Modal isOpen={showModal} title={`Enter Report Data - ${selectedTest.name}`} onClose={() => {
+              setShowModal(false);
+              setSelectedPatient(null);
+              setSelectedTest(null);
+            }} modalClassName="max-w-5xl">
+              <PatientReportDataFill
+                selectedPatient={selectedPatient}
+                selectedTest={selectedTest}
+                updateCollectionTable={updateCollectionTable}
+                setUpdateCollectionTable={setUpdateCollectionTable}
+                setShowModal={setShowModal}
+              />
+            </Modal>
+          )}
 
           {totalPages > 1 && (
             <div className="mt-4 flex justify-center">
