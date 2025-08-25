@@ -317,55 +317,15 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     setSearchTestTerm(e.target.value);
   };
 
-  // Smart test search function
+  // Simple prefix test search function - only show tests that start with the typed characters
   const isTestMatchingSearch = (testName: string, searchTerm: string): boolean => {
     if (!searchTerm.trim()) return true;
     
     const testNameLower = testName.toLowerCase();
     const searchTermLower = searchTerm.toLowerCase();
     
-    // 1. Full name search
-    if (testNameLower.includes(searchTermLower)) {
-      return true;
-    }
-    
-    // 2. First character of each word search (acronym search)
-    const testWords = testName.split(' ').filter(word => word.length > 0);
-    const testAcronym = testWords.map(word => word.charAt(0)).join('').toLowerCase();
-    if (testAcronym.includes(searchTermLower)) {
-      return true;
-    }
-    
-    // 3. Search for short forms in parentheses like "CBC (Complete Blood Count)"
-    const parenthesesMatch = testName.match(/\(([^)]+)\)/g);
-    if (parenthesesMatch) {
-      for (const match of parenthesesMatch) {
-        const shortForm = match.replace(/[()]/g, '').toLowerCase();
-        if (shortForm.includes(searchTermLower) || searchTermLower.includes(shortForm)) {
-          return true;
-        }
-      }
-    }
-    
-    // 4. Word-by-word search (any word starts with search term)
-    const words = testNameLower.split(' ');
-    if (words.some(word => word.startsWith(searchTermLower))) {
-      return true;
-    }
-    
-    // 5. Search for consecutive characters in test name
-    // This helps with partial acronyms like "CBC" matching "Complete Blood Count"
-    const testNameNoSpaces = testNameLower.replace(/\s+/g, '');
-    if (testNameNoSpaces.includes(searchTermLower)) {
-      return true;
-    }
-    
-    // 6. Search for words that contain the search term
-    if (words.some(word => word.includes(searchTermLower))) {
-      return true;
-    }
-    
-    return false;
+    // Only show tests that start with the search term
+    return testNameLower.startsWith(searchTermLower);
   };
 
   const filteredTests = tests.filter(

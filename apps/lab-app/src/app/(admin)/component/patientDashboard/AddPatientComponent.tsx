@@ -60,7 +60,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
       visitDescription: '',
       visitCancellationReason: '',
       visitCancellationDate: '',
-      vistCancellationBy: '',
+      visitCancellationBy: '',
       visitCancellationTime: '',
       // visitTime:
       // listofDiscounts: [],
@@ -255,55 +255,15 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   };
 
 
-  // Smart test search function
+  // Simple prefix test search function - only show tests that start with the typed characters
   const isTestMatchingSearch = (testName: string, searchTerm: string): boolean => {
     if (!searchTerm.trim()) return true;
     
     const testNameLower = testName.toLowerCase();
     const searchTermLower = searchTerm.toLowerCase();
     
-    // 1. Full name search
-    if (testNameLower.includes(searchTermLower)) {
-      return true;
-    }
-    
-    // 2. First character of each word search (acronym search)
-    const testWords = testName.split(' ').filter(word => word.length > 0);
-    const testAcronym = testWords.map(word => word.charAt(0)).join('').toLowerCase();
-    if (testAcronym.includes(searchTermLower)) {
-      return true;
-    }
-    
-    // 3. Search for short forms in parentheses like "CBC (Complete Blood Count)"
-    const parenthesesMatch = testName.match(/\(([^)]+)\)/g);
-    if (parenthesesMatch) {
-      for (const match of parenthesesMatch) {
-        const shortForm = match.replace(/[()]/g, '').toLowerCase();
-        if (shortForm.includes(searchTermLower) || searchTermLower.includes(shortForm)) {
-          return true;
-        }
-      }
-    }
-    
-    // 4. Word-by-word search (any word starts with search term)
-    const words = testNameLower.split(' ');
-    if (words.some(word => word.startsWith(searchTermLower))) {
-      return true;
-    }
-    
-    // 5. Search for consecutive characters in test name
-    // This helps with partial acronyms like "CBC" matching "Complete Blood Count"
-    const testNameNoSpaces = testNameLower.replace(/\s+/g, '');
-    if (testNameNoSpaces.includes(searchTermLower)) {
-      return true;
-    }
-    
-    // 6. Search for words that contain the search term
-    if (words.some(word => word.includes(searchTermLower))) {
-      return true;
-    }
-    
-    return false;
+    // Only show tests that start with the search term
+    return testNameLower.startsWith(searchTermLower);
   };
 
   const filteredTests = tests.filter(
@@ -547,10 +507,10 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         visitType: VisitType.OUT_PATIENT,
         visitStatus: VisitStatus.PENDING,
         visitDescription: '',
-        visitCancellationReason: '',
-        visitCancellationDate: '',
-        vistCancellationBy: '',
-        visitCancellationTime: '',
+                 visitCancellationReason: '',
+         visitCancellationDate: '',
+         visitCancellationBy: '',
+         visitCancellationTime: '',
         doctorId: '',
         testIds: [],
         packageIds: [],
@@ -636,19 +596,80 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         remarks: "paid by " + (billing.paymentMethod || PaymentMethod.CASH)
       });
 
-      const patientData = {
+      // Extract test IDs - only individual tests go to testIds, package tests are handled separately
+      const individualTestIds = selectedTests.map(test => test.id);
+      
+      // Get all test IDs for testResult (both individual and from packages)
+      const allTestIds = new Set<number>();
+      
+      // Add individual test IDs
+      selectedTests.forEach(test => {
+        allTestIds.add(test.id);
+      });
+      
+      // Add test IDs from packages
+      selectedPackages.forEach(pkg => {
+        pkg.tests.forEach(test => {
+          allTestIds.add(test.id);
+        });
+      });
+
+      // Convert Set to Array for testResult
+      const finalTestIds = Array.from(allTestIds);
+
+      // Create testResult array for all tests (both individual and from packages)
+      const allTestResults = finalTestIds.map(testId => ({
+        testId: testId,
+        isFilled: false,
+        reportStatus: VisitStatus.PENDING,
+        createdBy: loginedUser?.firstName || '',
+        updatedBy: loginedUser?.firstName || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }));
+
+      // Create listofeachtestdiscount for all tests
+      const allTestDiscounts = finalTestIds.map(testId => {
+        // Check if this test is in selectedTests (individual selection)
+        const individualTest = selectedTests.find(test => test.id === testId);
+        if (individualTest) {
+          return {
+            id: testId,
+            discountAmount: individualTest.discountAmount || 0,
+            discountPercent: individualTest.discountPercent || 0,
+            finalPrice: individualTest.discountedPrice || individualTest.price
+          };
+        }
+        
+        // If not in selectedTests, it's from a package - get test details from packages
+        for (const pkg of selectedPackages) {
+          const packageTest = pkg.tests.find(test => test.id === testId);
+          if (packageTest) {
+            return {
+              id: testId,
+              discountAmount: 0, // Package tests don't have individual discounts
+              discountPercent: 0,
+              finalPrice: packageTest.price
+            };
+          }
+        }
+        
+        // Fallback
+        return {
+          id: testId,
+          discountAmount: 0,
+          discountPercent: 0,
+          finalPrice: 0
+        };
+      });
+
+                   const patientData = {
         ...patientToValidate, 
         visit: {
           ...newPatient.visit,
-                                          testResult: selectedTests.map(test => ({
-              testId: test.id,
-              isFilled: false,
-              reportStatus: VisitStatus.PENDING,
-                             createdBy: loginedUser?.firstName || '', // Use logged-in user first name only
-               updatedBy: loginedUser?.firstName || '', // Use logged-in user first name only
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            })),
+          testIds: individualTestIds, // Only individual test IDs
+          packageIds: selectedPackages.map(pkg => pkg.id), // Keep package IDs for reference
+          testResult: allTestResults,
           billing: {
             ...billing,
             totalAmount,
@@ -660,12 +681,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
             due_amount: computedDueAmount,
             transactions: transactions
           },
-          listofeachtestdiscount: selectedTests.map(test => ({
-            id: test.id,
-            discountAmount: test.discountAmount || 0,
-            discountPercent: test.discountPercent || 0,
-            finalPrice: test.discountedPrice || test.price
-          }))
+          listofeachtestdiscount: allTestDiscounts
         }
       };
 

@@ -55,10 +55,10 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
   const packageSearchRef = useRef<HTMLInputElement>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Filter packages based on search term
+  // Filter packages based on search term - only show packages that start with the typed characters
   const filteredPackages = searchPackageTerm
     ? packages.filter(pkg =>
-      pkg.packageName.toLowerCase().includes(searchPackageTerm.toLowerCase()))
+      pkg.packageName.toLowerCase().startsWith(searchPackageTerm.toLowerCase()))
     : packages;
 
   // Handle package search input

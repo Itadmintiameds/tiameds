@@ -38,6 +38,10 @@ export interface Patient {
 interface HealthPackage {
   id: number;
   packageName: string;
+  tests: Array<{
+    name: string;
+    price: number;
+  }>;
 }
 
 interface UpdateSample {
@@ -311,76 +315,166 @@ const CollectionTable: React.FC = () => {
       },
     {
       header: 'Tests',
-      accessor: (row: Patient) => (
-        <div className="flex flex-col gap-1 min-w-[200px] max-w-[280px]">
-          {row.testIds.map((testId) => {
-            const test = tests.find((t) => t.id === testId);
-            const testResult = row.testResult?.find(tr => tr.testId === testId);
-            
-            if (!test) return null;
-            
-            // Determine test status
-            let statusColor = 'bg-blue-100 text-blue-800';
-            let statusText = 'Pending';
-            
-            if (testResult) {
-              if (testResult.isFilled && testResult.reportStatus === 'Completed') {
-                statusColor = 'bg-green-100 text-green-800';
-                statusText = 'Completed';
-              } else if (testResult.isFilled) {
-                statusColor = 'bg-orange-100 text-orange-800';
-                statusText = 'In Progress';
+      accessor: (row: Patient) => {
+        // Get all test IDs that belong to packages
+        const packageTestIds = new Set<number>();
+        row.packageIds.forEach(packageId => {
+          const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+          if (packageDetails) {
+            // Add all test IDs from this package to the set
+            packageDetails.tests.forEach(test => {
+              // Since the Test interface doesn't have an id, we need to find the test by name
+              const matchingTest = tests.find(t => t.name === test.name);
+              if (matchingTest) {
+                packageTestIds.add(matchingTest.id);
               }
-            }
-            
-                         return (
-               <div key={test.id} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
-                 <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs`}>
-                   {test.name}
-                 </span>
-                {/* Only show status text if not pending */}
-                {statusText !== 'Pending' && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${statusColor.replace('100', '200')}`}>
-                    {statusText}
+            });
+          }
+        });
+
+        // Filter out tests that belong to packages from individual tests
+        const individualTestIds = row.testIds.filter(testId => 
+          !packageTestIds.has(testId)
+        );
+
+                 return (
+           <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
+            {individualTestIds.map((testId) => {
+              const test = tests.find((t) => t.id === testId);
+              const testResult = row.testResult?.find(tr => tr.testId === testId);
+              
+              if (!test) return null;
+              
+              // Determine test status
+              let statusColor = 'bg-blue-100 text-blue-800';
+              let statusText = 'Pending';
+              
+              if (testResult) {
+                if (testResult.isFilled && testResult.reportStatus === 'Completed') {
+                  statusColor = 'bg-green-100 text-green-800';
+                  statusText = 'Completed';
+                } else if (testResult.isFilled) {
+                  statusColor = 'bg-orange-100 text-orange-800';
+                  statusText = 'In Progress';
+                }
+              }
+              
+              return (
+                <div key={test.id} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
+                  <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs inline-block w-fit`}>
+                    {test.name}
                   </span>
-                )}
-                {/* Only show status icon if test is completed */}
-                {testResult && testResult.isFilled && (
-                  <span 
-                    className="text-xs px-1 py-0.5 rounded cursor-help bg-green-100 text-green-700 border border-green-200"
-                    title={`Test completed - ${testResult.reportStatus}`}
-                  >
-                    ✓
-                  </span>
-                )}
-                {/* Only show result button if test is not completed */}
-                {(!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
-                  <button
-                    onClick={() => handleOpenReportModal(row, testId)}
-                    className="flex items-center gap-1 bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap"
-                    title={`View result for ${test.name}`}
-                  >
-                    <PlusIcon className="w-2.5 h-2.5 text-white" />
-                    <span className='text-white text-xs'>Result</span>
-                  </button>
-                )}
-              </div>
-            );
-          }).filter(Boolean)}
-        </div>
-      )
+                  {/* Only show status text if not pending */}
+                  {statusText !== 'Pending' && (
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${statusColor.replace('100', '200')}`}>
+                      {statusText}
+                    </span>
+                  )}
+                  {/* Only show status icon if test is completed */}
+                  {testResult && testResult.isFilled && (
+                    <span 
+                      className="text-xs px-1 py-0.5 rounded cursor-help bg-green-100 text-green-700 border border-green-200"
+                      title={`Test completed - ${testResult.reportStatus}`}
+                    >
+                      ✓
+                    </span>
+                  )}
+                  {/* Only show result button if test is not completed */}
+                  {(!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
+                    <button
+                      onClick={() => handleOpenReportModal(row, testId)}
+                      className="flex items-center gap-1 bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap"
+                      title={`View result for ${test.name}`}
+                    >
+                      <PlusIcon className="w-2.5 h-2.5 text-white" />
+                      <span className='text-white text-xs'>Result</span>
+                    </button>
+                  )}
+                </div>
+              );
+            }).filter(Boolean)}
+          </div>
+        );
+      }
     },
     {
       header: 'Package',
       accessor: (row: Patient) => (
-        <div className="flex flex-wrap gap-1 max-w-[120px]">
+        <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
           {row.packageIds.map((packageId) => {
             const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-            return packageDetails ? (
-              <span key={packageDetails.id} className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs truncate">
-                {packageDetails.packageName}
-              </span>
-            ) : null;
+            if (!packageDetails) return null;
+
+            return (
+              <div key={packageDetails.id} className="flex flex-col gap-1">
+                {/* Package name with icon */}
+                <div className="flex items-center gap-1">
+                  <span className="text-xs">📦</span>
+                  <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                    {packageDetails.packageName}
+                  </span>
+                </div>
+                
+                {/* Package tests */}
+                <div className="flex flex-col gap-1 ml-2">
+                  {packageDetails.tests.map((test, index) => {
+                    // Find the matching test from tests array to get the test ID
+                    const matchingTest = tests.find(t => t.name === test.name);
+                    if (!matchingTest) return null;
+
+                    const testResult = row.testResult?.find(tr => tr.testId === matchingTest.id);
+                    
+                    // Determine test status
+                    let statusColor = 'bg-purple-100 text-purple-800';
+                    let statusText = 'Pending';
+                    
+                    if (testResult) {
+                      if (testResult.isFilled && testResult.reportStatus === 'Completed') {
+                        statusColor = 'bg-green-100 text-green-800';
+                        statusText = 'Completed';
+                      } else if (testResult.isFilled) {
+                        statusColor = 'bg-orange-100 text-orange-800';
+                        statusText = 'In Progress';
+                      }
+                    }
+                    
+                    return (
+                      <div key={`${packageDetails.id}-${index}`} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
+                        <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs inline-block w-fit`}>
+                          {test.name}
+                        </span>
+                        {/* Only show status text if not pending */}
+                        {statusText !== 'Pending' && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${statusColor.replace('100', '200')}`}>
+                            {statusText}
+                          </span>
+                        )}
+                        {/* Only show status icon if test is completed */}
+                        {testResult && testResult.isFilled && (
+                          <span 
+                            className="text-xs px-1 py-0.5 rounded cursor-help bg-green-100 text-green-700 border border-green-200"
+                            title={`Test completed - ${testResult.reportStatus}`}
+                          >
+                            ✓
+                          </span>
+                        )}
+                        {/* Only show result button if test is not completed */}
+                        {(!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
+                          <button
+                            onClick={() => handleOpenReportModal(row, matchingTest.id)}
+                            className="flex items-center gap-1 bg-purple-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-purple-600 transition-colors whitespace-nowrap"
+                            title={`View result for ${test.name}`}
+                          >
+                            <PlusIcon className="w-2.5 h-2.5 text-white" />
+                            <span className='text-white text-xs'>Result</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
           }).filter(Boolean)}
         </div>
       )
@@ -396,7 +490,7 @@ const CollectionTable: React.FC = () => {
           >
             <Edit className="w-4 h-4" />
           </button>
-                     <div className="flex flex-wrap gap-1 max-w-[120px]">
+                     <div className="flex flex-wrap gap-1 max-w-[150px]">
             {row.sampleNames.map((sample, index) => (
               <div key={index} className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full">
                 <span className="text-xs">{sample}</span>

@@ -48,6 +48,10 @@ interface TestResult {
 interface HealthPackage {
     id: number;
     packageName: string;
+    tests: Array<{
+        name: string;
+        price: number;
+    }>;
 }
 
 
@@ -90,9 +94,9 @@ const CompletedTable = () => {
 
             setIsLoading(true);
             const { startDate, endDate } = getDateRange(dateFilter, customStartDate, customEndDate);
-            
+
             if (!startDate || !endDate) return;
-            
+
             const formattedStart = formatDateForAPI(startDate);
             const formattedEnd = formatDateForAPI(endDate);
 
@@ -107,7 +111,7 @@ const CompletedTable = () => {
                 if (!visit.testResult || visit.testResult.length === 0) {
                     return false; // Skip visits without test results
                 }
-                
+
                 // Check if ANY test has reportStatus "Completed"
                 const hasAnyCompletedTest = visit.testResult.some(tr => tr.reportStatus === 'Completed');
                 return hasAnyCompletedTest; // Show visits where at least one test is completed
@@ -183,7 +187,7 @@ const CompletedTable = () => {
             cell: (value: string) => (
                 <div className="flex items-center gap-1 text-gray-600 bg-blue-50 px-2 py-1 rounded-full">
                     <FiCalendar className="w-3 h-3 opacity-70" />
-                                         <span className="text-xs font-medium">{formatDisplayDate(value)}</span>
+                    <span className="text-xs font-medium">{formatDisplayDate(value)}</span>
                 </div>
             )
         },
@@ -197,10 +201,10 @@ const CompletedTable = () => {
                         </span>
                     );
                 }
-                
+
                 const totalTests = row.testResult.length;
                 const completedTests = row.testResult.filter(tr => tr.reportStatus === 'Completed').length;
-                
+
                 if (completedTests === totalTests) {
                     // If there's only 1 test and it's completed, show "Completed"
                     // If there are multiple tests and all are completed, show "All Completed"
@@ -221,53 +225,138 @@ const CompletedTable = () => {
         },
         {
             header: 'Tests',
-            accessor: (row: Patient) => (
-                <div className="flex flex-wrap gap-1 max-w-[200px]">
-                    {row.testIds.map((testId) => {
-                        const test = tests.find((t) => t.id === testId);
-                        const testResult = row.testResult?.find(tr => tr.testId === testId);
-                        
-                        if (!test) return null;
-                        
-                        // Only show tests that have progress (completed or in progress), skip pending ones
-                        if (!testResult || (!testResult.isFilled && testResult.reportStatus === 'Pending')) {
-                            return null;
-                        }
-                        
-                        // Determine test status
-                        let statusColor = 'bg-orange-100 text-orange-800';
-                        let statusIcon = '⏳';
-                        
-                        if (testResult.reportStatus === 'Completed') {
-                            statusColor = 'bg-green-100 text-green-800';
-                            statusIcon = '✓';
-                        }
-                        
-                        return (
-                            <div key={test.id} className="flex items-center gap-1">
-                                <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs`}>
-                                    {test.name}
-                                </span>
-                                <span className={`text-xs px-1 py-0.5 rounded border ${statusColor.replace('100', '200')}`}>
-                                    {statusIcon}
-                                </span>
-                            </div>
-                        );
-                    }).filter(Boolean)}
-                </div>
-            )
+            accessor: (row: Patient) => {
+                // Get all test IDs that belong to packages
+                const packageTestIds = new Set<number>();
+                row.packageIds.forEach(packageId => {
+                    const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+                    if (packageDetails) {
+                        // Add all test IDs from this package to the set
+                        packageDetails.tests.forEach(test => {
+                            // Since the Test interface doesn't have an id, we need to find the test by name
+                            const matchingTest = tests.find(t => t.name === test.name);
+                            if (matchingTest) {
+                                packageTestIds.add(matchingTest.id);
+                            }
+                        });
+                    }
+                });
+
+                // Filter out tests that belong to packages from individual tests
+                const individualTestIds = row.testIds.filter(testId =>
+                    !packageTestIds.has(testId)
+                );
+
+                return (
+                    <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
+                        {individualTestIds.map((testId) => {
+                            const test = tests.find((t) => t.id === testId);
+                            const testResult = row.testResult?.find(tr => tr.testId === testId);
+
+                            if (!test) return null;
+
+                            // Only show tests that have progress (completed or in progress), skip pending ones
+                            if (!testResult || (!testResult.isFilled && testResult.reportStatus === 'Pending')) {
+                                return null;
+                            }
+
+                            // Determine test status
+                            let statusColor = 'bg-blue-100 text-blue-800';
+                            let statusText = 'In Progress';
+
+                            if (testResult.reportStatus === 'Completed') {
+                                statusColor = 'bg-green-100 text-green-800';
+                                statusText = 'Completed';
+                            }
+
+                            return (
+                                <div key={test.id} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
+                                    <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs inline-block w-fit`}>
+                                        {test.name}
+                                    </span>
+                                    <span className={`text-xs px-1.5 py-0.5 rounded ${statusColor.replace('100', '200')}`}>
+                                        {statusText}
+                                    </span>
+                                    {/* Show checkmark for completed tests */}
+                                    {testResult.reportStatus === 'Completed' && (
+                                        <span
+                                            className="text-xs px-1 py-0.5 rounded cursor-help bg-green-100 text-green-700 border border-green-200"
+                                            title={`Test completed - ${testResult.reportStatus}`}
+                                        >
+                                            ✓
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        }).filter(Boolean)}
+                    </div>
+                );
+            }
         },
         {
             header: 'Package',
             accessor: (row: Patient) => (
-                <div className="flex flex-wrap gap-1 max-w-[150px]">
+                <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
                     {row.packageIds.map((packageId) => {
                         const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-                        return packageDetails ? (
-                            <span key={packageDetails.id} className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs truncate">
-                                {packageDetails.packageName}
-                            </span>
-                        ) : null;
+                        if (!packageDetails) return null;
+
+                        return (
+                            <div key={packageDetails.id} className="flex flex-col gap-1">
+                                {/* Package name with icon */}
+                                <div className="flex items-center gap-1">
+                                    <span className="text-xs">📦</span>
+                                    <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                                        {packageDetails.packageName}
+                                    </span>
+                                </div>
+
+                                {/* Package tests */}
+                                <div className="flex flex-col gap-1 ml-2">
+                                    {packageDetails.tests.map((test, index) => {
+                                        // Find the matching test from tests array to get the test ID
+                                        const matchingTest = tests.find(t => t.name === test.name);
+                                        if (!matchingTest) return null;
+
+                                        const testResult = row.testResult?.find(tr => tr.testId === matchingTest.id);
+
+                                        // Only show tests that have progress (completed or in progress), skip pending ones
+                                        if (!testResult || (!testResult.isFilled && testResult.reportStatus === 'Pending')) {
+                                            return null;
+                                        }
+
+                                        // Determine test status
+                                        let statusColor = 'bg-purple-100 text-purple-800';
+                                        let statusText = 'In Progress';
+
+                                        if (testResult.reportStatus === 'Completed') {
+                                            statusColor = 'bg-green-100 text-green-800';
+                                            statusText = 'Completed';
+                                        }
+
+                                        return (
+                                            <div key={`${packageDetails.id}-${index}`} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
+                                                <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs inline-block w-fit`}>
+                                                    {test.name}
+                                                </span>
+                                                <span className={`text-xs px-1.5 py-0.5 rounded ${statusColor.replace('100', '200')}`}>
+                                                    {statusText}
+                                                </span>
+                                                {/* Show checkmark for completed tests */}
+                                                {testResult.reportStatus === 'Completed' && (
+                                                    <span
+                                                        className="text-xs px-1 py-0.5 rounded cursor-help bg-green-100 text-green-700 border border-green-200"
+                                                        title={`Test completed - ${testResult.reportStatus}`}
+                                                    >
+                                                        ✓
+                                                    </span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
                     }).filter(Boolean)}
                 </div>
             )
@@ -313,7 +402,7 @@ const CompletedTable = () => {
                     <p className="text-xs text-gray-500">View and manage completed test reports</p>
                 </div>
 
-                <div 
+                <div
                     className="relative"
                     onBlur={(e) => {
                         // Close dropdown when clicking outside
@@ -384,23 +473,23 @@ const CompletedTable = () => {
                                                 placeholderText="Select end date"
                                             />
                                         </div>
-                                                                                 <button
-                                             onClick={() => {
-                                                 if (!customStartDate || !customEndDate) {
-                                                     toast.warning("Please select both start and end dates");
-                                                     return;
-                                                 }
-                                                 if (customStartDate > customEndDate) {
-                                                     toast.warning("Start date cannot be after end date");
-                                                     return;
-                                                 }
-                                                 setDateFilter('custom');
-                                                 setShowDateFilter(false);
-                                             }}
-                                             className="w-full bg-blue-600 text-white py-1.5 rounded-md text-xs font-medium hover:bg-blue-700 transition-colors"
-                                         >
-                                             Apply Custom Filter
-                                         </button>
+                                        <button
+                                            onClick={() => {
+                                                if (!customStartDate || !customEndDate) {
+                                                    toast.warning("Please select both start and end dates");
+                                                    return;
+                                                }
+                                                if (customStartDate > customEndDate) {
+                                                    toast.warning("Start date cannot be after end date");
+                                                    return;
+                                                }
+                                                setDateFilter('custom');
+                                                setShowDateFilter(false);
+                                            }}
+                                            className="w-full bg-blue-600 text-white py-1.5 rounded-md text-xs font-medium hover:bg-blue-700 transition-colors"
+                                        >
+                                            Apply Custom Filter
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -467,7 +556,7 @@ const CompletedTable = () => {
                                 setShowModal={setEditModel}
                                 refreshReports={fetchVisits}
                             />
-                            
+
                         </Modal>
                     )}
                     {totalPages > 1 && (

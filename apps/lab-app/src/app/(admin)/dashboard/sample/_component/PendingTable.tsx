@@ -193,33 +193,67 @@ const PendingTable: React.FC = () => {
     },
     {
       header: 'Tests',
-      accessor: (row: Patient) => (
-        <div className="flex flex-col gap-1">
-          {row.visitDetailDto.testIds
-            .map((testId) => {
-              const test = tests.find((t) => t.id === testId);
-              return test ? (
-                <span key={test.id} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
-                  {test.name}
-                </span>
-              ) : null;
-            })
-            .filter(Boolean)}
-        </div>
-      ),
+      accessor: (row: Patient) => {
+        // Get all test IDs that belong to packages
+        const packageTestIds = new Set<number>();
+        row.visitDetailDto.packageIds.forEach(packageId => {
+          const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+          if (packageDetails) {
+            // Add all test IDs from this package to the set
+            packageDetails.tests.forEach(test => {
+              // Since the Test interface doesn't have an id, we need to find the test by name
+              const matchingTest = tests.find(t => t.name === test.name);
+              if (matchingTest) {
+                packageTestIds.add(matchingTest.id);
+              }
+            });
+          }
+        });
+
+        // Filter out tests that belong to packages
+        const individualTestIds = row.visitDetailDto.testIds.filter(testId => 
+          !packageTestIds.has(testId)
+        );
+
+                 return (
+           <div className="flex flex-col gap-1">
+             {individualTestIds
+               .map((testId) => {
+                 const test = tests.find((t) => t.id === testId);
+                 return test ? (
+                   <span key={test.id} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs inline-block w-fit">
+                     {test.name}
+                   </span>
+                 ) : null;
+               })
+               .filter(Boolean)}
+           </div>
+         );
+      },
     },
     {
       header: 'Package',
       accessor: (row: Patient) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-col gap-2">
           {row.visitDetailDto.packageIds
             .map((packageId) => {
               const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-              return packageDetails ? (
-                <span key={packageDetails.id} className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs">
-                  {packageDetails.packageName}
-                </span>
-              ) : null;
+              if (!packageDetails) return null;
+
+              return (
+                <div key={packageDetails.id} className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
+                    📦 {packageDetails.packageName}
+                  </span>
+                                     <div className="flex flex-col gap-1 ml-2">
+                     {packageDetails.tests.map((test, index) => (
+                       <span key={`${packageDetails.id}-${index}`} className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs inline-block w-fit">
+                         {test.name}
+                       </span>
+                     ))}
+                   </div>
+                </div>
+              );
             })
             .filter(Boolean)}
         </div>

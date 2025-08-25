@@ -30,7 +30,7 @@ export type Visit = {
   visitStatus: VisitStatus;
   visitCancellationReason?: string; // Optional field for cancellation reason
   visitCancellationDate?: string; // Optional field for cancellation date
-  vistCancellationBy?: string; // Optional field for who cancelled the visit
+  visitCancellationBy?: string; // Optional field for who cancelled the visit
   visitCancellationTime?: string; // Optional field for cancellation time
   visitTime?: string; // Optional field for visit time
   visitDescription: string;

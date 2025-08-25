@@ -37,7 +37,7 @@ const CancellationDetailsModal: React.FC<CancellationDetailsModalProps> = ({
     const visit = patientDetails.visit;
     const cancellationDate = visit?.visitCancellationDate;
     const cancellationTime = visit?.visitCancellationTime;
-    const cancellationBy = visit?.vistCancellationBy;
+    const cancellationBy = visit?.visitCancellationBy;
     const cancellationReason = visit?.visitCancellationReason;
 
     const formatDateTime = (dateString: string, timeString?: string) => {
