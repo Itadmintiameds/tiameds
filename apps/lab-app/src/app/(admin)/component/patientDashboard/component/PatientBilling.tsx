@@ -421,8 +421,9 @@ const PatientBilling = ({
               name="visit.billing.paymentStatus"
               value={newPatient.visit?.billing?.paymentStatus ?? PaymentStatus.DUE}
               onChange={handleChange}
-              className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
               required
+              disabled
             >
               {Object.values(PaymentStatus).map((status) => (
                 <option key={status} value={status}>

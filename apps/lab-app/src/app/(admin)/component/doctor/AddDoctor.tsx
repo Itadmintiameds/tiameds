@@ -37,10 +37,20 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
     // Handle Input Change
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setDoctor((prevState) => ({
-            ...prevState,
-            [name]: name === 'phone' ? parseInt(value) || '' : value,
-        }));
+        
+        if (name === 'phone') {
+            // Only allow numeric input for phone
+            const numericValue = value.replace(/\D/g, '');
+            setDoctor((prevState) => ({
+                ...prevState,
+                [name]: numericValue ? parseInt(numericValue) : '',
+            }));
+        } else {
+            setDoctor((prevState) => ({
+                ...prevState,
+                [name]: value,
+            }));
+        }
     };
 
     // Form Submission with Validation
@@ -85,7 +95,7 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                     { label: 'Qualification', name: 'qualification', icon: FaUniversity, type: 'text', placeholder: 'Enter Doctor Qualification', required: false },
                     { label: 'Hospital Affiliation', name: 'hospitalAffiliation', icon: FaHospital, type: 'text', placeholder: 'Enter Hospital Affiliation', required: true },
                     { label: 'License Number', name: 'licenseNumber', icon: FaIdCard, type: 'text', placeholder: 'Enter License Number', required: true },
-                    { label: 'Phone', name: 'phone', icon: FaPhoneAlt, type: 'number', placeholder: 'Enter Doctor Phone Number', required: true },
+                    { label: 'Phone', name: 'phone', icon: FaPhoneAlt, type: 'tel', placeholder: 'Enter Doctor Phone Number', required: true },
                     { label: 'Address', name: 'address', icon: FaMapMarkerAlt, type: 'text', placeholder: 'Enter Doctor Address', required: true },
                     { label: 'City', name: 'city', icon: FaMapMarkerAlt, type: 'text', placeholder: 'Enter Doctor City', required: true },
                     { label: 'State', name: 'state', icon: FaMapMarkerAlt, type: 'text', placeholder: 'Enter Doctor State', required: true },
@@ -105,6 +115,17 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                             required={required} // Dynamically apply required attribute
                             className={`mt-1 block w-full p-2 text-xs border ${errors[name] ? 'border-red-500' : 'border-gray-300'
                                 } rounded-md focus:outline-none focus:ring-1 focus:ring-primary`}
+                            {...(name === 'phone' && {
+                                inputMode: 'numeric',
+                                pattern: '[0-9]*',
+                                maxLength: 10,
+                                onKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => {
+                                    // Prevent non-numeric characters
+                                    if (!/[0-9]/.test(e.key)) {
+                                        e.preventDefault();
+                                    }
+                                }
+                            })}
                         />
                         {errors[name] && (
                             <p className="text-xs text-red-500 mt-1">{errors[name]}</p>

@@ -480,35 +480,40 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
               <div className="overflow-y-auto max-h-64 divide-y divide-gray-100">
                 {selectedTests.map((test) => (
                   <div key={test.id} className="p-3 hover:bg-blue-50 transition-colors">
-                    <div className="flex justify-between items-center gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{test.name}</p>
-                        <p className="text-xs text-gray-500 truncate">{test.category}</p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      {/* Test Name and Category - Flexible width, takes available space */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium break-words leading-tight pr-2">{test.name}</p>
+                        <p className="text-xs text-gray-500 truncate mt-1">{test.category}</p>
                       </div>
 
-                      <div className="flex flex-col items-end min-w-[80px]">
-                        {test.discountAmount ? (
-                          <>
-                            <p className="text-xs line-through text-gray-400">₹{isNaN(Number(test.price)) ? 'N/A' : Number(test.price).toFixed(2)}</p>
-                            <p className="text-sm font-medium text-green-600">
-                              ₹{typeof test.discountedPrice === 'number' ? test.discountedPrice.toFixed(2) : '0'}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm font-medium">₹{isNaN(Number(test.price)) ? 'N/A' : Number(test.price).toFixed(2)}</p>
-                        )}
-                      </div>
+                      {/* Right side content - Fixed width, stays aligned */}
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        {/* Price Section */}
+                        <div className="flex flex-col items-end justify-center min-w-[80px]">
+                          {test.discountAmount ? (
+                            <>
+                              <p className="text-xs line-through text-gray-400">₹{isNaN(Number(test.price)) ? 'N/A' : Number(test.price).toFixed(2)}</p>
+                              <p className="text-sm font-medium text-green-600">
+                                ₹{typeof test.discountedPrice === 'number' ? test.discountedPrice.toFixed(2) : '0'}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-sm font-medium">₹{isNaN(Number(test.price)) ? 'N/A' : Number(test.price).toFixed(2)}</p>
+                          )}
+                        </div>
 
-                      <div className="flex items-center space-x-2 min-w-[160px]">
-                        <div className="flex items-center">
-                          <span className="text-xs text-gray-500 mr-1">%:</span>
-                                                     <input
-                             type="number"
-                             min="0"
-                             max="100"
-                             className="w-12 border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                             value={test.discountPercent || 0}
-                                                           onChange={(e) => {
+                        {/* Discount Fields and Remove Button */}
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center">
+                            <span className="text-xs text-gray-500 mr-1">%:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              className="w-12 border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                              value={test.discountPercent || 0}
+                              onChange={(e) => {
                                 const value = e.target.value;
                                 const numValue = value === '' ? 0 : parseFloat(value) || 0;
                                 handleTestDiscountChange(test.id, 'percent', numValue);
@@ -528,17 +533,17 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                                   input.value = value;
                                 }
                               }}
-                           />
-                        </div>
-                        <div className="flex items-center">
-                          <span className="text-xs text-gray-500 mr-1">₹:</span>
-                                                     <input
-                             type="number"
-                             min="0"
-                             max={test.price}
-                             className="w-16 border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
-                             value={test.discountAmount || 0}
-                                                           onChange={(e) => {
+                            />
+                          </div>
+                          <div className="flex items-center">
+                            <span className="text-xs text-gray-500 mr-1">₹:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max={test.price}
+                              className="w-16 border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500"
+                              value={test.discountAmount || 0}
+                              onChange={(e) => {
                                 const value = e.target.value;
                                 const numValue = value === '' ? 0 : parseFloat(value) || 0;
                                 handleTestDiscountChange(test.id, 'amount', numValue);
@@ -558,17 +563,17 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                                   input.value = value;
                                 }
                               }}
-                           />
+                            />
+                          </div>
+                          <button
+                            onClick={() => removeTest(test.id.toString())}
+                            className="text-red-500 hover:text-red-700 p-1 focus:outline-none focus:ring-1 focus:ring-red-500 rounded"
+                            title="Remove test"
+                          >
+                            <FaTrashAlt className="text-sm" />
+                          </button>
                         </div>
                       </div>
-
-                      <button
-                        onClick={() => removeTest(test.id.toString())}
-                        className="text-red-500 hover:text-red-700 p-1 focus:outline-none focus:ring-1 focus:ring-red-500 rounded"
-                        title="Remove test"
-                      >
-                        <FaTrashAlt className="text-sm" />
-                      </button>
                     </div>
                   </div>
                 ))}
@@ -643,13 +648,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
               </div>
             ))}
           </div>
-          {(hoveredPackage.discount && hoveredPackage.discount > 0) && (
-            <div className="px-3 py-2 bg-green-50 border-t border-green-100">
-              <p className="text-xs text-green-700 font-medium">
-                {hoveredPackage.discount}% discount applied (Save ₹{isNaN(Number(hoveredPackage.price)) ? 'N/A' : (Number(hoveredPackage.price) * hoveredPackage.discount / 100).toFixed(2)})
-              </p>
-            </div>
-          )}
+       
         </div>
       )}
     </div>

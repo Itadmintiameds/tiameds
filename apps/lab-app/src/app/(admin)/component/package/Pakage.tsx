@@ -124,7 +124,7 @@ const PackageCreation = () => {
   const calculateFinalPrice = () => {
     const total = calculateTotal();
     const finalPrice = total - (total * discount) / 100;
-    console.log('Price calculation:', { total, discount, finalPrice });
+  
     return finalPrice;
   };
 
@@ -181,7 +181,7 @@ const PackageCreation = () => {
         discount: discount,
       };
 
-      console.log('Package data to be validated:', cleanPackageData);
+    
 
       // Validate with schema
       const validationResult = packageDataSchema.safeParse(cleanPackageData);
@@ -196,7 +196,7 @@ const PackageCreation = () => {
 
       if (currentLab) {
         await createPackage(currentLab.id, cleanPackageData);
-        console.log('Package data to be sent:', cleanPackageData);
+       
         toast.success('Package created successfully!', {
           autoClose: 2000,
           position: 'top-right',

@@ -1,8 +1,8 @@
 import { FiCalendar, FiChevronDown, FiPower, FiUser } from "react-icons/fi";
 import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
-import { toast } from "react-toastify";
 import Button from "../common/Button";
 import CurrentTime from "../common/CurrentTime";
+import { handleLogout } from "@/utils/auth";
 
 interface User {
   firstName: string;
@@ -31,19 +31,6 @@ interface TopNavProps {
 }
 
 const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange }) => {
-  const handleLogout = () => {
-    toast.success("Logged out successfully", {
-      position: "top-right",
-      autoClose: 2000,
-      hideProgressBar: true,
-    });
-    localStorage.removeItem("user");
-    localStorage.removeItem("logedUser");
-    localStorage.removeItem("currentLab");
-    localStorage.removeItem("userLabs");
-    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    window.location.replace("/user-login");
-  };
 
   return (
     <nav className="flex items-center justify-between py-3 px-6 border-b border-gray-200 bg-white shadow-sm">

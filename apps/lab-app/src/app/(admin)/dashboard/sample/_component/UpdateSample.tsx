@@ -42,10 +42,10 @@ const UpdateSample = ({ visitId, sampleNames,onClose}: UpdateSampleProps) => {
         if (editIndex !== null) {
             try {
                 const updatedSamples = [...editableSampleNames];
-                console.log("updatedSamples", updatedSamples);
+               
                 updatedSamples[editIndex] = selectedSample;
 
-                console.log("updatedSamples", updatedSamples);
+               
 
                 setEditableSampleNames(updatedSamples);
                 setEditIndex(null);

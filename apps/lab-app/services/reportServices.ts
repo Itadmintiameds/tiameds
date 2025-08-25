@@ -170,7 +170,7 @@ export const updateReports = async (labId: number, reports: ReportData[]): Promi
     if (invalidReports.length > 0) {
       throw new Error('All reports must have report_id for updates');
     }
-    console.log('Sending update payload:', reports); // Debug log
+  
     const response = await api.put<{ data: ReportData[] }>(`lab/${labId}/report`, reports);
     return response.data.data;
   } catch (error: unknown) {

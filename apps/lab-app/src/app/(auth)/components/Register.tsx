@@ -155,12 +155,32 @@ const Register: React.FC = () => {
               <input
                 id="phone"
                 name="phone"
-                type="text"
+                type="tel"
                 required
                 placeholder="Enter your phone number"
                 value={formData.phone}
-                onChange={handleInputChange}
+                onChange={(event) => {
+                  // Only allow numeric input
+                  const numericValue = event.target.value.replace(/\D/g, '');
+                  const numericEvent = {
+                    ...event,
+                    target: {
+                      ...event.target,
+                      value: numericValue
+                    }
+                  };
+                  handleInputChange(numericEvent);
+                }}
                 className="block w-full rounded-md border bg-white/5 py-2 px-4 text-indigo-800 pl-10 focus:ring-indigo-500"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={10}
+                onKeyPress={(e) => {
+                  // Prevent non-numeric characters
+                  if (!/[0-9]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
               />
               <FaPhoneAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-800" />
             </div>

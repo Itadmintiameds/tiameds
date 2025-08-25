@@ -110,7 +110,7 @@ const AddPatient = () => {
 
     const fetchData = async () => {
       try {
-        // console.log("Fetching data for Lab ID:", currentLab.id);
+    
 
         const [testData, packageData, doctorData, insuranceData, patientData] = await Promise.all([
           getTests(currentLab.id.toString()),

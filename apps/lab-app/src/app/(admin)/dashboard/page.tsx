@@ -61,7 +61,7 @@ const Page = () => {
 
   useEffect(() => {
     const loggedUser = localStorage.getItem('logedUser');
-    console.log("Logged User:", loggedUser);
+ 
     if (loggedUser) {
       try {
         setLoginedUser(JSON.parse(loggedUser));

@@ -15,7 +15,7 @@ async function validateEmail(email: string): Promise<boolean> {
             `http://apilayer.net/api/check?access_key=${apiKey}&email=${email}&smtp=1&format=1`
         );
         const data = await response.json();
-        console.log("📧 Email Validation Response:", data);
+       
 
         return data.format_valid && data.smtp_check;
     } catch (error) {

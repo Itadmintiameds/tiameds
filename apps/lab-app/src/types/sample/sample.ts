@@ -11,6 +11,18 @@ export interface Sample {
     sampleNames: string[];
 }
 
+// Test result interface for individual test results
+export interface TestResult {
+    id: number;
+    testId: number;
+    isFilled: boolean;
+    reportStatus: string;
+    createdBy: string;
+    updatedBy: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 // export interface VisitSampleList {
 //     visitId: number;
 //     patientname: string;
@@ -33,6 +45,7 @@ export interface VisitSampleList {
     testIds: number[];
     packageIds: number[];
     dateOfBirth?: string;
+    testResult?: TestResult[]; // Add testResult array
 }
 
 // export interface PatientData {
@@ -62,7 +75,8 @@ export interface PatientData {
   packageIds: number[];
   dateOfBirth?: string;
   visitType?: string; // Optional field for visit type
-    doctorId?: number; // Optional field for doctor ID
+  doctorId?: number; // Optional field for doctor ID
+  doctorName?: string; // Optional field for doctor name
 }
   
 export interface ApiResponse<T> {

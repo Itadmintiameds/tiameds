@@ -161,7 +161,7 @@ const TestReferanceList = () => {
     },
   ];
 
-  // console.log(referencePoints, "referancce point------------------- ")
+
 
   return (
     <div className="w-full bg-gray-50 p-6 rounded-xl">

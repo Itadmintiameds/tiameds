@@ -69,7 +69,7 @@ const ContactUsSection = () => {
       alert('You must agree to the privacy policy to submit the form.')
       return
     }
-    console.log(formData)
+
     setLoading(true)
 
     try {

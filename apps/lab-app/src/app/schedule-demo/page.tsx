@@ -15,8 +15,7 @@ export default function ScheduleDemoPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would typically send the data to your backend
-    console.log('Demo scheduled:', formData)
+ 
     setSubmitted(true)
   }
 

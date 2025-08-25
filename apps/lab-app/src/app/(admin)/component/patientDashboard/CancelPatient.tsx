@@ -37,17 +37,17 @@ interface Packages {
   tests: TestList[];
 }
 
-interface DeletePatientModalProps {
+interface CancelPatientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPatientDeleted?: () => void; // Add callback for refreshing data
+  onPatientCancelled?: () => void; // Add callback for refreshing data
 }
 
 
 
-const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose, onPatientDeleted }) => {
+const CancelPatientModal: React.FC<CancelPatientModalProps> = ({ isOpen, onClose, onPatientCancelled }) => {
   const { currentLab, patientDetails, setRefreshLab } = useLabs();
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cancellationReason, setCancellationReason] = useState('');
   const [showReasonDropdown, setShowReasonDropdown] = useState(false);
@@ -145,19 +145,19 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
     setShowReasonDropdown(false);
   };
 
-  const handleDelete = async () => {
+  const handleCancel = async () => {
     if (patientDetails?.visit?.visitId) {
       if (!cancellationReason) {
         setError("Please provide a cancellation reason");
         return;
       }
-      if (isManualReason && cancellationReason.length < 20) {
-        setError("Please provide at least 20 characters for the cancellation reason");
+      if (isManualReason && cancellationReason.length < 3) {
+        setError("Please provide at least 3 characters for the cancellation reason");
         return;
       }
     }
 
-    setIsDeleting(true);
+    setIsCancelling(true);
     setError(null);
 
     try {
@@ -168,17 +168,17 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
         visitCancellationTime: format(new Date(), 'HH:mm:ss')
       };
 
-      console.log("Cancellation Data:", cancellationData);
+   
 
       // In a real app, you would call your API here:
       if (!currentLab) {
-        setError("Lab information is missing. Cannot proceed with deletion.");
-        setIsDeleting(false);
+        setError("Lab information is missing. Cannot proceed with cancellation.");
+        setIsCancelling(false);
         return;
       }
       if (!patientDetails || !patientDetails.visit || patientDetails.visit.visitId === undefined) {
-        setError("Patient visit information is missing. Cannot proceed with deletion.");
-        setIsDeleting(false);
+        setError("Patient visit information is missing. Cannot proceed with cancellation.");
+        setIsCancelling(false);
         return;
       }
       await updateVisitCancellation(
@@ -187,14 +187,14 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
         cancellationData
       );
 
-      console.log('Sending cancellation data to backend:', cancellationData);
+      
 
       // Trigger refresh of patient data
       setRefreshLab(prev => !prev);
       
       // Call the callback to refresh parent component data
-      if (onPatientDeleted) {
-        onPatientDeleted();
+      if (onPatientCancelled) {
+        onPatientCancelled();
       }
 
       // Show success message
@@ -205,10 +205,10 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
 
       onClose();
     } catch (err) {
-      console.error("Delete failed:", err);
-      setError(err instanceof Error ? err.message : "Failed to delete patient");
+      console.error("Cancellation failed:", err);
+      setError(err instanceof Error ? err.message : "Failed to cancel patient visit");
     } finally {
-      setIsDeleting(false);
+      setIsCancelling(false);
     }
   };
 
@@ -414,14 +414,14 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
                         onChange={(e) => setCancellationReason(e.target.value)}
                         className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         rows={4}
-                        placeholder="Provide detailed cancellation reason (minimum 20 characters)..."
+                        placeholder="Provide detailed cancellation reason (minimum 3 characters)..."
                         required
-                        minLength={20}
+                        minLength={3}
                       />
-                      <p className={`mt-1 text-sm ${cancellationReason.length >= 20 ? 'text-green-600' : 'text-red-600'
+                      <p className={`mt-1 text-sm ${cancellationReason.length >= 3 ? 'text-green-600' : 'text-red-600'
                         }`}>
-                        {cancellationReason.length < 20
-                          ? `${20 - cancellationReason.length} more characters required`
+                        {cancellationReason.length < 3
+                          ? `${3 - cancellationReason.length} more characters required`
                           : "✓ Reason meets minimum length"}
                       </p>
                     </div>
@@ -486,11 +486,11 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
             Cancel
           </button>
           <button
-            onClick={handleDelete}
-            disabled={isDeleting}
+            onClick={handleCancel}
+            disabled={isCancelling}
             className="px-5 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-70 disabled:cursor-not-allowed transition-colors flex items-center"
           >
-            {isDeleting ? (
+            {isCancelling ? (
               <>
                 <Loader type="spinner" />
                 Cancelling...
@@ -508,4 +508,4 @@ const DeletePatientModal: React.FC<DeletePatientModalProps> = ({ isOpen, onClose
   );
 };
 
-export default DeletePatientModal;
+export default CancelPatientModal;

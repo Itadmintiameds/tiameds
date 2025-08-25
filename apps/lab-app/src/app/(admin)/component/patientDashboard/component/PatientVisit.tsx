@@ -1,7 +1,7 @@
 import React from 'react';
 import { Patient } from '@/types/patient/patient';
 import { Doctor } from '@/types/doctor/doctor';
-import { FaCalendarAlt, FaCalendar, FaUserPlus } from 'react-icons/fa';
+import { FaCalendarAlt, FaUserPlus } from 'react-icons/fa';
 import Modal from '../../common/Model';
 import AddDoctor from './AddDoctor';
 import { createDoctor } from '../../../../../../services/doctorServices';
@@ -15,7 +15,7 @@ enum VisitType {
     INPATIENT = 'In-Patient',
     OUTPATIENT = 'Out-Patient',
     DAYCARE = 'Day-Care',
-    WAKING = 'Waking',
+    WAKING = 'Walk-In',
 }
 
 interface PatientVisitProps {
@@ -86,8 +86,8 @@ const PatientVisit = ({ newPatient, handleChange, doctors }: PatientVisitProps) 
     };
 
     return (
-        <section className="flex space-x-4 w-full max-w-md">
-            <div className="w-full p-3 border rounded-lg border-gray-200 shadow-sm  bg-gray-50">
+        <section className="flex w-full">
+            <div className="w-full p-3 border rounded-lg border-gray-200 shadow-sm bg-gray-50">
                 <div className="flex justify-between items-center mb-3">
                     <h2 className="text-xs font-semibold text-gray-700 flex items-center">
                         <FaCalendarAlt className="mr-1.5 text-purple-500 text-sm" />
@@ -109,7 +109,7 @@ const PatientVisit = ({ newPatient, handleChange, doctors }: PatientVisitProps) 
                                 required
                                 disabled
                             />
-                            <FaCalendar className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-purple-500 text-xs pointer-events-none" />
+                           
                         </div>
                     </div>
                     <div className="flex flex-col">

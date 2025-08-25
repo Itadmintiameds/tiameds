@@ -1147,9 +1147,29 @@ const AddMemberOnLab = () => {
                                                     className={`w-full p-2 border ${errors.phone ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
                                                     type="tel"
                                                     name="phone"
-                                                    placeholder="+1 (555) 123-4567"
+                                                    placeholder="Enter phone number"
                                                     value={formData.phone}
-                                                    onChange={handleChange}
+                                                    onChange={(event) => {
+                                                        // Only allow numeric input
+                                                        const numericValue = event.target.value.replace(/\D/g, '');
+                                                        const numericEvent = {
+                                                            ...event,
+                                                            target: {
+                                                                ...event.target,
+                                                                value: numericValue
+                                                            }
+                                                        };
+                                                        handleChange(numericEvent);
+                                                    }}
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    maxLength={10}
+                                                    onKeyPress={(e) => {
+                                                        // Prevent non-numeric characters
+                                                        if (!/[0-9]/.test(e.key)) {
+                                                            e.preventDefault();
+                                                        }
+                                                    }}
                                                 />
                                                 {errors.phone && (
                                                     <p className="mt-1 text-sm text-red-600">{errors.phone}</p>

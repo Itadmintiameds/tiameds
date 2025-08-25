@@ -293,7 +293,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
             </h2>
             <div className="pl-6 space-y-1">
               <p className="text-sm"><span className="font-medium">Name:</span> {patient?.firstName} {patient?.lastName}</p>
-              <p className="text-sm"><span className="font-medium">Age/Sex:</span> {calculateAge(patient?.dateOfBirth || '')} / {patient?.gender || 'N/A'}</p>
+              <p className="text-sm"><span className="font-medium">Age/Sex:</span> {calculateAge(patient?.dateOfBirth || '').split(' ')[0]} yrs / {patient?.gender || 'N/A'}</p>
               <p className="text-sm"><span className="font-medium">Contact:</span> {patient?.phone || 'N/A'}</p>
             </div>
           </div>
@@ -529,6 +529,10 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
               <span>Authorized Signatory</span>
             </div>
             <p>Generated on: {new Date().toLocaleString()}</p>
+          </div>
+          <div className="mt-4 flex justify-center items-center">
+            <img src="/tiamed1.svg" alt="TiaMeds Logo" className="h-4 mr-2 opacity-80" />
+            <span className="text-xs font-medium text-gray-600">Powered by TiaMeds Technologies Pvt.Ltd</span>
           </div>
         </div>
       </div>

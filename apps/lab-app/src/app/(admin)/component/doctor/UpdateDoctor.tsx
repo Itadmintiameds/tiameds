@@ -78,12 +78,32 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
             <FaPhoneAlt className="mr-2" /> Phone
           </label>
           <input
-            type="text"
+            type="tel"
             id="phone"
             name="phone"
             value={updatedDoctor.phone}
-            onChange={handleChange}
+            onChange={(event) => {
+              // Only allow numeric input
+              const numericValue = event.target.value.replace(/\D/g, '');
+              const numericEvent = {
+                ...event,
+                target: {
+                  ...event.target,
+                  value: numericValue
+                }
+              };
+              handleChange(numericEvent);
+            }}
             className="mt-1 block w-full p-2 text-xs border border-gray-300 rounded-md"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={10}
+            onKeyPress={(e) => {
+              // Prevent non-numeric characters
+              if (!/[0-9]/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
           />
         </div>
 

@@ -67,26 +67,7 @@ const EditMember: React.FC<EditMemberProps> = ({ updateMember }) => {
     const handleUpdate = async () => {
         try {
             toast.info("Update member is disabled in demo");
-            // const updatedData = {
-            //     ...formData,
-            //     username: formData.username,
-            //     email: formData.email,
-            //     firstName: formData.firstName,
-            //     lastName: formData.lastName,
-            //     phone: formData.phone,
-            //     address: formData.address,
-            //     city: formData.city,
-            //     state: formData.state,
-            //     zip: formData.zip,
-            //     country: formData.country
-            // };
-
-            // if (updateMember?.id !== undefined) {
-            //     await updateMemberDetails(updateMember.id, updatedData);
-            // } else {
-            //     console.error("Member ID is undefined");
-            // }
-            // console.log("Member updated successfully!");
+        
         } catch (error) {
             console.error("Failed to update member:", error);
         }

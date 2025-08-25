@@ -33,7 +33,6 @@ export const getAllPatientVisitsByDateRange = async (labId: number, startDate: s
 export const getPatient = async (labId: number) => {
     try {
         const response = await api.get(`/lab/${labId}/patients`);
-        console.log(response.data, 'response.data');
         return response.data;
     } catch (error: unknown) {
         throw new Error('An error occurred while fetching patients.');
@@ -112,7 +111,7 @@ export const getAllPatientVisitsByDateRangeoflab = async (labId: number, startDa
 }
 
 export const addPatient = async (labId: number, patient: Patient) => {
-    console.log(patient, 'patient in addPatient');
+
     try {
         const response = await api.post(`/lab/${labId}/add-patient`, patient);
         return response.data;

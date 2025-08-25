@@ -105,7 +105,7 @@ const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLo
                 {[
                     { label: 'Name', name: 'name', icon: FaUser, type: 'text', placeholder: 'Enter Doctor Name', required: true },
                     { label: 'Speciality', name: 'speciality', icon: FaStethoscope, type: 'text', placeholder: 'Enter Doctor Speciality', required: true },
-                    { label: 'Phone', name: 'phone', icon: FaPhoneAlt, type: 'number', placeholder: 'Enter Doctor Phone Number', required: false },
+                    { label: 'Phone', name: 'phone', icon: FaPhoneAlt, type: 'tel', placeholder: 'Enter Doctor Phone Number', required: false },
                 ].map(({ label, name, icon: Icon, type, placeholder, required }) => (
                     <div key={name} className="mb-2">
                         <label htmlFor={name} className="text-xs font-medium text-gray-700 flex items-center">
@@ -158,30 +158,40 @@ const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLo
                                     <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
                                 )}
                             </>
-                        ) : (
-                            <>
-                                <input
-                                    type={type}
-                                    id={name}
-                                    name={name}
-                                    placeholder={placeholder}
-                                    value={doctor?.[name as keyof Doctor]?.toString() || ''}
-                                    onChange={(e) => {
-                                        const { name, value } = e.target;
-                                        setDoctor((prevDoctor) => ({
-                                            ...prevDoctor,
-                                            [name]: name === 'phone' ? parseInt(value) || '' : value,
-                                        }));
-                                    }}
-                                    required={required}
-                                    className={`mt-1 block w-full p-2 text-xs border ${errors[name] ? 'border-red-500' : 'border-gray-300'
-                                        } rounded-md focus:outline-none focus:ring-1 focus:ring-primary`}
-                                />
-                                {errors[name] && (
-                                    <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
-                                )}
-                            </>
-                        )}
+                                                 ) : (
+                             <>
+                                 <input
+                                     type={type}
+                                     id={name}
+                                     name={name}
+                                     placeholder={placeholder}
+                                     value={doctor?.[name as keyof Doctor]?.toString() || ''}
+                                     onChange={(e) => {
+                                         const { name, value } = e.target;
+                                         // For phone field, only allow numeric input and limit to 10 digits
+                                         if (name === 'phone') {
+                                             const numericValue = value.replace(/\D/g, '').slice(0, 10);
+                                             setDoctor((prevDoctor) => ({
+                                                 ...prevDoctor,
+                                                 [name]: numericValue,
+                                             }));
+                                         } else {
+                                             setDoctor((prevDoctor) => ({
+                                                 ...prevDoctor,
+                                                 [name]: value,
+                                             }));
+                                         }
+                                     }}
+                                     maxLength={name === 'phone' ? 10 : undefined}
+                                     required={required}
+                                     className={`mt-1 block w-full p-2 text-xs border ${errors[name] ? 'border-red-500' : 'border-gray-300'
+                                         } rounded-md focus:outline-none focus:ring-1 focus:ring-primary`}
+                                 />
+                                 {errors[name] && (
+                                     <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
+                                 )}
+                             </>
+                         )}
                     </div>
                 ))}
             </div>

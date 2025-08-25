@@ -16,7 +16,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { MdCancelPresentation } from 'react-icons/md';
 import { toast } from 'react-toastify';
-import { deleteVisitSample, getAllVisitssamples } from '../../../../../../services/sampleServices';
+import { deleteVisitSample, getCollectedCompleted } from '../../../../../../services/sampleServices';
 import PatientReportDataFill from './Report/PatientReportDataFill';
 import UpdateSample from './UpdateSample';
 
@@ -32,6 +32,7 @@ export interface Patient {
   testIds: number[];
   packageIds: number[];
   dateOfBirth?: string;
+  testResult?: TestResult[]; // Add testResult array
 }
 
 interface HealthPackage {
@@ -42,6 +43,18 @@ interface HealthPackage {
 interface UpdateSample {
   visitId: number;
   sampleNames: string[];
+}
+
+// Test result interface for individual test results
+interface TestResult {
+  id: number;
+  testId: number;
+  isFilled: boolean;
+  reportStatus: string;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 
@@ -67,6 +80,7 @@ const CollectionTable: React.FC = () => {
 
 
 
+
   const fetchVisits = async () => {
     try {
       if (!currentLab?.id) return;
@@ -76,22 +90,31 @@ const CollectionTable: React.FC = () => {
 
       if (!startDate || !endDate) return;
 
-      const response = await getAllVisitssamples(
+      const response = await getCollectedCompleted(
         currentLab.id,
         formatDateForAPI(startDate),
         formatDateForAPI(endDate),
-        'Collected'
       );
 
-      const collectedVisits = response
-        .sort((a, b) => {
-          // First sort by visit date (latest first)
-          const dateComparison = new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime();
-          if (dateComparison !== 0) return dateComparison;
-          
-          // If dates are the same, sort by visit ID (highest first for latest)
-          return b.visitId - a.visitId;
-        });
+             const collectedVisits = response
+         .filter(visit => {
+           // Filter out visits where all tests are completed
+           if (!visit.testResult || visit.testResult.length === 0) {
+             return true; // Keep visits without test results
+           }
+           
+           // Check if all tests have reportStatus "Completed"
+           const allTestsCompleted = visit.testResult.every(tr => tr.reportStatus === 'Completed');
+           return !allTestsCompleted; // Only show visits where not all tests are completed
+         })
+         .sort((a, b) => {
+           // First sort by visit date (latest first)
+           const dateComparison = new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime();
+           if (dateComparison !== 0) return dateComparison;
+           
+           // If dates are the same, sort by visit ID (highest first for latest)
+           return b.visitId - a.visitId;
+         });
 
       setPatientList(
         collectedVisits.map((visit) => ({
@@ -106,6 +129,7 @@ const CollectionTable: React.FC = () => {
           testIds: visit.testIds,
           packageIds: visit.packageIds,
           dateOfBirth: visit.dateOfBirth ?? undefined,
+          testResult: visit.testResult ?? undefined, // Add testResult to the patient object
         }))
       );
 
@@ -130,6 +154,8 @@ const CollectionTable: React.FC = () => {
   useEffect(() => {
     fetchVisits();
   }, [currentLab, updatedPopUp, updateCollectionTable, dateFilter, customStartDate, customEndDate]);
+
+
 
   const handleDateFilterChange = (filter: DateFilterOption) => {
     setDateFilter(filter);
@@ -210,42 +236,135 @@ const CollectionTable: React.FC = () => {
     {
       header: 'Visit Date',
       accessor: (row: Patient) => row.visitDate,
-      cell: (value: string) => (
-        <div className="flex items-center gap-1 text-gray-600 bg-blue-50 px-2 py-1 rounded-full -ml-24">
+             cell: (value: string) => (
+         <div className="flex items-center gap-1 text-gray-600 bg-blue-50 px-2 py-1 rounded-full">
           <CalendarDays className="w-3 h-3 opacity-70" />
           <span className="text-xs font-medium">{formatDisplayDate(value)}</span>
         </div>
       )
     },
-    {
-      header: 'Status',
-      accessor: (row: Patient) => (
-        <span className={'bg-green-100 text-green-800 rounded-full text-sm truncate'}>
-          <span className="px-2 py-1 rounded-full text-xs font-semibold">{row.visitStatus}</span>
-        </span>
-      )
-    },
+          {
+        header: 'Status',
+        accessor: (row: Patient) => {
+          // Check if we have test results
+          if (!row.testResult || row.testResult.length === 0) {
+            return (
+              <div className="flex flex-col items-center gap-1">
+                <span className={'bg-yellow-100 text-yellow-800 rounded-full text-sm truncate'}>
+                  <span className="px-2 py-1 rounded-full text-xs font-semibold">Pending</span>
+                </span>
+                <div className="w-16 bg-gray-200 rounded-full h-1">
+                  <div className="bg-yellow-500 h-1 rounded-full" style={{ width: '0%' }}></div>
+                </div>
+              </div>
+            );
+          }
+
+          // Calculate completion percentage
+          const totalTests = row.testResult.length;
+          const completedTests = row.testResult.filter(tr => tr.isFilled && tr.reportStatus === 'Completed').length;
+          const completionPercentage = (completedTests / totalTests) * 100;
+
+          // Check if all tests are completed
+          const allTestsCompleted = completedTests === totalTests;
+          const someTestsCompleted = completedTests > 0 && completedTests < totalTests;
+          const allTestsPending = completedTests === 0;
+
+          let statusColor = 'bg-yellow-100 text-yellow-800';
+          let statusText = 'Pending';
+          let progressColor = 'bg-yellow-500';
+
+          if (allTestsCompleted) {
+            statusColor = 'bg-green-100 text-green-800';
+            statusText = 'Completed';
+            progressColor = 'bg-green-500';
+          } else if (someTestsCompleted) {
+            statusColor = 'bg-blue-100 text-blue-800';
+            statusText = 'Partially Completed';
+            progressColor = 'bg-blue-500';
+          } else if (allTestsPending) {
+            statusColor = 'bg-yellow-100 text-yellow-800';
+            statusText = 'Pending';
+            progressColor = 'bg-yellow-500';
+          } else {
+            statusColor = 'bg-orange-100 text-orange-800';
+            statusText = 'In Progress';
+            progressColor = 'bg-orange-500';
+          }
+
+          return (
+            <div className="flex flex-col items-center gap-1">
+              <span className={`${statusColor} rounded-full text-sm truncate`}>
+                <span className="px-2 py-1 rounded-full text-xs font-semibold">{statusText}</span>
+              </span>
+              <div className="w-16 bg-gray-200 rounded-full h-1">
+                <div 
+                  className={`${progressColor} h-1 rounded-full transition-all duration-300`} 
+                  style={{ width: `${completionPercentage}%` }}
+                ></div>
+              </div>
+              <span className="text-xs text-gray-500">{completedTests}/{totalTests}</span>
+            </div>
+          );
+        }
+      },
     {
       header: 'Tests',
       accessor: (row: Patient) => (
-        <div className="flex flex-wrap items-center gap-2 min-w-[300px] max-w-[400px]">
+        <div className="flex flex-col gap-1 min-w-[200px] max-w-[280px]">
           {row.testIds.map((testId) => {
             const test = tests.find((t) => t.id === testId);
-            return test ? (
-              <div key={test.id} className="flex items-center gap-1">
-                <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
-                  {test.name}
-                </span>
-                <button
-                  onClick={() => handleOpenReportModal(row, testId)}
-                  className="flex items-center gap-1 bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap"
-                  title={`View result for ${test.name}`}
-                >
-                  <PlusIcon className="w-2.5 h-2.5 text-white" />
-                  <span className='text-white text-xs'>Result</span>
-                </button>
+            const testResult = row.testResult?.find(tr => tr.testId === testId);
+            
+            if (!test) return null;
+            
+            // Determine test status
+            let statusColor = 'bg-blue-100 text-blue-800';
+            let statusText = 'Pending';
+            
+            if (testResult) {
+              if (testResult.isFilled && testResult.reportStatus === 'Completed') {
+                statusColor = 'bg-green-100 text-green-800';
+                statusText = 'Completed';
+              } else if (testResult.isFilled) {
+                statusColor = 'bg-orange-100 text-orange-800';
+                statusText = 'In Progress';
+              }
+            }
+            
+                         return (
+               <div key={test.id} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
+                 <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs`}>
+                   {test.name}
+                 </span>
+                {/* Only show status text if not pending */}
+                {statusText !== 'Pending' && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${statusColor.replace('100', '200')}`}>
+                    {statusText}
+                  </span>
+                )}
+                {/* Only show status icon if test is completed */}
+                {testResult && testResult.isFilled && (
+                  <span 
+                    className="text-xs px-1 py-0.5 rounded cursor-help bg-green-100 text-green-700 border border-green-200"
+                    title={`Test completed - ${testResult.reportStatus}`}
+                  >
+                    ✓
+                  </span>
+                )}
+                {/* Only show result button if test is not completed */}
+                {(!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
+                  <button
+                    onClick={() => handleOpenReportModal(row, testId)}
+                    className="flex items-center gap-1 bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap"
+                    title={`View result for ${test.name}`}
+                  >
+                    <PlusIcon className="w-2.5 h-2.5 text-white" />
+                    <span className='text-white text-xs'>Result</span>
+                  </button>
+                )}
               </div>
-            ) : null;
+            );
           }).filter(Boolean)}
         </div>
       )
@@ -253,7 +372,7 @@ const CollectionTable: React.FC = () => {
     {
       header: 'Package',
       accessor: (row: Patient) => (
-        <div className="flex flex-wrap gap-1 max-w-[150px]">
+        <div className="flex flex-wrap gap-1 max-w-[120px]">
           {row.packageIds.map((packageId) => {
             const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
             return packageDetails ? (
@@ -276,7 +395,7 @@ const CollectionTable: React.FC = () => {
           >
             <Edit className="w-4 h-4" />
           </button>
-          <div className="flex flex-wrap gap-1 max-w-[150px]">
+                     <div className="flex flex-wrap gap-1 max-w-[120px]">
             {row.sampleNames.map((sample, index) => (
               <div key={index} className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full">
                 <span className="text-xs">{sample}</span>
@@ -300,17 +419,15 @@ const CollectionTable: React.FC = () => {
         const dobFormatted = row.dateOfBirth ? formatDisplayDate(row.dateOfBirth) : 'N/A';
 
         return (
-          <div className="flex flex-col items-center gap-1">
-            <div ref={barcodeRef} className="mb-1 flex flex-col items-center">
-              {/* Hidden patient information that will be captured in the barcode image */}
-              <div style={{ position: 'absolute', left: '-9999px' }}>
-                <div className="text-center text-xs">
-                  <div className="font-bold">Patient ID: {row.visitId}</div>
-                  <div>Name: {row.patientname}</div>
-                  <div>DOB: {dobFormatted}</div>
-                  <div>Age: {age}</div>
-                  <div>Gender: {row.gender || 'N/A'}</div>
-                </div>
+          <div className="flex items-center justify-center">
+            <div ref={barcodeRef} style={{ position: 'absolute', left: '-9999px' }}>
+              {/* Hidden barcode for download functionality */}
+              <div className="text-center text-xs">
+                <div className="font-bold">Patient ID: {row.visitId}</div>
+                <div>Name: {row.patientname}</div>
+                <div>DOB: {dobFormatted}</div>
+                <div>Age: {age}</div>
+                <div>Gender: {row.gender || 'N/A'}</div>
               </div>
               <Barcode
                 value={
@@ -324,12 +441,12 @@ const CollectionTable: React.FC = () => {
                 height={40}
                 displayValue={true}
                 fontSize={10}
-
               />
             </div>
             <button
               onClick={() => handleDownloadBarcode(row)}
               className="flex items-center gap-1 text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition-colors"
+              title="Download Barcode"
             >
               <Download className="w-3 h-3" />
               <span>Download</span>
@@ -439,12 +556,16 @@ const CollectionTable: React.FC = () => {
           </div>
         </div>
       </div>
+      
+
       <div className="mb-3 flex justify-between items-center">
         <div className="bg-blue-50 px-2 py-0.5 rounded-full">
           <p className="text-xs font-medium text-blue-700">
             Showing <span className="font-bold">{patientList.length}</span> collected sample{patientList.length !== 1 ? 's' : ''}
           </p>
         </div>
+        
+
       </div>
 
       {patientList.length === 0 ? (

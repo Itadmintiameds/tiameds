@@ -99,6 +99,22 @@ export const getAllVisitssamples = async (labId: number, startDate?: string, end
     }
 }
 
+/*  NEW API for collected completed samples */
+export const getCollectedCompleted = async (labId: number, startDate: string, endDate: string): Promise<VisitSampleList[]> => {
+
+    try {
+        const params: { [key: string]: string | undefined } = {};
+        if (startDate) params.startDate = startDate;
+        if (endDate) params.endDate = endDate;
+        const response = await api.get<ApiResponse<VisitSampleList[]>>(`/lab/${labId}/patients/collected-completed`, { params });
+        return response.data.data;
+    } catch (error) {
+        throw new Error(error instanceof Error ? error.message : 'An error occurred while fetching collected completed samples.');
+    }
+}
+
+
+// http://localhost:8080/api/v1/lab/1/patients/collected-completed?startDate=2025-08-22&endDate=2025-08-22
 
 
 

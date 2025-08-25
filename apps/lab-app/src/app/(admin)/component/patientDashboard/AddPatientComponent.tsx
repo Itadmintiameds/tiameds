@@ -89,7 +89,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   });
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const { currentLab, setPatientDetails, refreshDocterList } = useLabs();
+  const { currentLab, setPatientDetails, refreshDocterList, loginedUser } = useLabs();
   const [isGlobalDiscountHidden, setIsGlobalDiscountHidden] = useState<boolean>(false);
 
   useEffect(() => {
@@ -179,10 +179,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
             ...prevState.visit.billing,
             totalAmount,
             netAmount,
-            // gstAmount: 0,
-            // cgstAmount: 0,
-            // sgstAmount: 0,
-            // igstAmount: 0,
+         
           },
         },
       };
@@ -203,7 +200,16 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   const handleChange = useCallback((
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
   ) => {
-    const { name, value } = 'target' in event ? event.target : { name: '', value: [] };
+ 
+    const target = (event && 'target' in event) ? event.target : null;
+    const name = (target && typeof target === 'object' && 'name' in target) ? (target.name || '') : '';
+    
+    let value: string | string[];
+    if (target && typeof target === 'object' && 'value' in target) {
+      value = (target as { value: string | string[] }).value; 
+    } else {
+      value = ''; 
+    }
 
     if (name === 'visit.insuranceIds') {
       setNewPatient(prevState => ({
@@ -249,11 +255,61 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   };
 
 
+  // Smart test search function
+  const isTestMatchingSearch = (testName: string, searchTerm: string): boolean => {
+    if (!searchTerm.trim()) return true;
+    
+    const testNameLower = testName.toLowerCase();
+    const searchTermLower = searchTerm.toLowerCase();
+    
+    // 1. Full name search
+    if (testNameLower.includes(searchTermLower)) {
+      return true;
+    }
+    
+    // 2. First character of each word search (acronym search)
+    const testWords = testName.split(' ').filter(word => word.length > 0);
+    const testAcronym = testWords.map(word => word.charAt(0)).join('').toLowerCase();
+    if (testAcronym.includes(searchTermLower)) {
+      return true;
+    }
+    
+    // 3. Search for short forms in parentheses like "CBC (Complete Blood Count)"
+    const parenthesesMatch = testName.match(/\(([^)]+)\)/g);
+    if (parenthesesMatch) {
+      for (const match of parenthesesMatch) {
+        const shortForm = match.replace(/[()]/g, '').toLowerCase();
+        if (shortForm.includes(searchTermLower) || searchTermLower.includes(shortForm)) {
+          return true;
+        }
+      }
+    }
+    
+    // 4. Word-by-word search (any word starts with search term)
+    const words = testNameLower.split(' ');
+    if (words.some(word => word.startsWith(searchTermLower))) {
+      return true;
+    }
+    
+    // 5. Search for consecutive characters in test name
+    // This helps with partial acronyms like "CBC" matching "Complete Blood Count"
+    const testNameNoSpaces = testNameLower.replace(/\s+/g, '');
+    if (testNameNoSpaces.includes(searchTermLower)) {
+      return true;
+    }
+    
+    // 6. Search for words that contain the search term
+    if (words.some(word => word.includes(searchTermLower))) {
+      return true;
+    }
+    
+    return false;
+  };
+
   const filteredTests = tests.filter(
     (test) =>
       (!selectedCategory || test.category === selectedCategory) &&
-      (!searchTestTerm ||
-        test.name.toLowerCase().startsWith(searchTestTerm.toLowerCase()))
+      isTestMatchingSearch(test.name, searchTestTerm)
   );
 
 
@@ -525,7 +581,14 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   const handleAddPatient = async () => {
     try {
       setLoading(true);
-      const validationResult = patientSchema.safeParse(newPatient);
+      
+      // Ensure phone number is synchronized from searchTerm to newPatient before validation
+      const patientToValidate = {
+        ...newPatient,
+        phone: searchTerm || newPatient.phone
+      };
+      
+      const validationResult = patientSchema.safeParse(patientToValidate);
 
       if (newPatient.visit.testIds.length === 0 && newPatient.visit.packageIds.length === 0) {
         toast.error('Please select at least one test or package.');
@@ -574,13 +637,18 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
       });
 
       const patientData = {
-        ...newPatient,
+        ...patientToValidate, 
         visit: {
           ...newPatient.visit,
-          testResult: selectedTests.map(test => ({
-            testId: test.id,
-            isFilled: false
-          })),
+                                          testResult: selectedTests.map(test => ({
+              testId: test.id,
+              isFilled: false,
+              reportStatus: VisitStatus.PENDING,
+                             createdBy: loginedUser?.firstName || '', // Use logged-in user first name only
+               updatedBy: loginedUser?.firstName || '', // Use logged-in user first name only
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            })),
           billing: {
             ...billing,
             totalAmount,
@@ -690,7 +758,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
           className="flex items-center px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
         >
           <XIcon className="h-3 w-3 mr-1.5" />
-          Cancel
+          Clear
         </Button>
       </div>
     </div>

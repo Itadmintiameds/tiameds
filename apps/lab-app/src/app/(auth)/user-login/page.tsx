@@ -52,8 +52,7 @@ const LoginPage: React.FC = () => {
       // API call
       try {
         const response = await login(formData);
-        console.log(response.data);
-        // set in localstorage  response.data
+   
         localStorage.setItem('logedUser', JSON.stringify(response.data));
         setLoginedUser({
           username: response.data.username,
@@ -218,7 +217,7 @@ const LoginPage: React.FC = () => {
                   Authenticating...
                 </span>
               ) : (
-                'Access Dashboard'
+                'Login'
               )}
             </button>
           </form>

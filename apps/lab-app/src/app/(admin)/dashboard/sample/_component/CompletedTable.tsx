@@ -13,7 +13,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { FiCalendar, FiFilter } from 'react-icons/fi';
 import { TbEdit, TbReport } from 'react-icons/tb';
 import { toast } from 'react-toastify';
-import { getAllVisitssamples } from '../../../../../../services/sampleServices';
+import { getCollectedCompleted } from '../../../../../../services/sampleServices';
 import ViewReport from './Report/ViewReport';
 import Editreport from './Report/Editreport';
 
@@ -28,7 +28,22 @@ interface Patient {
     contactNumber?: string;
     gender?: string;
     email?: string;
+    dateOfBirth?: string;
+    testResult?: TestResult[];
+    doctorName?: string;
+    visitType?: string;
+}
 
+// Test result interface for individual test results
+interface TestResult {
+    id: number;
+    testId: number;
+    isFilled: boolean;
+    reportStatus: string;
+    createdBy: string;
+    updatedBy: string;
+    createdAt: string;
+    updatedAt: string;
 }
 interface HealthPackage {
     id: number;
@@ -58,25 +73,7 @@ const CompletedTable = () => {
 
 
 
-    // const applyDateFilter = () => {
-    //     const { startDate, endDate } = getDateRange(dateFilter, customStartDate, customEndDate);
 
-    //     if (!startDate || !endDate) {
-    //         if (dateFilter === 'custom') {
-    //             toast.warning("Please select valid date range");
-    //         }
-    //         return;
-    //     }
-
-    //     const filtered = patientList.filter(patient => {
-    //         const visitDate = new Date(patient.visitDate);
-    //         return visitDate >= startDate && visitDate <= endDate;
-    //     });
-
-    //     setFilteredPatients(filtered);
-    //     setCurrentPage(1);
-    //     setShowDateFilter(false);
-    // };
 
     const handleFilterChange = (filter: DateFilterOption) => {
         setDateFilter(filter);
@@ -99,14 +96,24 @@ const CompletedTable = () => {
             const formattedStart = formatDateForAPI(startDate);
             const formattedEnd = formatDateForAPI(endDate);
 
-            const response = await getAllVisitssamples(
+            const response = await getCollectedCompleted(
                 currentLab.id,
                 formattedStart,
                 formattedEnd,
-                'Completed'
             );
 
-            const sortedVisits = response.sort((a, b) =>
+            // Filter to show visits where ANY test has reportStatus "Completed"
+            const completedVisits = response.filter(visit => {
+                if (!visit.testResult || visit.testResult.length === 0) {
+                    return false; // Skip visits without test results
+                }
+                
+                // Check if ANY test has reportStatus "Completed"
+                const hasAnyCompletedTest = visit.testResult.some(tr => tr.reportStatus === 'Completed');
+                return hasAnyCompletedTest; // Show visits where at least one test is completed
+            });
+
+            const sortedVisits = completedVisits.sort((a, b) =>
                 new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()
             );
 
@@ -182,11 +189,35 @@ const CompletedTable = () => {
         },
         {
             header: 'Status',
-            accessor: (row: Patient) => (
-                <span className={'bg-green-100 text-green-800 rounded-full text-xs truncate'}>
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold">{row.visitStatus}</span>
-                </span>
-            )
+            accessor: (row: Patient) => {
+                if (!row.testResult || row.testResult.length === 0) {
+                    return (
+                        <span className={'bg-gray-100 text-gray-800 rounded-full text-xs truncate'}>
+                            <span className="px-2 py-1 rounded-full text-xs font-semibold">No Results</span>
+                        </span>
+                    );
+                }
+                
+                const totalTests = row.testResult.length;
+                const completedTests = row.testResult.filter(tr => tr.reportStatus === 'Completed').length;
+                
+                if (completedTests === totalTests) {
+                    // If there's only 1 test and it's completed, show "Completed"
+                    // If there are multiple tests and all are completed, show "All Completed"
+                    const statusText = totalTests === 1 ? 'Completed' : 'All Completed';
+                    return (
+                        <span className={'bg-green-100 text-green-800 rounded-full text-xs truncate'}>
+                            <span className="px-2 py-1 rounded-full text-xs font-semibold">{statusText}</span>
+                        </span>
+                    );
+                } else {
+                    return (
+                        <span className={'bg-blue-100 text-blue-800 rounded-full text-xs truncate'}>
+                            <span className="px-2 py-1 rounded-full text-xs font-semibold">{completedTests}/{totalTests} Completed</span>
+                        </span>
+                    );
+                }
+            }
         },
         {
             header: 'Tests',
@@ -194,11 +225,34 @@ const CompletedTable = () => {
                 <div className="flex flex-wrap gap-1 max-w-[200px]">
                     {row.testIds.map((testId) => {
                         const test = tests.find((t) => t.id === testId);
-                        return test ? (
-                            <span key={test.id} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs truncate">
-                                {test.name}
-                            </span>
-                        ) : null;
+                        const testResult = row.testResult?.find(tr => tr.testId === testId);
+                        
+                        if (!test) return null;
+                        
+                        // Only show tests that have progress (completed or in progress), skip pending ones
+                        if (!testResult || (!testResult.isFilled && testResult.reportStatus === 'Pending')) {
+                            return null;
+                        }
+                        
+                        // Determine test status
+                        let statusColor = 'bg-orange-100 text-orange-800';
+                        let statusIcon = '⏳';
+                        
+                        if (testResult.reportStatus === 'Completed') {
+                            statusColor = 'bg-green-100 text-green-800';
+                            statusIcon = '✓';
+                        }
+                        
+                        return (
+                            <div key={test.id} className="flex items-center gap-1">
+                                <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs`}>
+                                    {test.name}
+                                </span>
+                                <span className={`text-xs px-1 py-0.5 rounded border ${statusColor.replace('100', '200')}`}>
+                                    {statusIcon}
+                                </span>
+                            </div>
+                        );
                     }).filter(Boolean)}
                 </div>
             )
@@ -393,7 +447,10 @@ const CompletedTable = () => {
                                 ...viewPatient,
                                 gender: viewPatient.gender ?? '',
                                 contactNumber: viewPatient.contactNumber ?? '',
-                                email: viewPatient.email ?? ''
+                                email: viewPatient.email ?? '',
+                                doctorName: viewPatient.doctorName ?? '',
+                                visitType: viewPatient.visitType ?? '',
+                                visitStatus: viewPatient.visitStatus ?? ''
                             }} />
                         </Modal>
                     )}

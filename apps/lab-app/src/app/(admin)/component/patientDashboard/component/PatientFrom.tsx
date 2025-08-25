@@ -65,6 +65,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
     city: false,
     dob: false
   });
+  const [nameInputValue, setNameInputValue] = useState('');
 
 
 
@@ -82,7 +83,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
   // Validate name
   const validateName = useCallback((name: string) => {
     if (!name) return 'Patient name is required';
-    if (!/^[a-zA-Z\s.'-]+$/.test(name)) return 'Name contains invalid characters';
+    if (!/^[a-zA-Z\s]+$/.test(name)) return 'Name should contain only alphabets and spaces';
     if (name.length < 2) return 'Name is too short';
     return '';
   }, []);
@@ -90,7 +91,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
   // Validate city
   const validateCity = useCallback((city: string) => {
     if (!city) return 'City is required';
-    if (!/^[a-zA-Z\s.'-]+$/.test(city)) return 'City contains invalid characters';
+    if (!/^[a-zA-Z\s]+$/.test(city)) return 'City should contain only alphabets and spaces';
     return '';
   }, []);
 
@@ -116,7 +117,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
       
       if (newPatient.age) {
         const parsed = parseAgeString(newPatient.age);
-        console.log('Parsed age from dateOfBirth:', parsed);
+     
         setAgeDetails({
           years: parsed.years,
           months: parsed.months,
@@ -127,7 +128,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
       setDobInput('');
       if (newPatient.age) {
         const parsed = parseAgeString(newPatient.age);
-        console.log('Parsed age from age field:', parsed);
+    
         setAgeDetails({
           years: parsed.years,
           months: parsed.months,
@@ -143,17 +144,26 @@ const PatientForm: React.FC<PatientFormProps> = ({
     }
   }, [newPatient.dateOfBirth, newPatient.age]);
 
+  // Initialize nameInputValue when component mounts or newPatient changes
+  useEffect(() => {
+    const fullName = currentFirstName + (newPatient.lastName ? ` ${newPatient.lastName}` : '');
+    setNameInputValue(fullName);
+  }, [currentFirstName, newPatient.lastName]);
+
   // Validate all fields when they change
   useEffect(() => {
+    // Use searchTerm for phone validation if it exists, otherwise use newPatient.phone
+    const phoneValueToValidate = searchTerm || newPatient.phone;
+    
     setValidationErrors(prev => ({
       ...prev,
-      phone: validatePhone(newPatient.phone),
+      phone: validatePhone(phoneValueToValidate),
       prefix: validatePrefix(currentPrefix),
       firstName: validateName(currentFirstName),
       city: validateCity(newPatient.city),
       dob: validateDOBField(dobInput)
     }));
-  }, [newPatient.phone, currentPrefix, currentFirstName, newPatient.city, dobInput, validateDOBField, validatePrefix, validatePhone, validateName, validateCity]);
+  }, [searchTerm, newPatient.phone, currentPrefix, currentFirstName, newPatient.city, dobInput, validateDOBField, validatePrefix, validatePhone, validateName, validateCity]);
 
   // Handle field blur events
   const handleBlur = (field: keyof typeof touchedFields) => {
@@ -366,33 +376,81 @@ const PatientForm: React.FC<PatientFormProps> = ({
   };
 
   const handleFirstNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const firstName = event.target.value;
-    const newFullName = currentPrefix ? `${currentPrefix} ${firstName}` : firstName;
+    // Only allow alphabets and spaces
+    let alphabeticValue = event.target.value.replace(/[^a-zA-Z\s]/g, '');
+    
+    // Prevent leading spaces and multiple consecutive spaces
+    alphabeticValue = alphabeticValue.replace(/^\s+/, ''); // Remove leading spaces
+    alphabeticValue = alphabeticValue.replace(/\s+/g, ' '); // Replace multiple spaces with single space
+    
+    // Update the input value state
+    setNameInputValue(alphabeticValue);
+    
+    // Split the name by spaces
+    const nameParts = alphabeticValue.trim().split(/\s+/);
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
+    // Create firstName with prefix
+    const firstNameWithPrefix = currentPrefix ? `${currentPrefix} ${firstName}` : firstName;
 
-    const nameEvent = {
+    // Update firstName
+    const firstNameEvent = {
       target: {
         name: 'firstName',
-        value: newFullName.trim()
+        value: firstNameWithPrefix.trim()
       }
     } as React.ChangeEvent<HTMLInputElement>;
 
-    handleChange(nameEvent);
+    // Update lastName
+    const lastNameEvent = {
+      target: {
+        name: 'lastName',
+        value: lastName.trim()
+      }
+    } as React.ChangeEvent<HTMLInputElement>;
+
+    handleChange(firstNameEvent);
+    handleChange(lastNameEvent);
     setTouchedFields(prev => ({ ...prev, firstName: true }));
   };
 
   const handlePhoneChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    handleSearchChange(event);
-    handleChange(event);
+    // Only allow numeric input
+    const numericValue = event.target.value.replace(/\D/g, '');
+    
+    // Create a new event with the numeric value
+    const numericEvent = {
+      ...event,
+      target: {
+        ...event.target,
+        value: numericValue
+      }
+    };
+    
+    handleSearchChange(numericEvent);
+    handleChange(numericEvent);
     setTouchedFields(prev => ({ ...prev, phone: true }));
   };
 
   const handleCityChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    handleChange(event);
+    // Only allow alphabets and spaces
+    const alphabeticValue = event.target.value.replace(/[^a-zA-Z\s]/g, '');
+    
+    // Create a new event with the filtered value
+    const cityEvent = {
+      target: {
+        name: 'city',
+        value: alphabeticValue
+      }
+    } as React.ChangeEvent<HTMLInputElement>;
+    
+    handleChange(cityEvent);
     setTouchedFields(prev => ({ ...prev, city: true }));
   };
 
   return (
-    <section className={`flex flex-col space-y-3 w-full max-w-3xl mx-auto p-3 border rounded-lg border-gray-200 shadow-xs ${isEditMode ? 'bg-white' : 'bg-gray-50'}`}>
+    <section className={`flex flex-col space-y-3 w-full p-3 border rounded-lg border-gray-200 shadow-xs ${isEditMode ? 'bg-white' : 'bg-gray-50'}`}>
       <div className="flex items-end gap-2">
         <div className="flex-1">
           <label className="text-xs font-medium text-gray-600 mb-1 flex items-center">
@@ -410,6 +468,14 @@ const PatientForm: React.FC<PatientFormProps> = ({
                 }`}
               placeholder="Enter phone number"
               maxLength={10}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              onKeyPress={(e) => {
+                // Prevent non-numeric characters
+                if (!/[0-9]/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
             />
             {touchedFields.phone && validationErrors.phone && (
               <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.phone}</p>
@@ -435,7 +501,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs font-medium text-gray-600 mb-1 flex items-center">
-            Patient Name <span className="text-red-500 ml-0.5">*</span>
+            Full Name <span className="text-red-500 ml-0.5">*</span>
           </label>
           <div className="flex">
             <select
@@ -456,12 +522,23 @@ const PatientForm: React.FC<PatientFormProps> = ({
               type="text"
               name="firstName"
               required
-              value={currentFirstName}
+              value={nameInputValue}
               onChange={handleFirstNameChange}
               onBlur={() => handleBlur('firstName')}
+              onKeyPress={(e) => {
+                // Prevent non-alphabetic characters
+                if (!/[a-zA-Z]/.test(e.key)) {
+                  // Allow space only if there's text before it
+                  if (e.key === ' ' && nameInputValue.trim().length === 0) {
+                    e.preventDefault();
+                  } else if (e.key !== ' ') {
+                    e.preventDefault();
+                  }
+                }
+              }}
               className={`border rounded-r-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${touchedFields.firstName && validationErrors.firstName ? 'border-red-500' : ''
                 }`}
-              placeholder="First name"
+              placeholder="Enter full name"
             />
           </div>
           {touchedFields.firstName && validationErrors.firstName && (
@@ -494,16 +571,22 @@ const PatientForm: React.FC<PatientFormProps> = ({
           <label className="text-xs font-medium text-gray-600 mb-1">
             City <span className="text-red-500 ml-0.5">*</span>
           </label>
-          <input
-            type="text"
-            name="city"
-            value={newPatient.city}
-            onChange={handleCityChange}
-            onBlur={() => handleBlur('city')}
-            className={`border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${touchedFields.city && validationErrors.city ? 'border-red-500' : ''
-              }`}
-            placeholder="City"
-          />
+                     <input
+             type="text"
+             name="city"
+             value={newPatient.city}
+             onChange={handleCityChange}
+             onBlur={() => handleBlur('city')}
+             onKeyPress={(e) => {
+               // Prevent non-alphabetic characters and spaces
+               if (!/[a-zA-Z\s]/.test(e.key)) {
+                 e.preventDefault();
+               }
+             }}
+             className={`border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${touchedFields.city && validationErrors.city ? 'border-red-500' : ''
+               }`}
+             placeholder="City"
+           />
           {touchedFields.city && validationErrors.city && (
             <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.city}</p>
           )}
@@ -619,10 +702,14 @@ function extractPrefixAndName(fullName: string): [Prefix | '', string] {
   for (const prefix of prefixValues) {
     if (fullName.startsWith(prefix)) {
       const name = fullName.substring(prefix.length).trim();
-      return [prefix, name];
+      // Only return the first part of the name (before any space)
+      const firstName = name.split(/\s+/)[0] || '';
+      return [prefix, firstName];
     }
   }
-  return ['', fullName];
+  // If no prefix, return the first part of the name
+  const firstName = fullName.split(/\s+/)[0] || '';
+  return ['', firstName];
 }
 
 function getGenderFromPrefix(prefix: Prefix | ''): Gender {

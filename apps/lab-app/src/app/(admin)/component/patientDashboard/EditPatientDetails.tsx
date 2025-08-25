@@ -58,7 +58,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
   const [selectedPackages, setSelectedPackages] = useState<PackageType[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [isGlobalDiscountHidden, setIsGlobalDiscountHidden] = useState<boolean>(false);
-  const { currentLab, setPatientDetails, refreshDocterList } = useLabs();
+  const { currentLab, setPatientDetails, refreshDocterList, loginedUser } = useLabs();
   const [editedPatient, setEditedPatient] = useState<Patient>({
     id: 0,
     firstName: '',
@@ -317,11 +317,61 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     setSearchTestTerm(e.target.value);
   };
 
+  // Smart test search function
+  const isTestMatchingSearch = (testName: string, searchTerm: string): boolean => {
+    if (!searchTerm.trim()) return true;
+    
+    const testNameLower = testName.toLowerCase();
+    const searchTermLower = searchTerm.toLowerCase();
+    
+    // 1. Full name search
+    if (testNameLower.includes(searchTermLower)) {
+      return true;
+    }
+    
+    // 2. First character of each word search (acronym search)
+    const testWords = testName.split(' ').filter(word => word.length > 0);
+    const testAcronym = testWords.map(word => word.charAt(0)).join('').toLowerCase();
+    if (testAcronym.includes(searchTermLower)) {
+      return true;
+    }
+    
+    // 3. Search for short forms in parentheses like "CBC (Complete Blood Count)"
+    const parenthesesMatch = testName.match(/\(([^)]+)\)/g);
+    if (parenthesesMatch) {
+      for (const match of parenthesesMatch) {
+        const shortForm = match.replace(/[()]/g, '').toLowerCase();
+        if (shortForm.includes(searchTermLower) || searchTermLower.includes(shortForm)) {
+          return true;
+        }
+      }
+    }
+    
+    // 4. Word-by-word search (any word starts with search term)
+    const words = testNameLower.split(' ');
+    if (words.some(word => word.startsWith(searchTermLower))) {
+      return true;
+    }
+    
+    // 5. Search for consecutive characters in test name
+    // This helps with partial acronyms like "CBC" matching "Complete Blood Count"
+    const testNameNoSpaces = testNameLower.replace(/\s+/g, '');
+    if (testNameNoSpaces.includes(searchTermLower)) {
+      return true;
+    }
+    
+    // 6. Search for words that contain the search term
+    if (words.some(word => word.includes(searchTermLower))) {
+      return true;
+    }
+    
+    return false;
+  };
+
   const filteredTests = tests.filter(
     (test) =>
       (!selectedCategory || test.category === selectedCategory) &&
-      (!searchTestTerm ||
-        test.name.toLowerCase().includes(searchTestTerm.toLowerCase()))
+      isTestMatchingSearch(test.name, searchTestTerm)
   );
 
   const handleTestSelection = (test: TestList) => {
@@ -555,6 +605,11 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
           testResult: selectedTests.map(test => ({
             testId: test.id,
             isFilled: false,
+            reportStatus: VisitStatus.PENDING,
+            createdBy: loginedUser?.firstName || '',
+            updatedBy: loginedUser?.firstName || '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           })),
           billing: {
             ...editedPatient.visit.billing,

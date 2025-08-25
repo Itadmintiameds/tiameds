@@ -34,6 +34,7 @@ import { createLab } from "@/../services/labServices";
 import { useLabs } from '@/context/LabContext';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { handleLogout } from '@/utils/auth';
 
 type LabFormField = keyof LabFormDataNew;
 
@@ -96,19 +97,7 @@ const Lab = () => {
         }
     }, [shouldRedirect, router]);
 
-    const handleLogout = () => {
-        toast.success("Logged out successfully", {
-            position: "top-right",
-            autoClose: 2000,
-            hideProgressBar: true,
-        });
-        localStorage.removeItem("user");
-        localStorage.removeItem("logedUser");
-        localStorage.removeItem("currentLab");
-        localStorage.removeItem("userLabs");
-        document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        window.location.replace("/user-login");
-    };
+
 
     useEffect(() => {
         const validateForm = async () => {

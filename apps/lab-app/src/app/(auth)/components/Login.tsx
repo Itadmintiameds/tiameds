@@ -43,12 +43,12 @@ const Login = () => {
     // API call
     try {
       const response = await login(formData);
-      console.log(response);
+    
       // Store token in cookies
       // document.cookie = `token=${response.token}; path=/; Secure; HttpOnly`;  // Add Secure and HttpOnly for better security
 
       document.cookie = `token=${response.token}; path=/;`;
-      console.log('Current Cookies:', document.cookie);
+     
 
       localStorage.setItem('user', JSON.stringify(response?.data)); // Store user in localStorage
       router.push('/dashboard');

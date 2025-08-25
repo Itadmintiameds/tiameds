@@ -50,11 +50,32 @@ const PatientForm: React.FC<PatientFormProps> = ({
             name="phone"
             value={searchTerm || newPatient.phone} // Allow input from both searchTerm and newPatient.phone
             onChange={(event) => {
-              handleSearchChange(event); // Update search term
-              handleChange(event); // Update new patient phone number
+              // Only allow numeric input
+              const numericValue = event.target.value.replace(/\D/g, '');
+              
+              // Create a new event with the numeric value
+              const numericEvent = {
+                ...event,
+                target: {
+                  ...event.target,
+                  value: numericValue
+                }
+              };
+              
+              handleSearchChange(numericEvent); // Update search term
+              handleChange(numericEvent); // Update new patient phone number
             }}
             className="border rounded-md border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
             placeholder="Enter phone number"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={10}
+            onKeyPress={(e) => {
+              // Prevent non-numeric characters
+              if (!/[0-9]/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
           />
 
           {filteredPatients.length > 0 && (

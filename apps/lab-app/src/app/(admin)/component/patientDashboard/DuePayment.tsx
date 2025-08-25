@@ -365,7 +365,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
                   <th className="px-2 py-1 text-right font-medium text-gray-500 uppercase tracking-wider">Card Amt</th>
                   <th className="px-2 py-1 text-right font-medium text-gray-500 uppercase tracking-wider">Cash Amt</th>
                   <th className="px-2 py-1 text-right font-medium text-gray-500 uppercase tracking-wider">Received</th>
-                  <th className="px-2 py-1 text-right font-medium text-gray-500 uppercase tracking-wider">Refund</th>
+                  {/* <th className="px-2 py-1 text-right font-medium text-gray-500 uppercase tracking-wider">Refund</th> */}
                   <th className="px-2 py-1 text-right font-medium text-gray-500 uppercase tracking-wider">Due</th>
                   {/* <th className="px-2 py-1 text-left font-medium text-gray-500 uppercase tracking-wider">Remarks</th> */}
                   <th className="px-2 py-1 text-left font-medium text-gray-500 uppercase tracking-wider">Payment Date</th>
@@ -388,9 +388,9 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
                       <td className="px-2 py-1 text-right">₹{getSafeDecimal(t.card_amount).toFixed(2)}</td>
                       <td className="px-2 py-1 text-right">₹{getSafeDecimal(t.cash_amount).toFixed(2)}</td>
                       <td className="px-2 py-1 text-right font-bold">₹{getSafeDecimal(t.received_amount).toFixed(2)}</td>
-                      <td className="px-2 py-1 text-right text-red-600">
+                      {/* <td className="px-2 py-1 text-right text-red-600">
                         {t.refund_amount != null && t.refund_amount > 0 ? `-₹${getSafeDecimal(t.refund_amount).toFixed(2)}` : '-'}
-                      </td>
+                      </td> */}
                       <td className={`px-2 py-1 text-right ${t.due_amount > 0 ? 'text-red-600' : ''}`}>
                         {t.due_amount > 0 ? `₹${getSafeDecimal(t.due_amount).toFixed(2)}` : '-'}
                       </td>

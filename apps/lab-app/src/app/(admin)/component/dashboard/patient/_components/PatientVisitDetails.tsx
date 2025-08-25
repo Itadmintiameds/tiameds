@@ -112,15 +112,7 @@ const PatientVisitDetails = ({ patinetVisitDetails }: PatientVisitDetailsProps) 
     }, [patinetVisitDetails, currentLab]);
 
 
-    console.log("Insurance", insurance);
-
-
-
-    console.log(insurance, "insurance");
-    console.log(healthPackage, "healthPackage");
-    console.log(tests, "tests");
-    console.log(doctor, "doctor");
-
+   
 
 
 

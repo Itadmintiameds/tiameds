@@ -40,7 +40,20 @@ export type Visit = {
   insuranceIds: number[];
   billing: Billing;
   listofeachtestdiscount?: listofDiscounts[];
+  testResult?: TestResult[]; // Added test result array for individual test statuses
 };
+
+// Test result interface for individual test results
+export interface TestResult {
+  id?: number; // Optional for creation, required when returned from backend
+  testId: number;
+  isFilled: boolean;
+  reportStatus: string;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export type Billing = {
   billingId?: number;
@@ -91,7 +104,7 @@ export enum VisitType {
   IN_PATIENT = 'In-Patient',
   OUT_PATIENT = 'Out-Patient',
   DAYCARE = 'Day-Care',
-  WAKING = 'Waking',
+  WAKING = 'Walk-In',
 }
 
 // Enum for Visit Statuses
