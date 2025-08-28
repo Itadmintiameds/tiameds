@@ -235,16 +235,13 @@ const CollectionTable: React.FC = () => {
     },
     {
       header: 'Patient',
-      accessor: (row: Patient) => row.patientname,
-      cell: (value: string) => <span className="font-medium">{value}</span>
-    },
-    {
-      header: 'Visit Date',
-      accessor: (row: Patient) => row.visitDate,
-             cell: (value: string) => (
-         <div className="flex items-center gap-1 text-gray-600 bg-blue-50 px-2 py-1 rounded-full">
-          <CalendarDays className="w-3 h-3 opacity-70" />
-          <span className="text-xs font-medium">{formatDisplayDate(value)}</span>
+      accessor: (row: Patient) => (
+        <div className="flex flex-col gap-1">
+          <span className="font-medium text-gray-900">{row.patientname}</span>
+          <div className="flex items-center gap-1 text-gray-500 bg-blue-50 px-2 py-1 rounded-full w-fit">
+            <CalendarDays className="w-3 h-3 opacity-70" />
+            <span className="text-xs font-medium">{formatDisplayDate(row.visitDate)}</span>
+          </div>
         </div>
       )
     },

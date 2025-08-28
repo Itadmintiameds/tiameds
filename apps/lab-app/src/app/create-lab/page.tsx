@@ -370,7 +370,7 @@ const Lab = () => {
                         className="w-32 h-32 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-purple-500 transition-colors relative overflow-hidden"
                     >
                         {formData.labLogo ? (
-                            <img
+                            <Image
                                 src={formData.labLogo}
                                 alt="Lab Logo"
                                 className="w-full h-full object-cover"

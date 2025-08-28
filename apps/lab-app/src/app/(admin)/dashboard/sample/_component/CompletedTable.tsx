@@ -171,26 +171,22 @@ const CompletedTable = () => {
     };
 
     const columns = [
-        {
-            header: 'ID',
-            accessor: (row: Patient) => row.visitId,
-            cell: (value: number) => <span className="font-semibold text-blue-600">#{value}</span>
-        },
-        {
-            header: 'Patient',
-            accessor: (row: Patient) => row.patientname,
-            cell: (value: string) => <span className="font-medium">{value}</span>
-        },
-        {
-            header: 'Date',
-            accessor: (row: Patient) => row.visitDate,
-            cell: (value: string) => (
-                <div className="flex items-center gap-1 text-gray-600 bg-blue-50 px-2 py-1 rounded-full">
+            {
+        header: 'ID',
+        accessor: (row: Patient) => row.visitId
+    },
+    {
+        header: 'Patient',
+        accessor: (row: Patient) => (
+            <div className="flex flex-col gap-1">
+                <span className="font-medium text-gray-900">{row.patientname}</span>
+                <div className="flex items-center gap-1 text-gray-500 bg-blue-50 px-2 py-1 rounded-full w-fit">
                     <FiCalendar className="w-3 h-3 opacity-70" />
-                    <span className="text-xs font-medium">{formatDisplayDate(value)}</span>
+                    <span className="text-xs font-medium">{formatDisplayDate(row.visitDate)}</span>
                 </div>
-            )
-        },
+            </div>
+        )
+    },
         {
             header: 'Status',
             accessor: (row: Patient) => {

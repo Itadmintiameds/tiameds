@@ -14,7 +14,7 @@ import { TestList } from '@/types/test/testlist';
 import React, { useEffect, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { FaCalendarAlt, FaChevronDown, FaEye, FaFilter } from 'react-icons/fa';
+import { FaCalendarAlt, FaChevronDown, FaFilter } from 'react-icons/fa';
 import { PiTestTubeFill } from 'react-icons/pi';
 import { toast } from 'react-toastify';
 import { addSampleToVisit } from "../../../../../../services/sampleServices";
@@ -34,6 +34,7 @@ const PendingTable: React.FC = () => {
   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [viewPatientDetails, setViewPatientDetails] = useState<Patient | null>(null);
   const [isViewingDetails, setIsViewingDetails] = useState(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -122,10 +123,10 @@ const PendingTable: React.FC = () => {
     currentPage * itemsPerPage
   );
 
-  const handleView = (visit: Patient) => () => {
-    setIsViewingDetails(true);
-    setViewPatientDetails(visit);
-  };
+  // const handleView = (visit: Patient) => () => {
+  //   setIsViewingDetails(true);
+  //   setViewPatientDetails(visit);
+  // };
 
   const handleSampleCollect = (visitId: number) => {
     setSelectedVisitId(visitId);
@@ -263,13 +264,13 @@ const PendingTable: React.FC = () => {
       header: 'Actions',
       accessor: (row: Patient) => (
         <div className="flex gap-2">
-          <button
+          {/* <button
             onClick={handleView(row)}
             className="p-1.5 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
             title="View Details"
           >
             <FaEye className="text-sm" />
-          </button>
+          </button> */}
           <button
             onClick={() => row.visitDetailDto.visitId !== undefined && handleSampleCollect(row.visitDetailDto.visitId)}
             className="p-1.5 rounded-md bg-green-50 text-green-600 hover:bg-green-100 transition-colors"

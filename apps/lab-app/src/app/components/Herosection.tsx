@@ -1,4 +1,5 @@
 import { ChevronRightIcon } from '@heroicons/react/20/solid'
+import Image from 'next/image'
 import Link from 'next/link'
 
 export default function Herosection() {
@@ -20,7 +21,7 @@ export default function Herosection() {
 
       <div className="mx-auto max-w-7xl px-6 pb-24 pt-10 sm:pb-32 lg:flex lg:px-8 lg:mt-40">
         <div className="mx-auto max-w-2xl lg:mx-0 lg:shrink-0 lg:pt-8">
-          <img
+          <Image
             alt="tiamed logo"
             src="/finallogo.svg"
             className="h-11"
@@ -57,7 +58,7 @@ export default function Herosection() {
         <div className="mx-auto mt-16 flex max-w-2xl sm:mt-24 lg:ml-10 lg:mr-0 lg:mt-0 lg:max-w-none lg:flex-none xl:ml-32">
           <div className="max-w-3xl flex-none sm:max-w-5xl lg:max-w-none">
             <div className="-m-2 rounded-xl bg-purple-50/50 p-2 ring-1 ring-inset ring-purple-100 lg:-m-4 lg:rounded-2xl lg:p-4">
-              <img
+              <Image
                 alt="App screenshot"
                 src="screenshort.png"
                 width={2432}
