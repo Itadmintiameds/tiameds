@@ -492,31 +492,40 @@ const PatientVisitListTable: React.FC = () => {
 
     {
       header: 'Actions',
-      accessor: (row: Patient) => (
-        <div className="flex gap-2 whitespace-nowrap">
-          {row?.visit?.billing?.paymentStatus === 'PAID' && row?.visit?.visitStatus?.toUpperCase() !== 'CANCELLED' && (
-            <>
-              <Button
-                text=""
-                className="px-2 py-1 text-white bg-amber-600 rounded hover:bg-amber-700 transition-colors duration-200"
-                onClick={handleEditpatientDetails(row)}
-              >
-                <FaEdit size={14} />
-              </Button>
-              <Button
-                text=""
-                className="px-2 py-1 text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200"
-                onClick={() => {
-                  setDeletePatientModal(true);
-                  setPatientDetails(row);
-                }}
-              >
-                <MdOutlineDeleteSweep size={14} />
-              </Button>
-            </>
-          )}
-        </div>
-      ),
+      accessor: (row: Patient) => {
+        // Check if visit is cancelled
+        const isCancelled = row?.visit?.visitStatus?.toUpperCase() === 'CANCELLED';
+        
+        // Check if report status is pending (no test results or all tests are pending)
+        const hasTestResults = row?.visit?.testResult && row.visit.testResult.length > 0;
+        const isReportPending = !hasTestResults || (row?.visit?.testResult && row.visit.testResult.every(tr => tr.reportStatus === 'Pending'));
+        
+        return (
+          <div className="flex gap-2 whitespace-nowrap">
+            {!isCancelled && isReportPending && (
+              <>
+                <Button
+                  text=""
+                  className="px-2 py-1 text-white bg-amber-600 rounded hover:bg-amber-700 transition-colors duration-200"
+                  onClick={handleEditpatientDetails(row)}
+                >
+                  <FaEdit size={14} />
+                </Button>
+                <Button
+                  text=""
+                  className="px-2 py-1 text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200"
+                  onClick={() => {
+                    setDeletePatientModal(true);
+                    setPatientDetails(row);
+                  }}
+                >
+                  <MdOutlineDeleteSweep size={14} />
+                </Button>
+              </>
+            )}
+          </div>
+        );
+      },
       className: 'whitespace-nowrap'
     },
   ];

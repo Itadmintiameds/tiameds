@@ -261,7 +261,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     setIsGlobalDiscountHidden(hasTestDiscounts);
   }, [selectedTests]);
 
-  const handleChange = (
+  const handleChange = useCallback((
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
   ) => {
     if ('target' in event && Array.isArray(event.target.value)) {
@@ -307,7 +307,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         return newState;
       });
     }
-  };
+  }, []);
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedCategory(e.target.value);
@@ -457,7 +457,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
   };
 
 
-  const handleDiscountChange = (
+  const handleDiscountChange = useCallback((
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
   ) => {
     const { name, value } = 'target' in event ? event.target : { name: '', value: [] };
@@ -495,7 +495,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         [name]: Array.isArray(value) ? value.map(Number) : value,
       }));
     }
-  };
+  }, []);
 
   const handleUpdatePatient = async () => {
     try {
