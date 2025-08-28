@@ -59,6 +59,38 @@ export const calculateAge = (dob: string): string => {
   return ageParts.join(' ');
 };
 
+// Calculate age in years only (returns "24 yrs" format)
+export const calculateAgeInYears = (dob: string): string => {
+  if (!dob) return '';
+  
+  const birthDate = new Date(dob);
+  const today = new Date();
+  
+  let years = today.getFullYear() - birthDate.getFullYear();
+  let months = today.getMonth() - birthDate.getMonth();
+  let days = today.getDate() - birthDate.getDate();
+
+  // Adjust for negative days
+  if (days < 0) {
+    months--;
+    const lastDayOfMonth = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      0
+    ).getDate();
+    days += lastDayOfMonth;
+  }
+
+  // Adjust for negative months
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+
+  // Return only years in "24 yrs" format
+  return `${Math.max(0, years)} yrs`;
+};
+
 // Parse age string into years, months, days (handles both full and abbreviated formats)
 export const parseAgeString = (ageString: string) => {
   if (!ageString || ageString === 'null') {

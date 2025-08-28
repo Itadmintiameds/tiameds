@@ -148,8 +148,9 @@ const PatientBilling = ({
     const { name, value } = e.target;
     const receivedAmount = getSafeDecimal(value);
 
-    // For CASH payment method (keep exactly as is)
-    if (paymentMethod === PaymentMethod.CASH && name === 'visit.billing.received_amount') {
+         // For CASH payment method (allow any amount including 0)
+     if (paymentMethod === PaymentMethod.CASH && name === 'visit.billing.received_amount') {
+      
       handleChange({ target: { name: 'visit.billing.received_amount', value } } as React.ChangeEvent<HTMLInputElement>);
       handleChange({ target: { name: 'visit.billing.cash_amount', value } } as React.ChangeEvent<HTMLInputElement>);
 
@@ -168,6 +169,11 @@ const PatientBilling = ({
 
     // For CARD payment method (received amount → card amount)
     if (paymentMethod === PaymentMethod.CARD && name === 'visit.billing.received_amount') {
+      // Validate that received amount is greater than 0
+      if (receivedAmount.lte(0)) {
+        return; // Don't update if amount is 0 or negative
+      }
+      
       handleChange({ target: { name: 'visit.billing.received_amount', value } } as React.ChangeEvent<HTMLInputElement>);
       handleChange({ target: { name: 'visit.billing.card_amount', value } } as React.ChangeEvent<HTMLInputElement>);
 
@@ -186,6 +192,11 @@ const PatientBilling = ({
 
     // For UPI payment method (received amount → upi amount)
     if (paymentMethod === PaymentMethod.UPI && name === 'visit.billing.received_amount') {
+      // Validate that received amount is greater than 0
+      if (receivedAmount.lte(0)) {
+        return; // Don't update if amount is 0 or negative
+      }
+      
       handleChange({ target: { name: 'visit.billing.received_amount', value } } as React.ChangeEvent<HTMLInputElement>);
       handleChange({ target: { name: 'visit.billing.upi_amount', value } } as React.ChangeEvent<HTMLInputElement>);
 
@@ -202,12 +213,19 @@ const PatientBilling = ({
       return;
     }
 
-    // For UPI_CASH payment method (sum amounts → received amount)
-    if (paymentMethod === PaymentMethod.UPI_CASH && 
-        (name === 'visit.billing.upi_amount' || name === 'visit.billing.cash_amount')) {
-      const upiAmount = getSafeDecimal(name === 'visit.billing.upi_amount' ? value : newPatient.visit?.billing?.upi_amount);
-      const cashAmount = getSafeDecimal(name === 'visit.billing.cash_amount' ? value : newPatient.visit?.billing?.cash_amount);
-      const totalReceived = upiAmount.add(cashAmount);
+         // For UPI_CASH payment method (sum amounts → received amount)
+     if (paymentMethod === PaymentMethod.UPI_CASH && 
+         (name === 'visit.billing.upi_amount' || name === 'visit.billing.cash_amount')) {
+       const upiAmount = getSafeDecimal(name === 'visit.billing.upi_amount' ? value : newPatient.visit?.billing?.upi_amount);
+       const cashAmount = getSafeDecimal(name === 'visit.billing.cash_amount' ? value : newPatient.visit?.billing?.cash_amount);
+       const totalReceived = upiAmount.add(cashAmount);
+
+       // Allow typing in individual fields, but only calculate total if both are positive
+       if (upiAmount.lte(0) && cashAmount.lte(0)) {
+         // If both amounts are 0 or negative, just update the field being typed in
+         handleChange({ target: { name, value } } as React.ChangeEvent<HTMLInputElement>);
+         return;
+       }
 
       handleChange({ target: { name, value } } as React.ChangeEvent<HTMLInputElement>);
       handleChange({ target: { name: 'visit.billing.received_amount', value: totalReceived.toString() } } as React.ChangeEvent<HTMLInputElement>);
@@ -225,12 +243,19 @@ const PatientBilling = ({
       return;
     }
 
-    // For CARD_CASH payment method (sum amounts → received amount)
-    if (paymentMethod === PaymentMethod.CARD_CASH && 
-        (name === 'visit.billing.card_amount' || name === 'visit.billing.cash_amount')) {
-      const cardAmount = getSafeDecimal(name === 'visit.billing.card_amount' ? value : newPatient.visit?.billing?.card_amount);
-      const cashAmount = getSafeDecimal(name === 'visit.billing.cash_amount' ? value : newPatient.visit?.billing?.cash_amount);
-      const totalReceived = cardAmount.add(cashAmount);
+         // For CARD_CASH payment method (sum amounts → received amount)
+     if (paymentMethod === PaymentMethod.CARD_CASH && 
+         (name === 'visit.billing.card_amount' || name === 'visit.billing.cash_amount')) {
+       const cardAmount = getSafeDecimal(name === 'visit.billing.card_amount' ? value : newPatient.visit?.billing?.card_amount);
+       const cashAmount = getSafeDecimal(name === 'visit.billing.cash_amount' ? value : newPatient.visit?.billing?.cash_amount);
+       const totalReceived = cardAmount.add(cashAmount);
+
+       // Allow typing in individual fields, but only calculate total if both are positive
+       if (cardAmount.lte(0) && cashAmount.lte(0)) {
+         // If both amounts are 0 or negative, just update the field being typed in
+         handleChange({ target: { name, value } } as React.ChangeEvent<HTMLInputElement>);
+         return;
+       }
 
       handleChange({ target: { name, value } } as React.ChangeEvent<HTMLInputElement>);
       handleChange({ target: { name: 'visit.billing.received_amount', value: totalReceived.toString() } } as React.ChangeEvent<HTMLInputElement>);
@@ -487,13 +512,36 @@ const PatientBilling = ({
             </div>
           )}
 
-          {/* Received Amount - Show for all payment methods except UPI+CASH and CARD+CASH */}
-          {(paymentMethod !== PaymentMethod.UPI_CASH && paymentMethod !== PaymentMethod.CARD_CASH) && (
-            <div className="flex flex-col">
-              <label className="text-xs font-medium text-gray-600 mb-1">
-                Received Amount (₹)
-              </label>
-                             <input
+                     {/* Received Amount - Show for UPI and CARD payment methods */}
+           {(paymentMethod === PaymentMethod.UPI || paymentMethod === PaymentMethod.CARD) && (
+             <div className="flex flex-col">
+               <label className="text-xs font-medium text-gray-600 mb-1">
+                 Received Amount (₹) <span className="text-red-500">*</span>
+               </label>
+               <input
+                 type="number"
+                 name="visit.billing.received_amount"
+                 min="0"
+                 step="0.01"
+                 required
+                 value={newPatient.visit?.billing?.received_amount || '0'}
+                 onChange={handlePaymentFieldChange}
+                 onInput={(e) => {
+                   // Remove leading zeros for immediate visual feedback
+                   (e.target as HTMLInputElement).value = (e.target as HTMLInputElement).value.replace(/^0+/, '');
+                 }}
+                 className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+               />
+             </div>  
+           )}
+
+           {/* Received Amount - Show for CASH payment method (not required) */}
+           {paymentMethod === PaymentMethod.CASH && (
+             <div className="flex flex-col">
+               <label className="text-xs font-medium text-gray-600 mb-1">
+                 Received Amount (₹)
+               </label>
+               <input
                  type="number"
                  name="visit.billing.received_amount"
                  min="0"
@@ -506,8 +554,8 @@ const PatientBilling = ({
                  }}
                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
                />
-            </div>  
-          )}
+             </div>  
+           )}
 
           {paymentMethod === PaymentMethod.CASH && (
             <div className="flex flex-col">
@@ -564,13 +612,14 @@ const PatientBilling = ({
             <>
               <div className="flex flex-col">
                 <label className="text-xs font-medium text-gray-600 mb-1">
-                  UPI Amount (₹)
+                  UPI Amount (₹) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   name="visit.billing.upi_amount"
                   min="0"
                   step="0.01"
+                  required
                   value={formatAmount(newPatient.visit?.billing?.upi_amount) || '0'}
                   onChange={handlePaymentFieldChange}
                   className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -578,13 +627,14 @@ const PatientBilling = ({
               </div>
               <div className="flex flex-col">
                 <label className="text-xs font-medium text-gray-600 mb-1">
-                  Cash Amount (₹)
+                  Cash Amount (₹) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   name="visit.billing.cash_amount"
                   min="0"
                   step="0.01"
+                  required
                   value={formatAmount(newPatient.visit?.billing?.cash_amount) || '0'}
                   onChange={handlePaymentFieldChange}
                   className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -597,13 +647,14 @@ const PatientBilling = ({
             <>
               <div className="flex flex-col">
                 <label className="text-xs font-medium text-gray-600 mb-1">
-                  Card Amount (₹)
+                  Card Amount (₹) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   name="visit.billing.card_amount"
                   min="0"
                   step="0.01"
+                  required
                   value={formatAmount(newPatient.visit?.billing?.card_amount) || '0'}
                   onChange={handlePaymentFieldChange}
                   className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -611,13 +662,14 @@ const PatientBilling = ({
               </div>
               <div className="flex flex-col">
                 <label className="text-xs font-medium text-gray-600 mb-1">
-                  Cash Amount (₹)
+                  Cash Amount (₹) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   name="visit.billing.cash_amount"
                   min="0"
                   step="0.01"
+                  required
                   value={formatAmount(newPatient.visit?.billing?.cash_amount) || '0'}
                   onChange={handlePaymentFieldChange}
                   className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"

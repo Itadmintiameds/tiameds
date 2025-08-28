@@ -8,7 +8,7 @@ import TableComponent from '@/app/(admin)/component/common/TableComponent';
 import PatientInvoice from '@/app/(admin)/component/patientDashboard/invoice/PatientInvoice';
 import { useLabs } from '@/context/LabContext';
 import { HealthPackage, Patient } from '@/types/pendingTable/PendingTatbleDataType';
-import { calculateAge } from '@/utils/ageUtils';
+import { calculateAgeInYears } from '@/utils/ageUtils';
 import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, formatDisplayDateWithWeekday, getDateRange } from '@/utils/dateUtils';
 import { TestList } from '@/types/test/testlist';
 import React, { useEffect, useState } from 'react';
@@ -164,18 +164,13 @@ const PendingTable: React.FC = () => {
     {
       header: 'Patient',
       accessor: (row: Patient) => (
-        <div className="flex flex-col">
-          <span className="font-medium">{`${row.firstName} ${row.lastName}`}</span>
-          <span className="text-xs text-gray-500">{row.gender}, {calculateAge(row.dateOfBirth)}y</span>
-        </div>
-      ),
-    },
-    {
-      header: 'Visit Date',
-      accessor: (row: Patient) => (
-        <div className="flex items-center gap-1 text-gray-600 -ml-8">
-          <FaCalendarAlt className="text-xs opacity-70" />
-          <span>{formatDisplayDateWithWeekday(row.visitDetailDto.visitDate)}</span>
+        <div className="flex flex-col gap-1">
+          <span className="font-medium text-gray-900">{`${row.firstName} ${row.lastName}`}</span>
+                     <span className="text-xs text-gray-500">{row.gender}, {calculateAgeInYears(row.dateOfBirth)}</span>
+          <div className="flex items-center gap-1 text-gray-500 bg-blue-50 px-2 py-1 rounded-full w-fit">
+            <FaCalendarAlt className="w-3 h-3 opacity-70" />
+            <span className="text-xs font-medium">{formatDisplayDateWithWeekday(row.visitDetailDto.visitDate)}</span>
+          </div>
         </div>
       ),
     },

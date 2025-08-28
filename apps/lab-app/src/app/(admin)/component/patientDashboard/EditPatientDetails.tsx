@@ -501,7 +501,48 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     try {
       setLoading(true);
 
+      // Validate payment fields based on payment method
+      const paymentMethod = editedPatient.visit?.billing?.paymentMethod;
+      const missingFields: string[] = [];
 
+             if (paymentMethod) {
+         switch (paymentMethod) {
+           case PaymentMethod.UPI:
+           case PaymentMethod.CARD:
+             const receivedAmount = Number(editedPatient.visit?.billing?.received_amount || 0);
+             if (receivedAmount <= 0) {
+               missingFields.push('Received Amount');
+             }
+             break;
+          
+          case PaymentMethod.UPI_CASH:
+            const upiAmount = Number(editedPatient.visit?.billing?.upi_amount || 0);
+            const cashAmountUPI = Number(editedPatient.visit?.billing?.cash_amount || 0);
+            if (upiAmount <= 0) {
+              missingFields.push('UPI Amount');
+            }
+            if (cashAmountUPI <= 0) {
+              missingFields.push('Cash Amount');
+            }
+            break;
+          
+          case PaymentMethod.CARD_CASH:
+            const cardAmount = Number(editedPatient.visit?.billing?.card_amount || 0);
+            const cashAmountCard = Number(editedPatient.visit?.billing?.cash_amount || 0);
+            if (cardAmount <= 0) {
+              missingFields.push('Card Amount');
+            }
+            if (cashAmountCard <= 0) {
+              missingFields.push('Cash Amount');
+            }
+            break;
+        }
+      }
+
+      if (missingFields.length > 0) {
+        toast.error(`Please fill the required payment fields: ${missingFields.join(', ')}`);
+        return;
+      }
 
       const validationResult = EditPatientSchema.safeParse(editedPatient);
 

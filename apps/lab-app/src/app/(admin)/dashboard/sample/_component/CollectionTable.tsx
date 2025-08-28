@@ -706,11 +706,15 @@ const CollectionTable: React.FC = () => {
           )}
 
           {updatedPopUp && (
-            <Modal isOpen={updatedPopUp} title="Update Sample" onClose={() => setUpdatedPopUp(false)} modalClassName="max-w-xl">
+            <Modal isOpen={updatedPopUp} title="Update Sample" onClose={() => setUpdatedPopUp(false)} modalClassName="max-w-2xl">
               <UpdateSample
                 visitId={updateSample?.visitId ?? 0}
                 sampleNames={updateSample?.sampleNames ?? []}
-                onClose={() => setUpdatedPopUp(false)}
+                onClose={() => {
+                  setUpdatedPopUp(false);
+                  // Refresh the table data after sample update
+                  fetchVisits();
+                }}
               />
             </Modal>
           )}
