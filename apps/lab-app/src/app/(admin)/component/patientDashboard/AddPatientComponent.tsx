@@ -20,6 +20,7 @@ import PatientFrom from './component/PatientFrom';
 import PatientTestPackage from './component/PatientTestPackage';
 import PatientVisit from './component/PatientVisit';
 import { Gender, DiscountReason } from '@/types/patient/patient';
+import useAuthStore from '@/context/userStore';
 
 
 interface AddPatientComponentProps {
@@ -89,7 +90,8 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   });
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const { currentLab, setPatientDetails, refreshDocterList, loginedUser } = useLabs();
+  const { currentLab, setPatientDetails, refreshDocterList } = useLabs();
+  const { user: loginedUser } = useAuthStore();
   const [isGlobalDiscountHidden, setIsGlobalDiscountHidden] = useState<boolean>(false);
 
   useEffect(() => {

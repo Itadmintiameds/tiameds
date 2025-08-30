@@ -21,6 +21,7 @@ import ReportView from './Report/ReportView';
 import CancelPatient from './CancelPatient';
 import DuePayment from './DuePayment';
 import CancellationDetailsModal from './CancellationDetailsModal';
+import useAuthStore from '@/context/userStore';
 
 enum VisitStatus {
   PENDING = 'Pending',
@@ -30,7 +31,8 @@ enum VisitStatus {
 
 
 const PatientVisitListTable: React.FC = () => {
-  const { currentLab, setPatientDetails, patientDetails, loginedUser } = useLabs();
+  const { currentLab, setPatientDetails, patientDetails } = useLabs();
+  const { user: loginedUser } = useAuthStore();
 
   // Check user roles for filter access
   const roles = loginedUser?.roles || [];
@@ -495,11 +497,11 @@ const PatientVisitListTable: React.FC = () => {
       accessor: (row: Patient) => {
         // Check if visit is cancelled
         const isCancelled = row?.visit?.visitStatus?.toUpperCase() === 'CANCELLED';
-        
+
         // Check if report status is pending (no test results or all tests are pending)
         const hasTestResults = row?.visit?.testResult && row.visit.testResult.length > 0;
         const isReportPending = !hasTestResults || (row?.visit?.testResult && row.visit.testResult.every(tr => tr.reportStatus === 'Pending'));
-        
+
         return (
           <div className="flex gap-2 whitespace-nowrap">
             {!isCancelled && isReportPending && (

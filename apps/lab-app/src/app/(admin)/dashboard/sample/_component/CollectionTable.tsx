@@ -39,8 +39,10 @@ interface HealthPackage {
   id: number;
   packageName: string;
   tests: Array<{
+    id: number;
     name: string;
     price: number;
+    category?: string;
   }>;
 }
 
@@ -215,7 +217,29 @@ const CollectionTable: React.FC = () => {
   const handleOpenReportModal = (patient: Patient, testId: number) => {
     if (!patient || !testId) return;
 
-    const test = tests.find((t) => t.id === testId);
+    // First try to find the test in individual tests
+    let test = tests.find((t) => t.id === testId);
+    
+    // If not found in individual tests, search in package tests
+    if (!test) {
+      for (const packageId of patient.packageIds) {
+        const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+        if (packageDetails) {
+          const packageTest = packageDetails.tests.find((t) => t.id === testId);
+          if (packageTest) {
+            // Create a test object that matches the TestList interface
+            test = {
+              id: packageTest.id,
+              name: packageTest.name,
+              price: packageTest.price,
+              category: packageTest.category || ''
+            };
+            break;
+          }
+        }
+      }
+    }
+
     if (!test) return;
 
     setSelectedPatient(patient);
@@ -412,14 +436,14 @@ const CollectionTable: React.FC = () => {
                   </span>
                 </div>
                 
-                {/* Package tests */}
-                <div className="flex flex-col gap-1 ml-2">
-                  {packageDetails.tests.map((test, index) => {
-                    // Find the matching test from tests array to get the test ID
-                    const matchingTest = tests.find(t => t.name === test.name);
-                    if (!matchingTest) return null;
+                                 {/* Package tests */}
+                 <div className="flex flex-col gap-1 ml-2">
+                   {packageDetails.tests.map((test, index) => {
+                     // Use the test ID directly from the package test data
+                     const testId = test.id;
+                     if (!testId) return null;
 
-                    const testResult = row.testResult?.find(tr => tr.testId === matchingTest.id);
+                                         const testResult = row.testResult?.find(tr => tr.testId === testId);
                     
                     // Determine test status
                     let statusColor = 'bg-purple-100 text-purple-800';
@@ -457,8 +481,8 @@ const CollectionTable: React.FC = () => {
                         )}
                         {/* Only show result button if test is not completed */}
                         {(!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
-                          <button
-                            onClick={() => handleOpenReportModal(row, matchingTest.id)}
+                                                     <button
+                             onClick={() => handleOpenReportModal(row, testId)}
                             className="flex items-center gap-1 bg-purple-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-purple-600 transition-colors whitespace-nowrap"
                             title={`View result for ${test.name}`}
                           >

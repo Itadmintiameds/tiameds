@@ -55,7 +55,8 @@ import { CiViewList } from 'react-icons/ci';
 import { RiTestTubeLine } from 'react-icons/ri';
 import PackageList from '../../component/package/PackageList';
 import Unauthorised from '../../component/Unauthorised';
-import { useLabs } from '@/context/LabContext';
+// import { useLabs } from '@/context/LabContext';
+import useAuthStore from '@/context/userStore';
 
 const allTabs: PackageTabItem[] = [
   { id: 'package', label: 'Package', icon: <RiTestTubeLine className="text-xl" /> },
@@ -64,7 +65,7 @@ const allTabs: PackageTabItem[] = [
 
 const Page = () => {
   const [selectedTab, setSelectedTab] = React.useState<string>('package');
-  const { loginedUser } = useLabs();
+  const { user: loginedUser } = useAuthStore();
 
   const roles = loginedUser?.roles || [];
   const isAdmin = roles.includes('ADMIN');

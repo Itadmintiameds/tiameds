@@ -49,8 +49,10 @@ interface HealthPackage {
     id: number;
     packageName: string;
     tests: Array<{
+        id: number;
         name: string;
         price: number;
+        category?: string;
     }>;
 }
 
@@ -310,11 +312,11 @@ const CompletedTable = () => {
                                 {/* Package tests */}
                                 <div className="flex flex-col gap-1 ml-2">
                                     {packageDetails.tests.map((test, index) => {
-                                        // Find the matching test from tests array to get the test ID
-                                        const matchingTest = tests.find(t => t.name === test.name);
-                                        if (!matchingTest) return null;
+                                        // Use the test ID directly from the package test data
+                                        const testId = test.id;
+                                        if (!testId) return null;
 
-                                        const testResult = row.testResult?.find(tr => tr.testId === matchingTest.id);
+                                        const testResult = row.testResult?.find(tr => tr.testId === testId);
 
                                         // Only show tests that have progress (completed or in progress), skip pending ones
                                         if (!testResult || (!testResult.isFilled && testResult.reportStatus === 'Pending')) {

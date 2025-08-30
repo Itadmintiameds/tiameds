@@ -1,5 +1,6 @@
 'use client';
-import { useLabs } from '@/context/LabContext';
+
+import { useAuth } from '@/hooks/useAuth';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { FaPerson } from "react-icons/fa6";
@@ -57,26 +58,8 @@ const TabButton = ({ tab, isActive, onClick }: { tab: typeof tabs[0], isActive: 
 
 const Page = () => {
   const [selectedTab, setSelectedTab] = useState<string>('patient');
-  const { loginedUser,setLoginedUser } = useLabs();
+  const { isAdmin, isSuperAdmin, isTechnician, isDeskRole } = useAuth();
 
-  useEffect(() => {
-    const loggedUser = localStorage.getItem('logedUser');
- 
-    if (loggedUser) {
-      try {
-        setLoginedUser(JSON.parse(loggedUser));
-      } catch (e) {
-        console.error("Failed to parse loggedUser:", e);
-      }
-    }
-  }, [setLoginedUser]);
-
-  // Check user roles
-  const isSuperAdmin = loginedUser?.roles?.includes('SUPERADMIN');
-  const isAdmin = loginedUser?.roles?.includes('ADMIN');
-  const isTechnician = loginedUser?.roles?.includes('TECHNICIAN');
-  const isDeskRole = loginedUser?.roles?.includes('DESKROLE');
-  
 
   // Filter tabs based on user role
   const filteredTabs = tabs.filter(tab => {

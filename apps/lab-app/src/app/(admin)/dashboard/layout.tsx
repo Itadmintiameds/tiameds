@@ -1,10 +1,10 @@
 "use client";
 import { getUsersLab } from "@/../services/labServices";
-import { useLabs } from '@/context/LabContext';
+import { useLabs, saveLabsToStorage, getLabsFromStorage } from '@/context/LabContext';
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import useUserStore from "../../../context/userStore";
+import useAuthStore from "../../../context/userStore";
 import SideBar from "../component/LayoutComponent/SideBar";
 import TopNav from "../component/LayoutComponent/TopNav";
 
@@ -14,34 +14,53 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const [isOpen, setIsOpen] = useState(true);
-  const { user, initializeUser } = useUserStore();
-  const { labs, setLabs, currentLab, setCurrentLab, refreshlab,setLoginedUser,} = useLabs();
+  const { user } = useAuthStore();
+  const { labs, setLabs, currentLab, setCurrentLab, refreshlab } = useLabs();
   const router = useRouter();
 
+  // Keyboard shortcut handler for sidebar toggle (Ctrl + B)
   useEffect(() => {
-    initializeUser();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check if Ctrl + B is pressed
+      if (event.ctrlKey && event.key === 'b') {
+        event.preventDefault(); // Prevent default browser behavior
+        setIsOpen(prev => !prev);
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup event listener
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchLabs = async () => {
       try {
         // Check local storage first
-        const storedLab = localStorage.getItem('currentLab');
-        const storedLabs = localStorage.getItem('userLabs');
-        const getlogedUser = localStorage.getItem('logedUser');
+        const storedData = getLabsFromStorage();
 
-        if (storedLab && storedLabs) {
-          setLabs(JSON.parse(storedLabs));
-          setCurrentLab(JSON.parse(storedLab));
-          setLoginedUser(JSON.parse(getlogedUser || '{}'));
+        if (storedData && storedData.labs && storedData.currentLabIndex !== undefined) {
+          setLabs(storedData.labs);
+          setCurrentLab(storedData.labs[storedData.currentLabIndex]);
         }
+        
         // Always fetch fresh data but don't wait for it
         const data = await getUsersLab();
         setLabs(data);
-        localStorage.setItem('userLabs', JSON.stringify(data));
 
         if (data.length > 0) {
           // Only set new lab if there wasn't one stored
-          if (!storedLab) {
+          if (!storedData) {
             setCurrentLab(data[0]);
-            localStorage.setItem('currentLab', JSON.stringify(data[0]));
+            saveLabsToStorage(data, 0);
+          } else {
+            // Update labs array but keep current index if it exists
+            const currentIndex = storedData.currentLabIndex !== undefined ? storedData.currentLabIndex : 0;
+            saveLabsToStorage(data, currentIndex < data.length ? currentIndex : 0);
           }
         }
       } catch (error) {
@@ -49,16 +68,17 @@ const Layout = ({ children }: LayoutProps) => {
       }
     };
     fetchLabs();
-  }, [initializeUser, setLabs, setCurrentLab,refreshlab]);
+  }, [setLabs, setCurrentLab, refreshlab]);
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedLabName = event.target.value;
-    const selectedLab = labs.find((lab) => lab.name === selectedLabName);
-    if (selectedLab) {
+    const selectedLabIndex = labs.findIndex((lab) => lab.name === selectedLabName);
+    if (selectedLabIndex !== -1) {
+      const selectedLab = labs[selectedLabIndex];
       alert("Are you sure you want to switch to " + selectedLab.name);
       setCurrentLab(selectedLab);
-      localStorage.setItem('currentLab', JSON.stringify(selectedLab));
-      localStorage.setItem('userLabs', JSON.stringify(selectedLab));
+      // Update localStorage with new current lab index
+      saveLabsToStorage(labs, selectedLabIndex);
       toast.success(`Switched to ${selectedLab.name}`, { position: "top-right", autoClose: 2000 });
     }
   };

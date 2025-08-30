@@ -92,6 +92,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
   const validateCity = useCallback((city: string) => {
     if (!city) return 'City is required';
     if (!/^[a-zA-Z\s]+$/.test(city)) return 'City should contain only alphabets and spaces';
+    if (city.trim().length < 2) return 'City must contain at least 2 characters';
     return '';
   }, []);
 

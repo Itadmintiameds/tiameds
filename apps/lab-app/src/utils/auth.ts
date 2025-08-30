@@ -1,21 +1,17 @@
 import { toast } from 'react-toastify';
+import useAuthStore from '@/context/userStore';
 
 export const handleLogout = () => {
+  const logout = useAuthStore.getState().logout;
+  
   toast.success("Logged out successfully", {
     position: "top-right",
     autoClose: 2000,
     hideProgressBar: true,
   });
   
-  // Clear all localStorage data
-  localStorage.clear();
-  
-  // Also specifically remove any additional items that might persist
-  localStorage.removeItem("ally-supports-cache");
-  localStorage.removeItem("completedTestsDateFilter");
-  
-  // Clear the authentication token cookie
-  document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  // Use Zustand store to logout
+  logout();
   
   // Redirect to login page
   window.location.replace("/user-login");

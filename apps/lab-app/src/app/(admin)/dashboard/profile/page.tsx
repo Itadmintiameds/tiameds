@@ -7,13 +7,23 @@ import { motion } from 'framer-motion'; // Import Framer Motion
 import { FaChalkboardTeacher, FaCheckCircle, FaEnvelope, FaMapMarkerAlt, FaPhoneAlt, FaTimesCircle, FaUserAlt, FaUserEdit } from 'react-icons/fa';
 import { IoIosArrowForward } from 'react-icons/io';
 import Loader from '../../component/common/Loader';
+import { LoginResponseData } from '@/types/auth';
 
 
 const ProfilePage = () => {
-    const { user, initializeUser } = useUserStore();
-    useEffect(() => {
-        initializeUser();
-    }, []);
+    const { user } = useUserStore();
+
+    const formatAddress = (user: LoginResponseData | null) => {
+        const addressParts = [
+            user?.address,
+            user?.city,
+            user?.state,
+            user?.zip,
+            user?.country
+        ].filter(part => part && part.trim() !== '');
+        
+        return addressParts.length > 0 ? addressParts.join(', ') : 'No address provided';
+    };
 
     useEffect(() => {
         if (user) {
@@ -60,7 +70,7 @@ const ProfilePage = () => {
                         <div className="text-gray-600 mt-4 space-y-3">
                             <p className="flex items-center"><FaPhoneAlt className="mr-3 text-primary" /> {user?.phone}</p>
                             <p className="flex items-center"><FaEnvelope className="mr-3 text-primary" /> {user?.email}</p>
-                            <p className="flex items-center"><FaMapMarkerAlt className="mr-3 text-primary" /> {user?.address}, {user?.city}, {user?.state}, {user?.zip}, {user?.country}</p>
+                            <p className="flex items-center"><FaMapMarkerAlt className="mr-3 text-primary" /> {formatAddress(user)}</p>
                         </div>
                     </motion.div>
                     <motion.div

@@ -19,6 +19,7 @@ import PatientBilling from './component/PatientBilling';
 import PatientTestPackage from './component/PatientTestPackage';
 import PatientVisit from './component/PatientVisit';
 import PatientForm from './component/PatientFrom';
+import useAuthStore from '@/context/userStore';
 
 enum Gender {
   Male = 'male',
@@ -58,7 +59,8 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
   const [selectedPackages, setSelectedPackages] = useState<PackageType[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [isGlobalDiscountHidden, setIsGlobalDiscountHidden] = useState<boolean>(false);
-  const { currentLab, setPatientDetails, refreshDocterList, loginedUser } = useLabs();
+  const { currentLab, setPatientDetails, refreshDocterList } = useLabs();
+  const { user: loginedUser } = useAuthStore();
   const [editedPatient, setEditedPatient] = useState<Patient>({
     id: 0,
     firstName: '',

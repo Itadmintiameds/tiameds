@@ -5,7 +5,8 @@ import { FaPersonChalkboard, FaPersonCirclePlus } from 'react-icons/fa6';
 import ListOfMemberOfLab from './_component/ListOfMemberOfLab';
 import AddMemberOnLab from './_component/AddMemberOnLab';
 import Unauthorised from '@/app/(admin)/component/Unauthorised';
-import { useLabs } from '@/context/LabContext';
+// import { useLabs } from '@/context/LabContext';
+import useAuthStore from '@/context/userStore';
 
 interface TechnicianTab {
   id: string;
@@ -20,7 +21,7 @@ const tabs: TechnicianTab[] = [
 
 const Page = () => {
   const [selectedTab, setSelectedTab] = useState<string>('Add Technician');
-  const { loginedUser } = useLabs();
+  const { user: loginedUser } = useAuthStore();
 
   const roles = loginedUser?.roles || [];
   const isAllowed = ['ADMIN', 'SUPERADMIN'].some(role => roles?.includes(role));

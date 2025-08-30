@@ -9,7 +9,8 @@ import TestReferancePoints from '../../component/test/TestReferancePoints';
 import UploadTestReference from '../../component/test/UploadTestReference';
 import Loader from '../../component/common/Loader';
 import Unauthorised from '../../component/Unauthorised';
-import { useLabs } from '@/context/LabContext';
+// import { useLabs } from '@/context/LabContext'; 
+import useAuthStore from '@/context/userStore';
 import { MdOutlineCloudUpload } from "react-icons/md";
 import { RiTestTubeLine } from "react-icons/ri";
 import { VscReferences } from "react-icons/vsc";
@@ -25,7 +26,7 @@ const allTabs: PackageTabItem[] = [
 const Page = () => {
   const [selectedTab, setSelectedTab] = React.useState<string>('test');
   const [loading, setLoading] = React.useState<boolean>(false);
-  const { loginedUser } = useLabs();
+  const { user: loginedUser } = useAuthStore();
 
   const roles = loginedUser?.roles || [];
   const isSuperAdmin = roles.includes('SUPERADMIN');

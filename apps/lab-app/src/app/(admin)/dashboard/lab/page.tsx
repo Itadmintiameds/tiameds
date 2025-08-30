@@ -4,7 +4,8 @@ import React, { useEffect } from 'react';
 import Tabs from '@/app/(admin)/component/common/TabComponent';
 import Loader from '../../component/common/Loader';
 import Unauthorised from '../../component/Unauthorised';
-import { useLabs } from '@/context/LabContext';
+// import { useLabs } from '@/context/LabContext';
+import useAuthStore from '@/context/userStore';
 import { FaFlask } from "react-icons/fa6";
 import { GrDocumentTest } from "react-icons/gr";
 import { FaDownload } from "react-icons/fa";
@@ -51,7 +52,7 @@ const allTabs: LabTab[] = [
 const Page = () => {
   const [selectedTab, setSelectedTab] = React.useState<string>('Lab Create');
   const [loading, setLoading] = React.useState<boolean>(false);
-  const { loginedUser } = useLabs();
+  const { user: loginedUser } = useAuthStore();
 
   const roles = loginedUser?.roles || [];
   const isSuperAdmin = roles.includes('SUPERADMIN');

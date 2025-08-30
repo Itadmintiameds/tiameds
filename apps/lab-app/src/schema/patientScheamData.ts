@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const patientSchema = z.object({
   firstName: z.string().min(2, { message: "First name must have at least 2 characters" }).min(2).max(50),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits" }).max(10, { message: "Phone number must be at most 10 digits" }),
-  city: z.string().min(2).max(50),
+  city: z.string().min(2, { message: "City must contain at least 2 characters" }).max(50, { message: "City must not exceed 50 characters" }),
   dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date of birth must be in YYYY-MM-DD format" }),
   visit: z.object({
     visitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Visit date must be in YYYY-MM-DD format" }),

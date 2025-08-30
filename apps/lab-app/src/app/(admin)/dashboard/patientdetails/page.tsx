@@ -70,11 +70,12 @@ import React from 'react';
 import PatientList from '@/app/(admin)/component/dashboard/patient/PatientList';
 import { FaUserInjured } from 'react-icons/fa';
 import { MdOutlineHealthAndSafety } from 'react-icons/md';
-import { useLabs } from '@/context/LabContext';
+// import { useLabs } from '@/context/LabContext';
+import useAuthStore from '@/context/userStore';
 import Unauthorised from '@/app/(admin)/component/Unauthorised';
 
 const Page = () => {
-  const { loginedUser } = useLabs();
+  const { user: loginedUser } = useAuthStore();
   const roles = loginedUser?.roles || [];
   const isAdmin = ['ADMIN', 'DESKROLE','SUPERADMIN'].some(role => roles.includes(role));
    

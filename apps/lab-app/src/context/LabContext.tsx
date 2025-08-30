@@ -4,7 +4,7 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 import { LabResponse } from '@/types/Lab';
 import { LabFormData } from '@/types/LabFormData';
 import { Patient } from '@/types/patient/patient';
-import { UserLogedType } from '@/types/loginUser/LogedUserType';
+
 
 interface LabContextType {
     labs: LabResponse[];
@@ -17,8 +17,7 @@ interface LabContextType {
     setPatientDetails: React.Dispatch<React.SetStateAction<Patient | undefined>>;
     refreshlab: boolean;
     setRefreshLab: React.Dispatch<React.SetStateAction<boolean>>;
-    loginedUser: UserLogedType;
-    setLoginedUser: React.Dispatch<React.SetStateAction<UserLogedType>>;
+
     refreshDocterList: boolean;
     setRefreshDocterList: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -41,22 +40,7 @@ const LabProvider = ({ children }: LabProviderProps) => {
         description: '',
     });
     const [refreshlab, setRefreshLab] = useState<boolean>(false);
-    const [loginedUser, setLoginedUser] = useState<UserLogedType>({
-        username: '',
-        email: '',
-        firstName: '',
-        lastName: '',
-        roles: [],
-        modules: null,
-        phone: '',
-        address: '',
-        city: '',
-        state: '',
-        zip: '',
-        country: '',
-        enabled: false,
-        is_verified: false,
-    });
+
     const [refreshDocterList, setRefreshDocterList] = useState<boolean>(false);
 
 
@@ -72,8 +56,7 @@ const LabProvider = ({ children }: LabProviderProps) => {
             setPatientDetails,
             refreshlab,
             setRefreshLab,
-            loginedUser,
-            setLoginedUser,
+
             refreshDocterList,
             setRefreshDocterList
 
@@ -81,6 +64,26 @@ const LabProvider = ({ children }: LabProviderProps) => {
             {children}
         </LabContext.Provider>
     );
+};
+
+// Utility functions for lab storage management
+export const saveLabsToStorage = (labs: LabResponse[], currentLabIndex: number) => {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('userLabs', JSON.stringify({
+            labs,
+            currentLabIndex
+        }));
+    }
+};
+
+export const getLabsFromStorage = () => {
+    if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('userLabs');
+        if (stored) {
+            return JSON.parse(stored);
+        }
+    }
+    return null;
 };
 
 export const useLabs = (): LabContextType => {

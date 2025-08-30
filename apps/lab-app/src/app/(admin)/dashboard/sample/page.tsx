@@ -6,7 +6,8 @@ import { ClipboardList, CheckCircle, HandCoins } from 'lucide-react';
 import PendingTable from './_component/PendingTable';
 import CollectionTable from './_component/CollectionTable';
 import CompletedTable from './_component/CompletedTable';
-import { useLabs } from '@/context/LabContext';
+// import { useLabs } from '@/context/LabContext';
+import useAuthStore from '@/context/userStore';
 import Unauthorised from '@/app/(admin)/component/Unauthorised';
 
 const tabs = [
@@ -59,7 +60,7 @@ const TabButton = ({ tab, isActive, onClick }: { tab: typeof tabs[0], isActive: 
 
 const Page = () => {
   const [selectedTab, setSelectedTab] = useState<string>('Pending');
-  const { loginedUser } = useLabs();
+  const { user: loginedUser } = useAuthStore();
 
   const roles = loginedUser?.roles || [];
   const isAllowed = ['ADMIN', 'TECHNICIAN', 'SUPERADMIN'].some(role => roles.includes(role)) && !roles.includes('DESKROLE');
