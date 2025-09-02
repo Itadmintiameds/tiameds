@@ -17,6 +17,7 @@ interface Report {
     referenceRange: string;
     enteredValue: string;
     unit: string;
+    description?: string;
 }
 
 interface CommonReportViewProps {
@@ -248,9 +249,22 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
                                     <table className="w-full text-xs border border-gray-300">
                                         <thead>
                                             <tr className="bg-gray-100">
-                                                <th className="text-left p-1 font-bold border border-gray-300 text-xs">TEST PARAMETER</th>
-                                                <th className="text-center p-1 font-bold border border-gray-300 text-xs">RESULT</th>
-                                                <th className="text-right p-1 font-bold border border-gray-300 text-xs">NORMAL RANGE</th>
+                                                <th className="text-left p-2 font-bold border border-gray-300 text-xs">TEST PARAMETER</th>
+                                                <th className="text-center p-2 font-bold border border-gray-300 text-xs">RESULT</th>
+                                                {/* Show DESCRIPTION column for tests with DROPDOWN WITH DESCRIPTION fields */}
+                                                {testResults.some(param => {
+                                                    const fieldType = param.referenceDescription?.toUpperCase() || '';
+                                                    return fieldType.includes('DROPDOWN WITH DESCRIPTION');
+                                                }) && (
+                                                    <th className="text-center p-2 font-bold border border-gray-300 text-xs">DESCRIPTION</th>
+                                                )}
+                                                {/* Conditionally show REFERENCE RANGE column */}
+                                                {testResults.some(param => {
+                                                    const fieldType = param.referenceDescription?.toUpperCase() || '';
+                                                    return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
+                                                }) && (
+                                                    <th className="text-right p-2 font-bold border border-gray-300 text-xs">REFERENCE RANGE</th>
+                                                )}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -258,29 +272,131 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
                                                 const hasNoDescription = !param.referenceDescription ||
                                                     param.referenceDescription === "No reference description available";
 
-                                                const isOutOfRange = false; // Replace with actual range check
+                                                // Determine field type based on referenceDescription
+                                                const fieldType = param.referenceDescription?.toUpperCase() || '';
+                                                const isDescriptionField = fieldType === 'DESCRIPTION';
+                                                const isDropdownField = fieldType.includes('DROPDOWN');
+                                                const isDropdownWithDescription = fieldType.includes('DROPDOWN WITH DESCRIPTION');
 
-                                                return (
-                                                    <tr key={idx} className="border-b border-gray-300">
-                                                        <td className="p-1 border-r border-gray-300 font-medium text-xs">
-                                                            {hasNoDescription ? (
-                                                                <div className="flex items-center text-yellow-700">
-                                                                    <TbAlertTriangle className="mr-1" />
-                                                                    <span>Parameter not specified</span>
-                                                                </div>
-                                                            ) : (
-                                                                param.referenceDescription
-                                                            )}
-                                                        </td>
-                                                        <td className={`p-1 text-center border-r border-gray-300 text-xs ${isOutOfRange ? 'font-bold' : ''}`}>
-                                                            {param.enteredValue}
-                                                        </td>
-                                                        <td className="p-1 text-right text-xs">
-                                                            {param.referenceRange || ''}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
+                                                // Get the actual test parameter name (remove field type prefixes)
+                                                const getTestParameterName = () => {
+                                                    if (isDescriptionField) {
+                                                        return param.referenceDescription || 'Description';
+                                                    }
+                                                    
+                                                    if (isDropdownWithDescription) {
+                                                        // Remove "DROPDOWN WITH DESCRIPTION-" prefix to get actual test name
+                                                        const prefix = 'DROPDOWN WITH DESCRIPTION-';
+                                                        if (fieldType.startsWith(prefix)) {
+                                                            return fieldType.substring(prefix.length).replace(/-/g, ' ');
+                                                        }
+                                                        return param.referenceDescription || 'Test Parameter';
+                                                    }
+                                                    
+                                    if (isDropdownField) {
+                                        // Remove "DROPDOWN-" prefix to get actual test name
+                                        const prefix = 'DROPDOWN-';
+                                        if (fieldType.startsWith(prefix)) {
+                                            return fieldType.substring(prefix.length).replace(/-/g, ' ');
+                                        }
+                                        return param.referenceDescription || 'Test Parameter';
+                                    }
+                                    
+                                    // For other fields, show as is
+                                    return param.referenceDescription || 'Test Parameter';
+                                };
+
+                                // Format the result based on field type
+                                const formatResult = () => {
+                                    if (isDescriptionField) {
+                                        return (
+                                            <div className="text-center">
+                                                <div className="font-medium">{param.description || 'N/A'}</div>
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    if (isDropdownWithDescription) {
+                                        return (
+                                            <div className="text-center">
+                                                <div className="font-medium">{param.enteredValue || 'N/A'}</div>
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    if (isDropdownField) {
+                                        return (
+                                            <div className="text-center">
+                                                <div className="font-medium">{param.enteredValue || 'N/A'}</div>
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    // For numeric/other fields
+                                    return (
+                                        <div className="text-center">
+                                            <span className="font-medium">{param.enteredValue || 'N/A'}</span>
+                                        </div>
+                                    );
+                                };
+
+                                // Determine if result is out of range (for numeric fields only)
+                                const isOutOfRange = (() => {
+                                    if (isDescriptionField || isDropdownField) return false;
+                                    
+                                    const value = parseFloat(param.enteredValue);
+                                    if (isNaN(value)) return false;
+                                    
+                                    const range = param.referenceRange;
+                                    if (!range) return false;
+                                    
+                                    // Simple range check
+                                    const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+                                    if (rangeMatch) {
+                                        const min = parseFloat(rangeMatch[1]);
+                                        const max = parseFloat(rangeMatch[2]);
+                                        return value < min || value > max;
+                                    }
+                                    
+                                    return false;
+                                })();
+
+                                return (
+                                    <tr key={idx} className={`border-b border-gray-300 ${isOutOfRange ? 'bg-red-50' : ''}`}>
+                                        <td className="p-2 border-r border-gray-300 font-medium text-xs">
+                                            {hasNoDescription ? (
+                                                <div className="flex items-center text-yellow-700">
+                                                    <TbAlertTriangle className="mr-1" />
+                                                    <span>Parameter not specified</span>
+                                                </div>
+                                            ) : (
+                                                getTestParameterName()
+                                            )}
+                                        </td>
+                                        <td className={`p-2 text-center text-xs ${isOutOfRange ? 'font-bold text-red-600' : ''}`}>
+                                            {formatResult()}
+                                        </td>
+                                        {/* Show DESCRIPTION column for DROPDOWN WITH DESCRIPTION fields */}
+                                        {testResults.some(param => {
+                                            const fieldType = param.referenceDescription?.toUpperCase() || '';
+                                            return fieldType.includes('DROPDOWN WITH DESCRIPTION');
+                                        }) && (
+                                            <td className="p-2 text-center text-xs border-l border-gray-300">
+                                                {isDropdownWithDescription ? (param.description || 'N/A') : 'N/A'}
+                                            </td>
+                                        )}
+                                        {/* Conditionally show REFERENCE RANGE column */}
+                                        {testResults.some(param => {
+                                            const fieldType = param.referenceDescription?.toUpperCase() || '';
+                                            return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
+                                        }) && (
+                                            <td className="p-2 text-right text-xs border-l border-gray-300">
+                                                {param.referenceRange || 'N/A'}
+                                            </td>
+                                        )}
+                                    </tr>
+                                );
+                            })}
                                         </tbody>
                                     </table>
                                 </div>

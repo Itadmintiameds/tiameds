@@ -261,7 +261,20 @@ const CBCComponent: React.FC<CBCComponentProps> = ({
                       className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300"
                       placeholder="Enter value"
                       value={currentValue}
-                      onChange={(e) => onInputChange(testName, index, e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Prevent negative values
+                        if (value.startsWith('-')) {
+                          return;
+                        }
+                        onInputChange(testName, index, value);
+                      }}
+                      onKeyDown={(e) => {
+                        // Prevent typing minus sign
+                        if (e.key === '-') {
+                          e.preventDefault();
+                        }
+                      }}
                       required
                     />
                   </div>

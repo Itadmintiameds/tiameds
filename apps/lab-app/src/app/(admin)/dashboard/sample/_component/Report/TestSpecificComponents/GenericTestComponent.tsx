@@ -32,6 +32,7 @@ const GenericTestComponent: React.FC<GenericTestComponentProps> = ({
       'DROPDOWN-PRESENT/ABSENT',
       'DROPDOWN-REACTIVE/NONREACTIVE',
       'DROPDOWN-PERCENTAGE',
+      'DROPDOWN-COMPATIBLE/INCOMPATIBLE',
       'DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE',
       'DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT'
     ].includes(testDescription);
@@ -92,6 +93,20 @@ const GenericTestComponent: React.FC<GenericTestComponentProps> = ({
             <option value="">Select option</option>
             <option value="REACTIVE">REACTIVE</option>
             <option value="NONREACTIVE">NONREACTIVE</option>
+          </select>
+        );
+
+      case 'DROPDOWN-COMPATIBLE/INCOMPATIBLE':
+        return (
+          <select
+            className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300"
+            value={currentValue}
+            onChange={(e) => onInputChange(testName, index, e.target.value)}
+            required
+          >
+            <option value="">Select option</option>
+            <option value="COMPATIBLE">COMPATIBLE</option>
+            <option value="INCOMPATIBLE">INCOMPATIBLE</option>
           </select>
         );
 

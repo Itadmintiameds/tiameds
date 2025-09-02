@@ -268,10 +268,15 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
             finalValue = testInputs[index] || "N/A";
             referenceRange = "N/A";
           } else if (["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
-            "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DESCRIPTION"].includes(point.testDescription)) {
+            "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DROPDOWN-COMPATIBLE/INCOMPATIBLE"].includes(point.testDescription)) {
             unit = "N/A";
             description = "N/A";
             finalValue = testInputs[index] || "N/A";
+            referenceRange = "N/A";
+          } else if (point.testDescription === "DESCRIPTION") {
+            unit = "N/A";
+            description = testInputs[index] || "N/A";  // Save the actual description text here
+            finalValue = testInputs[index] || "N/A";  // Also save it in enteredValue for consistency
             referenceRange = "N/A";
           } else {
             unit = point.units || "N/A";
@@ -462,30 +467,118 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
               {reportPreview.testData.length > 0 ? (
                 <div className="mb-6">
                   <h4 className="font-medium mb-2">Report Preview:</h4>
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Additional Description</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {reportPreview.testData.map((item, idx) => (
-                          <tr key={idx} className={!item.referenceDescription || item.referenceDescription === "No reference description available" ? "bg-yellow-50" : ""}>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{item.testName}</td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                              {item.referenceDescription || "Reference details not available - will be provided separately"}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.enteredValue} {item.unit}</td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.description !== "N/A" ? item.description : "-"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  
+                  {/* Group tests by test name */}
+                  {(() => {
+                    const groupedByTest = reportPreview.testData.reduce((acc, item) => {
+                      if (!acc[item.testName]) {
+                        acc[item.testName] = [];
+                      }
+                      acc[item.testName].push(item);
+                      return acc;
+                    }, {} as Record<string, typeof reportPreview.testData>);
+
+                    return Object.entries(groupedByTest).map(([testName, testItems], testIndex) => (
+                      <div key={testIndex} className="mb-6">
+                        {/* Test Name Heading */}
+                        <div className="mb-2">
+                          <h5 className="text-sm font-bold text-left text-gray-800">{testName.toUpperCase()}</h5>
+                        </div>
+                        
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TEST PARAMETER</th>
+                                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">RESULT</th>
+                                {/* Show DESCRIPTION column for tests with DROPDOWN WITH DESCRIPTION fields */}
+                                {testItems.some(item => {
+                                  const fieldType = item.referenceDescription?.toUpperCase() || '';
+                                  return fieldType.includes('DROPDOWN WITH DESCRIPTION');
+                                }) && (
+                                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">DESCRIPTION</th>
+                                )}
+                                {/* Conditionally show REFERENCE RANGE column */}
+                                {testItems.some(item => {
+                                  const fieldType = item.referenceDescription?.toUpperCase() || '';
+                                  return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
+                                }) && (
+                                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">REFERENCE RANGE</th>
+                                )}
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {testItems.map((item, idx) => {
+                                const fieldType = item.referenceDescription?.toUpperCase() || '';
+                                const isDropdownWithDescription = fieldType.includes('DROPDOWN WITH DESCRIPTION');
+                                const hasReferenceRange = !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
+                                
+                                return (
+                                  <tr key={idx} className={!item.referenceDescription || item.referenceDescription === "No reference description available" ? "bg-yellow-50" : ""}>
+                                    <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                      {(() => {
+                                        // For DESCRIPTION fields, show "Description"
+                                        if (fieldType === 'DESCRIPTION') {
+                                          return 'Description';
+                                        }
+                                        
+                                        // For DROPDOWN fields, show meaningful test parameter names
+                                        if (fieldType.includes('DROPDOWN')) {
+                                          if (fieldType.includes('DROPDOWN WITH DESCRIPTION')) {
+                                            // Remove "DROPDOWN WITH DESCRIPTION-" prefix
+                                            const prefix = 'DROPDOWN WITH DESCRIPTION-';
+                                            if (fieldType.startsWith(prefix)) {
+                                              return fieldType.substring(prefix.length).replace(/-/g, ' ');
+                                            }
+                                          } else if (fieldType.startsWith('DROPDOWN-')) {
+                                            // Remove "DROPDOWN-" prefix to get actual test name
+                                            const prefix = 'DROPDOWN-';
+                                            return fieldType.substring(prefix.length).replace(/-/g, ' ');
+                                          }
+                                          return 'Test Parameter';
+                                        }
+                                        
+                                        // For other fields, show as is
+                                        return item.referenceDescription || 'Test Parameter';
+                                      })()}
+                                    </td>
+                                    <td className="px-4 py-2 text-center text-sm text-gray-500">
+                                      {(() => {
+                                        // For DESCRIPTION fields, show the description text
+                                        if (fieldType === 'DESCRIPTION') {
+                                          return item.description || 'N/A';
+                                        }
+                                        
+                                        // For DROPDOWN fields, show only the entered value (no unit)
+                                        if (fieldType.includes('DROPDOWN')) {
+                                          return item.enteredValue || 'N/A';
+                                        }
+                                        
+                                        // For other fields (numeric), show value with unit
+                                        return `${item.enteredValue} ${item.unit}`;
+                                      })()}
+                                    </td>
+                                    {/* Show DESCRIPTION column for DROPDOWN WITH DESCRIPTION fields */}
+                                    {isDropdownWithDescription && (
+                                      <td className="px-4 py-2 text-center text-sm text-gray-500">
+                                        {item.description !== "N/A" ? item.description : "-"}
+                                      </td>
+                                    )}
+                                    {/* Show REFERENCE RANGE column for numeric fields */}
+                                    {hasReferenceRange && (
+                                      <td className="px-4 py-2 text-right text-sm text-gray-500">
+                                        {item.referenceRange || 'N/A'}
+                                      </td>
+                                    )}
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ));
+                  })()}
                 </div>
               ) : (
                 <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
