@@ -2,6 +2,7 @@ import React from 'react';
 import { TestList, TestReferancePoint } from '@/types/test/testlist';
 import { TbTestPipe, TbCategory } from 'react-icons/tb';
 import CBCComponent from './CBCComponent';
+import LFTComponent from './LFTComponent';
 import GenericTestComponent from './GenericTestComponent';
 
 interface TestComponentFactoryProps {
@@ -39,9 +40,20 @@ const TestComponentFactory: React.FC<TestComponentFactoryProps> = ({
           />
         );
       
+      case 'LIVER FUNCTION TEST (LFT)':
+        return (
+          <LFTComponent
+            referencePoints={referencePoints}
+            inputValues={inputValues}
+            testName={test.name}
+            onInputChange={onInputChange}
+            getValueStatus={getValueStatus}
+            getStatusColor={getStatusColor}
+            getStatusIcon={getStatusIcon}
+          />
+        );
+      
       // Add more test-specific components here as needed
-      // case 'LIVER FUNCTION TEST (LFT)':
-      //   return <LFTComponent {...props} />;
       
       // case 'KIDNEY FUNCTION TEST (KFT)':
       //   return <KFTComponent {...props} />;
