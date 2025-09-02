@@ -1142,8 +1142,8 @@ const AddMemberOnLab = () => {
 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                                <input
+                                                {/* <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label> */}
+                                                {/* <input
                                                     className={`w-full p-2 border ${errors.phone ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
                                                     type="tel"
                                                     name="phone"
@@ -1174,56 +1174,81 @@ const AddMemberOnLab = () => {
                                                 {errors.phone && (
                                                     <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
                                                 )}
+                                            </div> */}
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                                    <input
+                                                        className={`w-full p-2 border ${errors.phone ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+                                                        type="tel"
+                                                        name="phone"
+                                                        placeholder="Enter phone number"
+                                                        value={formData.phone}
+                                                        onChange={(e) => {
+                                                            // Allow only numeric input but keep as string
+                                                            const numericValue = e.target.value.replace(/\D/g, '');
+                                                            setFormData({ ...formData, phone: numericValue });
+
+                                                            if (errors.phone) {
+                                                                setErrors({ ...errors, phone: undefined });
+                                                            }
+                                                        }}
+                                                        inputMode="numeric"
+                                                        pattern="[0-9]*"
+                                                        maxLength={15}
+                                                    />
+                                                    {errors.phone && (
+                                                        <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                                                    <input
+                                                        className={`w-full p-2 border ${errors.city ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+                                                        type="text"
+                                                        name="city"
+                                                        placeholder="Enter city"
+                                                        value={formData.city}
+                                                        onChange={handleChange}
+                                                    />
+                                                    {errors.city && (
+                                                        <p className="mt-1 text-sm text-red-600">{errors.city}</p>
+                                                    )}
+                                                </div>
                                             </div>
+
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                                                <input
-                                                    className={`w-full p-2 border ${errors.city ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
-                                                    type="text"
-                                                    name="city"
-                                                    placeholder="Enter city"
-                                                    value={formData.city}
-                                                    onChange={handleChange}
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Roles*</label>
+                                                <Select
+                                                    isMulti
+                                                    options={roleOptions}
+                                                    value={selectedRoles}
+                                                    onChange={handleRoleChange}
+                                                    placeholder="Select roles..."
+                                                    className={`react-select-container ${errors.roles ? 'border-red-500 rounded-lg' : ''}`}
+                                                    classNamePrefix="react-select"
                                                 />
-                                                {errors.city && (
-                                                    <p className="mt-1 text-sm text-red-600">{errors.city}</p>
+                                                {errors.roles && (
+                                                    <p className="mt-1 text-sm text-red-600">{errors.roles}</p>
                                                 )}
                                             </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Roles*</label>
-                                            <Select
-                                                isMulti
-                                                options={roleOptions}
-                                                value={selectedRoles}
-                                                onChange={handleRoleChange}
-                                                placeholder="Select roles..."
-                                                className={`react-select-container ${errors.roles ? 'border-red-500 rounded-lg' : ''}`}
-                                                classNamePrefix="react-select"
-                                            />
-                                            {errors.roles && (
-                                                <p className="mt-1 text-sm text-red-600">{errors.roles}</p>
+                                            {isEditing && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Active Status</label>
+                                                    <select
+                                                        name="enabled"
+                                                        value={formData.enabled ? "true" : "false"}
+                                                        onChange={(e) => setFormData({ ...formData, enabled: e.target.value === "true" })}
+                                                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                                    >
+                                                        <option value="true">Active</option>
+                                                        <option value="false">Inactive</option>
+                                                    </select>
+                                                </div>
                                             )}
                                         </div>
-                                        {isEditing && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Active Status</label>
-                                                <select
-                                                    name="enabled"
-                                                    value={formData.enabled ? "true" : "false"}
-                                                    onChange={(e) => setFormData({ ...formData, enabled: e.target.value === "true" })}
-                                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                                                >
-                                                    <option value="true">Active</option>
-                                                    <option value="false">Inactive</option>
-                                                </select>
-                                            </div>
-                                        )}
-                                    </div>
 
-                                    <div className="flex space-x-3 pt-4">
-                                        {/* {isSuperAdmin && isAdmin && (
+                                        <div className="flex space-x-3 pt-4">
+                                            {/* {isSuperAdmin && isAdmin && (
                                             <Button
                                                 onClick={() => { }}
                                                 type="submit"
@@ -1234,25 +1259,26 @@ const AddMemberOnLab = () => {
                                                 <FaUserPlus className="mr-2" />
                                             </Button>
                                         )} */}
-                                        <Button
-                                            onClick={() => { }}
-                                            type="submit"
-                                            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg"
-                                            text={isEditing ? "Update Member" : "Add Member"}
-                                            disabled={loading}
-                                        >
-                                            <FaUserPlus className="mr-2" />
-                                        </Button>
-                                        {isEditing && (
                                             <Button
-                                                type="button"
-                                                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg"
-                                                text="Cancel"
-                                                onClick={handleCancel}
+                                                onClick={() => { }}
+                                                type="submit"
+                                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg"
+                                                text={isEditing ? "Update Member" : "Add Member"}
                                                 disabled={loading}
-                                            />
-                                        )}
-                                    </div>
+                                            >
+                                                <FaUserPlus className="mr-2" />
+                                            </Button>
+                                            {isEditing && (
+                                                <Button
+                                                    type="button"
+                                                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg"
+                                                    text="Cancel"
+                                                    onClick={handleCancel}
+                                                    disabled={loading}
+                                                />
+                                            )}
+                                        </div>
+                                        </div>
                                 </form>
                             )}
                         </div>
