@@ -15,7 +15,7 @@ interface SideBarProps {
 const SideBar = ({ isOpen, setIsOpen }: SideBarProps) => {
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-30 bg-[#E1C4F8] shadow-2xl transform transition-all duration-300 ease-in-out flex flex-col ${isOpen ? "w-64" : "w-20"
+      className={`fixed inset-y-0 left-0 z-30 bg-[#E1C4F8] shadow-2xl transform transition-all duration-300 ease-in-out flex flex-col ${isOpen ? "w-64" : "w-24"
         }`}
       style={{
         background: `linear-gradient(160deg, #E1C4F8 0%, #d1a8f5 100%)`
@@ -41,7 +41,7 @@ const SideBar = ({ isOpen, setIsOpen }: SideBarProps) => {
           ))}
         </div>
 
-        {isOpen ? (
+                {isOpen ? (
           <Link href="/" className="flex items-center space-x-2 group relative z-10">
             <div className="relative">
               <Image
@@ -54,20 +54,17 @@ const SideBar = ({ isOpen, setIsOpen }: SideBarProps) => {
               <div className="absolute inset-0 bg-white mix-blend-overlay opacity-0 group-hover:opacity-10 rounded-md transition-opacity duration-300"></div>
             </div>
           </Link>
-        ) : (
-          <Link href="/" className="mx-auto group relative z-10">
-            <div className="p-1.5 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all relative overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_white_0%,_transparent_70%)] opacity-0 group-hover:opacity-15 transition-opacity duration-500"></div>
-              <Image
-                src="/LOGO.svg"
-                alt="Company Logo"
-                width={64}
-                height={64}
-                className="transition-all duration-300 group-hover:rotate-6 group-hover:scale-110"
-              />
-            </div>
-          </Link>
-        )}
+                 ) : (
+                        <Link href="/" className="mx-auto group relative z-10 mr-2">
+               <Image
+                 src="/tiamed1.svg"
+                 alt="TiaMeds"
+                 width={56}
+                 height={56}
+                 className="transition-all duration-300 group-hover:scale-110 drop-shadow-sm"
+               />
+             </Link>
+          )}
         <Button
           text=""
           onClick={() => setIsOpen(!isOpen)}
