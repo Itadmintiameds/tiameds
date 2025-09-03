@@ -144,7 +144,28 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
           pointGender === '';
       });
 
-      filteredData[testName] = genderFilteredPoints;
+      // Age-based filtering (convert both patient age and ref ranges to months)
+      const ageObj = selectedPatient.dateOfBirth ? calculateAgeObject(selectedPatient.dateOfBirth) : { years: 0, months: 0, days: 0 };
+      const patientAgeMonths = (ageObj.years || 0) * 12 + (ageObj.months || 0);
+
+      const toMonths = (value: number | null | undefined, unit: string | null | undefined): number => {
+        if (value === null || value === undefined) return 0;
+        const u = (unit || 'YEARS').toUpperCase();
+        return u === 'MONTHS' ? value : value * 12;
+      };
+
+      const ageFilteredPoints = genderFilteredPoints.filter((point) => {
+        const minMonths = toMonths(point.ageMin, point.minAgeUnit);
+        // If max is missing, allow large range
+        const maxMonths = point.ageMax === null || point.ageMax === undefined
+          ? Number.MAX_SAFE_INTEGER
+          : toMonths(point.ageMax, point.maxAgeUnit);
+
+        return patientAgeMonths >= minMonths && patientAgeMonths <= maxMonths;
+      });
+
+      // If age filtering yields results, use them; otherwise fall back to gender-only
+      filteredData[testName] = ageFilteredPoints.length > 0 ? ageFilteredPoints : genderFilteredPoints;
     });
 
     return filteredData;

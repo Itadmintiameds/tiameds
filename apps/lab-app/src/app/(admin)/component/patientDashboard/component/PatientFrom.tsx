@@ -638,6 +638,9 @@ const PatientForm: React.FC<PatientFormProps> = ({
                   }`}
                 placeholder="Enter years (0-100)"
                 maxLength={3}
+                readOnly
+                disabled
+                aria-readonly
               />
               {validationErrors.years && (
                 <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.years}</p>
@@ -656,6 +659,9 @@ const PatientForm: React.FC<PatientFormProps> = ({
                   }`}
                 placeholder="Enter months (0-12)"
                 maxLength={2}
+                readOnly
+                disabled
+                aria-readonly
               />
               {validationErrors.months && (
                 <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.months}</p>
@@ -674,6 +680,9 @@ const PatientForm: React.FC<PatientFormProps> = ({
                   }`}
                 placeholder="Enter days (0-31)"
                 maxLength={2}
+                readOnly
+                disabled
+                aria-readonly
               />
               {validationErrors.days && (
                 <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.days}</p>

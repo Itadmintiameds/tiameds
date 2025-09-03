@@ -73,25 +73,35 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
     const totalBilirubinIndex = findIndexByDescription('TOTAL BILIRUBIN');
     const directBilirubinIndex = findIndexByDescription('DIRECT BILIRUBIN');
 
-    const totalProtein = parseFloat(inputValues[testName]?.[totalProteinIndex] || '0');
-    const sAlbumin = parseFloat(inputValues[testName]?.[sAlbuminIndex] || '0');
-    const totalBilirubin = parseFloat(inputValues[testName]?.[totalBilirubinIndex] || '0');
-    const directBilirubin = parseFloat(inputValues[testName]?.[directBilirubinIndex] || '0');
+    const totalProteinRaw = (inputValues[testName]?.[totalProteinIndex] || '').trim();
+    const sAlbuminRaw = (inputValues[testName]?.[sAlbuminIndex] || '').trim();
+    const totalBilirubinRaw = (inputValues[testName]?.[totalBilirubinIndex] || '').trim();
+    const directBilirubinRaw = (inputValues[testName]?.[directBilirubinIndex] || '').trim();
+
+    const totalProtein = parseFloat(totalProteinRaw || '0');
+    const sAlbumin = parseFloat(sAlbuminRaw || '0');
+    const totalBilirubin = parseFloat(totalBilirubinRaw || '0');
+    const directBilirubin = parseFloat(directBilirubinRaw || '0');
 
     // Calculate S.GLOBULIN = TOTAL PROTEIN - S.ALBUMIN
     const sGlobulin = totalProtein - sAlbumin;
 
     // Calculate INDIRECT BILIRUBIN = TOTAL BILIRUBIN - DIRECT BILIRUBIN
-    // Only calculate if both values are available and valid
-    let indirectBilirubin = 0;
-    if (totalBilirubin > 0 && directBilirubin >= 0 && totalBilirubin >= directBilirubin) {
+    // Only calculate if BOTH fields are filled and valid
+    const hasBothBiliInputs = totalBilirubinRaw !== '' && directBilirubinRaw !== '';
+    let indirectBilirubin = NaN;
+    if (hasBothBiliInputs && totalBilirubin >= 0 && directBilirubin >= 0 && totalBilirubin >= directBilirubin) {
       indirectBilirubin = totalBilirubin - directBilirubin;
     }
 
 
     return {
       sGlobulin: isNaN(sGlobulin) ? 0 : sGlobulin,
-      indirectBilirubin: isNaN(indirectBilirubin) ? 0 : indirectBilirubin,
+      indirectBilirubin,
+      totalProteinRaw,
+      sAlbuminRaw,
+      totalBilirubinRaw,
+      directBilirubinRaw,
       totalProteinIndex,
       sAlbuminIndex,
       totalBilirubinIndex,
@@ -177,21 +187,31 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
       }
     }
 
-    // Update INDIRECT BILIRUBIN
-    if (!isNaN(derivedValues.indirectBilirubin) && indirectBilirubinIndex !== -1) {
-      const newValue = derivedValues.indirectBilirubin.toFixed(2);
+    // Update INDIRECT BILIRUBIN only when BOTH inputs are filled; otherwise clear
+    if (indirectBilirubinIndex !== -1) {
       const currentValue = (inputValues[testName]?.[indirectBilirubinIndex] || '').trim();
-      if (parseFloat(currentValue) !== parseFloat(newValue)) {
-        onInputChange(testName, indirectBilirubinIndex, newValue);
+      const hasBothBiliInputs = derivedValues.totalBilirubinRaw !== '' && derivedValues.directBilirubinRaw !== '';
+      if (hasBothBiliInputs && !isNaN(derivedValues.indirectBilirubin)) {
+        const newValue = derivedValues.indirectBilirubin.toFixed(2);
+        if (parseFloat(currentValue) !== parseFloat(newValue)) {
+          onInputChange(testName, indirectBilirubinIndex, newValue);
+        }
+      } else if (currentValue !== '') {
+        onInputChange(testName, indirectBilirubinIndex, '');
       }
     }
 
-    // Update A/G RATIO
-    if (agRatio && agRatioIndex !== -1) {
-      const newValue = parseFloat(agRatio).toFixed(2);
+    // Update A/G RATIO only when both TOTAL PROTEIN and S.ALBUMIN are filled; otherwise clear
+    if (agRatioIndex !== -1) {
       const currentValue = (inputValues[testName]?.[agRatioIndex] || '').trim();
-      if (parseFloat(currentValue) !== parseFloat(newValue)) {
-        onInputChange(testName, agRatioIndex, newValue);
+      const hasBothAlbuminInputs = derivedValues.totalProteinRaw !== '' && derivedValues.sAlbuminRaw !== '';
+      if (hasBothAlbuminInputs && agRatio) {
+        const newValue = parseFloat(agRatio).toFixed(2);
+        if (parseFloat(currentValue) !== parseFloat(newValue)) {
+          onInputChange(testName, agRatioIndex, newValue);
+        }
+      } else if (currentValue !== '') {
+        onInputChange(testName, agRatioIndex, '');
       }
     }
   }, [derivedValues.sGlobulin, derivedValues.indirectBilirubin, agRatio, referencePoints, testName, onInputChange]);
@@ -215,15 +235,17 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
         let isReadOnly = false;
 
         if (point.testDescription?.toUpperCase().includes('S.GLOBULIN')) {
-          displayValue = derivedValues.sGlobulin > 0 ? derivedValues.sGlobulin.toFixed(2) : '';
-          isReadOnly = true;
-        } else if (point.testDescription?.toUpperCase().includes('INDIRECT BILIRUBIN')) {
-          displayValue = !isNaN(derivedValues.indirectBilirubin)
-            ? derivedValues.indirectBilirubin.toFixed(2)
+          displayValue = (derivedValues.totalProteinRaw !== '' && derivedValues.sAlbuminRaw !== '' && derivedValues.sGlobulin > 0)
+            ? derivedValues.sGlobulin.toFixed(2)
             : '';
           isReadOnly = true;
-        } else if (isAGRatio && agRatio) {
-          displayValue = agRatio;
+        } else if (point.testDescription?.toUpperCase().includes('INDIRECT BILIRUBIN')) {
+          const canShowIB = derivedValues.totalBilirubinRaw !== '' && derivedValues.directBilirubinRaw !== '' && !isNaN(derivedValues.indirectBilirubin);
+          displayValue = canShowIB ? derivedValues.indirectBilirubin.toFixed(2) : '';
+          isReadOnly = true;
+        } else if (isAGRatio) {
+          const canShowAG = derivedValues.totalProteinRaw !== '' && derivedValues.sAlbuminRaw !== '' && agRatio;
+          displayValue = canShowAG ? agRatio : '';
           isReadOnly = true;
         }
 
@@ -295,6 +317,8 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
                         }
                       }}
                       readOnly={isReadOnly}
+                      disabled={isReadOnly}
+                      aria-readonly={isReadOnly}
                       required
                     />
                   </div>

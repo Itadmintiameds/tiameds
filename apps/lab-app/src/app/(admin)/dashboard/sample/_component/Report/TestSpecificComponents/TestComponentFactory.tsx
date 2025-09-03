@@ -3,6 +3,9 @@ import { TestList, TestReferancePoint } from '@/types/test/testlist';
 import { TbTestPipe, TbCategory } from 'react-icons/tb';
 import CBCComponent from './CBCComponent';
 import LFTComponent from './LFTComponent';
+import LPTComponent from './LPTComponent';
+import HbA1cComponent from './HbA1cComponent';
+import AECComponent from './AECComponent';
 import GenericTestComponent from './GenericTestComponent';
 
 interface TestComponentFactoryProps {
@@ -53,6 +56,45 @@ const TestComponentFactory: React.FC<TestComponentFactoryProps> = ({
           />
         );
       
+      case 'LIPID PROFILE TEST (LPT)':
+        return (
+          <LPTComponent
+            referencePoints={referencePoints}
+            inputValues={inputValues}
+            testName={test.name}
+            onInputChange={onInputChange}
+            getValueStatus={getValueStatus}
+            getStatusColor={getStatusColor}
+            getStatusIcon={getStatusIcon}
+          />
+        );
+      
+      case 'HB A1 C (GLYCOSYLATED HB)':
+        return (
+          <HbA1cComponent
+            referencePoints={referencePoints}
+            inputValues={inputValues}
+            testName={test.name}
+            onInputChange={onInputChange}
+            getValueStatus={getValueStatus}
+            getStatusColor={getStatusColor}
+            getStatusIcon={getStatusIcon}
+          />
+        );
+
+      case 'AEC':
+        return (
+          <AECComponent
+            referencePoints={referencePoints}
+            inputValues={inputValues}
+            testName={test.name}
+            onInputChange={onInputChange}
+            getValueStatus={getValueStatus}
+            getStatusColor={getStatusColor}
+            getStatusIcon={getStatusIcon}
+          />
+        );
+        
       // Add more test-specific components here as needed
       
       // case 'KIDNEY FUNCTION TEST (KFT)':

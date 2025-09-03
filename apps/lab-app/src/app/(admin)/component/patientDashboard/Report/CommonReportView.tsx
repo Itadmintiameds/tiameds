@@ -238,12 +238,17 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
 
                         {/* Test Results Tables - Separate for each test */}
                         <div className="mb-6">
-                            {Object.entries(groupedReports).map(([testName, testResults], testIndex) => (
+                            {Object.entries(groupedReports).map(([testName, testResults], testIndex) => {
+                                const isCBCTest = testName.toUpperCase().includes('CBC') || testName.toUpperCase().includes('COMPLETE BLOOD COUNT');
+                                
+                                return (
                                 <div key={testIndex} className="mb-8">
                                     {/* Test Name Heading */}
                                     <div className="mb-2">
                                         <h3 className="text-xs font-bold text-left text-gray-800">{testName.toUpperCase()}</h3>
                                     </div>
+
+                                        {/* CBC Differential Count Section removed as per requirement */}
 
                                     {/* Test Results Table */}
                                     <table className="w-full text-xs border border-gray-300">
@@ -361,46 +366,61 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
                                     return false;
                                 })();
 
-                                return (
-                                    <tr key={idx} className={`border-b border-gray-300 ${isOutOfRange ? 'bg-red-50' : ''}`}>
-                                        <td className="p-2 border-r border-gray-300 font-medium text-xs">
-                                            {hasNoDescription ? (
-                                                <div className="flex items-center text-yellow-700">
-                                                    <TbAlertTriangle className="mr-1" />
-                                                    <span>Parameter not specified</span>
-                                                </div>
-                                            ) : (
-                                                getTestParameterName()
+                                const hasDescriptionAny = testResults.some(p => (p.referenceDescription?.toUpperCase() || '').includes('DROPDOWN WITH DESCRIPTION'));
+                                const hasReferenceRangeAny = testResults.some(p => {
+                                    const ft = p.referenceDescription?.toUpperCase() || '';
+                                    return !ft.includes('DROPDOWN') && !ft.includes('DESCRIPTION');
+                                });
+                                const colSpanTotal = 2 + (hasDescriptionAny ? 1 : 0) + (hasReferenceRangeAny ? 1 : 0);
+                                const shouldInsertDiffHeading = isCBCTest && (((param.referenceDescription?.toUpperCase() || '').includes('TOTAL W.B.C')) || idx === 1);
+
+                                                return (
+                                    <>
+                                        <tr key={`row-${idx}`} className={`border-b border-gray-300 ${isOutOfRange ? 'bg-red-50' : ''}`}>
+                                            <td className="p-2 border-r border-gray-300 font-medium text-xs">
+                                                            {hasNoDescription ? (
+                                                                <div className="flex items-center text-yellow-700">
+                                                                    <TbAlertTriangle className="mr-1" />
+                                                                    <span>Parameter not specified</span>
+                                                                </div>
+                                                            ) : (
+                                                    getTestParameterName()
+                                                            )}
+                                                        </td>
+                                            <td className={`p-2 text-center text-xs ${isOutOfRange ? 'font-bold text-red-600' : ''}`}>
+                                                {formatResult()}
+                                            </td>
+                                            {testResults.some(param => {
+                                                const fieldType = param.referenceDescription?.toUpperCase() || '';
+                                                return fieldType.includes('DROPDOWN WITH DESCRIPTION');
+                                            }) && (
+                                                <td className="p-2 text-center text-xs border-l border-gray-300">
+                                                    {isDropdownWithDescription ? (param.description || 'N/A') : 'N/A'}
+                                                </td>
                                             )}
-                                        </td>
-                                        <td className={`p-2 text-center text-xs ${isOutOfRange ? 'font-bold text-red-600' : ''}`}>
-                                            {formatResult()}
-                                        </td>
-                                        {/* Show DESCRIPTION column for DROPDOWN WITH DESCRIPTION fields */}
-                                        {testResults.some(param => {
-                                            const fieldType = param.referenceDescription?.toUpperCase() || '';
-                                            return fieldType.includes('DROPDOWN WITH DESCRIPTION');
-                                        }) && (
-                                            <td className="p-2 text-center text-xs border-l border-gray-300">
-                                                {isDropdownWithDescription ? (param.description || 'N/A') : 'N/A'}
-                                            </td>
+                                            {testResults.some(param => {
+                                                const fieldType = param.referenceDescription?.toUpperCase() || '';
+                                                return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
+                                            }) && (
+                                                <td className="p-2 text-right text-xs border-l border-gray-300">
+                                                    {param.referenceRange || 'N/A'}
+                                                        </td>
+                                            )}
+                                        </tr>
+                                        {shouldInsertDiffHeading && (
+                                            <tr key={`diff-heading-${idx}`}>
+                                                <td colSpan={colSpanTotal} className="p-2 text-left text-xs font-bold text-blue-800 bg-blue-50 border-t border-b border-blue-200">
+                                                    DIFFERENTIAL COUNT
+                                                        </td>
+                                                    </tr>
                                         )}
-                                        {/* Conditionally show REFERENCE RANGE column */}
-                                        {testResults.some(param => {
-                                            const fieldType = param.referenceDescription?.toUpperCase() || '';
-                                            return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
-                                        }) && (
-                                            <td className="p-2 text-right text-xs border-l border-gray-300">
-                                                {param.referenceRange || 'N/A'}
-                                            </td>
-                                        )}
-                                    </tr>
-                                );
-                            })}
+                                    </>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
-                            ))}
+                            )})}
                         </div>
 
                         {/* Footer */}
@@ -431,7 +451,7 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
                         <div className="flex justify-between items-center mt-4">
                             <div className="flex items-center">
                                 <img src="/tiamed1.svg" alt="Tiamed Logo" className="h-6 mr-2 opacity-80" />
-                                <span className="text-xs font-medium text-gray-600">Powered by Tiameds Technology</span>
+                                <span className="text-xs font-medium text-gray-600">Powered by Tiameds Technologies Pvt.Ltd</span>
                             </div>
                             <div className="text-right">
                                 <p className="text-xs text-gray-500">Generated on: {new Date().toLocaleString()}</p>

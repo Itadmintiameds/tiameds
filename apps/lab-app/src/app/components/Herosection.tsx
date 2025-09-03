@@ -24,7 +24,9 @@ export default function Herosection() {
           <Image
             alt="tiamed logo"
             src="/finallogo.svg"
-            className="h-11"
+            width={140}
+            height={80}
+            className="h-11 w-auto"
           />
           {/* <p className="text-gray-500 italic mb-4">
             &quot;Innovating Today, Shaping Tomorrow!&quot;
@@ -58,13 +60,13 @@ export default function Herosection() {
         <div className="mx-auto mt-16 flex max-w-2xl sm:mt-24 lg:ml-10 lg:mr-0 lg:mt-0 lg:max-w-none lg:flex-none xl:ml-32">
           <div className="max-w-3xl flex-none sm:max-w-5xl lg:max-w-none">
             <div className="-m-2 rounded-xl bg-purple-50/50 p-2 ring-1 ring-inset ring-purple-100 lg:-m-4 lg:rounded-2xl lg:p-4">
-              <Image
-                alt="App screenshot"
-                src="screenshort.png"
-                width={2432}
-                height={1442}
-                className="w-[76rem] rounded-md shadow-2xl ring-1 ring-purple-200"
-              />
+                             <Image
+                 alt="App screenshot"
+                 src="/screenshort.png"
+                 width={2432}
+                 height={1442}
+                 className="w-[76rem] rounded-md shadow-2xl ring-1 ring-purple-200"
+               />
             </div>
           </div>
         </div>

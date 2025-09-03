@@ -11,11 +11,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { FiCalendar, FiFilter } from 'react-icons/fi';
-import { TbEdit, TbReport } from 'react-icons/tb';
+import {  TbReport } from 'react-icons/tb';
 import { toast } from 'react-toastify';
 import { getCollectedCompleted } from '../../../../../../services/sampleServices';
 import ViewReport from './Report/ViewReport';
-import Editreport from './Report/Editreport';
+// import Editreport from './Report/Editreport';
 
 interface Patient {
     visitId: number;
@@ -67,9 +67,9 @@ const CompletedTable = () => {
     const [healthPackages, setHealthPackages] = useState<HealthPackage[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [ViewModel, setViewModel] = useState(false);
-    const [editModel, setEditModel] = useState(false);
+    // const [editModel, setEditModel] = useState(false);
     const itemsPerPage = 8;
-    const [editPatient, setEditPatient] = useState<Patient | null>(null);
+    // const [editPatient, setEditPatient] = useState<Patient | null>(null);
     const [viewPatient, setViewPatient] = useState<Patient | null>(null);
     const [dateFilter, setDateFilter] = useState<DateFilterOption>('today');
     const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
@@ -167,10 +167,10 @@ const CompletedTable = () => {
         setViewPatient(patient);
     };
 
-    const handleEditReport = (patient: Patient) => {
-        setEditModel(true);
-        setEditPatient(patient);
-    };
+    // const handleEditReport = (patient: Patient) => {
+    //     setEditModel(true);
+    //     setEditPatient(patient);
+    // };
 
     const columns = [
             {
@@ -371,6 +371,7 @@ const CompletedTable = () => {
                         <TbReport className="w-3 h-3" />
                         <span>View</span>
                     </button>
+                    {/* Edit button temporarily disabled
                     <button
                         onClick={() => handleEditReport(row)}
                         className="flex items-center gap-1 bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition-colors"
@@ -379,6 +380,7 @@ const CompletedTable = () => {
                         <TbEdit className="w-3 h-3" />
                         <span>Edit</span>
                     </button>
+                    */}
                 </div>
             )
         }
@@ -542,6 +544,7 @@ const CompletedTable = () => {
                         </Modal>
                     )}
 
+                    {/* Edit modal temporarily disabled
                     {editModel && editPatient && (
                         <Modal
                             title='Edit Report'
@@ -557,6 +560,7 @@ const CompletedTable = () => {
 
                         </Modal>
                     )}
+                    */}
                     {totalPages > 1 && (
                         <div className="mt-4 flex justify-center">
                             <Pagination

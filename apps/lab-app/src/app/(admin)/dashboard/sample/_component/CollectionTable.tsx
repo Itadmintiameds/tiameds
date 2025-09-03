@@ -704,7 +704,7 @@ const CollectionTable: React.FC = () => {
           </div>
 
           {showModal && selectedPatient && selectedTest && (
-            <Modal isOpen={showModal} title={`Enter Report Data - ${selectedTest.name}`} onClose={() => {
+            <Modal isOpen={showModal} title={`Enter Result Data - ${selectedTest.name}`} onClose={() => {
               setShowModal(false);
               setSelectedPatient(null);
               setSelectedTest(null);
