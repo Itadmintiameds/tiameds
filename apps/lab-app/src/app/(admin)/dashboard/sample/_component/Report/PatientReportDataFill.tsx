@@ -54,11 +54,11 @@ interface PatientReportDataFillProps {
   setUpdateCollectionTable: (value: React.SetStateAction<boolean>) => void;
 }
 
-const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({ 
-  selectedPatient, 
-  selectedTest, 
-  setUpdateCollectionTable, 
-  setShowModal 
+const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
+  selectedPatient,
+  selectedTest,
+  setUpdateCollectionTable,
+  setShowModal
 }) => {
   const { currentLab } = useLabs();
   const [loading, setLoading] = useState(false);
@@ -67,9 +67,9 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   const [allTests, setAllTests] = useState<TestList[]>([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [reportPreview, setReportPreview] = useState<ReportPayload>({ 
-    testData: [], 
-    testResult: { testId: 0, isFilled: false } 
+  const [reportPreview, setReportPreview] = useState<ReportPayload>({
+    testData: [],
+    testResult: { testId: 0, isFilled: false }
   });
   const [hasMissingDescriptions, setHasMissingDescriptions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -117,7 +117,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
 
   const filterReferenceData = (referenceData: Record<string, TestReferancePoint[]>) => {
     const filteredData: Record<string, TestReferancePoint[]> = {};
-    
+
     Object.keys(referenceData).forEach((testName) => {
       const testPoints = referenceData[testName];
 
@@ -177,17 +177,17 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     setLoading(true);
     try {
       const response = await getTestReferanceRangeByTestName(currentLab.id.toString(), selectedTest.name);
-      
+
       if (response && Array.isArray(response)) {
         const filteredData = filterReferenceData({ [selectedTest.name]: response });
         setReferencePoints(filteredData);
-        
+
         // Initialize input values for this test
         const testInputs: Record<string | number, string> = {};
         response.forEach((_, index) => {
           testInputs[index] = '';
         });
-        
+
         setInputValues(prev => ({
           ...prev,
           [selectedTest.name]: testInputs
@@ -231,6 +231,11 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     let isValid = true;
 
     allTests.forEach(test => {
+      // Skip validation for radiology tests
+      if (test.category === 'RADIOLOGY') {
+        return; // Skip validation for this test
+      }
+
       const testInputs = inputValues[test.name] || {};
       const referenceData = referencePoints[test.name] || [];
 
@@ -255,6 +260,38 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     let hasMissingDesc = false;
 
     allTests.forEach((test) => {
+      // Handle radiology tests differently - create minimal report data
+      if (test.category === 'RADIOLOGY') {
+        console.log('Processing radiology test:', test.name);
+        
+        const formattedTestName = test.name
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+
+        const formattedCategory = test.category
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+
+        // Create minimal report data for radiology tests
+        // This ensures the test is recorded in the system
+        generatedReportData.push({
+          visit_id: selectedPatient.visitId.toString(),
+          testName: formattedTestName,
+          testCategory: formattedCategory,
+          patientName: selectedPatient.patientname,
+          referenceDescription: "RADIOLOGY_TEST",
+          referenceRange: "N/A",
+          enteredValue: "Hard copy will be provided",
+          referenceAgeRange: "N/A",
+          unit: "N/A",
+          description: "Imaging test - Results provided separately"
+        });
+        
+        return; // Skip the regular reference data processing
+      }
+
       const testInputs = inputValues[test.name] || {};
       const referenceData = referencePoints[test.name] || [];
 
@@ -341,7 +378,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
       console.log('Submitting report with payload:', reportPreview);
       const response = await createReportWithTestResult(currentLab?.id.toString() || '', reportPreview);
       console.log('API Response:', response);
-      
+
       // Check if response exists and is valid
       // The API returns ReportData[] which can be empty array on success
       if (response !== undefined && response !== null) {
@@ -488,7 +525,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
               {reportPreview.testData.length > 0 ? (
                 <div className="mb-6">
                   <h4 className="font-medium mb-2">Report Preview:</h4>
-                  
+
                   {/* Group tests by test name */}
                   {(() => {
                     const groupedByTest = reportPreview.testData.reduce((acc, item) => {
@@ -505,7 +542,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
                         <div className="mb-2">
                           <h5 className="text-sm font-bold text-left text-gray-800">{testName.toUpperCase()}</h5>
                         </div>
-                        
+
                         <div className="border rounded-lg overflow-hidden">
                           <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
@@ -517,15 +554,17 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
                                   const fieldType = item.referenceDescription?.toUpperCase() || '';
                                   return fieldType.includes('DROPDOWN WITH DESCRIPTION');
                                 }) && (
-                                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">DESCRIPTION</th>
-                                )}
-                                {/* Conditionally show REFERENCE RANGE column */}
+                                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">DESCRIPTION</th>
+                                  )}
+                                {/* Conditionally show REFERENCE RANGE column - hide for radiology tests */}
                                 {testItems.some(item => {
                                   const fieldType = item.referenceDescription?.toUpperCase() || '';
+                                  // Don't show REFERENCE RANGE for radiology tests
+                                  if (fieldType === 'RADIOLOGY_TEST') return false;
                                   return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
                                 }) && (
-                                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">REFERENCE RANGE</th>
-                                )}
+                                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">REFERENCE RANGE</th>
+                                  )}
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
@@ -533,16 +572,21 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
                                 const fieldType = item.referenceDescription?.toUpperCase() || '';
                                 const isDropdownWithDescription = fieldType.includes('DROPDOWN WITH DESCRIPTION');
                                 const hasReferenceRange = !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
-                                
+
                                 return (
                                   <tr key={idx} className={!item.referenceDescription || item.referenceDescription === "No reference description available" ? "bg-yellow-50" : ""}>
                                     <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                                       {(() => {
+                                        // For radiology tests, show the test name itself
+                                        if (fieldType === 'RADIOLOGY_TEST') {
+                                          return item.testName;
+                                        }
+
                                         // For DESCRIPTION fields, show "Description"
                                         if (fieldType === 'DESCRIPTION') {
                                           return 'Description';
                                         }
-                                        
+
                                         // For DROPDOWN fields, show meaningful test parameter names
                                         if (fieldType.includes('DROPDOWN')) {
                                           if (fieldType.includes('DROPDOWN WITH DESCRIPTION')) {
@@ -558,23 +602,28 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
                                           }
                                           return 'Test Parameter';
                                         }
-                                        
+
                                         // For other fields, show as is
                                         return item.referenceDescription || 'Test Parameter';
                                       })()}
                                     </td>
                                     <td className="px-4 py-2 text-center text-sm text-gray-500">
                                       {(() => {
+                                        // For radiology tests, show clean result
+                                        if (fieldType === 'RADIOLOGY_TEST') {
+                                          return 'Hard copy will be provided';
+                                        }
+
                                         // For DESCRIPTION fields, show the description text
                                         if (fieldType === 'DESCRIPTION') {
                                           return item.description || 'N/A';
                                         }
-                                        
+
                                         // For DROPDOWN fields, show only the entered value (no unit)
                                         if (fieldType.includes('DROPDOWN')) {
                                           return item.enteredValue || 'N/A';
                                         }
-                                        
+
                                         // For other fields (numeric), show value with unit
                                         return `${item.enteredValue} ${item.unit}`;
                                       })()}
@@ -585,8 +634,8 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
                                         {item.description !== "N/A" ? item.description : "-"}
                                       </td>
                                     )}
-                                    {/* Show REFERENCE RANGE column for numeric fields */}
-                                    {hasReferenceRange && (
+                                    {/* Show REFERENCE RANGE column for numeric fields - hide for radiology tests */}
+                                    {hasReferenceRange && fieldType !== 'RADIOLOGY_TEST' && (
                                       <td className="px-4 py-2 text-right text-sm text-gray-500">
                                         {item?.referenceRange || 'N/A'} {item?.unit}
                                       </td>
@@ -626,11 +675,10 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
                 <button
                   onClick={submitReport}
                   disabled={isSubmitting}
-                  className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none ${
-                    isSubmitting 
-                      ? 'bg-blue-400 cursor-not-allowed' 
+                  className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none ${isSubmitting
+                      ? 'bg-blue-400 cursor-not-allowed'
                       : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
+                    }`}
                 >
                   {isSubmitting ? (
                     <div className="flex items-center">

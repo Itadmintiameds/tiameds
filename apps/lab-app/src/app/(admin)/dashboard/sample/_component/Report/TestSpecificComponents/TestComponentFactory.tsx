@@ -6,6 +6,7 @@ import LFTComponent from './LFTComponent';
 import LPTComponent from './LPTComponent';
 import HbA1cComponent from './HbA1cComponent';
 import AECComponent from './AECComponent';
+import RadiologyComponent from './RadiologyComponent';
 import GenericTestComponent from './GenericTestComponent';
 
 interface TestComponentFactoryProps {
@@ -94,12 +95,18 @@ const TestComponentFactory: React.FC<TestComponentFactoryProps> = ({
             getStatusIcon={getStatusIcon}
           />
         );
-        
+
       // Add more test-specific components here as needed
       
-    
-      
       default:
+        // Check if it's a radiology test by category
+        if (test.category === 'RADIOLOGY') {
+          return (
+            <RadiologyComponent
+              testName={test.name}
+            />
+          );
+        }
         return (
           <GenericTestComponent
             referencePoints={referencePoints}

@@ -250,12 +250,12 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
 
                                         {/* CBC Differential Count Section removed as per requirement */}
 
-                                    {/* Test Results Table */}
-                                    <table className="w-full text-xs border border-gray-300">
-                                        <thead>
-                                            <tr className="bg-gray-100">
-                                                <th className="text-left p-2 font-bold border border-gray-300 text-xs">TEST PARAMETER</th>
-                                                <th className="text-center p-2 font-bold border border-gray-300 text-xs">RESULT</th>
+                                                                         {/* Test Results Table */}
+                                     <table className="w-full text-xs border border-gray-300">
+                                         <thead>
+                                             <tr className="bg-gray-100">
+                                                 <th className={`p-2 font-bold border border-gray-300 text-xs ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-2/3 text-left' : 'text-left'}`}>TEST PARAMETER</th>
+                                                 <th className={`p-2 font-bold border border-gray-300 text-xs ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-1/3 text-center' : 'text-center'}`}>RESULT</th>
                                                 {/* Show DESCRIPTION column for tests with DROPDOWN WITH DESCRIPTION fields */}
                                                 {testResults.some(param => {
                                                     const fieldType = param.referenceDescription?.toUpperCase() || '';
@@ -263,13 +263,15 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
                                                 }) && (
                                                     <th className="text-center p-2 font-bold border border-gray-300 text-xs">DESCRIPTION</th>
                                                 )}
-                                                {/* Conditionally show REFERENCE RANGE column */}
-                                                {testResults.some(param => {
-                                                    const fieldType = param.referenceDescription?.toUpperCase() || '';
-                                                    return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
-                                                }) && (
-                                                    <th className="text-right p-2 font-bold border border-gray-300 text-xs">REFERENCE RANGE</th>
-                                                )}
+                                                                                                 {/* Conditionally show REFERENCE RANGE column - hide for radiology tests */}
+                                                 {testResults.some(param => {
+                                                     const fieldType = param.referenceDescription?.toUpperCase() || '';
+                                                     // Don't show REFERENCE RANGE for radiology tests
+                                                     if (fieldType === 'RADIOLOGY_TEST') return false;
+                                                     return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
+                                                 }) && (
+                                                     <th className="text-center p-2 font-bold border border-gray-300 text-xs">REFERENCE RANGE</th>
+                                                 )}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -283,8 +285,13 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
                                                 const isDropdownField = fieldType.includes('DROPDOWN');
                                                 const isDropdownWithDescription = fieldType.includes('DROPDOWN WITH DESCRIPTION');
 
-                                                // Get the actual test parameter name (remove field type prefixes)
-                                                const getTestParameterName = () => {
+                                                                                                 // Get the actual test parameter name (remove field type prefixes)
+                                                 const getTestParameterName = () => {
+                                                     // For radiology tests, show the test name itself
+                                                     if (fieldType === 'RADIOLOGY_TEST') {
+                                                         return param.testName;
+                                                     }
+
                                                     if (isDescriptionField) {
                                                         return param.referenceDescription || 'Description';
                                                     }
@@ -313,6 +320,15 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
 
                                 // Format the result based on field type
                                 const formatResult = () => {
+                                    // For radiology tests, show clean result
+                                    if (fieldType === 'RADIOLOGY_TEST') {
+                                        return (
+                                            <div className="text-center">
+                                                <div className="font-medium">Hard copy will be provided</div>
+                                            </div>
+                                        );
+                                    }
+
                                     if (isDescriptionField) {
                                         return (
                                             <div className="text-center">
@@ -369,6 +385,8 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
                                 const hasDescriptionAny = testResults.some(p => (p.referenceDescription?.toUpperCase() || '').includes('DROPDOWN WITH DESCRIPTION'));
                                 const hasReferenceRangeAny = testResults.some(p => {
                                     const ft = p.referenceDescription?.toUpperCase() || '';
+                                    // Don't count radiology tests for reference range column
+                                    if (ft === 'RADIOLOGY_TEST') return false;
                                     return !ft.includes('DROPDOWN') && !ft.includes('DESCRIPTION');
                                 });
                                 const colSpanTotal = 2 + (hasDescriptionAny ? 1 : 0) + (hasReferenceRangeAny ? 1 : 0);
@@ -377,19 +395,19 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
                                                 return (
                                     <>
                                         <tr key={`row-${idx}`} className={`border-b border-gray-300 ${isOutOfRange ? 'bg-red-50' : ''}`}>
-                                            <td className="p-2 border-r border-gray-300 font-medium text-xs">
-                                                            {hasNoDescription ? (
-                                                                <div className="flex items-center text-yellow-700">
-                                                                    <TbAlertTriangle className="mr-1" />
-                                                                    <span>Parameter not specified</span>
-                                                                </div>
-                                                            ) : (
-                                                    getTestParameterName()
-                                                            )}
-                                                        </td>
-                                            <td className={`p-2 text-center text-xs ${isOutOfRange ? 'font-bold text-red-600' : ''}`}>
-                                                {formatResult()}
-                                            </td>
+                                                                                         <td className={`p-2 border-r border-gray-300 font-medium text-xs ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-2/3' : ''}`}>
+                                                             {hasNoDescription ? (
+                                                                 <div className="flex items-center text-yellow-700">
+                                                                     <TbAlertTriangle className="mr-1" />
+                                                                     <span>Parameter not specified</span>
+                                                                 </div>
+                                                             ) : (
+                                                     getTestParameterName()
+                                                             )}
+                                                         </td>
+                                             <td className={`p-2 text-center text-xs ${isOutOfRange ? 'font-bold text-red-600' : ''} ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-1/3' : ''}`}>
+                                                 {formatResult()}
+                                             </td>
                                             {testResults.some(param => {
                                                 const fieldType = param.referenceDescription?.toUpperCase() || '';
                                                 return fieldType.includes('DROPDOWN WITH DESCRIPTION');
@@ -398,14 +416,16 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
                                                     {isDropdownWithDescription ? (param.description || 'N/A') : 'N/A'}
                                                 </td>
                                             )}
-                                            {testResults.some(param => {
-                                                const fieldType = param.referenceDescription?.toUpperCase() || '';
-                                                return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
-                                            }) && (
-                                                <td className="p-2 text-right text-xs border-l border-gray-300">
-                                                    {param.referenceRange || 'N/A'}
-                                                        </td>
-                                            )}
+                                                                                         {testResults.some(param => {
+                                                 const fieldType = param.referenceDescription?.toUpperCase() || '';
+                                                 // Don't show REFERENCE RANGE for radiology tests
+                                                 if (fieldType === 'RADIOLOGY_TEST') return false;
+                                                 return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
+                                             }) && (
+                                                 <td className="p-2 text-center text-xs border-l border-gray-300">
+                                                     {param.referenceRange || 'N/A'}
+                                                         </td>
+                                             )}
                                         </tr>
                                         {shouldInsertDiffHeading && (
                                             <tr key={`diff-heading-${idx}`}>
