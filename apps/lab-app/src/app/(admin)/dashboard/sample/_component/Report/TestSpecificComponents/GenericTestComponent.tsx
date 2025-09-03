@@ -234,8 +234,29 @@ const GenericTestComponent: React.FC<GenericTestComponentProps> = ({
               <div className="flex items-start">
                 <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="font-medium text-gray-600">Description</p>
-                  <p className="text-gray-800">{point.testDescription}</p>
+                  <p className="font-medium text-gray-600">Test Parameter</p>
+                  <p className="text-gray-800">
+                    {(() => {
+                      // For dropdown fields, extract the actual test parameter name
+                      if (point.testDescription && point.testDescription.includes('DROPDOWN')) {
+                        if (point.testDescription.includes('DROPDOWN WITH DESCRIPTION-')) {
+                          const prefix = 'DROPDOWN WITH DESCRIPTION-';
+                          if (point.testDescription.startsWith(prefix)) {
+                            return point.testDescription.substring(prefix.length).replace(/-/g, ' ');
+                          }
+                        } else if (point.testDescription.startsWith('DROPDOWN-')) {
+                          const prefix = 'DROPDOWN-';
+                          if (point.testDescription.startsWith(prefix)) {
+                            return point.testDescription.substring(prefix.length).replace(/-/g, ' ');
+                          }
+                        }
+                        return 'Test Parameter';
+                      }
+                      
+                      // For other fields, show the actual test parameter name
+                      return point.testDescription || 'Test Parameter';
+                    })()}
+                  </p>
                 </div>
               </div>
               
@@ -262,6 +283,7 @@ const GenericTestComponent: React.FC<GenericTestComponentProps> = ({
                     <p className="text-gray-800">
                       {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
                         <span className="text-gray-500 flex items-center">
+                          <span className="ml-1">{point.units}</span>
                           <TbRuler className="ml-1" size={14} />
                         </span>
                       )}

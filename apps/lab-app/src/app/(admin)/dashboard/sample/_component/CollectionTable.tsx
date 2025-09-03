@@ -83,6 +83,9 @@ const CollectionTable: React.FC = () => {
   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
+  
+  // State for expanded rows
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
 
 
@@ -212,6 +215,21 @@ const CollectionTable: React.FC = () => {
       link.download = `barcode-${row.visitId}.png`;
       link.click();
     }
+  };
+
+  // Toggle row expansion
+  const toggleRowExpansion = (visitId: number, columnType: 'tests' | 'packages') => {
+    const key = `${visitId}-${columnType}`;
+    
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
   };
 
   const handleOpenReportModal = (patient: Patient, testId: number) => {
@@ -358,9 +376,16 @@ const CollectionTable: React.FC = () => {
           !packageTestIds.has(testId)
         );
 
-                 return (
-           <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
-            {individualTestIds.map((testId) => {
+                 const isExpanded = expandedRows.has(`${row.visitId}-tests`);
+         const displayTests = isExpanded ? individualTestIds : individualTestIds.slice(0, 3);
+         const hasMoreTests = individualTestIds.length > 3;
+         
+         // For CollectionTable, show total test count (not just completed)
+         const totalTestCount = individualTestIds.length;
+
+        return (
+          <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
+            {displayTests.map((testId) => {
               const test = tests.find((t) => t.id === testId);
               const testResult = row.testResult?.find(tr => tr.testId === testId);
               
@@ -414,91 +439,157 @@ const CollectionTable: React.FC = () => {
                 </div>
               );
             }).filter(Boolean)}
+            
+                         {hasMoreTests && (
+               <button
+                 onClick={() => toggleRowExpansion(row.visitId, 'tests')}
+                 className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
+               >
+                 {isExpanded ? 'Show Less' : `View All (${totalTestCount})`}
+               </button>
+             )}
           </div>
         );
       }
     },
     {
       header: 'Package',
-      accessor: (row: Patient) => (
-        <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
-          {row.packageIds.map((packageId) => {
-            const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-            if (!packageDetails) return null;
+      accessor: (row: Patient) => {
+        if (row.packageIds.length === 0) {
+          return (
+            <div className="text-gray-400 text-xs italic">No packages</div>
+          );
+        }
 
-            return (
-              <div key={packageDetails.id} className="flex flex-col gap-1">
-                {/* Package name with icon */}
-                <div className="flex items-center gap-1">
-                  <span className="text-xs">📦</span>
-                  <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs font-medium">
-                    {packageDetails.packageName}
-                  </span>
-                </div>
-                
-                                 {/* Package tests */}
-                 <div className="flex flex-col gap-1 ml-2">
-                   {packageDetails.tests.map((test, index) => {
-                     // Use the test ID directly from the package test data
-                     const testId = test.id;
-                     if (!testId) return null;
+        const isExpanded = expandedRows.has(`${row.visitId}-packages`);
+        
+                 // Calculate total tests and completed tests across all packages
+         const totalTests = row.packageIds.reduce((total, packageId) => {
+           const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+           return total + (packageDetails?.tests?.length || 0);
+         }, 0);
+         
+         // For CollectionTable, show total test count (not just completed)
+         const totalPackageTestCount = row.packageIds.reduce((total, packageId) => {
+           const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+           if (!packageDetails) return total;
+           
+           return total + packageDetails.tests.length;
+         }, 0);
+         
+         // Show expandable logic if there are more than 3 total tests (even with 1 package)
+         const hasMoreContent = totalTests > 3;
+         
+         // If expanded, show all packages. If not expanded, show first package with limited tests
+         let displayPackages: number[];
+         let displayTests: Array<{
+           id: number;
+           name: string;
+           price: number;
+           category?: string;
+         }> | null = null;
+         
+         if (isExpanded) {
+           // Show all packages and all tests
+           displayPackages = row.packageIds;
+         } else {
+           // Show first package with limited tests
+           displayPackages = row.packageIds.slice(0, 1);
+           const firstPackage = healthPackages.find((pkg) => pkg.id === row.packageIds[0]);
+           if (firstPackage) {
+             displayTests = firstPackage.tests.slice(0, 3); // Show only first 3 tests
+           }
+         }
 
-                                         const testResult = row.testResult?.find(tr => tr.testId === testId);
-                    
-                    // Determine test status
-                    let statusColor = 'bg-purple-100 text-purple-800';
-                    let statusText = 'Pending';
-                    
-                    if (testResult) {
-                      if (testResult.isFilled && testResult.reportStatus === 'Completed') {
-                        statusColor = 'bg-green-100 text-green-800';
-                        statusText = 'Completed';
-                      } else if (testResult.isFilled) {
-                        statusColor = 'bg-orange-100 text-orange-800';
-                        statusText = 'In Progress';
+        return (
+          <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
+            {displayPackages.map((packageId) => {
+              const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+              if (!packageDetails) return null;
+
+              return (
+                <div key={packageDetails.id} className="flex flex-col gap-1">
+                  {/* Package name with icon */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs">📦</span>
+                    <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                      {packageDetails.packageName}
+                    </span>
+                  </div>
+                  
+                  {/* Package tests */}
+                  <div className="flex flex-col gap-1 ml-2">
+                    {(isExpanded ? packageDetails.tests : (displayTests || packageDetails.tests.slice(0, 3))).map((test: { id: number; name: string; price: number; category?: string }, index: number) => {
+                      // Use the test ID directly from the package test data
+                      const testId = test.id;
+                      if (!testId) return null;
+
+                      const testResult = row.testResult?.find(tr => tr.testId === testId);
+                      
+                      // Determine test status
+                      let statusColor = 'bg-purple-100 text-purple-800';
+                      let statusText = 'Pending';
+                      
+                      if (testResult) {
+                        if (testResult.isFilled && testResult.reportStatus === 'Completed') {
+                          statusColor = 'bg-green-100 text-green-800';
+                          statusText = 'Completed';
+                        } else if (testResult.isFilled) {
+                          statusColor = 'bg-orange-100 text-orange-800';
+                          statusText = 'In Progress';
+                        }
                       }
-                    }
-                    
-                    return (
-                      <div key={`${packageDetails.id}-${index}`} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
-                        <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs inline-block w-fit`}>
-                          {test.name}
-                        </span>
-                        {/* Only show status text if not pending */}
-                        {statusText !== 'Pending' && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${statusColor.replace('100', '200')}`}>
-                            {statusText}
+                      
+                      return (
+                        <div key={`${packageDetails.id}-${index}`} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
+                          <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs inline-block w-fit`}>
+                            {test.name}
                           </span>
-                        )}
-                        {/* Only show status icon if test is completed */}
-                        {testResult && testResult.isFilled && (
-                          <span 
-                            className="text-xs px-1 py-0.5 rounded cursor-help bg-green-100 text-green-700 border border-green-200"
-                            title={`Test completed - ${testResult.reportStatus}`}
-                          >
-                            ✓
-                          </span>
-                        )}
-                        {/* Only show result button if test is not completed */}
-                        {(!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
-                                                     <button
-                             onClick={() => handleOpenReportModal(row, testId)}
-                            className="flex items-center gap-1 bg-purple-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-purple-600 transition-colors whitespace-nowrap"
-                            title={`View result for ${test.name}`}
-                          >
-                            <PlusIcon className="w-2.5 h-2.5 text-white" />
-                            <span className='text-white text-xs'>Result</span>
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
+                          {/* Only show status text if not pending */}
+                          {statusText !== 'Pending' && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${statusColor.replace('100', '200')}`}>
+                              {statusText}
+                            </span>
+                          )}
+                          {/* Only show status icon if test is completed */}
+                          {testResult && testResult.isFilled && (
+                            <span 
+                              className="text-xs px-1 py-0.5 rounded cursor-help bg-green-100 text-green-700 border border-green-200"
+                              title={`Test completed - ${testResult.reportStatus}`}
+                            >
+                              ✓
+                            </span>
+                          )}
+                          {/* Only show result button if test is not completed */}
+                          {(!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
+                            <button
+                              onClick={() => handleOpenReportModal(row, testId)}
+                              className="flex items-center gap-1 bg-purple-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-purple-600 transition-colors whitespace-nowrap"
+                              title={`View result for ${test.name}`}
+                            >
+                              <PlusIcon className="w-2.5 h-2.5 text-white" />
+                              <span className='text-white text-xs'>Result</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          }).filter(Boolean)}
-        </div>
-      )
+              );
+            }).filter(Boolean)}
+            
+                         {hasMoreContent && (
+               <button
+                 onClick={() => toggleRowExpansion(row.visitId, 'packages')}
+                 className="text-xs text-purple-600 hover:text-purple-800 font-medium mt-1 w-fit"
+               >
+                 {isExpanded ? 'Show Less' : `View All (${totalPackageTestCount})`}
+               </button>
+             )}
+          </div>
+        );
+      }
     },
     {
       header: 'Samples',

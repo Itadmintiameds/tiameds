@@ -97,8 +97,7 @@ const TestComponentFactory: React.FC<TestComponentFactoryProps> = ({
         
       // Add more test-specific components here as needed
       
-      // case 'KIDNEY FUNCTION TEST (KFT)':
-      //   return <KFTComponent {...props} />;
+    
       
       default:
         return (

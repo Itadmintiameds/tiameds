@@ -103,12 +103,15 @@ const UpdateSample = ({ visitId, sampleNames, onClose }: UpdateSampleProps) => {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-800">Manage Samples</h3>
+            {/* Header */}
+            <div className="bg-blue-600 px-4 py-3 flex justify-between items-center rounded-t-lg">
+                <div className="flex items-center">
+                    <h2 className="text-lg font-semibold text-white">Manage Samples</h2>
+                </div>
                 <button
                     onClick={() => setIsAddingNew(true)}
                     disabled={isAddingNew}
-                    className="flex items-center gap-2 bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-2 bg-white text-blue-600 px-3 py-2 rounded-md hover:bg-gray-100 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
                 >
                     <Plus className="w-4 h-4" />
                     Add Sample

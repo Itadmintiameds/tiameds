@@ -280,8 +280,9 @@ export const uploadTestReferanceRangeCsv = async (labId: string, file: File): Pr
   
 
 export const getTestReferanceRangeByTestName = async (labId: string, testName: string): Promise<TestReferancePoint> => {
+  // /api/v1/lab/test-reference/18/test?testName=CROSS MATCH WHOLE BLOOD/PACKED
   try {
-    const response = await api.get<{ data: TestReferancePoint; message: string; status: string }>(`lab/test-reference/${labId}/test/${testName}`);
+    const response = await api.get<{ data: TestReferancePoint; message: string; status: string }>(`lab/test-reference/${labId}/test?testName=${testName}`);
     return response.data.data; // Extract the tests array from the response
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while fetching tests referance range by test name.';

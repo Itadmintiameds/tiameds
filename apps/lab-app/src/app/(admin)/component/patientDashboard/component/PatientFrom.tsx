@@ -174,6 +174,32 @@ const PatientForm: React.FC<PatientFormProps> = ({
   // Handle manual date input changes
   const handleDobInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    
+    // If user completely cleared the input, reset everything
+    if (!value.trim()) {
+      setDobInput('');
+      setAgeInputMode('dob');
+      setLastChanged('dob');
+      setTouchedFields(prev => ({ ...prev, dob: true }));
+      
+      const dobEvent = {
+        target: {
+          name: 'dateOfBirth',
+          value: ''
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      handleChange(dobEvent);
+
+      const ageEvent = {
+        target: {
+          name: 'age',
+          value: ''
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      handleChange(ageEvent);
+      return;
+    }
+    
     const cleanedValue = value.replace(/[^0-9/]/g, '');
 
     let formattedValue = cleanedValue;
@@ -184,52 +210,88 @@ const PatientForm: React.FC<PatientFormProps> = ({
       formattedValue = `${formattedValue.substring(0, 5)}/${formattedValue.substring(5)}`;
     }
 
-    if (formattedValue.length <= 10) {
-      setDobInput(formattedValue);
-      setAgeInputMode('dob');
-      setLastChanged('dob');
-      setTouchedFields(prev => ({ ...prev, dob: true }));
+    // Always update the input display
+    setDobInput(formattedValue);
+    setAgeInputMode('dob');
+    setLastChanged('dob');
+    setTouchedFields(prev => ({ ...prev, dob: true }));
 
-      if (formattedValue.length === 10) {
-        const date = parseDateInput(formattedValue);
-        if (date && !isNaN(date.getTime())) {
-          const today = new Date();
-          today.setHours(12, 0, 0, 0);
-
-          if (date > today) {
-            toast.error('Date of birth cannot be in the future', { autoClose: 1000, position: "top-center" });
-            return;
-          }
-
-          const hundredYearsAgo = new Date();
-          hundredYearsAgo.setHours(12, 0, 0, 0);
-          hundredYearsAgo.setFullYear(hundredYearsAgo.getFullYear() - 100);
-          if (date < hundredYearsAgo) {
-            toast.error('Date of birth cannot be more than 100 years ago', { autoClose: 1000, position: "top-center" });
-            return;
-          }
-
-          const dobEvent = {
-            target: {
-              name: 'dateOfBirth',
-              value: formatToISODate(date)
-            }
-          } as React.ChangeEvent<HTMLInputElement>;
-          handleChange(dobEvent);
-
-          const ageString = calculateAge(formatToISODate(date));
-          const ageEvent = {
-            target: {
-              name: 'age',
-              value: ageString
-            }
-          } as React.ChangeEvent<HTMLInputElement>;
-          handleChange(ageEvent);
-          
-          return;
+    // Clear DOB and age if input is incomplete or invalid
+    if (formattedValue.length !== 10) {
+      const dobEvent = {
+        target: {
+          name: 'dateOfBirth',
+          value: ''
         }
+      } as React.ChangeEvent<HTMLInputElement>;
+      handleChange(dobEvent);
+
+      const ageEvent = {
+        target: {
+          name: 'age',
+          value: ''
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      handleChange(ageEvent);
+      return;
+    }
+
+    // Only process if we have a complete date (10 characters)
+    const date = parseDateInput(formattedValue);
+    if (date && !isNaN(date.getTime())) {
+      const today = new Date();
+      today.setHours(12, 0, 0, 0);
+
+      if (date > today) {
+        toast.error('Date of birth cannot be in the future', { autoClose: 1000, position: "top-center" });
+        // Clear the invalid date
+        setDobInput('');
+        const dobEvent = {
+          target: {
+            name: 'dateOfBirth',
+            value: ''
+          }
+        } as React.ChangeEvent<HTMLInputElement>;
+        handleChange(dobEvent);
+        return;
       }
 
+      const hundredYearsAgo = new Date();
+      hundredYearsAgo.setHours(12, 0, 0, 0);
+      hundredYearsAgo.setFullYear(hundredYearsAgo.getFullYear() - 100);
+      if (date < hundredYearsAgo) {
+        toast.error('Date of birth cannot be more than 100 years ago', { autoClose: 1000, position: "top-center" });
+        // Clear the invalid date
+        setDobInput('');
+        const dobEvent = {
+          target: {
+            name: 'dateOfBirth',
+            value: ''
+          }
+        } as React.ChangeEvent<HTMLInputElement>;
+        handleChange(dobEvent);
+        return;
+      }
+
+      // Valid date - set DOB and calculate age
+      const dobEvent = {
+        target: {
+          name: 'dateOfBirth',
+          value: formatToISODate(date)
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      handleChange(dobEvent);
+
+      const ageString = calculateAge(formatToISODate(date));
+      const ageEvent = {
+        target: {
+          name: 'age',
+          value: ageString
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      handleChange(ageEvent);
+    } else {
+      // Invalid date format - clear everything
       const dobEvent = {
         target: {
           name: 'dateOfBirth',
@@ -638,9 +700,6 @@ const PatientForm: React.FC<PatientFormProps> = ({
                   }`}
                 placeholder="Enter years (0-100)"
                 maxLength={3}
-                readOnly
-                disabled
-                aria-readonly
               />
               {validationErrors.years && (
                 <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.years}</p>
@@ -659,9 +718,6 @@ const PatientForm: React.FC<PatientFormProps> = ({
                   }`}
                 placeholder="Enter months (0-12)"
                 maxLength={2}
-                readOnly
-                disabled
-                aria-readonly
               />
               {validationErrors.months && (
                 <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.months}</p>
@@ -680,9 +736,6 @@ const PatientForm: React.FC<PatientFormProps> = ({
                   }`}
                 placeholder="Enter days (0-31)"
                 maxLength={2}
-                readOnly
-                disabled
-                aria-readonly
               />
               {validationErrors.days && (
                 <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.days}</p>

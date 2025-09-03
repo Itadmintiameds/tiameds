@@ -39,6 +39,9 @@ const PendingTable: React.FC = () => {
   const [isViewingDetails, setIsViewingDetails] = useState(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(8);
+  
+  // State for expanded rows
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
 
 
@@ -155,6 +158,21 @@ const PendingTable: React.FC = () => {
     }
   };
 
+  // Toggle row expansion
+  const toggleRowExpansion = (visitId: number, columnType: 'tests' | 'packages') => {
+    const key = `${visitId}-${columnType}`;
+    
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
+
   const columns = [
     {
       header: 'ID',
@@ -211,28 +229,89 @@ const PendingTable: React.FC = () => {
           !packageTestIds.has(testId)
         );
 
-                 return (
-           <div className="flex flex-col gap-1">
-             {individualTestIds
-               .map((testId) => {
-                 const test = tests.find((t) => t.id === testId);
-                 return test ? (
-                   <span key={test.id} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs inline-block w-fit">
-                     {test.name}
-                   </span>
-                 ) : null;
-               })
-               .filter(Boolean)}
-           </div>
-         );
+        if (individualTestIds.length === 0) {
+          return (
+            <div className="text-gray-400 text-xs italic">No tests</div>
+          );
+        }
+
+        const isExpanded = expandedRows.has(`${row.visitDetailDto.visitId}-tests`);
+        const displayTests = isExpanded ? individualTestIds : individualTestIds.slice(0, 3);
+        const hasMoreTests = individualTestIds.length > 3;
+
+        return (
+          <div className="flex flex-col gap-1">
+            {displayTests.map((testId) => {
+              const test = tests.find((t) => t.id === testId);
+              return test ? (
+                <span key={test.id} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs inline-block w-fit">
+                  {test.name}
+                </span>
+              ) : null;
+            }).filter(Boolean)}
+            
+            {hasMoreTests && (
+              <button
+                onClick={() => toggleRowExpansion(row.visitDetailDto.visitId!, 'tests')}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
+              >
+                {isExpanded ? 'Show Less' : `View All (${individualTestIds.length})`}
+              </button>
+            )}
+          </div>
+        );
       },
     },
     {
       header: 'Package',
-      accessor: (row: Patient) => (
-        <div className="flex flex-col gap-2">
-          {row.visitDetailDto.packageIds
-            .map((packageId) => {
+      accessor: (row: Patient) => {
+        if (row.visitDetailDto.packageIds.length === 0) {
+          return (
+            <div className="text-gray-400 text-xs italic">No packages</div>
+          );
+        }
+
+        const isExpanded = expandedRows.has(`${row.visitDetailDto.visitId}-packages`);
+        
+        // Calculate total tests across all packages
+        const totalTests = row.visitDetailDto.packageIds.reduce((total, packageId) => {
+          const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+          return total + (packageDetails?.tests?.length || 0);
+        }, 0);
+        
+        // Show expandable logic if there are more than 3 total tests (even with 1 package)
+        const hasMoreContent = totalTests > 3;
+        
+        // If expanded, show all packages. If not expanded, show first package with limited tests
+        let displayPackages: number[];
+        let displayTests: Array<{
+          id: number;
+          name: string;
+          price: number;
+          category?: string;
+        }> | null = null;
+        
+        if (isExpanded) {
+          // Show all packages and all tests
+          displayPackages = row.visitDetailDto.packageIds;
+        } else {
+          // Show first package with limited tests
+          displayPackages = row.visitDetailDto.packageIds.slice(0, 1);
+          const firstPackage = healthPackages.find((pkg) => pkg.id === row.visitDetailDto.packageIds[0]);
+          if (firstPackage) {
+            displayTests = firstPackage.tests.slice(0, 3).map(test => ({
+              id: test.id,
+              name: test.name,
+              price: test.price,
+              category: test.category
+            })); // Show only first 3 tests
+          }
+        }
+
+
+        return (
+          <div className="flex flex-col gap-2">
+            {displayPackages.map((packageId) => {
               const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
               if (!packageDetails) return null;
 
@@ -241,19 +320,28 @@ const PendingTable: React.FC = () => {
                   <span className="text-xs font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
                     📦 {packageDetails.packageName}
                   </span>
-                                     <div className="flex flex-col gap-1 ml-2">
-                     {packageDetails.tests.map((test, index) => (
-                       <span key={`${packageDetails.id}-${index}`} className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs inline-block w-fit">
-                         {test.name}
-                       </span>
-                     ))}
-                   </div>
+                  <div className="flex flex-col gap-1 ml-2">
+                    {(isExpanded ? packageDetails.tests : (displayTests || packageDetails.tests.slice(0, 3))).map((test: { id: number; name: string; price: number; category?: string }, index: number) => (
+                      <span key={`${packageDetails.id}-${index}`} className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs inline-block w-fit">
+                        {test.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               );
-            })
-            .filter(Boolean)}
-        </div>
-      ),
+            }).filter(Boolean)}
+            
+            {hasMoreContent && (
+              <button
+                onClick={() => toggleRowExpansion(row.visitDetailDto.visitId!, 'packages')}
+                className="text-xs text-purple-600 hover:text-purple-800 font-medium mt-1 w-fit"
+              >
+                {isExpanded ? 'Show Less' : `View All (${totalTests} tests)`}
+              </button>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: 'Actions',

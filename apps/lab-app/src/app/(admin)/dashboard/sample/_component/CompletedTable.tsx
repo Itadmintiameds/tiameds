@@ -76,10 +76,9 @@ const CompletedTable = () => {
     const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
     const [showDateFilter, setShowDateFilter] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-
-
-
-
+    
+    // State for expanded rows
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
     const handleFilterChange = (filter: DateFilterOption) => {
         setDateFilter(filter);
@@ -88,7 +87,20 @@ const CompletedTable = () => {
         }
     };
 
-
+    // Toggle row expansion
+    const toggleRowExpansion = (visitId: number, columnType: 'tests' | 'packages') => {
+        const key = `${visitId}-${columnType}`;
+        
+        setExpandedRows(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(key)) {
+                newSet.delete(key);
+            } else {
+                newSet.add(key);
+            }
+            return newSet;
+        });
+    };
 
     const fetchVisits = async () => {
         try {
@@ -245,9 +257,19 @@ const CompletedTable = () => {
                     !packageTestIds.has(testId)
                 );
 
+                const isExpanded = expandedRows.has(`${row.visitId}-tests`);
+                const displayTests = isExpanded ? individualTestIds : individualTestIds.slice(0, 3);
+                const hasMoreTests = individualTestIds.length > 3;
+                
+                // Count completed tests for display
+                const completedTestCount = individualTestIds.filter(testId => {
+                    const testResult = row.testResult?.find(tr => tr.testId === testId);
+                    return testResult && testResult.isFilled && testResult.reportStatus === 'Completed';
+                }).length;
+
                 return (
                     <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
-                        {individualTestIds.map((testId) => {
+                        {displayTests.map((testId) => {
                             const test = tests.find((t) => t.id === testId);
                             const testResult = row.testResult?.find(tr => tr.testId === testId);
 
@@ -287,77 +309,146 @@ const CompletedTable = () => {
                                 </div>
                             );
                         }).filter(Boolean)}
+                        
+                        {hasMoreTests && (
+                            <button
+                                onClick={() => toggleRowExpansion(row.visitId, 'tests')}
+                                className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
+                            >
+                                {isExpanded ? 'Show Less' : `View All (${completedTestCount})`}
+                            </button>
+                        )}
                     </div>
                 );
             }
         },
         {
             header: 'Package',
-            accessor: (row: Patient) => (
-                <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
-                    {row.packageIds.map((packageId) => {
-                        const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-                        if (!packageDetails) return null;
+            accessor: (row: Patient) => {
+                if (row.packageIds.length === 0) {
+                    return (
+                        <div className="text-gray-400 text-xs italic">No packages</div>
+                    );
+                }
 
-                        return (
-                            <div key={packageDetails.id} className="flex flex-col gap-1">
-                                {/* Package name with icon */}
-                                <div className="flex items-center gap-1">
-                                    <span className="text-xs">📦</span>
-                                    <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs font-medium">
-                                        {packageDetails.packageName}
-                                    </span>
-                                </div>
+                const isExpanded = expandedRows.has(`${row.visitId}-packages`);
+                
+                // Calculate total tests and completed tests across all packages
+                const totalTests = row.packageIds.reduce((total, packageId) => {
+                    const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+                    return total + (packageDetails?.tests?.length || 0);
+                }, 0);
+                
+                // Count completed tests for display
+                const completedPackageTestCount = row.packageIds.reduce((total, packageId) => {
+                    const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+                    if (!packageDetails) return total;
+                    
+                    return total + packageDetails.tests.filter(test => {
+                        const testResult = row.testResult?.find(tr => tr.testId === test.id);
+                        return testResult && testResult.isFilled && testResult.reportStatus === 'Completed';
+                    }).length;
+                }, 0);
+                
+                // Show expandable logic if there are more than 3 total tests (even with 1 package)
+                const hasMoreContent = totalTests > 3;
+                
+                // If expanded, show all packages. If not expanded, show first package with limited tests
+                let displayPackages: number[];
+                let displayTests: Array<{
+                    id: number;
+                    name: string;
+                    price: number;
+                    category?: string;
+                }> | null = null;
+                
+                if (isExpanded) {
+                    // Show all packages and all tests
+                    displayPackages = row.packageIds;
+                } else {
+                    // Show first package with limited tests
+                    displayPackages = row.packageIds.slice(0, 1);
+                    const firstPackage = healthPackages.find((pkg) => pkg.id === row.packageIds[0]);
+                    if (firstPackage) {
+                        displayTests = firstPackage.tests.slice(0, 3); // Show only first 3 tests
+                    }
+                }
 
-                                {/* Package tests */}
-                                <div className="flex flex-col gap-1 ml-2">
-                                    {packageDetails.tests.map((test, index) => {
-                                        // Use the test ID directly from the package test data
-                                        const testId = test.id;
-                                        if (!testId) return null;
+                return (
+                    <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
+                        {displayPackages.map((packageId) => {
+                            const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+                            if (!packageDetails) return null;
 
-                                        const testResult = row.testResult?.find(tr => tr.testId === testId);
+                            return (
+                                <div key={packageDetails.id} className="flex flex-col gap-1">
+                                    {/* Package name with icon */}
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-xs">📦</span>
+                                        <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                                            {packageDetails.packageName}
+                                        </span>
+                                    </div>
 
-                                        // Only show tests that have progress (completed or in progress), skip pending ones
-                                        if (!testResult || (!testResult.isFilled && testResult.reportStatus === 'Pending')) {
-                                            return null;
-                                        }
+                                    {/* Package tests */}
+                                    <div className="flex flex-col gap-1 ml-2">
+                                        {(isExpanded ? packageDetails.tests : (displayTests || packageDetails.tests.slice(0, 3))).map((test, index) => {
+                                            // Use the test ID directly from the package test data
+                                            const testId = test.id;
+                                            if (!testId) return null;
 
-                                        // Determine test status
-                                        let statusColor = 'bg-purple-100 text-purple-800';
-                                        let statusText = 'In Progress';
+                                            const testResult = row.testResult?.find(tr => tr.testId === testId);
 
-                                        if (testResult.reportStatus === 'Completed') {
-                                            statusColor = 'bg-green-100 text-green-800';
-                                            statusText = 'Completed';
-                                        }
+                                            // Only show tests that have progress (completed or in progress), skip pending ones
+                                            if (!testResult || (!testResult.isFilled && testResult.reportStatus === 'Pending')) {
+                                                return null;
+                                            }
 
-                                        return (
-                                            <div key={`${packageDetails.id}-${index}`} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
-                                                <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs inline-block w-fit`}>
-                                                    {test.name}
-                                                </span>
-                                                <span className={`text-xs px-1.5 py-0.5 rounded ${statusColor.replace('100', '200')}`}>
-                                                    {statusText}
-                                                </span>
-                                                {/* Show checkmark for completed tests */}
-                                                {testResult.reportStatus === 'Completed' && (
-                                                    <span
-                                                        className="text-xs px-1 py-0.5 rounded cursor-help bg-green-100 text-green-700 border border-green-200"
-                                                        title={`Test completed - ${testResult.reportStatus}`}
-                                                    >
-                                                        ✓
+                                            // Determine test status
+                                            let statusColor = 'bg-purple-100 text-purple-800';
+                                            let statusText = 'In Progress';
+
+                                            if (testResult.reportStatus === 'Completed') {
+                                                statusColor = 'bg-green-100 text-green-800';
+                                                statusText = 'Completed';
+                                            }
+
+                                            return (
+                                                <div key={`${packageDetails.id}-${index}`} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
+                                                    <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs inline-block w-fit`}>
+                                                        {test.name}
                                                     </span>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                                    <span className={`text-xs px-1.5 py-0.5 rounded ${statusColor.replace('100', '200')}`}>
+                                                        {statusText}
+                                                    </span>
+                                                    {/* Show checkmark for completed tests */}
+                                                    {testResult.reportStatus === 'Completed' && (
+                                                        <span
+                                                            className="text-xs px-1 py-0.5 rounded cursor-help bg-green-100 text-green-700 border border-green-200"
+                                                            title={`Test completed - ${testResult.reportStatus}`}
+                                                        >
+                                                            ✓
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    }).filter(Boolean)}
-                </div>
-            )
+                            );
+                        }).filter(Boolean)}
+                        
+                        {hasMoreContent && (
+                            <button
+                                onClick={() => toggleRowExpansion(row.visitId, 'packages')}
+                                className="text-xs text-purple-600 hover:text-purple-800 font-medium mt-1 w-fit"
+                            >
+                                {isExpanded ? 'Show Less' : `View All (${completedPackageTestCount})`}
+                            </button>
+                        )}
+                    </div>
+                );
+            }
         },
         {
             header: 'Actions',
@@ -469,7 +560,6 @@ const CompletedTable = () => {
                                                 endDate={customEndDate}
                                                 minDate={customStartDate ?? undefined}
                                                 maxDate={new Date()}
-                                                className="w-full p-1.5 border border-gray-300 rounded-md text-xs"
                                                 placeholderText="Select end date"
                                             />
                                         </div>

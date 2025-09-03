@@ -588,7 +588,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
                                     {/* Show REFERENCE RANGE column for numeric fields */}
                                     {hasReferenceRange && (
                                       <td className="px-4 py-2 text-right text-sm text-gray-500">
-                                        {item.referenceRange || 'N/A'}
+                                        {item?.referenceRange || 'N/A'} {item?.unit}
                                       </td>
                                     )}
                                   </tr>
