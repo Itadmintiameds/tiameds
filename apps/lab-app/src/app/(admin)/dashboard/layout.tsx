@@ -47,7 +47,7 @@ const Layout = ({ children }: LayoutProps) => {
           setLabs(storedData.labs);
           setCurrentLab(storedData.labs[storedData.currentLabIndex]);
         }
-        
+
         // Always fetch fresh data but don't wait for it
         const data = await getUsersLab();
         setLabs(data);

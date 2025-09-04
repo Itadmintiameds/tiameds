@@ -29,7 +29,7 @@ const CBCComponent: React.FC<CBCComponentProps> = ({
   // CBC field ordering
   const cbcOrder = [
     'HAEMOGLOBIN',
-    'TOTAL W.B.C',
+    'TOTAL COUNT/ W.B.C',
     'NEUTROPHILS',
     'LYMPHOCYTES',
     'EOSINOPHILS',

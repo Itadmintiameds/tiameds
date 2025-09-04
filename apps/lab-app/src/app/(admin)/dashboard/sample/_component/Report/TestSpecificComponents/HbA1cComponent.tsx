@@ -30,31 +30,29 @@ const HbA1cComponent: React.FC<HbA1cComponentProps> = ({
   // Sort HbA1c fields in correct order
   const sortHbA1cFields = (referenceData: TestReferancePoint[]) => {
     return referenceData.sort((a, b) => {
-      const aIndex = hba1cOrder.findIndex(item =>
-        a.testDescription?.toUpperCase().includes(item) ||
-        a.testDescription?.toUpperCase() === item
-      );
-      const bIndex = hba1cOrder.findIndex(item =>
-        b.testDescription?.toUpperCase().includes(item) ||
-        b.testDescription?.toUpperCase() === item
-      );
-
-      if (aIndex !== -1 && bIndex !== -1) {
-        return aIndex - bIndex;
-      }
-
+      // Get exact match index for each field
+      const aIndex = hba1cOrder.findIndex((item) => a.testDescription?.toUpperCase() === item.toUpperCase());
+      const bIndex = hba1cOrder.findIndex((item) => b.testDescription?.toUpperCase() === item.toUpperCase());
+      
+      // If both fields are found in our order array, sort by their position
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      
+      // If only 'a' is found, it comes first
       if (aIndex !== -1) return -1;
+      
+      // If only 'b' is found, it comes first
       if (bIndex !== -1) return 1;
-
+      
+      // If neither is found, maintain original order
       return 0;
     });
   };
 
-  // Create a helper function to find index by exact or partial match
+  // Create a helper function to find index by exact match
   const findIndexByDescription = (searchTerm: string) => {
     return referencePoints.findIndex(point => {
       const description = point.testDescription?.toUpperCase() || '';
-      return description.includes(searchTerm.toUpperCase());
+      return description === searchTerm.toUpperCase();
     });
   };
 
@@ -79,12 +77,12 @@ const HbA1cComponent: React.FC<HbA1cComponentProps> = ({
 
   // Check if field is auto-calculated
   const isAutoCalculatedField = (point: TestReferancePoint) => {
-    return point.testDescription?.toUpperCase().includes('MEAN BLOOD GLUCOSE');
+    return point.testDescription?.toUpperCase() === 'MEAN BLOOD GLUCOSE';
   };
 
   // Check if this is the first HbA1c field
   const isFirstHbA1cField = (point: TestReferancePoint) => {
-    return point.testDescription?.toUpperCase().includes('HbA1c (GLYCOSYLATED Hb)');
+    return point.testDescription?.toUpperCase() === 'HbA1c (GLYCOSYLATED Hb)';
   };
 
   const sortedPoints = sortHbA1cFields(referencePoints);

@@ -23,18 +23,28 @@ const AECComponent: React.FC<AECComponentProps> = ({
 }) => {
   // Field ordering
   const aecOrder = [
-    'ABSOLUTE EOSINOPHIL COUNT',
+    'EOSINOPHIL COUNT',
     'TOTAL COUNT',
-    'AEC',
+    'ABSOLUTE EOSINOPHIL COUNT',
   ];
+  
 
   const sortAECFields = (referenceData: TestReferancePoint[]) => {
     return referenceData.sort((a, b) => {
-      const aIndex = aecOrder.findIndex((item) => a.testDescription?.toUpperCase().includes(item));
-      const bIndex = aecOrder.findIndex((item) => b.testDescription?.toUpperCase().includes(item));
+      // Get exact match index for each field
+      const aIndex = aecOrder.findIndex((item) => a.testDescription?.toUpperCase() === item.toUpperCase());
+      const bIndex = aecOrder.findIndex((item) => b.testDescription?.toUpperCase() === item.toUpperCase());
+      
+      // If both fields are found in our order array, sort by their position
       if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      
+      // If only 'a' is found, it comes first
       if (aIndex !== -1) return -1;
+      
+      // If only 'b' is found, it comes first
       if (bIndex !== -1) return 1;
+      
+      // If neither is found, maintain original order
       return 0;
     });
   };
@@ -44,17 +54,17 @@ const AECComponent: React.FC<AECComponentProps> = ({
   };
 
   const calculateDerivedValues = () => {
-    const absEosIndex = findIndexByDescription('ABSOLUTE EOSINOPHIL COUNT');
+    const eosinophilCountIndex = findIndexByDescription('EOSINOPHIL COUNT');
     const totalCountIndex = findIndexByDescription('TOTAL COUNT');
-    const aecIndex = findIndexByDescription('AEC');
+    const absEosIndex = findIndexByDescription('ABSOLUTE EOSINOPHIL COUNT');
 
-    const absEosVal = parseFloat(inputValues[testName]?.[absEosIndex] || '0');
+    const eosinophilCountVal = parseFloat(inputValues[testName]?.[eosinophilCountIndex] || '0');
     const totalCountVal = parseFloat(inputValues[testName]?.[totalCountIndex] || '0');
 
-    // AEC = (TOTAL COUNT * ABSOLUTE EOSINOPHIL COUNT) / 100
-    const calculatedAEC = absEosVal > 0 && totalCountVal > 0 ? (totalCountVal * absEosVal) / 100 : 0;
+    // ABSOLUTE EOSINOPHIL COUNT = (TOTAL COUNT * EOSINOPHIL COUNT) / 100
+    const calculatedAbsEos = eosinophilCountVal > 0 && totalCountVal > 0 ? (totalCountVal * eosinophilCountVal) / 100 : 0;
 
-    return { absEosIndex, totalCountIndex, aecIndex, calculatedAEC };
+    return { eosinophilCountIndex, totalCountIndex, absEosIndex, calculatedAbsEos };
   };
 
   const sortedPoints = sortAECFields(referencePoints);
@@ -65,19 +75,19 @@ const AECComponent: React.FC<AECComponentProps> = ({
     testName,
   ]);
 
-  // Keep AEC updated and read-only
+  // Keep ABSOLUTE EOSINOPHIL COUNT updated and read-only
   useEffect(() => {
-    if (derivedValues.aecIndex === -1) return;
-    if (!isNaN(derivedValues.calculatedAEC) && derivedValues.calculatedAEC > 0) {
-      const newValue = derivedValues.calculatedAEC.toFixed(0);
-      const currentValue = (inputValues[testName]?.[derivedValues.aecIndex] || '').trim();
+    if (derivedValues.absEosIndex === -1) return;
+    if (!isNaN(derivedValues.calculatedAbsEos) && derivedValues.calculatedAbsEos > 0) {
+      const newValue = derivedValues.calculatedAbsEos.toFixed(0);
+      const currentValue = (inputValues[testName]?.[derivedValues.absEosIndex] || '').trim();
       if (parseFloat(currentValue) !== parseFloat(newValue)) {
-        onInputChange(testName, derivedValues.aecIndex, newValue);
+        onInputChange(testName, derivedValues.absEosIndex, newValue);
       }
     } else {
-      const currentValue = (inputValues[testName]?.[derivedValues.aecIndex] || '').trim();
+      const currentValue = (inputValues[testName]?.[derivedValues.absEosIndex] || '').trim();
       if (currentValue !== '') {
-        onInputChange(testName, derivedValues.aecIndex, '');
+        onInputChange(testName, derivedValues.absEosIndex, '');
       }
     }
   }, [derivedValues, inputValues, onInputChange, testName]);
@@ -87,13 +97,13 @@ const AECComponent: React.FC<AECComponentProps> = ({
       {sortedPoints.map((point) => {
         const unsortedIndex = referencePoints.findIndex((p) => p.id === point.id);
         const currentValue = inputValues[testName]?.[unsortedIndex] || '';
-        const isAutoField = (point.testDescription?.toUpperCase() || '').includes('AEC') && !(point.testDescription?.toUpperCase() || '').includes('TOTAL COUNT') && !(point.testDescription?.toUpperCase() || '').includes('ABSOLUTE EOSINOPHIL COUNT');
+        const isAutoField = (point.testDescription?.toUpperCase() || '').includes('ABSOLUTE EOSINOPHIL COUNT');
         const status = getValueStatus(currentValue, point.minReferenceRange, point.maxReferenceRange);
 
         let displayValue = currentValue;
         let isReadOnly = false;
         if (isAutoField) {
-          displayValue = derivedValues.calculatedAEC > 0 ? derivedValues.calculatedAEC.toFixed(0) : '';
+          displayValue = derivedValues.calculatedAbsEos > 0 ? derivedValues.calculatedAbsEos.toFixed(0) : '';
           isReadOnly = true;
         }
 

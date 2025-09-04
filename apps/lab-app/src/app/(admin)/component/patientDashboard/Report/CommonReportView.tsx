@@ -362,25 +362,25 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
                                 };
 
                                 // Determine if result is out of range (for numeric fields only)
-                                const isOutOfRange = (() => {
-                                    if (isDescriptionField || isDropdownField) return false;
+                                // const isOutOfRange = (() => {
+                                //     if (isDescriptionField || isDropdownField) return false;
                                     
-                                    const value = parseFloat(param.enteredValue);
-                                    if (isNaN(value)) return false;
+                                //     const value = parseFloat(param.enteredValue);
+                                //     if (isNaN(value)) return false;
                                     
-                                    const range = param.referenceRange;
-                                    if (!range) return false;
+                                //     const range = param.referenceRange;
+                                //     if (!range) return false;
                                     
-                                    // Simple range check
-                                    const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-                                    if (rangeMatch) {
-                                        const min = parseFloat(rangeMatch[1]);
-                                        const max = parseFloat(rangeMatch[2]);
-                                        return value < min || value > max;
-                                    }
+                                //     // Simple range check
+                                //     const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+                                //     if (rangeMatch) {
+                                //         const min = parseFloat(rangeMatch[1]);
+                                //         const max = parseFloat(rangeMatch[2]);
+                                //         return value < min || value > max;
+                                //     }
                                     
-                                    return false;
-                                })();
+                                //     return false;
+                                // })();
 
                                 const hasDescriptionAny = testResults.some(p => (p.referenceDescription?.toUpperCase() || '').includes('DROPDOWN WITH DESCRIPTION'));
                                 const hasReferenceRangeAny = testResults.some(p => {
@@ -394,7 +394,7 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
 
                                                 return (
                                     <>
-                                        <tr key={`row-${idx}`} className={`border-b border-gray-300 ${isOutOfRange ? 'bg-red-50' : ''}`}>
+                                        <tr key={`row-${idx}`} className="border-b border-gray-300">
                                                                                          <td className={`p-2 border-r border-gray-300 font-medium text-xs ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-2/3' : ''}`}>
                                                              {hasNoDescription ? (
                                                                  <div className="flex items-center text-yellow-700">
@@ -405,7 +405,7 @@ const CommonReportView = ({ visitId, patientData, doctorName }: CommonReportView
                                                      getTestParameterName()
                                                              )}
                                                          </td>
-                                             <td className={`p-2 text-center text-xs ${isOutOfRange ? 'font-bold text-red-600' : ''} ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-1/3' : ''}`}>
+                                             <td className={`p-2 text-center text-xs ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-1/3' : ''}`}>
                                                  {formatResult()}
                                              </td>
                                             {testResults.some(param => {

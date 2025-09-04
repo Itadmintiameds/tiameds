@@ -74,15 +74,15 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   const [hasMissingDescriptions, setHasMissingDescriptions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const formatAgeDisplay = (age: { years: number; months: number; days: number }) => {
-    if (age.years > 0) {
-      return `${age.years} year${age.years > 1 ? 's' : ''} ${age.months > 0 ? `${age.months} month${age.months > 1 ? 's' : ''}` : ''}`;
-    } else if (age.months > 0) {
-      return `${age.months} month${age.months > 1 ? 's' : ''} ${age.days > 0 ? `${age.days} day${age.days > 1 ? 's' : ''}` : ''}`;
-    } else {
-      return `${age.days} day${age.days !== 1 ? 's' : ''}`;
-    }
-  };
+  // const formatAgeDisplay = (age: { years: number; months: number; days: number }) => {
+  //   if (age.years > 0) {
+  //     return `${age.years} year${age.years > 1 ? 's' : ''} ${age.months > 0 ? `${age.months} month${age.months > 1 ? 's' : ''}` : ''}`;
+  //   } else if (age.months > 0) {
+  //     return `${age.months} month${age.months > 1 ? 's' : ''} ${age.days > 0 ? `${age.days} day${age.days > 1 ? 's' : ''}` : ''}`;
+  //   } else {
+  //     return `${age.days} day${age.days !== 1 ? 's' : ''}`;
+  //   }
+  // };
 
   // Function to determine value status based on reference range
   const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
@@ -408,14 +408,14 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     );
   }
 
-  const patientAge = selectedPatient.dateOfBirth ? calculateAgeObject(selectedPatient.dateOfBirth) : { years: 0, months: 0, days: 0 };
+  // const patientAge = selectedPatient.dateOfBirth ? calculateAgeObject(selectedPatient.dateOfBirth) : { years: 0, months: 0, days: 0 };
 
   return (
     <div className="bg-white shadow-lg rounded-xl overflow-hidden h-[500px] overflow-y-auto p-5">
       <PatientBasicInfo patient={selectedPatient} />
 
       {/* Highlighted Banner for Reference Range Selection */}
-      <div className="relative bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 mb-6 shadow-md">
+      {/* <div className="relative bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 mb-6 shadow-md">
         <div className="text-white">
           <h3 className="text-lg font-bold mb-1 flex items-center">
             <TbInfoCircle className="mr-2" size={20} />
@@ -430,7 +430,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
             </p>
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* Range Indicator Legend */}
       <div className="flex flex-wrap items-center justify-center gap-4 mb-6 p-3 bg-blue-50 rounded-lg border border-blue-100">

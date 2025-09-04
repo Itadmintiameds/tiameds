@@ -24,8 +24,8 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
   // LFT field ordering
   const lftOrder = [
     'TOTAL PROTEIN',
-    'S.ALBUMIN',
-    'S.GLOBULIN',
+    'ALBUMIN',
+    'GLOBULIN',
     'A/G RATIO',
     'TOTAL BILIRUBIN',
     'DIRECT BILIRUBIN',
@@ -69,7 +69,7 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
   const calculateDerivedValues = () => {
     // Find the indices for the required fields using the helper function
     const totalProteinIndex = findIndexByDescription('TOTAL PROTEIN');
-    const sAlbuminIndex = findIndexByDescription('S.ALBUMIN') || findIndexByDescription('ALBUMIN');
+    const sAlbuminIndex = findIndexByDescription('ALBUMIN') || findIndexByDescription('ALBUMIN');
     const totalBilirubinIndex = findIndexByDescription('TOTAL BILIRUBIN');
     const directBilirubinIndex = findIndexByDescription('DIRECT BILIRUBIN');
 
@@ -111,7 +111,7 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
 
   // Check if field is auto-calculated
   const isAutoCalculatedField = (point: TestReferancePoint) => {
-    const autoFields = ['S.GLOBULIN', 'INDIRECT BILIRUBIN', 'A/G RATIO'];
+    const autoFields = ['GLOBULIN', 'INDIRECT BILIRUBIN', 'A/G RATIO'];
     return autoFields.some(field =>
       point.testDescription?.toUpperCase().includes(field)
     );
@@ -153,7 +153,7 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
     testName,
     // Only depend on the specific input values we need, not the entire inputValues object
     inputValues[testName]?.[referencePoints.findIndex(p => p.testDescription?.toUpperCase().includes('TOTAL PROTEIN'))],
-    inputValues[testName]?.[referencePoints.findIndex(p => p.testDescription?.toUpperCase().includes('S.ALBUMIN'))],
+    inputValues[testName]?.[referencePoints.findIndex(p => p.testDescription?.toUpperCase().includes('ALBUMIN'))],
     inputValues[testName]?.[referencePoints.findIndex(p => p.testDescription?.toUpperCase().includes('TOTAL BILIRUBIN'))],
     inputValues[testName]?.[referencePoints.findIndex(p => p.testDescription?.toUpperCase().includes('DIRECT BILIRUBIN'))]
   ]);
@@ -169,7 +169,7 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
     if (!derivedValues) return;
 
     const sGlobulinIndex = referencePoints.findIndex(point =>
-      point.testDescription?.toUpperCase().includes('S.GLOBULIN')
+      point.testDescription?.toUpperCase().includes('GLOBULIN')
     );
     const indirectBilirubinIndex = referencePoints.findIndex(point =>
       point.testDescription?.toUpperCase().includes('INDIRECT BILIRUBIN')
@@ -234,7 +234,7 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
         let displayValue = currentValue;
         let isReadOnly = false;
 
-        if (point.testDescription?.toUpperCase().includes('S.GLOBULIN')) {
+        if (point.testDescription?.toUpperCase().includes('GLOBULIN')) {
           displayValue = (derivedValues.totalProteinRaw !== '' && derivedValues.sAlbuminRaw !== '' && derivedValues.sGlobulin > 0)
             ? derivedValues.sGlobulin.toFixed(2)
             : '';
