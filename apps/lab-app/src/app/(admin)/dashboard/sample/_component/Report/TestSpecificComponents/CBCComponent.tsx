@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TestReferancePoint } from '@/types/test/testlist';
-import { TbChartLine, TbX, TbSquareRoundedCheck, TbClipboardText, TbNumbers, TbRuler } from 'react-icons/tb';
+import { TbChartLine, TbX, TbSquareRoundedCheck, TbNumbers, TbRuler } from 'react-icons/tb';
 
 interface CBCComponentProps {
   referencePoints: TestReferancePoint[];
@@ -240,11 +240,9 @@ const CBCComponent: React.FC<CBCComponentProps> = ({
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="flex items-start">
-                <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
+              <div className="flex items-center">
                 <div>
-                <p className="font-medium text-gray-600">Test Parameter</p>
-                  <p className="text-gray-800">
+                  <p className="text-gray-800 font-medium">
                     {(() => {
                       // For dropdown fields, extract the actual test parameter name
                       if (point.testDescription && point.testDescription.includes('DROPDOWN')) {

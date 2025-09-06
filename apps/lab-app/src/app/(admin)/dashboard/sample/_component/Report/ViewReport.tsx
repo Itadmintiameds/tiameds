@@ -3,9 +3,10 @@ import { PatientData } from "@/types/sample/sample";
 
 interface ViewReportProps {
     viewPatient: PatientData | null;
+    hidePrintButton?: boolean;
 }
 
-const ViewReport = ({ viewPatient }: ViewReportProps) => {
+const ViewReport = ({ viewPatient, hidePrintButton = false }: ViewReportProps) => {
     if (!viewPatient) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -21,6 +22,7 @@ const ViewReport = ({ viewPatient }: ViewReportProps) => {
             visitId={viewPatient.visitId}
             patientData={viewPatient}
             doctorName={viewPatient.doctorName}
+            hidePrintButton={hidePrintButton}
         />
     );
 };

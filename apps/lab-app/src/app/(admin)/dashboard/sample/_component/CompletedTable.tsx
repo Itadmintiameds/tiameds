@@ -622,15 +622,18 @@ const CompletedTable = () => {
                             onClose={() => setViewModel(false)}
                             modalClassName='max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden'
                         >
-                            <ViewReport viewPatient={{
-                                ...viewPatient,
-                                gender: viewPatient.gender ?? '',
-                                contactNumber: viewPatient.contactNumber ?? '',
-                                email: viewPatient.email ?? '',
-                                doctorName: viewPatient.doctorName ?? '',
-                                visitType: viewPatient.visitType ?? '',
-                                visitStatus: viewPatient.visitStatus ?? ''
-                            }} />
+                            <ViewReport 
+                                viewPatient={{
+                                    ...viewPatient,
+                                    gender: viewPatient.gender ?? '',
+                                    contactNumber: viewPatient.contactNumber ?? '',
+                                    email: viewPatient.email ?? '',
+                                    doctorName: viewPatient.doctorName ?? '',
+                                    visitType: viewPatient.visitType ?? '',
+                                    visitStatus: viewPatient.visitStatus ?? ''
+                                }}
+                                hidePrintButton={true}
+                            />
                         </Modal>
                     )}
 

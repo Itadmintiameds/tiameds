@@ -474,7 +474,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
           className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition-colors flex items-center justify-center"
         >
           <TbReportMedical className="mr-2" size={18} />
-          Generate Report
+          Confirm
         </button>
       </div>
 

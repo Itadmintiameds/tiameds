@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TestReferancePoint } from '@/types/test/testlist';
-import { TbClipboardText, TbNumbers, TbChartLine, TbRuler, TbEdit } from 'react-icons/tb';
+import {  TbNumbers, TbRuler, TbEdit } from 'react-icons/tb';
 
 interface GenericTestComponentProps {
   referencePoints: TestReferancePoint[];
@@ -231,11 +231,9 @@ const GenericTestComponent: React.FC<GenericTestComponentProps> = ({
             className={`p-4 rounded-lg border transition-all relative ${getStatusColor(status)}`}
           >
             <div className={`grid grid-cols-1 md:${shouldHideTitles(point.testDescription) ? 'grid-cols-2' : 'grid-cols-3'} gap-4 text-sm`}>
-              <div className="flex items-start">
-                <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
+              <div className="flex items-center">
                 <div>
-                  <p className="font-medium text-gray-600">Test Parameter</p>
-                  <p className="text-gray-800">
+                  <p className="text-gray-800 font-medium">
                     {(() => {
                       // For dropdown fields, extract the actual test parameter name
                       if (point.testDescription && point.testDescription.includes('DROPDOWN')) {
@@ -277,13 +275,13 @@ const GenericTestComponent: React.FC<GenericTestComponentProps> = ({
               
               {!shouldHideTitles(point.testDescription) && (
                 <div className="flex items-start ml-10">
-                  <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
+                  {/* <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" /> */}
                   <div>
                     <p className="font-medium text-gray-600">Reference Range</p>
                     <p className="text-gray-800">
                       {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
                         <span className="text-gray-500 flex items-center">
-                          <span className="ml-1">{point.units}</span>
+                          <span className="ml-1">{point.units}</span>Test Parameter
                           <TbRuler className="ml-1" size={14} />
                         </span>
                       )}
