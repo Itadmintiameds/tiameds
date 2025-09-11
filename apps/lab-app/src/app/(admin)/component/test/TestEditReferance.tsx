@@ -14,8 +14,22 @@ interface TestEditReferanceProps {
     setFormData: React.Dispatch<React.SetStateAction<TestReferancePoint>>;
 }
 
-const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChange, formData }: TestEditReferanceProps) => {
+const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChange, formData, setFormData }: TestEditReferanceProps) => {
     if (!editRecord) return null;
+
+    // Custom handler for age fields to prevent negative values and values > 100
+    const handleAgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        const numericValue = parseFloat(value);
+        
+        // Prevent negative values and values greater than 100
+        if (value === "" || (numericValue >= 0 && numericValue <= 100)) {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value === "" ? "" : numericValue
+            }));
+        }
+    };
     
     return (
         <div className="p-4 bg-white rounded-lg">
@@ -38,11 +52,23 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                         <input
                             type="text"
                             name="testDescription"
+                            list="editTestDescriptionOptions"
                             value={formData.testDescription.toLocaleUpperCase()}
                             onChange={handleChange}
                             className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
-                            placeholder="Test description"
+                            placeholder="Type or select test description"
                         />
+                        <datalist id="editTestDescriptionOptions">
+                            <option value="DESCRIPTION">Description</option>
+                            <option value="DROPDOWN">Dropdown</option>
+                            <option value="DROPDOWN-POSITIVE/NEGATIVE">Dropdown - Positive/Negative</option>
+                            <option value="DROPDOWN-PRESENT/ABSENT">Dropdown - Present/Absent</option>
+                            <option value="DROPDOWN-REACTIVE/NONREACTIVE">Dropdown - Reactive/Nonreactive</option>
+                            <option value="DROPDOWN-PERCENTAGE">Dropdown - Percentage</option>
+                            <option value="DROPDOWN-COMPATIBLE/INCOMPATIBLE">Dropdown - Compatible/Incompatible</option>
+                            <option value="DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE">Dropdown with Description - Reactive/Nonreactive</option>
+                            <option value="DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT">Dropdown with Description - Present/Absent</option>
+                        </datalist>
                     </div>
 
                     {/* Gender */}
@@ -81,17 +107,17 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                 type="number"
                                 name="ageMin"
                                 value={formData.ageMin}
-                                onChange={handleChange}
+                                onChange={handleAgeChange}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
                                 min={0}
+                                max={100}
                             />
                             <select
                                 name="minAgeUnit"
-                                value={formData.minAgeUnit || ""}
+                                value={formData.minAgeUnit || "YEARS"}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
                             >
-                                <option value="" disabled>Unit</option>
                                 <option value="YEARS">Years</option>
                                 <option value="MONTHS">Months</option>
                                 <option value="WEEKS">Weeks</option>
@@ -107,18 +133,18 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                             <input
                                 type="number"
                                 name="ageMax"
-                                min="0"
+                                min={0}
+                                max={100}
                                 value={formData.ageMax}
-                                onChange={handleChange}
+                                onChange={handleAgeChange}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
                             />
                             <select
                                 name="maxAgeUnit"
-                                value={formData.maxAgeUnit || ""}
+                                value={formData.maxAgeUnit || "YEARS"}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
                             >
-                                <option value="" disabled>Unit</option>
                                 <option value="YEARS">Years</option>
                                 <option value="MONTHS">Months</option>
                                 <option value="WEEKS">Weeks</option>

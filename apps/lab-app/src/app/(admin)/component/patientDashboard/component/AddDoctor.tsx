@@ -1,3 +1,4 @@
+import React from 'react';
 import { Doctor } from '@/types/doctor/doctor';
 import { Plus } from 'lucide-react';
 import {
@@ -68,18 +69,53 @@ const DoctorSpeciality = [
 ];
 
 const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLoading }: AddDoctorProps) => {
+    const [validationErrors, setValidationErrors] = React.useState<Record<string, string>>({});
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!doctor?.name?.trim()) {
-            return;
+        
+        const newErrors: Record<string, string> = {};
+        
+        // Validation checks
+        if (!doctor?.name || doctor.name.toString().trim() === '') {
+            newErrors.name = 'Doctor name is required';
+        } else {
+            // Additional validation: ensure name doesn't contain only numbers
+            const nameWithoutPrefix = doctor.name.toString().replace(/^Dr\.\s*/, '').trim();
+            if (!nameWithoutPrefix || /^\d+$/.test(nameWithoutPrefix)) {
+                newErrors.name = 'Doctor name must contain letters, not just numbers';
+            }
         }
-        if (!doctor?.speciality?.trim()) {
+        
+        if (!doctor?.speciality || doctor.speciality.toString().trim() === '') {
+            newErrors.speciality = 'Doctor speciality is required';
+        } else if (/^\d+$/.test(doctor.speciality.toString().trim())) {
+            newErrors.speciality = 'Speciality must contain letters, not just numbers';
+        }
+        
+        // Phone validation: required and must be exactly 10 digits
+        if (!doctor?.phone || doctor.phone.toString().trim() === '') {
+            newErrors.phone = 'Phone number is required';
+        } else if (doctor.phone.toString().length !== 10) {
+            newErrors.phone = 'Phone number must be exactly 10 digits';
+        }
+        
+        // Set validation errors
+        setValidationErrors(newErrors);
+        
+        // If there are errors, don't submit
+        if (Object.keys(newErrors).length > 0) {
             return;
         }
         
+        // Clear any previous errors
+        setValidationErrors({});
+        
         // Ensure name has Dr. prefix before submitting
-        const nameWithPrefix = doctor.name.startsWith('Dr.') ? doctor.name : `Dr. ${doctor.name}`;
-        handleAddDoctor({...doctor, name: nameWithPrefix});
+        if (doctor?.name) {
+            const nameWithPrefix = doctor.name.startsWith('Dr.') ? doctor.name : `Dr. ${doctor.name}`;
+            handleAddDoctor({...doctor, name: nameWithPrefix});
+        }
     };
 
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,6 +126,9 @@ const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLo
             value = value.substring(3).trim();
         }
         
+        // Only allow letters, spaces, and common name characters (no numbers)
+        value = value.replace(/[^a-zA-Z\s\.\-']/g, '');
+        
         // Add Dr. prefix automatically
         value = `Dr. ${value.trimStart()}`;
         
@@ -97,6 +136,45 @@ const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLo
             ...prevDoctor,
             name: value,
         }));
+        
+        // Clear validation error when user starts typing
+        if (validationErrors.name) {
+            setValidationErrors(prev => ({ ...prev, name: '' }));
+        }
+    };
+
+    const handleSpecialityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        
+        // Only allow letters, spaces, and common speciality characters (no numbers)
+        const cleanValue = value.replace(/[^a-zA-Z\s\.\-&]/g, '');
+        
+        setDoctor((prevDoctor) => ({
+            ...prevDoctor,
+            speciality: cleanValue,
+        }));
+        
+        // Clear validation error when user starts typing
+        if (validationErrors.speciality) {
+            setValidationErrors(prev => ({ ...prev, speciality: '' }));
+        }
+    };
+
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        
+        // Only allow numbers and limit to 10 digits
+        const numericValue = value.replace(/\D/g, '').slice(0, 10);
+        
+        setDoctor((prevDoctor) => ({
+            ...prevDoctor,
+            phone: numericValue,
+        }));
+        
+        // Clear validation error when user starts typing
+        if (validationErrors.phone) {
+            setValidationErrors(prev => ({ ...prev, phone: '' }));
+        }
     };
 
     return (
@@ -105,7 +183,7 @@ const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLo
                 {[
                     { label: 'Name', name: 'name', icon: FaUser, type: 'text', placeholder: 'Enter Doctor Name', required: true },
                     { label: 'Speciality', name: 'speciality', icon: FaStethoscope, type: 'text', placeholder: 'Enter Doctor Speciality', required: true },
-                    { label: 'Phone', name: 'phone', icon: FaPhoneAlt, type: 'tel', placeholder: 'Enter Doctor Phone Number', required: false },
+                    { label: 'Phone', name: 'phone', icon: FaPhoneAlt, type: 'tel', placeholder: 'Enter Doctor Phone Number', required: true },
                 ].map(({ label, name, icon: Icon, type, placeholder, required }) => (
                     <div key={name} className="mb-2">
                         <label htmlFor={name} className="text-xs font-medium text-gray-700 flex items-center">
@@ -121,15 +199,9 @@ const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLo
                                     name={name}
                                     placeholder={placeholder}
                                     value={doctor?.[name as keyof Doctor]?.toString() || ''}
-                                    onChange={(e) => {
-                                        const { name, value } = e.target;
-                                        setDoctor((prevDoctor) => ({
-                                            ...prevDoctor,
-                                            [name]: value,
-                                        }));
-                                    }}
+                                    onChange={handleSpecialityChange}
                                     required={required}
-                                    className={`mt-1 block w-full p-2 text-xs border ${errors[name] ? 'border-red-500' : 'border-gray-300'
+                                    className={`mt-1 block w-full p-2 text-xs border ${errors[name] || validationErrors[name] ? 'border-red-500' : 'border-gray-300'
                                         } rounded-md focus:outline-none focus:ring-1 focus:ring-primary`}
                                 />
                                 <datalist id="speciality-options">
@@ -137,8 +209,8 @@ const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLo
                                         <option key={speciality} value={speciality} />
                                     ))}
                                 </datalist>
-                                {errors[name] && (
-                                    <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
+                                {(errors[name] || validationErrors[name]) && (
+                                    <p className="text-xs text-red-500 mt-1">{errors[name] || validationErrors[name]}</p>
                                 )}
                             </>
                         ) : label === 'Name' ? (
@@ -151,11 +223,11 @@ const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLo
                                     value={doctor?.[name as keyof Doctor]?.toString() || ''}
                                     onChange={handleNameChange}
                                     required={required}
-                                    className={`mt-1 block w-full p-2 text-xs border ${errors[name] ? 'border-red-500' : 'border-gray-300'
+                                    className={`mt-1 block w-full p-2 text-xs border ${errors[name] || validationErrors[name] ? 'border-red-500' : 'border-gray-300'
                                         } rounded-md focus:outline-none focus:ring-1 focus:ring-primary`}
                                 />
-                                {errors[name] && (
-                                    <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
+                                {(errors[name] || validationErrors[name]) && (
+                                    <p className="text-xs text-red-500 mt-1">{errors[name] || validationErrors[name]}</p>
                                 )}
                             </>
                                                  ) : (
@@ -166,29 +238,14 @@ const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLo
                                      name={name}
                                      placeholder={placeholder}
                                      value={doctor?.[name as keyof Doctor]?.toString() || ''}
-                                     onChange={(e) => {
-                                         const { name, value } = e.target;
-                                         // For phone field, only allow numeric input and limit to 10 digits
-                                         if (name === 'phone') {
-                                             const numericValue = value.replace(/\D/g, '').slice(0, 10);
-                                             setDoctor((prevDoctor) => ({
-                                                 ...prevDoctor,
-                                                 [name]: numericValue,
-                                             }));
-                                         } else {
-                                             setDoctor((prevDoctor) => ({
-                                                 ...prevDoctor,
-                                                 [name]: value,
-                                             }));
-                                         }
-                                     }}
-                                     maxLength={name === 'phone' ? 10 : undefined}
+                                     onChange={handlePhoneChange}
+                                     maxLength={10}
                                      required={required}
-                                     className={`mt-1 block w-full p-2 text-xs border ${errors[name] ? 'border-red-500' : 'border-gray-300'
+                                     className={`mt-1 block w-full p-2 text-xs border ${errors[name] || validationErrors[name] ? 'border-red-500' : 'border-gray-300'
                                          } rounded-md focus:outline-none focus:ring-1 focus:ring-primary`}
                                  />
-                                 {errors[name] && (
-                                     <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
+                                 {(errors[name] || validationErrors[name]) && (
+                                     <p className="text-xs text-red-500 mt-1">{errors[name] || validationErrors[name]}</p>
                                  )}
                              </>
                          )}

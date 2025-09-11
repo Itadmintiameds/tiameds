@@ -465,8 +465,8 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
 
                             <div className="mt-4 text-center">
                                 <p className="text-xs text-gray-600 mb-1">This is an electronically generated report. No physical signature required.</p>
-                                <p className="text-xs text-gray-600">For queries: help@nextjen.com | +91 98765 43210 | www.nextjendl.com</p>
-                                <p className="text-xs font-medium text-blue-600 mt-2">Thank you for choosing NEXTJEN DIAGNOSTICS</p>
+                                {/* <p className="text-xs text-gray-600">For queries: help@nextjen.com | +91 98765 43210 | www.nextjendl.com</p> */}
+                                <p className="text-xs font-medium text-blue-600 mt-2">Thank you for choosing {currentLab?.name || 'Our Lab'}</p>
                             </div>
                         </div>
 

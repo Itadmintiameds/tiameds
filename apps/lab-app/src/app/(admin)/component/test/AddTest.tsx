@@ -36,14 +36,43 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === 'price' ? (value === '' ? undefined : Number(value)) : value.toUpperCase(),
-    }));
+    
+    if (name === 'price') {
+      // Only allow numbers with max 2 digits after decimal
+      if (value === '' || /^\d+(\.\d{1,2})?$/.test(value)) {
+        setFormData((prev) => ({
+          ...prev,
+          [name]: value === '' ? undefined : Number(value)
+        }));
+      }
+    } else if (name === 'category' || name === 'name') {
+      // Only allow letters, spaces, and common punctuation for category and name
+      if (/^[a-zA-Z\s\-_&().]*$/.test(value)) {
+        setFormData((prev) => ({
+          ...prev,
+          [name]: value.toUpperCase()
+        }));
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Additional validation before schema validation
+    if (!formData.category.trim()) {
+      toast.error('Category is required');
+      return;
+    }
+    if (!formData.name.trim()) {
+      toast.error('Test name is required');
+      return;
+    }
+    if (formData.price === undefined || formData.price < 0) {
+      toast.error('Price must be a valid positive number');
+      return;
+    }
+    
     try {
       testFormDataSchema.parse(formData);
       const testListData = {
@@ -131,7 +160,7 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
                 name="price"
                 value={formData.price || ''}
                 onChange={handleInputChange}
-                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 placeholder="Enter price"
               />
             </div>

@@ -1,0 +1,209 @@
+================================================================================
+                    DOCTOR MANAGEMENT - VALIDATION RULES
+                    Route: http://localhost:3000/dashboard/doctor
+================================================================================
+
+This document outlines the validation rules and error messages for the "Doctor Management" 
+functionality including Add New Doctor and Edit Doctor operations in the Lab Management System.
+
+================================================================================
+1. FORM VALIDATION RULES & ERROR MESSAGES
+================================================================================
+
+1.1 NAME FIELD
+--------------
+Validation Rules:
+- Required field
+- Minimum 2 characters
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+- Auto-filters out numbers and special characters
+
+Error Messages:
+- "Name is required" (when empty)
+- "Name must be at least 2 characters long" (when too short)
+- "Name should contain only alphabets and spaces" (when contains invalid characters)
+
+1.2 EMAIL FIELD
+---------------
+Validation Rules:
+- Required field
+- Valid email format (user@domain.com)
+- Real-time validation on input change
+
+Error Messages:
+- "Email is required" (when empty)
+- "Please enter a valid email address" (when format is invalid)
+
+1.3 SPECIALITY FIELD
+--------------------
+Validation Rules:
+- Optional field
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+- Auto-filters out numbers and special characters
+
+Error Messages:
+- "Speciality should contain only alphabets and spaces" (when contains invalid characters)
+
+1.4 QUALIFICATION FIELD
+-----------------------
+Validation Rules:
+- Optional field
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+- Auto-filters out numbers and special characters
+
+Error Messages:
+- "Qualification should contain only alphabets and spaces" (when contains invalid characters)
+
+1.5 HOSPITAL AFFILIATION FIELD
+-------------------------------
+Validation Rules:
+- Required field
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+- Auto-filters out numbers and special characters
+
+Error Messages:
+- "Hospital affiliation is required" (when empty)
+- "Hospital affiliation should contain only alphabets and spaces" (when contains invalid characters)
+
+1.6 LICENSE NUMBER FIELD
+-------------------------
+Validation Rules:
+- Required field
+- Minimum 3 characters
+- Only alphanumeric characters allowed (letters and numbers)
+- Real-time validation on input change
+- Auto-filters out special characters
+
+Error Messages:
+- "License number is required" (when empty)
+- "License number must be at least 3 characters long" (when too short)
+- "License number should contain only letters and numbers" (when contains invalid characters)
+
+1.7 PHONE FIELD
+---------------
+Validation Rules:
+- Required field
+- Exactly 10 digits
+- Only numeric input allowed
+- Real-time validation on input change
+- Auto-filters out non-numeric characters
+- Maximum 10 characters
+
+Error Messages:
+- "Phone is required" (when empty)
+- "Phone number must be exactly 10 digits" (when not 10 digits)
+
+1.8 ADDRESS FIELD
+-----------------
+Validation Rules:
+- Required field
+- Minimum 5 characters
+- Alphanumeric with common address characters (.,#-)
+- Real-time validation on input change
+- Auto-filters out invalid special characters
+
+Error Messages:
+- "Address is required" (when empty)
+- "Address must be at least 5 characters long" (when too short)
+
+1.9 CITY FIELD
+---------------
+Validation Rules:
+- Required field
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+- Auto-filters out numbers and special characters
+
+Error Messages:
+- "City is required" (when empty)
+- "City should contain only alphabets and spaces" (when contains invalid characters)
+
+1.10 STATE FIELD
+----------------
+Validation Rules:
+- Required field
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+- Auto-filters out numbers and special characters
+
+Error Messages:
+- "State is required" (when empty)
+- "State should contain only alphabets and spaces" (when contains invalid characters)
+
+1.11 COUNTRY FIELD
+------------------
+Validation Rules:
+- Required field
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+- Auto-filters out numbers and special characters
+
+Error Messages:
+- "Country is required" (when empty)
+- "Country should contain only alphabets and spaces" (when contains invalid characters)
+
+================================================================================
+2. REAL-TIME INPUT FILTERING
+================================================================================
+
+2.1 ALPHABETIC FIELDS
+---------------------
+Fields: Name, Speciality, Qualification, Hospital Affiliation, City, State, Country
+- Automatically removes numbers and special characters as user types
+- Only allows letters (a-z, A-Z) and spaces
+- No error messages needed (input is filtered in real-time)
+
+2.2 ALPHANUMERIC FIELDS
+-----------------------
+Fields: License Number
+- Automatically removes special characters as user types
+- Only allows letters (a-z, A-Z) and numbers (0-9)
+- No error messages needed (input is filtered in real-time)
+
+2.3 NUMERIC FIELDS
+------------------
+Fields: Phone
+- Automatically removes non-numeric characters as user types
+- Only allows numbers (0-9)
+- Maximum 10 characters
+- No error messages needed (input is filtered in real-time)
+
+2.4 ADDRESS FIELDS
+------------------
+Fields: Address
+- Automatically removes invalid special characters as user types
+- Allows letters, numbers, spaces, and common address characters (.,#-)
+- No error messages needed (input is filtered in real-time)
+
+================================================================================
+3. FORM SUBMISSION VALIDATION
+================================================================================
+
+3.1 REQUIRED FIELD VALIDATION
+-----------------------------
+All required fields are validated on form submission:
+- Name, Email, Hospital Affiliation, License Number, Phone, Address, City, State, Country
+
+3.2 FORMAT VALIDATION
+---------------------
+- Email format validation
+- Phone number length validation (exactly 10 digits)
+- License number length validation (minimum 3 characters)
+- Address length validation (minimum 5 characters)
+
+3.3 CHARACTER VALIDATION
+------------------------
+- Name fields: Only alphabets and spaces
+- License Number: Only alphanumeric characters
+- Address: Alphanumeric with common address characters
+
+================================================================================
+END OF DOCTOR MANAGEMENT VALIDATION RULES
+================================================================================
+
+Last Updated: 10-sept-2025
+Version: 1.0

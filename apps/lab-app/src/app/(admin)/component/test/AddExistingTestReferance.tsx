@@ -225,6 +225,20 @@ const AddExistingTestReferance = ({
         }));
     };
 
+    // Custom handler for age fields to prevent negative values and values > 100
+    const handleAgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        const numericValue = parseFloat(value);
+        
+        // Prevent negative values and values greater than 100
+        if (value === "" || (numericValue >= 0 && numericValue <= 100)) {
+            setExistingTestReferanceRecord(prev => ({
+                ...prev,
+                [name]: value === "" ? "" : numericValue
+            }));
+        }
+    };
+
     return (
         <div className="p-4 bg-white rounded-lg">
             {/* Header with subtle accent */}
@@ -257,12 +271,24 @@ const AddExistingTestReferance = ({
                         <input
                             type="text"
                             name="testDescription"
+                            list="existingTestDescriptionOptions"
                             value={existingTestReferanceRecord.testDescription || ""}
                             onChange={handleDescriptionChange} // Using custom handler
                             className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all uppercase-input"
-                            placeholder="Enter description (will be capitalized)"
+                            placeholder="Type or select test description (will be capitalized)"
                             required
                         />
+                        <datalist id="existingTestDescriptionOptions">
+                            <option value="DESCRIPTION">Description</option>
+                            <option value="DROPDOWN">Dropdown</option>
+                            <option value="DROPDOWN-POSITIVE/NEGATIVE">Dropdown - Positive/Negative</option>
+                            <option value="DROPDOWN-PRESENT/ABSENT">Dropdown - Present/Absent</option>
+                            <option value="DROPDOWN-REACTIVE/NONREACTIVE">Dropdown - Reactive/Nonreactive</option>
+                            <option value="DROPDOWN-PERCENTAGE">Dropdown - Percentage</option>
+                            <option value="DROPDOWN-COMPATIBLE/INCOMPATIBLE">Dropdown - Compatible/Incompatible</option>
+                            <option value="DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE">Dropdown with Description - Reactive/Nonreactive</option>
+                            <option value="DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT">Dropdown with Description - Present/Absent</option>
+                        </datalist>
                     </div>
 
                     <div>
@@ -301,18 +327,18 @@ const AddExistingTestReferance = ({
                                 type="number"
                                 name="ageMin"
                                 min={0}
+                                max={100}
                                 value={existingTestReferanceRecord.ageMin || ""}
-                                onChange={handleChangeRef}
+                                onChange={handleAgeChange}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
                                 placeholder="Min Age"
                             />
                             <select
                                 name="minAgeUnit"
-                                value={existingTestReferanceRecord.minAgeUnit || ""}
+                                value={existingTestReferanceRecord.minAgeUnit || "YEARS"}
                                 onChange={handleChangeRef}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
                             >
-                                <option value="" disabled>Unit</option>
                                 <option value="YEARS">Years</option>
                                 <option value="MONTHS">Months</option>
                                 <option value="WEEKS">Weeks</option>
@@ -328,19 +354,19 @@ const AddExistingTestReferance = ({
                             <input
                                 type="number"
                                 name="ageMax"
-                                 min={0}
+                                min={0}
+                                max={100}
                                 value={existingTestReferanceRecord.ageMax || ""}
-                                onChange={handleChangeRef}
+                                onChange={handleAgeChange}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
                                 placeholder="Max Age"
                             />
                             <select
                                 name="maxAgeUnit"
-                                value={existingTestReferanceRecord.maxAgeUnit || ""}
+                                value={existingTestReferanceRecord.maxAgeUnit || "YEARS"}
                                 onChange={handleChangeRef}
                                 className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
                             >
-                                <option value="" disabled>Unit</option>
                                 <option value="YEARS">Years</option>
                                 <option value="MONTHS">Months</option>
                                 <option value="WEEKS">Weeks</option>

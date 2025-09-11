@@ -2,7 +2,8 @@
 
 import { useAuth } from '@/hooks/useAuth';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { FaPerson } from "react-icons/fa6";
 import { MdOutlineDashboard } from "react-icons/md";
 import Statistics from '../component/dashboard/statistics/Statistics';
@@ -56,7 +57,12 @@ const TabButton = ({ tab, isActive, onClick }: { tab: typeof tabs[0], isActive: 
   </button>
 );
 
-const Page = () => {
+// Component that uses useSearchParams - needs to be wrapped in Suspense
+const DashboardContent = () => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const tabParam = searchParams.get('tab');
   const [selectedTab, setSelectedTab] = useState<string>('patient');
   const { isAdmin, isSuperAdmin, isTechnician, isDeskRole } = useAuth();
 
@@ -69,12 +75,23 @@ const Page = () => {
     return false;
   });
 
+  // Handle tab change with URL update
+  const handleTabChange = (tabId: string) => {
+    setSelectedTab(tabId);
+    // Update URL without page reload
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tabId);
+    router.replace(`${pathname}?${params.toString()}`);
+  };
+
   useEffect(() => {
-    
-    if (filteredTabs.length > 0 && !filteredTabs.some(tab => tab.id === selectedTab)) {
+    // Handle URL parameter for tab selection
+    if (tabParam && tabs.some(tab => tab.id === tabParam)) {
+      setSelectedTab(tabParam);
+    } else if (filteredTabs.length > 0 && !filteredTabs.some(tab => tab.id === selectedTab)) {
       setSelectedTab(filteredTabs[0].id);
     }
-  }, [filteredTabs, selectedTab]);
+  }, [filteredTabs, selectedTab, tabParam]);
 
   // Render only the component the role should see
   const renderContent = () => {
@@ -102,7 +119,7 @@ const Page = () => {
                 key={tab.id}
                 tab={tab}
                 isActive={selectedTab === tab.id}
-                onClick={() => setSelectedTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
               />
             ))}
           </div>
@@ -124,6 +141,22 @@ const Page = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Main Page component with Suspense boundary
+const Page = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 };
 

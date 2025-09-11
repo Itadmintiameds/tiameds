@@ -1,0 +1,150 @@
+================================================================================
+                    REGISTER NEW PATIENT - VALIDATION RULES
+================================================================================
+
+This document outlines the validation rules and error messages for the "Register New Patient" 
+functionality. The testing team should verify all validation rules work correctly.
+
+================================================================================
+1. FORM VALIDATION RULES & ERROR MESSAGES
+================================================================================
+
+1.1 PHONE NUMBER FIELD
+---------------------
+Validation Rules:
+- Required field
+- Exactly 10 digits
+- Numbers only
+- Real-time validation
+
+Error Messages:
+- "Phone number is required" (when empty)
+- "Phone number must be 10 digits" (when not 10 digits)
+
+1.2 PREFIX FIELD
+---------------
+Validation Rules:
+- Required field
+- Default: "Mr." (pre-selected)
+- Options: Mr., Mrs., Ms., M/S
+- No validation errors (always valid)
+
+1.3 PATIENT NAME FIELD
+----------------------
+Validation Rules:
+- Required field
+- Alphabets and spaces only
+- Minimum 2 characters
+- Real-time validation
+
+Error Messages:
+- "Patient name is required" (when empty)
+- "Name should contain only alphabets and spaces" (when contains invalid characters)
+- "Name is too short" (when less than 2 characters)
+
+1.4 GENDER FIELD
+----------------
+Validation Rules:
+- Required field
+- Options: Male, Female, Other
+- No selection blocks form submission
+
+Error Messages:
+- "Gender is required" (when not selected)
+
+1.5 CITY FIELD
+--------------
+Validation Rules:
+- Required field
+- Alphabets and spaces only
+- Minimum 2 characters after trimming
+- Real-time validation
+
+Error Messages:
+- "City is required" (when empty)
+- "City should contain only alphabets and spaces" (when contains invalid characters)
+- "City must contain at least 2 characters" (when too short)
+
+1.6 DATE OF BIRTH FIELD
+-----------------------
+Validation Rules:
+- Required field
+- Format: DD/MM/YYYY
+- Cannot be future date
+- Cannot be more than 100 years ago
+- Real-time validation
+
+Error Messages:
+- "Date of birth is required" (when empty)
+- "Invalid date format (DD/MM/YYYY)" (when format is wrong)
+- "Date cannot be in the future" (when future date)
+- "Date cannot be more than 100 years ago" (when too old)
+
+1.7 AGE INPUT (Manual Mode)
+---------------------------
+Validation Rules:
+- Years: 0-100
+- Months: 0-12
+- Days: 0-31
+- Real-time validation
+
+Error Messages:
+- "Age cannot be more than 100 years" (for years > 100)
+- "Months cannot be more than 12" (for months > 12)
+- "Months cannot be negative" (for months < 0)
+- "Days cannot be more than 31" (for days > 31)
+- "Days cannot be negative" (for days < 0)
+
+1.8 TEST SELECTION
+------------------
+Validation Rules:
+- At least one test or package must be selected
+- Test search functionality with real-time filtering
+- Category-based test filtering
+- Duplicate test selection prevention
+- Test discount validation (0-100% or amount)
+
+Error Messages:
+- "Please select at least one test or package" (when none selected)
+- "Test already selected" (for duplicate selection)
+- "Invalid discount percentage" (for discount > 100%)
+- "Invalid discount amount" (for negative amounts)
+
+1.9 PACKAGE SELECTION
+---------------------
+Validation Rules:
+- Package search functionality with real-time filtering
+- Duplicate package selection prevention
+- Package discount validation (0-100% or amount)
+- Package tests validation
+
+Error Messages:
+- "Package already selected" (for duplicate selection)
+- "Invalid package discount percentage" (for discount > 100%)
+- "Invalid package discount amount" (for negative amounts)
+
+1.10 BILLING SECTION
+--------------------
+Validation Rules:
+- Total amount calculation (tests + packages)
+- Discount validation (percentage: 0-100%, amount: positive)
+- Payment method selection required
+- Payment status validation
+- Received amount validation (cannot exceed net amount)
+- Refund amount validation (cannot exceed received amount)
+- Due amount calculation validation
+
+Error Messages:
+- "Payment method is required" (when not selected)
+- "Invalid discount percentage" (for discount > 100%)
+- "Invalid discount amount" (for negative amounts)
+- "Received amount cannot exceed net amount"
+- "Refund amount cannot exceed received amount"
+- "Invalid payment amount" (for negative amounts)
+
+================================================================================
+END OF REGISTER NEW PATIENT VALIDATION RULES
+================================================================================
+
+Last Updated: 10-sept-2025
+Version: 1.0

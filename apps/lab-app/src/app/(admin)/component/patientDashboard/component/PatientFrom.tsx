@@ -63,7 +63,8 @@ const PatientForm: React.FC<PatientFormProps> = ({
     phone: false,
     firstName: false,
     city: false,
-    dob: false
+    dob: false,
+    prefix: false
   });
   const [nameInputValue, setNameInputValue] = useState('');
 
@@ -97,10 +98,11 @@ const PatientForm: React.FC<PatientFormProps> = ({
   }, []);
 
   // Validate prefix
-  const validatePrefix = useCallback((prefix: string) => {
-    if (!prefix && currentFirstName) return 'Prefix is required when name is provided';
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const validatePrefix = useCallback((_prefix: string) => {
+    // Since we have a default value (Mr.), this should always pass
     return '';
-  }, [currentFirstName]);
+  }, []);
 
   // Validate date of birth
   const validateDOBField = useCallback((dob: string) => {
@@ -150,6 +152,20 @@ const PatientForm: React.FC<PatientFormProps> = ({
     const fullName = currentFirstName + (newPatient.lastName ? ` ${newPatient.lastName}` : '');
     setNameInputValue(fullName);
   }, [currentFirstName, newPatient.lastName]);
+
+  // Initialize prefix with "Mr." if no prefix is set
+  useEffect(() => {
+    if (!currentPrefix && !newPatient.firstName) {
+      // Only set default prefix if this is a new patient (no existing data)
+      const prefixEvent = {
+        target: {
+          name: 'prefix',
+          value: Prefix.Mr
+        }
+      } as React.ChangeEvent<HTMLSelectElement>;
+      handlePrefixChange(prefixEvent);
+    }
+  }, [currentPrefix, newPatient.firstName]);
 
   // Validate all fields when they change
   useEffect(() => {
@@ -436,6 +452,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
 
     handleChange(nameEvent);
     handleChange(genderEvent);
+    setTouchedFields(prev => ({ ...prev, prefix: true }));
   };
 
   const handleFirstNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -569,12 +586,13 @@ const PatientForm: React.FC<PatientFormProps> = ({
           <div className="flex">
             <select
               name="prefix"
-              value={currentPrefix}
+              value={currentPrefix || Prefix.Mr}
               onChange={handlePrefixChange}
-              className={`border rounded-l-md border-gray-300 p-1.5 text-xs w-20 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${validationErrors.prefix ? 'border-red-500' : ''
+              onBlur={() => handleBlur('prefix')}
+              required
+              className={`border rounded-l-md border-gray-300 p-1.5 text-xs w-20 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${touchedFields.prefix && validationErrors.prefix ? 'border-red-500' : ''
                 }`}
             >
-              <option value="">-</option>
               {Object.values(Prefix).map((prefix) => (
                 <option key={prefix} value={prefix}>
                   {prefix}
@@ -607,7 +625,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
           {touchedFields.firstName && validationErrors.firstName && (
             <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.firstName}</p>
           )}
-          {validationErrors.prefix && (
+          {touchedFields.prefix && validationErrors.prefix && (
             <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.prefix}</p>
           )}
         </div>

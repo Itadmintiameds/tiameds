@@ -1,0 +1,391 @@
+================================================================================
+                    LAB MANAGEMENT - VALIDATION RULES
+                    Route: http://localhost:3000/dashboard/lab
+================================================================================
+
+This document outlines the validation rules and error messages for the "Lab Management" 
+functionality including Create New Lab operations in the Lab Management System.
+
+================================================================================
+1. FORM VALIDATION RULES & ERROR MESSAGES
+================================================================================
+
+1.1 LAB NAME FIELD
+------------------
+Validation Rules:
+- Required field
+- Minimum 2 characters
+- Only alphabets, spaces, &, ., and - characters allowed
+- Real-time validation on input change
+- Auto-filters out numbers and special characters
+
+Error Messages:
+- "Lab name is required" (when empty)
+- "Lab name must be at least 2 characters" (when too short)
+- "Lab name should contain only alphabets, spaces, &, ., and -" (when contains invalid characters)
+
+1.2 LAB TYPE FIELD
+------------------
+Validation Rules:
+- Required field
+- Must select from predefined options: Diagnostic, Research, Clinical, Pathology
+- Dropdown selection validation
+
+Error Messages:
+- "Lab type is required" (when no option selected)
+
+1.3 DESCRIPTION FIELD
+---------------------
+Validation Rules:
+- Required field
+- Minimum 10 characters
+- Text area input
+- Real-time validation on input change
+
+Error Messages:
+- "Description is required" (when empty)
+- "Description must be at least 10 characters" (when too short)
+
+1.4 ADDRESS FIELD
+-----------------
+Validation Rules:
+- Required field
+- Minimum 5 characters
+- Only alphanumeric characters, spaces, and ,.-# allowed
+- Real-time validation on input change
+
+Error Messages:
+- "Address is required" (when empty)
+- "Address must be at least 5 characters" (when too short)
+- "Address should contain only alphanumeric characters, spaces, and ,.-#" (when contains invalid characters)
+
+1.5 CITY FIELD
+--------------
+Validation Rules:
+- Required field
+- Minimum 2 characters
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+
+Error Messages:
+- "City is required" (when empty)
+- "City must be at least 2 characters" (when too short)
+- "City should contain only alphabets and spaces" (when contains invalid characters)
+
+1.6 STATE FIELD
+---------------
+Validation Rules:
+- Required field
+- Minimum 2 characters
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+
+Error Messages:
+- "State is required" (when empty)
+- "State must be at least 2 characters" (when too short)
+- "State should contain only alphabets and spaces" (when contains invalid characters)
+
+1.7 ZIP CODE FIELD
+------------------
+Validation Rules:
+- Required field
+- Minimum 5 characters
+- Only alphanumeric characters, spaces, and - allowed
+- Real-time validation on input change
+
+Error Messages:
+- "ZIP code is required" (when empty)
+- "ZIP code must be at least 5 characters" (when too short)
+- "ZIP code should contain only alphanumeric characters, spaces, and -" (when contains invalid characters)
+
+1.8 COUNTRY FIELD
+-----------------
+Validation Rules:
+- Required field
+- Minimum 2 characters
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+
+Error Messages:
+- "Country is required" (when empty)
+- "Country must be at least 2 characters" (when too short)
+- "Country should contain only alphabets and spaces" (when contains invalid characters)
+
+1.9 LAB PHONE FIELD
+-------------------
+Validation Rules:
+- Required field
+- Minimum 10 digits
+- Only numbers, spaces, -, +, (, ) allowed
+- Real-time validation on input change
+
+Error Messages:
+- "Lab phone is required" (when empty)
+- "Lab phone must be at least 10 digits" (when too short)
+- "Lab phone should contain only numbers, spaces, -, +, (, )" (when contains invalid characters)
+
+1.10 LAB EMAIL FIELD
+--------------------
+Validation Rules:
+- Required field
+- Valid email format (user@domain.com)
+- Real-time validation on input change
+
+Error Messages:
+- "Lab email is required" (when empty)
+- "Please enter a valid email address" (when format is invalid)
+
+1.11 DIRECTOR NAME FIELD
+------------------------
+Validation Rules:
+- Required field
+- Minimum 2 characters
+- Only alphabets, spaces, and . allowed
+- Real-time validation on input change
+
+Error Messages:
+- "Director name is required" (when empty)
+- "Director name must be at least 2 characters" (when too short)
+- "Director name should contain only alphabets, spaces, and ." (when contains invalid characters)
+
+1.12 DIRECTOR EMAIL FIELD
+-------------------------
+Validation Rules:
+- Required field
+- Valid email format (user@domain.com)
+- Real-time validation on input change
+
+Error Messages:
+- "Director email is required" (when empty)
+- "Please enter a valid email address" (when format is invalid)
+
+1.13 DIRECTOR PHONE FIELD
+-------------------------
+Validation Rules:
+- Required field
+- Minimum 10 digits
+- Only numbers, spaces, -, +, (, ) allowed
+- Real-time validation on input change
+
+Error Messages:
+- "Director phone is required" (when empty)
+- "Director phone must be at least 10 digits" (when too short)
+- "Director phone should contain only numbers, spaces, -, +, (, )" (when contains invalid characters)
+
+1.14 DIRECTOR GOVT ID FIELD
+---------------------------
+Validation Rules:
+- Required field
+- Alphanumeric input allowed
+- Real-time validation on input change
+
+Error Messages:
+- "Director Govt ID is required" (when empty)
+
+1.15 LICENSE NUMBER FIELD
+-------------------------
+Validation Rules:
+- Required field
+- Alphanumeric input allowed
+- Real-time validation on input change
+
+Error Messages:
+- "License Number is required" (when empty)
+
+1.16 BUSINESS REGISTRATION FIELD
+--------------------------------
+Validation Rules:
+- Required field
+- Alphanumeric input allowed
+- Real-time validation on input change
+
+Error Messages:
+- "Business Registration is required" (when empty)
+
+1.17 LAB LICENSE FIELD
+----------------------
+Validation Rules:
+- Required field
+- Alphanumeric input allowed
+- Real-time validation on input change
+
+Error Messages:
+- "Lab License is required" (when empty)
+
+1.18 TAX ID FIELD
+-----------------
+Validation Rules:
+- Required field
+- Alphanumeric input allowed
+- Real-time validation on input change
+
+Error Messages:
+- "Tax ID is required" (when empty)
+
+1.19 CERTIFICATE NUMBER FIELD
+-----------------------------
+Validation Rules:
+- Required field
+- Alphanumeric input allowed
+- Real-time validation on input change
+
+Error Messages:
+- "Certificate Number is required" (when empty)
+
+1.20 ACCREDITATION FIELD
+------------------------
+Validation Rules:
+- Required field
+- Alphanumeric input allowed
+- Real-time validation on input change
+
+Error Messages:
+- "Accreditation is required" (when empty)
+
+1.21 CERTIFICATION BODY FIELD
+-----------------------------
+Validation Rules:
+- Required field
+- Alphanumeric input allowed
+- Real-time validation on input change
+
+Error Messages:
+- "Certification Body is required" (when empty)
+
+1.22 DATA PRIVACY AGREEMENT FIELD
+---------------------------------
+Validation Rules:
+- Required field
+- Must be checked (true)
+- Checkbox validation
+
+Error Messages:
+- "Data Privacy Agreement is required" (when not checked)
+
+================================================================================
+2. REAL-TIME INPUT FILTERING
+================================================================================
+
+2.1 ALPHABETIC FIELDS
+---------------------
+Fields: Lab Name, Director Name, City, State, Country
+- Automatically removes numbers and special characters as user types
+- Only allows letters (a-z, A-Z), spaces, and specific allowed characters
+- No error messages needed (input is filtered in real-time)
+
+2.2 ALPHANUMERIC FIELDS
+-----------------------
+Fields: Address, ZIP Code, Director Govt ID, License Number, Business Registration, Lab License, Tax ID, Certificate Number, Accreditation, Certification Body
+- Allows alphanumeric characters and specific symbols
+- No error messages needed (input is filtered in real-time)
+
+2.3 PHONE FIELDS
+----------------
+Fields: Lab Phone, Director Phone
+- Automatically removes invalid characters as user types
+- Only allows numbers (0-9), spaces, -, +, (, )
+- No error messages needed (input is filtered in real-time)
+
+2.4 EMAIL FIELDS
+----------------
+Fields: Lab Email, Director Email
+- Standard email format validation
+- No input filtering (allows all characters for email format)
+
+================================================================================
+3. FORM SUBMISSION VALIDATION
+================================================================================
+
+3.1 REQUIRED FIELD VALIDATION
+-----------------------------
+All required fields are validated on form submission:
+- Basic Info: Lab Name, Lab Type, Description, Address, City, State, ZIP Code, Country
+- Contact Info: Lab Phone, Lab Email, Director Name, Director Email, Director Phone, Director Govt ID
+- Legal Info: License Number, Business Registration, Lab License, Tax ID, Certificate Number, Accreditation, Certification Body, Data Privacy Agreement
+
+3.2 FORMAT VALIDATION
+---------------------
+- Email format validation for Lab Email and Director Email
+- Phone number format validation for Lab Phone and Director Phone
+- Character validation for name fields (alphabetic only)
+- Length validation for all text fields
+
+3.3 CHARACTER VALIDATION
+------------------------
+- Name fields: Only alphabets, spaces, and specific allowed characters
+- Phone fields: Only numbers, spaces, and phone-specific characters
+- Address fields: Alphanumeric with address-specific characters
+- Email fields: Standard email format
+
+================================================================================
+4. INLINE VALIDATION BEHAVIOR
+================================================================================
+
+4.1 VALIDATION TRIGGERS
+-----------------------
+- onBlur: Validates field when user leaves it (clicks away or tabs to next field)
+- onChange: Clears errors when user starts typing/selecting
+- onSubmit: Validates all fields before form submission
+
+4.2 ERROR DISPLAY
+-----------------
+- Errors only show for fields that have been touched (interacted with)
+- Red border and error text for invalid fields
+- Errors clear immediately when user starts typing/selecting
+- Specific, helpful error messages guide users
+
+4.3 USER EXPERIENCE
+-------------------
+- Non-intrusive validation (no errors until user interaction)
+- Immediate feedback when leaving fields
+- Progressive error clearing as user corrects issues
+- Visual indicators for field validation state
+- Icons remain positioned correctly when errors appear
+
+================================================================================
+5. TAB-BASED FORM STRUCTURE
+================================================================================
+
+5.1 BASIC INFO TAB
+------------------
+Fields: Lab Name, Lab Type, Description, Address, City, State, ZIP Code, Country
+- Logo upload functionality
+- All basic lab information
+- Address and location details
+
+5.2 CONTACT INFO TAB
+--------------------
+Fields: Lab Phone, Lab Email, Director Name, Director Email, Director Phone, Director Govt ID
+- Lab contact information
+- Director personal information
+- Communication details
+
+5.3 LEGAL INFO TAB
+------------------
+Fields: License Number, Business Registration, Lab License, Tax ID, Certificate Number, Accreditation, Certification Body, Data Privacy Agreement
+- Legal and compliance information
+- Certification and accreditation details
+- Privacy agreement checkbox
+
+================================================================================
+6. FORM NAVIGATION VALIDATION
+================================================================================
+
+6.1 TAB COMPLETION VALIDATION
+-----------------------------
+- Users cannot proceed to next tab without completing current tab
+- Toast notifications show completion requirements
+- Visual indicators show tab completion status
+
+6.2 FORM SUBMISSION VALIDATION
+------------------------------
+- All tabs must be completed before submission
+- Final validation using Zod schema
+- Error handling and user feedback
+
+================================================================================
+END OF LAB MANAGEMENT VALIDATION RULES
+================================================================================
+
+Last Updated: 10-sept-2025
+Version: 1.0

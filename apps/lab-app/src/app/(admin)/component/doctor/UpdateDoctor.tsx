@@ -9,21 +9,159 @@ interface UpdateDoctorProps {
 
 const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
   const [updatedDoctor, setUpdatedDoctor] = useState<Doctor>(editDoctor);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setUpdatedDoctor(editDoctor);
   }, [editDoctor]);
 
+  // Validate individual field
+  const validateField = (name: string, value: unknown): string => {
+    // Type guard to ensure value is a string
+    if (typeof value !== 'string') {
+      return `${name} must be a valid value`;
+    }
+    switch (name) {
+      case 'name':
+        if (!value || value.trim() === '') return 'Name is required';
+        if (value.length < 2) return 'Name must be at least 2 characters long';
+        if (!/^[a-zA-Z\s]+$/.test(value)) return 'Name should contain only alphabets and spaces';
+        return '';
+      
+      case 'email':
+        if (!value || value.trim() === '') return 'Email is required';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
+        return '';
+      
+      case 'phone':
+        if (!value || value === '') return 'Phone is required';
+        if (value.toString().length !== 10) return 'Phone number must be exactly 10 digits';
+        return '';
+      
+      case 'licenseNumber':
+        if (!value || value.trim() === '') return 'License number is required';
+        if (value.length < 3) return 'License number must be at least 3 characters long';
+        if (!/^[a-zA-Z0-9]+$/.test(value)) return 'License number should contain only letters and numbers';
+        return '';
+      
+      case 'hospitalAffiliation':
+        if (!value || value.trim() === '') return 'Hospital affiliation is required';
+        if (!/^[a-zA-Z\s]+$/.test(value)) return 'Hospital affiliation should contain only alphabets and spaces';
+        return '';
+      
+      case 'address':
+        if (!value || value.trim() === '') return 'Address is required';
+        if (value.length < 5) return 'Address must be at least 5 characters long';
+        return '';
+      
+      case 'city':
+        if (!value || value.trim() === '') return 'City is required';
+        if (!/^[a-zA-Z\s]+$/.test(value)) return 'City should contain only alphabets and spaces';
+        return '';
+      
+      case 'state':
+        if (!value || value.trim() === '') return 'State is required';
+        if (!/^[a-zA-Z\s]+$/.test(value)) return 'State should contain only alphabets and spaces';
+        return '';
+      
+      case 'country':
+        if (!value || value.trim() === '') return 'Country is required';
+        if (!/^[a-zA-Z\s]+$/.test(value)) return 'Country should contain only alphabets and spaces';
+        return '';
+      
+      case 'speciality':
+        if (value && !/^[a-zA-Z\s]+$/.test(value)) return 'Speciality should contain only alphabets and spaces';
+        return '';
+      
+      case 'qualification':
+        if (value && !/^[a-zA-Z\s]+$/.test(value)) return 'Qualification should contain only alphabets and spaces';
+        return '';
+      
+      default:
+        return '';
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setUpdatedDoctor((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    
+    if (name === 'phone') {
+      // Only allow numeric input for phone (10 digits max)
+      const numericValue = value.replace(/\D/g, '').slice(0, 10);
+      setUpdatedDoctor((prevState) => ({
+        ...prevState,
+        [name]: numericValue ? parseInt(numericValue) : '',
+      }));
+    } else if (name === 'name' || name === 'speciality' || name === 'qualification' || 
+               name === 'hospitalAffiliation' || name === 'city' || name === 'state' || name === 'country') {
+      // Only allow alphabets and spaces for name fields
+      const alphabeticValue = value.replace(/[^a-zA-Z\s]/g, '');
+      setUpdatedDoctor((prevState) => ({
+        ...prevState,
+        [name]: alphabeticValue,
+      }));
+    } else if (name === 'licenseNumber') {
+      // Allow alphanumeric for license number
+      const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, '');
+      setUpdatedDoctor((prevState) => ({
+        ...prevState,
+        [name]: alphanumericValue,
+      }));
+    } else if (name === 'address') {
+      // Allow alphanumeric, spaces, and common address characters
+      const addressValue = value.replace(/[^a-zA-Z0-9\s.,#-]/g, '');
+      setUpdatedDoctor((prevState) => ({
+        ...prevState,
+        [name]: addressValue,
+      }));
+    } else {
+      setUpdatedDoctor((prevState) => ({
+        ...prevState,
+        [name]: value,
+      }));
+    }
+  };
+
+  // Handle field blur (when user leaves the field)
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+    
+    // Validate the field when user leaves it
+    const error = validateField(name, value);
+    setErrors(prev => ({ ...prev, [name]: error }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const newErrors: Record<string, string> = {};
+    const allFields = [
+      'name', 'email', 'speciality', 'qualification', 'hospitalAffiliation',
+      'licenseNumber', 'phone', 'address', 'city', 'state', 'country'
+    ];
+
+    // Validate all fields
+    allFields.forEach(field => {
+      const value = updatedDoctor[field as keyof Doctor];
+      const error = validateField(field, value);
+      if (error) {
+        newErrors[field] = error;
+      }
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
     handleUpdate(updatedDoctor);
   };
 
@@ -41,8 +179,12 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
             name="name"
             value={updatedDoctor.name}
             onChange={handleChange}
-            className="mt-1 block w-full p-2 text-xs border border-gray-300 rounded-md"
+            onBlur={handleBlur}
+            className={`mt-1 block w-full p-2 text-xs border ${errors.name && touched.name ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
           />
+          {errors.name && touched.name && (
+            <p className="text-xs text-red-500 mt-1">{errors.name}</p>
+          )}
         </div>
 
         <div className="mb-2">
@@ -55,8 +197,12 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
             name="speciality"
             value={updatedDoctor.speciality}
             onChange={handleChange}
-            className="mt-1 block w-full p-2 text-xs border border-gray-300 rounded-md"
+            onBlur={handleBlur}
+            className={`mt-1 block w-full p-2 text-xs border ${errors.speciality && touched.speciality ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
           />
+          {errors.speciality && touched.speciality && (
+            <p className="text-xs text-red-500 mt-1">{errors.speciality}</p>
+          )}
         </div>
 
         <div className="mb-2">
@@ -69,8 +215,12 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
             name="email"
             value={updatedDoctor.email}
             onChange={handleChange}
-            className="mt-1 block w-full p-2 text-xs border border-gray-300 rounded-md"
+            onBlur={handleBlur}
+            className={`mt-1 block w-full p-2 text-xs border ${errors.email && touched.email ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
           />
+          {errors.email && touched.email && (
+            <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+          )}
         </div>
 
         <div className="mb-2">
@@ -82,19 +232,9 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
             id="phone"
             name="phone"
             value={updatedDoctor.phone}
-            onChange={(event) => {
-              // Only allow numeric input
-              const numericValue = event.target.value.replace(/\D/g, '');
-              const numericEvent = {
-                ...event,
-                target: {
-                  ...event.target,
-                  value: numericValue
-                }
-              };
-              handleChange(numericEvent);
-            }}
-            className="mt-1 block w-full p-2 text-xs border border-gray-300 rounded-md"
+            onChange={handleChange}
+            onBlur={handleBlur}
+            className={`mt-1 block w-full p-2 text-xs border ${errors.phone && touched.phone ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={10}
@@ -105,6 +245,9 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
               }
             }}
           />
+          {errors.phone && touched.phone && (
+            <p className="text-xs text-red-500 mt-1">{errors.phone}</p>
+          )}
         </div>
 
         {/* Right Column */}
@@ -118,8 +261,12 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
             name="qualification"
             value={updatedDoctor.qualification}
             onChange={handleChange}
-            className="mt-1 block w-full p-2 text-xs border border-gray-300 rounded-md"
+            onBlur={handleBlur}
+            className={`mt-1 block w-full p-2 text-xs border ${errors.qualification && touched.qualification ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
           />
+          {errors.qualification && touched.qualification && (
+            <p className="text-xs text-red-500 mt-1">{errors.qualification}</p>
+          )}
         </div>
 
         <div className="mb-2">
@@ -132,8 +279,12 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
             name="hospitalAffiliation"
             value={updatedDoctor.hospitalAffiliation}
             onChange={handleChange}
-            className="mt-1 block w-full p-2 text-xs border border-gray-300 rounded-md"
+            onBlur={handleBlur}
+            className={`mt-1 block w-full p-2 text-xs border ${errors.hospitalAffiliation && touched.hospitalAffiliation ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
           />
+          {errors.hospitalAffiliation && touched.hospitalAffiliation && (
+            <p className="text-xs text-red-500 mt-1">{errors.hospitalAffiliation}</p>
+          )}
         </div>
 
         <div className="mb-2">
@@ -146,8 +297,12 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
             name="licenseNumber"
             value={updatedDoctor.licenseNumber}
             onChange={handleChange}
-            className="mt-1 block w-full p-2 text-xs border border-gray-300 rounded-md"
+            onBlur={handleBlur}
+            className={`mt-1 block w-full p-2 text-xs border ${errors.licenseNumber && touched.licenseNumber ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
           />
+          {errors.licenseNumber && touched.licenseNumber && (
+            <p className="text-xs text-red-500 mt-1">{errors.licenseNumber}</p>
+          )}
         </div>
 
         <div className="mb-2">
@@ -160,8 +315,12 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
             name="address"
             value={updatedDoctor.address}
             onChange={handleChange}
-            className="mt-1 block w-full p-2 text-xs border border-gray-300 rounded-md"
+            onBlur={handleBlur}
+            className={`mt-1 block w-full p-2 text-xs border ${errors.address && touched.address ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
           />
+          {errors.address && touched.address && (
+            <p className="text-xs text-red-500 mt-1">{errors.address}</p>
+          )}
         </div>
       </div>
 
@@ -177,8 +336,12 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
             name="city"
             value={updatedDoctor.city}
             onChange={handleChange}
-            className="mt-1 block w-full p-2 text-xs border border-gray-300 rounded-md"
+            onBlur={handleBlur}
+            className={`mt-1 block w-full p-2 text-xs border ${errors.city && touched.city ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
           />
+          {errors.city && touched.city && (
+            <p className="text-xs text-red-500 mt-1">{errors.city}</p>
+          )}
         </div>
 
         <div className="mb-2">
@@ -191,8 +354,12 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
             name="state"
             value={updatedDoctor.state}
             onChange={handleChange}
-            className="mt-1 block w-full p-2 text-xs border border-gray-300 rounded-md"
+            onBlur={handleBlur}
+            className={`mt-1 block w-full p-2 text-xs border ${errors.state && touched.state ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
           />
+          {errors.state && touched.state && (
+            <p className="text-xs text-red-500 mt-1">{errors.state}</p>
+          )}
         </div>
 
         {/* Right Column (continued) */}
@@ -206,8 +373,12 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
             name="country"
             value={updatedDoctor.country}
             onChange={handleChange}
-            className="mt-1 block w-full p-2 text-xs border border-gray-300 rounded-md"
+            onBlur={handleBlur}
+            className={`mt-1 block w-full p-2 text-xs border ${errors.country && touched.country ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
           />
+          {errors.country && touched.country && (
+            <p className="text-xs text-red-500 mt-1">{errors.country}</p>
+          )}
         </div>
       </div>
 

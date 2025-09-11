@@ -45,16 +45,20 @@ export const TestReferancePointSchema = z.object({
       .refine(val => !isNaN(val), "Must be a valid number")
   ]).optional(),
   ageMin: z.union([
-    z.number().min(0, "Minimum age must be 0 or greater"),
+    z.number().min(0, "Minimum age must be 0 or greater").max(100, "Minimum age must be 100 or less"),
     z.string().min(1, "Minimum age is required")
       .transform(val => parseFloat(val))
       .refine(val => !isNaN(val), "Must be a valid number")
+      .refine(val => val >= 0, "Minimum age must be 0 or greater")
+      .refine(val => val <= 100, "Minimum age must be 100 or less")
   ]),
   ageMax: z.union([
-    z.number().min(0, "Maximum age must be 0 or greater"),
+    z.number().min(0, "Maximum age must be 0 or greater").max(100, "Maximum age must be 100 or less"),
     z.string().min(1)
       .transform(val => parseFloat(val))
       .refine(val => !isNaN(val), "Must be a valid number")
+      .refine(val => val >= 0, "Maximum age must be 0 or greater")
+      .refine(val => val <= 100, "Maximum age must be 100 or less")
   ]).optional(),
   minAgeUnit: z.enum(["YEARS", "MONTHS", "WEEKS", "DAYS"], {
     errorMap: () => ({ message: "Must be YEARS, MONTHS, WEEKS, or DAYS" })

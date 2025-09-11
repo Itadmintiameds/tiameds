@@ -178,7 +178,7 @@ const TestReferanceList = () => {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Test Reference Ranges</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Test Reference Range</h2>
           <p className="text-gray-500">Browse and manage laboratory test reference values</p>
         </div>
 

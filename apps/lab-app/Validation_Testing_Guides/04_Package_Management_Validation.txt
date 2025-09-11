@@ -1,0 +1,120 @@
+================================================================================
+                    PACKAGE MANAGEMENT - VALIDATION RULES
+                    Route: http://localhost:3000/dashboard/package
+================================================================================
+
+This document outlines the validation rules and error messages for the "Package Management" 
+functionality including Create New Package and Edit Package operations in the Lab Management System.
+
+================================================================================
+1. FORM VALIDATION RULES & ERROR MESSAGES
+================================================================================
+
+1.1 PACKAGE NAME FIELD
+-----------------------
+Validation Rules:
+- Required field
+- Minimum 3 characters
+- Real-time validation on input change
+- Trimmed whitespace validation
+
+Error Messages:
+- "Package name is required." (when empty)
+- "Package name must be at least 3 characters long." (when too short)
+
+1.2 DISCOUNT FIELD
+------------------
+Validation Rules:
+- Required field
+- Must be 0 or greater
+- Must be 100 or less
+- Numeric input only
+- Real-time validation with Math.max(0, Math.min(100, value))
+- Auto-corrects values outside 0-100 range
+
+Error Messages:
+- No specific error messages (values are auto-corrected)
+- Input automatically limits to 0-100 range
+
+1.3 TEST SELECTION
+------------------
+Validation Rules:
+- At least one test must be selected
+- Test search functionality with real-time filtering
+- Category-based test filtering
+- Duplicate test selection prevention
+- Test removal functionality
+
+Error Messages:
+- "Please select at least one test for the package." (when none selected)
+
+1.4 FINAL PRICE VALIDATION
+---------------------------
+Validation Rules:
+- Calculated price must be greater than 0
+- Price = (Sum of test prices) - (Sum of test prices * discount / 100)
+- Real-time calculation and validation
+
+Error Messages:
+- "Package price must be greater than 0." (when final price is 0 or negative)
+
+================================================================================
+2. PACKAGE LIST FUNCTIONALITY (PKG LIST TAB)
+================================================================================
+
+2.1 PACKAGE DISPLAY
+-------------------
+- List all packages with pagination
+- Search packages by name or test names
+- Expand/collapse package details
+- Show package price, discount, and included tests
+- Package count display
+- Empty state when no packages found
+
+2.2 PACKAGE ACTIONS
+-------------------
+- Edit package functionality (opens edit modal)
+- Delete package with confirmation dialog
+- View package details in expandable view
+- Update package information
+- Remove package from list after deletion
+
+2.3 SEARCH & FILTER
+-------------------
+- Search by package name
+- Search by test names within packages
+- Real-time search results
+- Clear search functionality
+- Search placeholder: "Search packages..."
+
+2.4 EDIT PACKAGE MODAL
+----------------------
+- Pre-filled form with existing package data
+- Same validation rules as Create New Package
+- Update package name, discount, and tests
+- Save changes functionality
+- Cancel/close modal functionality
+
+2.5 DELETE PACKAGE
+------------------
+- Confirmation dialog before deletion
+- "Are you sure you want to delete this package?" message
+- Delete confirmation button
+- Cancel deletion option
+- Success message after deletion
+- Package removed from list after successful deletion
+
+2.6 PACKAGE LIST VALIDATION
+---------------------------
+- Search input validation
+- Empty search state handling
+- Loading state during operations
+- Error handling for failed operations
+- Success feedback for completed actions
+
+================================================================================
+END OF PACKAGE MANAGEMENT VALIDATION RULES
+================================================================================
+
+Last Updated: 10-sept-2025
+Version: 1.0

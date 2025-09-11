@@ -33,17 +33,112 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
         country: '',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-    // Handle Input Change
+    // Validate individual field
+    const validateField = (name: string, value: unknown): string => {
+        // Type guard to ensure value is a string
+        if (typeof value !== 'string') {
+            return `${name} must be a valid value`;
+        }
+        switch (name) {
+            case 'name':
+                if (!value || value.trim() === '') return 'Name is required';
+                if (value.length < 2) return 'Name must be at least 2 characters long';
+                if (!/^[a-zA-Z\s]+$/.test(value)) return 'Name should contain only alphabets and spaces';
+                return '';
+            
+            case 'email':
+                if (!value || value.trim() === '') return 'Email is required';
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
+                return '';
+            
+            case 'phone':
+                if (!value || value === '') return 'Phone is required';
+                if (value.toString().length !== 10) return 'Phone number must be exactly 10 digits';
+                return '';
+            
+            case 'licenseNumber':
+                if (!value || value.trim() === '') return 'License number is required';
+                if (value.length < 3) return 'License number must be at least 3 characters long';
+                if (!/^[a-zA-Z0-9]+$/.test(value)) return 'License number should contain only letters and numbers';
+                return '';
+            
+            case 'hospitalAffiliation':
+                if (!value || value.trim() === '') return 'Hospital affiliation is required';
+                if (!/^[a-zA-Z\s]+$/.test(value)) return 'Hospital affiliation should contain only alphabets and spaces';
+                return '';
+            
+            case 'address':
+                if (!value || value.trim() === '') return 'Address is required';
+                if (value.length < 5) return 'Address must be at least 5 characters long';
+                return '';
+            
+            case 'city':
+                if (!value || value.trim() === '') return 'City is required';
+                if (!/^[a-zA-Z\s]+$/.test(value)) return 'City should contain only alphabets and spaces';
+                return '';
+            
+            case 'state':
+                if (!value || value.trim() === '') return 'State is required';
+                if (!/^[a-zA-Z\s]+$/.test(value)) return 'State should contain only alphabets and spaces';
+                return '';
+            
+            case 'country':
+                if (!value || value.trim() === '') return 'Country is required';
+                if (!/^[a-zA-Z\s]+$/.test(value)) return 'Country should contain only alphabets and spaces';
+                return '';
+            
+            case 'speciality':
+                if (value && !/^[a-zA-Z\s]+$/.test(value)) return 'Speciality should contain only alphabets and spaces';
+                return '';
+            
+            case 'qualification':
+                if (value && !/^[a-zA-Z\s]+$/.test(value)) return 'Qualification should contain only alphabets and spaces';
+                return '';
+            
+            default:
+                return '';
+        }
+    };
+
+    // Handle Input Change with Validation
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         
+        // Clear error when user starts typing
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: '' }));
+        }
+        
         if (name === 'phone') {
-            // Only allow numeric input for phone
-            const numericValue = value.replace(/\D/g, '');
+            // Only allow numeric input for phone (10 digits max)
+            const numericValue = value.replace(/\D/g, '').slice(0, 10);
             setDoctor((prevState) => ({
                 ...prevState,
                 [name]: numericValue ? parseInt(numericValue) : '',
+            }));
+        } else if (name === 'name' || name === 'speciality' || name === 'qualification' || 
+                   name === 'hospitalAffiliation' || name === 'city' || name === 'state' || name === 'country') {
+            // Only allow alphabets and spaces for name fields
+            const alphabeticValue = value.replace(/[^a-zA-Z\s]/g, '');
+            setDoctor((prevState) => ({
+                ...prevState,
+                [name]: alphabeticValue,
+            }));
+        } else if (name === 'licenseNumber') {
+            // Allow alphanumeric for license number
+            const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, '');
+            setDoctor((prevState) => ({
+                ...prevState,
+                [name]: alphanumericValue,
+            }));
+        } else if (name === 'address') {
+            // Allow alphanumeric, spaces, and common address characters
+            const addressValue = value.replace(/[^a-zA-Z0-9\s.,#-]/g, '');
+            setDoctor((prevState) => ({
+                ...prevState,
+                [name]: addressValue,
             }));
         } else {
             setDoctor((prevState) => ({
@@ -53,26 +148,32 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
         }
     };
 
+    // Handle field blur (when user leaves the field)
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
+        
+        // Validate the field when user leaves it
+        const error = validateField(name, value);
+        setErrors(prev => ({ ...prev, [name]: error }));
+    };
+
     // Form Submission with Validation
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
         const newErrors: Record<string, string> = {};
-        const requiredFields = [
-            'name',
-            'email',
-            'hospitalAffiliation',
-            'licenseNumber',
-            'phone',
-            'address',
-            'city',
-            'state',
-            'country',
+        const allFields = [
+            'name', 'email', 'speciality', 'qualification', 'hospitalAffiliation',
+            'licenseNumber', 'phone', 'address', 'city', 'state', 'country'
         ];
 
-        requiredFields.forEach((field) => {
-            if (!doctor[field as keyof Doctor]) {
-                newErrors[field] = `${field.replace(/([A-Z])/g, ' $1')} is required`;
+        // Validate all fields
+        allFields.forEach(field => {
+            const value = doctor[field as keyof Doctor];
+            const error = validateField(field, value);
+            if (error) {
+                newErrors[field] = error;
             }
         });
 
@@ -112,8 +213,9 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                             placeholder={placeholder}
                             value={doctor[name as keyof Doctor]?.toString() || ''}
                             onChange={handleChange}
+                            onBlur={handleBlur}
                             required={required} // Dynamically apply required attribute
-                            className={`mt-1 block w-full p-2 text-xs border ${errors[name] ? 'border-red-500' : 'border-gray-300'
+                            className={`mt-1 block w-full p-2 text-xs border ${errors[name] && touched[name] ? 'border-red-500' : 'border-gray-300'
                                 } rounded-md focus:outline-none focus:ring-1 focus:ring-primary`}
                             {...(name === 'phone' && {
                                 inputMode: 'numeric',
@@ -127,7 +229,7 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                                 }
                             })}
                         />
-                        {errors[name] && (
+                        {errors[name] && touched[name] && (
                             <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
                         )}
                     </div>

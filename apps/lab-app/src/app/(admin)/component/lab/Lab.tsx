@@ -119,11 +119,63 @@ const Lab = () => {
 
     if (name in formData) {
       const fieldName = name as LabFormField;
+      
+      // Real-time input filtering
+      let filteredValue = value;
+      if (name === 'name') {
+        // Lab name: only letters, spaces, and specific characters (no numbers)
+        filteredValue = value.replace(/[^a-zA-Z\s&.-]/g, '');
+      } else if (name === 'labZip') {
+        // ZIP code: only numbers, max 6 digits
+        filteredValue = value.replace(/\D/g, '').slice(0, 6);
+      } else if (name === 'state' || name === 'city') {
+        // State and City: only letters and spaces (no numbers)
+        filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
+      } else if (name === 'labPhone') {
+        // Lab Phone: only numbers, max 10 digits
+        filteredValue = value.replace(/\D/g, '').slice(0, 10);
+      } else if (name === 'labEmail') {
+        // Lab Email: allow email format characters
+        filteredValue = value.replace(/[^a-zA-Z0-9@._-]/g, '');
+      } else if (name === 'directorName') {
+        // Director Name: only letters and spaces (no numbers)
+        filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
+      } else if (name === 'directorEmail') {
+        // Director Email: allow email format characters
+        filteredValue = value.replace(/[^a-zA-Z0-9@._-]/g, '');
+      } else if (name === 'directorPhone') {
+        // Director Phone: only numbers, max 10 digits
+        filteredValue = value.replace(/\D/g, '').slice(0, 10);
+      }
+      
       setFormData(prev => ({
         ...prev,
-        [fieldName]: type === 'checkbox' ? checked : value
+        [fieldName]: type === 'checkbox' ? checked : filteredValue
       }));
       setErrors(prev => ({ ...prev, [fieldName]: '' }));
+    }
+  };
+
+  // Handle field blur (when user leaves the field)
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    
+    // Validate email fields when user leaves the field
+    if (name === 'labEmail') {
+      if (value.trim() && !emailRegex.test(value.trim())) {
+        toast.error('Lab email must be a valid email address (e.g., user@domain.com)', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+      }
+    } else if (name === 'directorEmail') {
+      if (value.trim() && !emailRegex.test(value.trim())) {
+        toast.error('Director email must be a valid email address (e.g., user@domain.com)', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+      }
     }
   };
 
@@ -181,6 +233,160 @@ const Lab = () => {
     setIsSubmitting(true);
 
     try {
+      // Validate lab name (string only)
+      if (!formData.name.trim()) {
+        toast.error('Lab name is required', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      if (!/^[a-zA-Z\s&.-]+$/.test(formData.name.trim())) {
+        toast.error('Lab name must contain only letters, spaces, and special characters (&, ., -)', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      // Validate ZIP code (6 digits only)
+      if (!formData.labZip.trim()) {
+        toast.error('ZIP code is required', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      if (!/^\d{6}$/.test(formData.labZip.trim())) {
+        toast.error('ZIP code must be exactly 6 digits', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      // Validate State (letters only)
+      if (!formData.state.trim()) {
+        toast.error('State is required', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      if (!/^[a-zA-Z\s]+$/.test(formData.state.trim())) {
+        toast.error('State must contain only letters and spaces', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      // Validate City (letters only)
+      if (!formData.city.trim()) {
+        toast.error('City is required', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      if (!/^[a-zA-Z\s]+$/.test(formData.city.trim())) {
+        toast.error('City must contain only letters and spaces', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      // Validate Lab Phone (10 digits only)
+      if (!formData.labPhone.trim()) {
+        toast.error('Lab phone is required', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      if (!/^\d{10}$/.test(formData.labPhone.trim())) {
+        toast.error('Lab phone must be exactly 10 digits', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      // Validate Lab Email (valid email format)
+      if (!formData.labEmail.trim()) {
+        toast.error('Lab email is required', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(formData.labEmail.trim())) {
+        toast.error('Lab email must be a valid email address (e.g., user@domain.com)', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      // Validate Director Name (letters only)
+      if (!formData.directorName.trim()) {
+        toast.error('Director name is required', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      if (!/^[a-zA-Z\s]+$/.test(formData.directorName.trim())) {
+        toast.error('Director name must contain only letters and spaces', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      // Validate Director Email (valid email format)
+      if (!formData.directorEmail.trim()) {
+        toast.error('Director email is required', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      if (!emailRegex.test(formData.directorEmail.trim())) {
+        toast.error('Director email must be a valid email address (e.g., user@domain.com)', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      // Validate Director Phone (10 digits only)
+      if (!formData.directorPhone.trim()) {
+        toast.error('Director phone is required', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      if (!/^\d{10}$/.test(formData.directorPhone.trim())) {
+        toast.error('Director phone must be exactly 10 digits', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
       if (!isTabComplete('legal')) {
         toast.warn('Please complete all legal information before submitting', {
           position: 'top-center',
@@ -437,6 +643,7 @@ const Lab = () => {
                   name={id}
                   value={formData[id] as string}
                   onChange={handleInputChange}
+                  onBlur={handleBlur}
                   className={`block w-full pl-10 pr-3 py-2.5 text-sm border ${errors[id] ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
                     : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
                     } rounded-md shadow-sm text-gray-800`}
@@ -470,6 +677,7 @@ const Lab = () => {
                   name={id}
                   value={formData[id] as string}
                   onChange={handleInputChange}
+                  onBlur={handleBlur}
                   className={`block w-full pl-10 pr-3 py-2.5 text-sm border ${errors[id] ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
                     : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
                     } rounded-md shadow-sm text-gray-800`}

@@ -1,0 +1,239 @@
+================================================================================
+                    LAB MEMBER MANAGEMENT - VALIDATION RULES
+                    Route: http://localhost:3000/dashboard/technicians
+================================================================================
+
+This document outlines the validation rules and error messages for the "Lab Member Management" 
+functionality including Add New Member and Edit Member operations in the Lab Management System.
+
+================================================================================
+1. FORM VALIDATION RULES & ERROR MESSAGES
+================================================================================
+
+1.1 USERNAME FIELD
+------------------
+Validation Rules:
+- Required field
+- Minimum 3 characters
+- Maximum 20 characters
+- Only alphanumeric characters and underscores allowed
+- Real-time validation on input change
+- Auto-filters out invalid characters
+
+Error Messages:
+- "Username is required" (when empty)
+- "Username must be at least 3 characters" (when too short)
+- "Username must be at most 20 characters" (when too long)
+- "Username can only contain letters, numbers, and underscores" (when contains invalid characters)
+
+1.2 PASSWORD FIELD (New Members Only)
+-------------------------------------
+Validation Rules:
+- Required field for new members (optional for editing)
+- Minimum 8 characters
+- Must contain at least one uppercase letter
+- Must contain at least one lowercase letter
+- Must contain at least one number
+- Real-time validation on input change
+
+Error Messages:
+- "Password is required" (when empty for new members)
+- "Password must be at least 8 characters" (when too short)
+- "Password must contain at least one uppercase letter" (when missing uppercase)
+- "Password must contain at least one lowercase letter" (when missing lowercase)
+- "Password must contain at least one number" (when missing number)
+
+1.3 FIRST NAME FIELD
+--------------------
+Validation Rules:
+- Required field
+- Minimum 2 characters
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+- Auto-filters out numbers and special characters
+
+Error Messages:
+- "First name is required" (when empty)
+- "First name must be at least 2 characters" (when too short)
+- "First name should contain only alphabets and spaces" (when contains invalid characters)
+
+1.4 LAST NAME FIELD
+-------------------
+Validation Rules:
+- Required field
+- Minimum 1 character
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+- Auto-filters out numbers and special characters
+
+Error Messages:
+- "Last name is required" (when empty)
+- "Last name is required" (when too short)
+- "Last name should contain only alphabets and spaces" (when contains invalid characters)
+
+1.5 EMAIL FIELD
+---------------
+Validation Rules:
+- Required field
+- Valid email format (user@domain.com)
+- Real-time validation on input change
+
+Error Messages:
+- "Email is required" (when empty)
+- "Please enter a valid email address" (when format is invalid)
+
+1.6 PHONE FIELD
+---------------
+Validation Rules:
+- Optional field
+- Exactly 10 digits when provided
+- Only numeric input allowed
+- Real-time validation on input change
+- Auto-filters out non-numeric characters
+- Prevents typing beyond 10 digits
+
+Error Messages:
+- "Phone number must be at least 10 digits" (when too short)
+- "Phone number must be at most 10 digits" (when too long)
+- "Phone number should contain only digits" (when contains non-numeric characters)
+
+1.7 CITY FIELD
+--------------
+Validation Rules:
+- Optional field
+- Minimum 2 characters when provided
+- Maximum 50 characters when provided
+- Only alphabets and spaces allowed
+- Real-time validation on input change
+- Auto-filters out numbers and special characters
+
+Error Messages:
+- "City must be at least 2 characters" (when too short)
+- "City must be at most 50 characters" (when too long)
+- "City should contain only alphabets and spaces" (when contains invalid characters)
+
+1.8 ROLES FIELD
+---------------
+Validation Rules:
+- Required field
+- At least one role must be selected
+- Options: Admin, Technician, Desk Role
+- Real-time validation on selection change
+
+Error Messages:
+- "At least one role is required" (when no roles selected)
+
+================================================================================
+2. REAL-TIME INPUT FILTERING
+================================================================================
+
+2.1 ALPHANUMERIC FIELDS
+-----------------------
+Fields: Username
+- Automatically removes invalid characters as user types
+- Only allows letters (a-z, A-Z), numbers (0-9), and underscores (_)
+- No error messages needed (input is filtered in real-time)
+
+2.2 ALPHABETIC FIELDS
+---------------------
+Fields: First Name, Last Name, City
+- Automatically removes numbers and special characters as user types
+- Only allows letters (a-z, A-Z) and spaces
+- No error messages needed (input is filtered in real-time)
+
+2.3 NUMERIC FIELDS
+------------------
+Fields: Phone
+- Automatically removes non-numeric characters as user types
+- Only allows numbers (0-9)
+- Maximum 10 characters (exactly 10 digits required)
+- Prevents typing beyond 10 digits
+- No error messages needed (input is filtered in real-time)
+
+================================================================================
+3. FORM SUBMISSION VALIDATION
+================================================================================
+
+3.1 REQUIRED FIELD VALIDATION
+-----------------------------
+All required fields are validated on form submission:
+- Username, First Name, Last Name, Email, Roles
+- Password (required only for new members, optional for editing)
+
+3.2 FORMAT VALIDATION
+---------------------
+- Email format validation
+- Username format validation (alphanumeric + underscore only)
+- Password complexity validation (for new members)
+- Phone number length validation (when provided)
+
+3.3 CHARACTER VALIDATION
+------------------------
+- Name fields: Only alphabets and spaces
+- Username: Only alphanumeric characters and underscores
+- Phone: Only numeric characters
+- City: Only alphabets and spaces
+
+================================================================================
+4. INLINE VALIDATION BEHAVIOR
+================================================================================
+
+4.1 VALIDATION TRIGGERS
+-----------------------
+- onBlur: Validates field when user leaves it (clicks away or tabs to next field)
+- onChange: Clears errors when user starts typing/selecting
+- onSubmit: Validates all fields before form submission
+
+4.2 ERROR DISPLAY
+-----------------
+- Errors only show for fields that have been touched (interacted with)
+- Red border and error text for invalid fields
+- Errors clear immediately when user starts typing/selecting
+- Specific, helpful error messages guide users
+
+4.3 USER EXPERIENCE
+-------------------
+- Non-intrusive validation (no errors until user interaction)
+- Immediate feedback when leaving fields
+- Progressive error clearing as user corrects issues
+- Visual indicators for field validation state
+
+================================================================================
+5. EDIT VS ADD MODE DIFFERENCES
+================================================================================
+
+5.1 ADD NEW MEMBER MODE
+-----------------------
+- Password field is required and visible
+- All validation rules apply
+- Form starts with empty values
+
+5.2 EDIT MEMBER MODE
+--------------------
+- Password field is hidden (not required)
+- Username, First Name, Last Name, Email, Phone, City, Roles validation applies
+- Form pre-filled with existing member data
+- Active Status field is available for editing
+
+================================================================================
+6. ROLE-BASED VALIDATION
+================================================================================
+
+6.1 AVAILABLE ROLES
+-------------------
+- ADMIN: Full administrative access
+- TECHNICIAN: Lab technician access
+- DESKROLE: Desk/reception access
+
+6.2 ROLE SELECTION VALIDATION
+-----------------------------
+- At least one role must be selected
+- Multiple roles can be selected
+- Real-time validation on role selection/deselection
+
+================================================================================
+END OF LAB MEMBER MANAGEMENT VALIDATION RULES
+================================================================================
+
+Last Updated: 10-sept-2025
+Version: 1.0

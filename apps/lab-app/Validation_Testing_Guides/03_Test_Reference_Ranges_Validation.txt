@@ -1,0 +1,120 @@
+================================================================================
+                    TEST REFERENCE RANGES - VALIDATION RULES
+                    Route: http://localhost:3000/dashboard/test
+================================================================================
+
+This document outlines the validation rules and error messages for the "Test Reference Ranges" 
+functionality including Add New, Add References, and Edit operations in the Lab Management System.
+
+================================================================================
+1. FORM VALIDATION RULES & ERROR MESSAGES
+================================================================================
+
+1.1 TEST DESCRIPTION FIELD
+---------------------------
+Validation Rules:
+- Required field
+- Minimum 1 character
+- Auto-converts to uppercase
+- Real-time validation on input change
+- Datalist suggestions available
+
+Error Messages:
+- "Test description is required" (when empty)
+
+1.2 UNITS FIELD
+---------------
+Validation Rules:
+- Required field
+- Minimum 1 character
+- Real-time validation on input change
+
+Error Messages:
+- "Units are required" (when empty)
+
+1.3 GENDER FIELD
+----------------
+Validation Rules:
+- Required field
+- Options: Male (M), Female (F), Unisex (U)
+- Real-time validation on input change
+
+Error Messages:
+- "Gender is required" (when not selected)
+
+1.4 MINIMUM REFERENCE RANGE FIELD
+----------------------------------
+Validation Rules:
+- Required field
+- Must be 0 or greater
+- Numeric input only
+- Real-time validation on input change
+
+Error Messages:
+- "Minimum reference range must be 0 or greater" (when negative)
+
+1.5 MAXIMUM REFERENCE RANGE FIELD
+----------------------------------
+Validation Rules:
+- Required field
+- Must be 0 or greater
+- Numeric input only
+- Real-time validation on input change
+
+Error Messages:
+- "Maximum reference range must be 0 or greater" (when negative)
+
+1.6 MINIMUM AGE FIELD
+---------------------
+Validation Rules:
+- Required field
+- Must be 0 or greater
+- Must be 100 or less
+- Numeric input only
+- Real-time validation on input change
+
+Error Messages:
+- "Minimum age must be 0 or greater" (when negative)
+- "Minimum age must be 100 or less" (when greater than 100)
+
+1.7 MAXIMUM AGE FIELD
+---------------------
+Validation Rules:
+- Optional field
+- Must be 0 or greater when provided
+- Must be 100 or less when provided
+- Numeric input only
+- Real-time validation on input change
+
+Error Messages:
+- "Maximum age must be 0 or greater" (when negative)
+- "Maximum age must be 100 or less" (when greater than 100)
+
+1.8 MINIMUM AGE UNIT FIELD
+--------------------------
+Validation Rules:
+- Required field
+- Options: YEARS, MONTHS, WEEKS, DAYS
+- Defaults to "YEARS" if not selected
+- Real-time validation on input change
+
+Error Messages:
+- "Minimum age unit is required" (when not selected)
+
+1.9 MAXIMUM AGE UNIT FIELD
+--------------------------
+Validation Rules:
+- Required field when maximum age is provided
+- Options: YEARS, MONTHS, WEEKS, DAYS
+- Defaults to "YEARS" if not selected
+- Real-time validation on input change
+
+Error Messages:
+- "Maximum age unit is required" (when not selected)
+
+================================================================================
+END OF TEST REFERENCE RANGES VALIDATION RULES
+================================================================================
+
+Last Updated: 10-sept-2025
+Version: 1.0

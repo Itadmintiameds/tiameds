@@ -582,10 +582,10 @@ export const testReferancePointSchema = z.object({
   gender: z.string().min(1, "Gender is required"),
   minReferenceRange: z.number().min(0, "Minimum reference range must be 0 or greater"),
   maxReferenceRange: z.number().min(0, "Maximum reference range must be 0 or greater"),
-  ageMin: z.number().min(0, "Minimum age must be 0 or greater"),
-  ageMax: z.number().min(0, "Maximum age must be 0 or greater").optional(),
-  minAgeUnit: z.string().min(1, "Minimum age unit is required"),
-  maxAgeUnit: z.string().min(1, "Maximum age unit is required").optional(),
+  ageMin: z.number().min(0, "Minimum age must be 0 or greater").max(100, "Minimum age must be 100 or less"),
+  ageMax: z.number().min(0, "Maximum age must be 0 or greater").max(100, "Maximum age must be 100 or less").optional(),
+  minAgeUnit: z.string().default("YEARS").optional(),
+  maxAgeUnit: z.string().default("YEARS").optional(),
   createdBy: z.string().optional(),
   updatedBy: z.string().optional(),
   createdAt: z.string().optional(),
@@ -650,7 +650,9 @@ const AddTestReferanceNew = ({
         setNewReferanceRecord(prev => ({
             ...prev,
             testName: test.name,
-            category: test.category
+            category: test.category,
+            minAgeUnit: prev.minAgeUnit || "YEARS",
+            maxAgeUnit: prev.maxAgeUnit || "YEARS"
         }));
     };
 
@@ -662,6 +664,27 @@ const AddTestReferanceNew = ({
             ...prev,
             [name]: uppercaseValue
         }));
+    };
+
+    const handleAgeUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setNewReferanceRecord(prev => ({
+            ...prev,
+            [name]: value || "YEARS" // Default to YEARS if empty
+        }));
+    };
+
+    const handleAgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        const numericValue = parseFloat(value);
+        
+        // Prevent negative values and values greater than 100
+        if (value === "" || (numericValue >= 0 && numericValue <= 100)) {
+            setNewReferanceRecord(prev => ({
+                ...prev,
+                [name]: value === "" ? "" : numericValue
+            }));
+        }
     };
 
     if (isLoading) {
@@ -744,12 +767,24 @@ const AddTestReferanceNew = ({
                     <input
                         type="text"
                         name="testDescription"
-                        placeholder="Description (will be converted to uppercase)"
+                        list="testDescriptionOptions"
+                        placeholder="Type or select test description (will be converted to uppercase)"
                         value={newReferanceRecord?.testDescription || ""}
-                        onChange={handleDescriptionChange} // Use the custom handler
-                        className="w-full border border-gray-300 p-2 rounded-md focus:ring-1 focus:ring-blue-500 uppercase-input" // Added uppercase-input class
+                        onChange={handleDescriptionChange}
+                        className="w-full border border-gray-300 p-2 rounded-md focus:ring-1 focus:ring-blue-500 uppercase-input"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Accepts letters, numbers, and common punctuation</p>
+                    <datalist id="testDescriptionOptions">
+                        <option value="DESCRIPTION">Description</option>
+                        <option value="DROPDOWN">Dropdown</option>
+                        <option value="DROPDOWN-POSITIVE/NEGATIVE">Dropdown - Positive/Negative</option>
+                        <option value="DROPDOWN-PRESENT/ABSENT">Dropdown - Present/Absent</option>
+                        <option value="DROPDOWN-REACTIVE/NONREACTIVE">Dropdown - Reactive/Nonreactive</option>
+                        <option value="DROPDOWN-PERCENTAGE">Dropdown - Percentage</option>
+                        <option value="DROPDOWN-COMPATIBLE/INCOMPATIBLE">Dropdown - Compatible/Incompatible</option>
+                        <option value="DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE">Dropdown with Description - Reactive/Nonreactive</option>
+                        <option value="DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT">Dropdown with Description - Present/Absent</option>
+                    </datalist>
+                    <p className="text-xs text-gray-500 mt-1">Type custom description or select from suggestions</p>
                 </div>
                 <div className="flex flex-col">
                     <label className="text-gray-700 mb-1">Gender</label>
@@ -784,19 +819,19 @@ const AddTestReferanceNew = ({
                         <input
                             type="number"
                             name="ageMin"
-                             min={0}
+                            min={0}
+                            max={100}
                             placeholder="Minimum Age"
                             value={newReferanceRecord.ageMin || ""}
-                            onChange={handleChangeRef}
+                            onChange={handleAgeChange}
                             className="w-full border border-gray-300 p-2 rounded-md focus:ring-1 focus:ring-blue-500"
                         />
                         <select
                             name="minAgeUnit"
-                            value={newReferanceRecord.minAgeUnit || ""}
-                            onChange={handleChangeRef}
+                            value={newReferanceRecord.minAgeUnit || "YEARS"}
+                            onChange={handleAgeUnitChange}
                             className="w-full border border-gray-300 p-2 rounded-md focus:ring-1 focus:ring-blue-500"
                         >
-                            <option value="" disabled>Unit</option>
                             <option value="YEARS">Years</option>
                             <option value="MONTHS">Months</option>
                             <option value="WEEKS">Weeks</option>
@@ -811,19 +846,19 @@ const AddTestReferanceNew = ({
                         <input
                             type="number"
                             name="ageMax"
-                             min={0}
+                            min={0}
+                            max={100}
                             placeholder="Maximum Age"
                             value={newReferanceRecord.ageMax || ""}
-                            onChange={handleChangeRef}
+                            onChange={handleAgeChange}
                             className="w-full border border-gray-300 p-2 rounded-md focus:ring-1 focus:ring-blue-500"
                         />
                         <select
                             name="maxAgeUnit"
-                            value={newReferanceRecord.maxAgeUnit || ""}
-                            onChange={handleChangeRef}
+                            value={newReferanceRecord.maxAgeUnit || "YEARS"}
+                            onChange={handleAgeUnitChange}
                             className="w-full border border-gray-300 p-2 rounded-md focus:ring-1 focus:ring-blue-500"
                         >
-                            <option value="" disabled>Unit</option>
                             <option value="YEARS">Years</option>
                             <option value="MONTHS">Months</option>
                             <option value="WEEKS">Weeks</option>

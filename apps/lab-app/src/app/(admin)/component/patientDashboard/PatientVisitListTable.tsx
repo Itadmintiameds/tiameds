@@ -6,6 +6,7 @@ import { PlusIcon, SearchIcon, XIcon } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
 import { FaFilterCircleXmark } from "react-icons/fa6";
+import { FaEdit } from "react-icons/fa";
 import { LiaFileInvoiceSolid } from "react-icons/lia";
 import { MdOutlineDeleteSweep } from "react-icons/md";
 import { toast } from 'react-toastify';
@@ -15,7 +16,7 @@ import Modal from '../common/Model';
 import Pagination from '../common/Pagination';
 import TableComponent from '../common/TableComponent';
 import AddPatientComponent from './AddPatientComponent';
-// import EditPatientDetails from './EditPatientDetails';
+import EditPatientDetails from './EditPatientDetails';
 import PatientDetailsViewComponent from './PatientDetailsViewComponent';
 import ReportView from './Report/ReportView';
 import CancelPatient from './CancelPatient';
@@ -51,8 +52,8 @@ const PatientVisitListTable: React.FC = () => {
   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
   const [showAddPatientForm, setShowAddPatientForm] = useState<boolean>(false);
   const [viewPatientModal, setViewPatientModal] = useState<boolean>(false);
-  // const [editPatientDetailsModal, setEditPatientDetailsModal] = useState<boolean>(false);
-  // const [editPatientDetails, setEditPatientDetails] = useState<Patient | null>(null);
+  const [editPatientDetailsModal, setEditPatientDetailsModal] = useState<boolean>(false);
+  const [editPatientDetails, setEditPatientDetails] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [updatePatientListVist, setUpdatePatientListVist] = useState<boolean>(false);
@@ -193,10 +194,10 @@ const PatientVisitListTable: React.FC = () => {
     setViewReportModal(true);
   };
 
-  // const handleEditpatientDetails = (visit: Patient) => () => {
-  //   setEditPatientDetails(visit);
-  //   setEditPatientDetailsModal(true);
-  // };
+  const handleEditpatientDetails = (visit: Patient) => () => {
+    setEditPatientDetails(visit);
+    setEditPatientDetailsModal(true);
+  };
 
   const handleAddPatient = () => {
     setShowAddPatientForm(true);
@@ -507,15 +508,16 @@ const PatientVisitListTable: React.FC = () => {
           <div className="flex gap-2 whitespace-nowrap">
             {!isCancelled && isReportPending && (
               <>
-                {/* Edit Button - Commented out for now
-                <Button
-                  text=""
-                  className="px-2 py-1 text-white bg-amber-600 rounded hover:bg-amber-700 transition-colors duration-200"
-                  onClick={handleEditpatientDetails(row)}
-                >
-                  <FaEdit size={14} />
-                </Button>
-                */}
+                {/* Edit Button - Only visible for SUPERADMIN role */}
+                {isSuperAdmin && (
+                  <Button
+                    text=""
+                    className="px-2 py-1 text-white bg-amber-600 rounded hover:bg-amber-700 transition-colors duration-200"
+                    onClick={handleEditpatientDetails(row)}
+                  >
+                    <FaEdit size={14} />
+                  </Button>
+                )}
                 <Button
                   text=""
                   className="px-2 py-1 text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200"
@@ -729,7 +731,7 @@ const PatientVisitListTable: React.FC = () => {
         {patientDetails && <PatientDetailsViewComponent patient={patientDetails} />}
       </Modal>
 
-      {/* <Modal
+      <Modal
         isOpen={editPatientDetailsModal}
         onClose={() => setEditPatientDetailsModal(false)}
         title="Edit Patient Details"
@@ -741,7 +743,7 @@ const PatientVisitListTable: React.FC = () => {
           setUpdatePatientListVist={setUpdatePatientListVist}
           updatePatientListVist={updatePatientListVist}
         />
-      </Modal> */}
+      </Modal>
 
       <Modal
         isOpen={viewReportModal}
