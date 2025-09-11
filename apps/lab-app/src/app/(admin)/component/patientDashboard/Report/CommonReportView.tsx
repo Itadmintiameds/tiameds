@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useLabs } from "@/context/LabContext";
 import { PatientData } from "@/types/sample/sample";
-import { calculateAgeObject } from "@/utils/ageUtils";
+import {  formatAgeForDisplay } from "@/utils/ageUtils";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { getReportData } from "../../../../../../services/reportServices";
@@ -209,7 +209,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                     </div>
                                     <div className="flex items-center">
                                         <span className="text-xs font-medium text-gray-700 w-24">AGE/SEX:</span>
-                                        <span className="text-xs font-bold text-gray-900">{patientData?.dateOfBirth ? `${calculateAgeObject(patientData.dateOfBirth).years} Yrs` : 'N/A'} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
+                                        <span className="text-xs font-bold text-gray-900">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
                                     </div>
                                     <div className="flex items-center">
                                         <span className="text-xs font-medium text-gray-700 w-24">REFERRED BY:</span>

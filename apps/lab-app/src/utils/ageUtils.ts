@@ -276,6 +276,31 @@ export const calculateAgeObject = (dob: string) => {
   };
 };
 
+// Format age for display with intelligent unit selection
+export const formatAgeForDisplay = (dob: string): string => {
+  if (!dob) return 'N/A';
+  
+  const age = calculateAgeObject(dob);
+  
+  // If years > 0, show years only
+  if (age.years > 0) {
+    return `${age.years} Yr${age.years !== 1 ? 's' : ''}`;
+  }
+  
+  // If years = 0 but months > 0, show months
+  if (age.months > 0) {
+    return `${age.months} Mo${age.months !== 1 ? 's' : ''}`;
+  }
+  
+  // If both years and months = 0, show days
+  if (age.days > 0) {
+    return `${age.days} Day${age.days !== 1 ? 's' : ''}`;
+  }
+  
+  // If all are 0, show "0 Days" (newborn)
+  return '0 Days';
+};
+
 // Validate age field values
 export const validateAgeField = (field: 'years' | 'months' | 'days', value: string) => {
   let error = '';
