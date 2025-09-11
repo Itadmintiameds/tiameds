@@ -74,15 +74,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   const [hasMissingDescriptions, setHasMissingDescriptions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // const formatAgeDisplay = (age: { years: number; months: number; days: number }) => {
-  //   if (age.years > 0) {
-  //     return `${age.years} year${age.years > 1 ? 's' : ''} ${age.months > 0 ? `${age.months} month${age.months > 1 ? 's' : ''}` : ''}`;
-  //   } else if (age.months > 0) {
-  //     return `${age.months} month${age.months > 1 ? 's' : ''} ${age.days > 0 ? `${age.days} day${age.days > 1 ? 's' : ''}` : ''}`;
-  //   } else {
-  //     return `${age.days} day${age.days !== 1 ? 's' : ''}`;
-  //   }
-  // };
+ console.log("selectedPatient",selectedPatient.dateOfBirth);
 
   // Function to determine value status based on reference range
   const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
@@ -151,6 +143,14 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
       const toMonths = (value: number | null | undefined, unit: string | null | undefined): number => {
         if (value === null || value === undefined) return 0;
         const u = (unit || 'YEARS').toUpperCase();
+        
+        // Special case: if unit is "MONTHS" but value is 1, treat it as 1 year (12 months)
+        // This handles the case where 0-1 means 0 to 1 year (0-12 months)
+        if (u === 'MONTHS' && value === 1) {
+          return 12; // 1 month = 1 year = 12 months
+        }
+        
+        // Normal conversion: MONTHS = months, YEARS = years * 12
         return u === 'MONTHS' ? value : value * 12;
       };
 
@@ -161,7 +161,17 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
           ? Number.MAX_SAFE_INTEGER
           : toMonths(point.ageMax, point.maxAgeUnit);
 
-        return patientAgeMonths >= minMonths && patientAgeMonths <= maxMonths;
+        // Make ranges non-overlapping by using exclusive upper bound for most ranges
+        // Only the last range (highest age) uses inclusive upper bound
+        const isLastRange = maxMonths === Number.MAX_SAFE_INTEGER || maxMonths >= 1200; // 100+ years
+        
+        if (isLastRange) {
+          // For the highest age range, use inclusive upper bound
+          return patientAgeMonths >= minMonths && patientAgeMonths <= maxMonths;
+        } else {
+          // For all other ranges, use exclusive upper bound to prevent overlap
+          return patientAgeMonths >= minMonths && patientAgeMonths < maxMonths;
+        }
       });
 
       // If age filtering yields results, use them; otherwise fall back to gender-only
