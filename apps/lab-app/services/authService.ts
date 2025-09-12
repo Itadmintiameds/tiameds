@@ -25,6 +25,16 @@ export const register = async (data: RegisterData): Promise<RegisterResponse> =>
   }
 }
 
+export const logout = async (): Promise<{ message: string }> => {
+  try {
+    const response = await api.post<{ message: string }>('/auth/logout');
+    return response.data;
+  } catch (error: any) {
+    const message = error.response?.data?.message || 'An error occurred during logout.';
+    throw new Error(message);
+  }
+}
+
 
 
 

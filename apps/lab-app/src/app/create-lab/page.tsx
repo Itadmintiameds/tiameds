@@ -839,7 +839,7 @@ const Lab = () => {
                                             )}
                                         </span>
                                         <button
-                                            onClick={handleLogout}
+                                            onClick={() => handleLogout()}
                                             className="flex items-center px-4 py-2 rounded-lg text-purple-700 bg-purple-50 hover:bg-purple-100 transition-colors"
                                         >
                                             <FaSignOutAlt className="mr-2" />

@@ -114,7 +114,7 @@ const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange })
         <Button
           text=""
           className="bg-gradient-to-br from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 rounded-md p-2 text-white transition-all shadow-xs hover:shadow-sm"
-          onClick={handleLogout}
+          onClick={() => handleLogout()}
           aria-label="Logout"
         >
           <FiPower className="h-4 w-4" aria-hidden="true" />
