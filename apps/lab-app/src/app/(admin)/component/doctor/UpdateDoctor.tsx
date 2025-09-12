@@ -18,63 +18,77 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
 
   // Validate individual field
   const validateField = (name: string, value: unknown): string => {
-    // Type guard to ensure value is a string
-    if (typeof value !== 'string') {
-      return `${name} must be a valid value`;
-    }
     switch (name) {
       case 'name':
+        if (typeof value !== 'string') return 'Name must be a valid value';
         if (!value || value.trim() === '') return 'Name is required';
         if (value.length < 2) return 'Name must be at least 2 characters long';
         if (!/^[a-zA-Z\s]+$/.test(value)) return 'Name should contain only alphabets and spaces';
         return '';
       
       case 'email':
+        if (typeof value !== 'string') return 'Email must be a valid value';
         if (!value || value.trim() === '') return 'Email is required';
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
         return '';
       
       case 'phone':
-        if (!value || value === '') return 'Phone is required';
-        if (value.toString().length !== 10) return 'Phone number must be exactly 10 digits';
-        return '';
+        if (typeof value === 'number') {
+          if (!value || value.toString().length !== 10) return 'Phone number must be exactly 10 digits';
+          return '';
+        } else if (typeof value === 'string') {
+          if (!value || value.trim() === '') return 'Phone is required';
+          if (value.length !== 10) return 'Phone number must be exactly 10 digits';
+          if (!/^\d+$/.test(value)) return 'Phone number must contain only digits';
+          return '';
+        } else {
+          return 'Phone must be a valid value';
+        }
       
       case 'licenseNumber':
+        if (typeof value !== 'string') return 'License number must be a valid value';
         if (!value || value.trim() === '') return 'License number is required';
         if (value.length < 3) return 'License number must be at least 3 characters long';
         if (!/^[a-zA-Z0-9]+$/.test(value)) return 'License number should contain only letters and numbers';
         return '';
       
       case 'hospitalAffiliation':
+        if (typeof value !== 'string') return 'Hospital affiliation must be a valid value';
         if (!value || value.trim() === '') return 'Hospital affiliation is required';
         if (!/^[a-zA-Z\s]+$/.test(value)) return 'Hospital affiliation should contain only alphabets and spaces';
         return '';
       
       case 'address':
+        if (typeof value !== 'string') return 'Address must be a valid value';
         if (!value || value.trim() === '') return 'Address is required';
         if (value.length < 5) return 'Address must be at least 5 characters long';
         return '';
       
       case 'city':
+        if (typeof value !== 'string') return 'City must be a valid value';
         if (!value || value.trim() === '') return 'City is required';
         if (!/^[a-zA-Z\s]+$/.test(value)) return 'City should contain only alphabets and spaces';
         return '';
       
       case 'state':
+        if (typeof value !== 'string') return 'State must be a valid value';
         if (!value || value.trim() === '') return 'State is required';
         if (!/^[a-zA-Z\s]+$/.test(value)) return 'State should contain only alphabets and spaces';
         return '';
       
       case 'country':
+        if (typeof value !== 'string') return 'Country must be a valid value';
         if (!value || value.trim() === '') return 'Country is required';
         if (!/^[a-zA-Z\s]+$/.test(value)) return 'Country should contain only alphabets and spaces';
         return '';
       
       case 'speciality':
+        if (typeof value !== 'string') return 'Speciality must be a valid value';
         if (value && !/^[a-zA-Z\s]+$/.test(value)) return 'Speciality should contain only alphabets and spaces';
         return '';
       
       case 'qualification':
+        if (typeof value !== 'string') return 'Qualification must be a valid value';
         if (value && !/^[a-zA-Z\s]+$/.test(value)) return 'Qualification should contain only alphabets and spaces';
         return '';
       
@@ -146,6 +160,13 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
       'name', 'email', 'speciality', 'qualification', 'hospitalAffiliation',
       'licenseNumber', 'phone', 'address', 'city', 'state', 'country'
     ];
+
+    // Mark all fields as touched so errors will show
+    const allTouched: Record<string, boolean> = {};
+    allFields.forEach(field => {
+      allTouched[field] = true;
+    });
+    setTouched(allTouched);
 
     // Validate all fields
     allFields.forEach(field => {

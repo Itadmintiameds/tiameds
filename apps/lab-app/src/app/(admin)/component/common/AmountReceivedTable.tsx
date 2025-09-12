@@ -101,6 +101,9 @@ interface AmountReceivedTableProps {
   showTitle?: boolean;
   className?: string;
   rawApiData?: PatientApiResponse[]; // Add raw API data for payment method calculations
+  selectedDate?: string; // Add selected date for discount filtering
+  startDate?: string; // Add start date for range filtering
+  endDate?: string; // Add end date for range filtering
 }
 
 // Utility function to transform API response to table format
@@ -148,42 +151,179 @@ const AmountReceivedTable: React.FC<AmountReceivedTableProps> = ({
   title = "Amount Received by Me",
   showTitle = true,
   className = "",
-  rawApiData = []
+  rawApiData = [],
+  selectedDate,
+  startDate,
+  endDate
 }) => {
   // Memoize totals calculation to prevent recalculation on every render
   const totals = useMemo(() => {
-    return rawApiData.reduce((acc, patient) => {
-    const { visit } = patient;
-    const { billing } = visit;
+    // Group patients by patient ID to get the latest transaction for each patient (for due amounts)
+    const patientMap = new Map();
     
-    // Add billing amounts only once per patient (not per transaction)
-    acc.discount += billing.discount;
-    acc.due += billing.due_amount;
-    // Sum up all transaction amounts (only for transactions with received amount > 0)
-    billing.transactions?.forEach((transaction: BillingTransaction) => {
-      if (transaction.received_amount > 0) {
+    rawApiData.forEach((patient) => {
+      // Group by patient ID only - each patient ID should have only one latest visit
+      const patientKey = patient.id;
+      const existingPatient = patientMap.get(patientKey);
+      
+      // If this is the first time we see this patient ID, or if this visit/transaction is more recent
+      let currentVisitDate: Date;
+      let existingVisitDate: Date | null = null;
+      
+      try {
+        currentVisitDate = new Date(patient.visit.visitDate);
+        if (isNaN(currentVisitDate.getTime())) {
+       
+          return; // Skip this patient if date is invalid
+        }
+        
+        if (existingPatient) {
+          existingVisitDate = new Date(existingPatient.visit.visitDate);
+          if (isNaN(existingVisitDate.getTime())) {
+       
+            existingVisitDate = null;
+          }
+        }
+      } catch (error) {
+   
+        return; // Skip this patient if date parsing fails
+      }
+      
+      // Get the latest transaction time for comparison
+      const currentLatestTransaction = patient.visit.billing.transactions?.reduce((latest: BillingTransaction | null, transaction: BillingTransaction) => {
+        try {
+          const transactionTime = new Date(transaction.created_at);
+          if (isNaN(transactionTime.getTime())) {
+         
+            return latest;
+          }
+          return !latest || transactionTime > new Date(latest.created_at) ? transaction : latest;
+        } catch (error) {
+    
+          return latest;
+        }
+      }, null as BillingTransaction | null);
+      
+      const existingLatestTransaction = existingPatient?.visit.billing.transactions?.reduce((latest: BillingTransaction | null, transaction: BillingTransaction) => {
+        try {
+          const transactionTime = new Date(transaction.created_at);
+          if (isNaN(transactionTime.getTime())) {
+      
+            return latest;
+          }
+          return !latest || transactionTime > new Date(latest.created_at) ? transaction : latest;
+        } catch (error) {
+       
+          return latest;
+        }
+      }, null as BillingTransaction | null);
+      
+      const shouldUpdate = !existingPatient || 
+        (existingVisitDate && currentVisitDate > existingVisitDate) ||
+        (existingVisitDate && currentVisitDate.getTime() === existingVisitDate.getTime() && 
+         currentLatestTransaction && existingLatestTransaction &&
+         new Date(currentLatestTransaction.created_at) > new Date(existingLatestTransaction.created_at));
+      
+      if (shouldUpdate) {
+        patientMap.set(patientKey, patient);
+      }
+    });
+    
+    // Calculate totals: use latest due amounts per patient, but sum all transactions for received amounts
+    const latestPatients = Array.from(patientMap.values());
+    
+    // First, calculate due amounts using only latest transactions per patient
+    // Only include discount for billing dates that match the selected date
+    const dueTotals = latestPatients.reduce((acc, patient) => {
+      const { visit } = patient;
+      const { billing } = visit;
+      
+      // Only add discount if there's no date filter (show all discounts)
+      // OR if the billing date matches the selected date/range
+      // This ensures discount only shows on the day the billing was created
+      if (!selectedDate && !startDate && !endDate) {
+        // No date filter - show all discounts
+        acc.discount += billing.discount;
+      } else {
+        // Date filter is active - check if billing date falls within the range
+        let billingDate = '';
+        try {
+          // Try to get billing date from the raw API data
+          const rawPatient = rawApiData?.find(p => p.visit.visitId === visit.visitId);
+          if (rawPatient?.visit.billing.billingDate) {
+            const date = new Date(rawPatient.visit.billing.billingDate);
+            if (!isNaN(date.getTime())) {
+              billingDate = date.toISOString().split('T')[0];
+            }
+          }
+        } catch (error) {
+          // Error parsing billing date
+        }
+        
+        // Check if billing date falls within the selected range
+        let shouldIncludeDiscount = false;
+        
+        if (selectedDate) {
+          // Single date selection
+          shouldIncludeDiscount = billingDate === selectedDate;
+        } else if (startDate && endDate) {
+          // Date range selection - use string comparison for YYYY-MM-DD format
+          shouldIncludeDiscount = billingDate >= startDate && billingDate <= endDate;
+        } else if (startDate) {
+          // Only start date (from startDate onwards)
+          shouldIncludeDiscount = billingDate >= startDate;
+        } else if (endDate) {
+          // Only end date (up to endDate)
+          shouldIncludeDiscount = billingDate <= endDate;
+        }
+        
+        // Debug logging
+        console.log(`Visit ID: ${visit.visitId}, Billing Date: "${billingDate}", Start: "${startDate}", End: "${endDate}", Should Include: ${shouldIncludeDiscount}, Discount: ${billing.discount}`);
+        if (startDate && endDate) {
+          console.log(`Comparison: ${billingDate} >= ${startDate} = ${billingDate >= startDate}, ${billingDate} <= ${endDate} = ${billingDate <= endDate}`);
+        }
+        
+        if (shouldIncludeDiscount) {
+          acc.discount += billing.discount;
+        }
+      }
+      acc.due += billing.due_amount;
+      
+      return acc;
+    }, { discount: 0, due: 0 });
+    
+    // Then, calculate received amounts using ALL transactions from ALL patients
+    const receivedTotals = rawApiData.reduce((acc, patient) => {
+      const { visit } = patient;
+      const { billing } = visit;
+      
+      // Sum up all transaction amounts (including zero amounts for complete reporting)
+      billing.transactions?.forEach((transaction: BillingTransaction) => {
         acc.received += transaction.received_amount || 0;
         acc.refund += transaction.refund_amount || 0;
         acc.cashTotal += transaction.cash_amount || 0;
         acc.cardTotal += transaction.card_amount || 0;
         acc.upiTotal += transaction.upi_amount || 0;
-      }
+      });
+      
+      // Calculate net received from final billing state
+      acc.netReceived += billing.received_amount - (billing.transactions?.reduce((sum: number, t: { refund_amount?: number; }) => sum + (t.refund_amount || 0), 0) || 0);
+      
+      return acc;
+    }, {
+      received: 0,
+      netReceived: 0,
+      refund: 0,
+      cashTotal: 0,
+      cardTotal: 0,
+      upiTotal: 0
     });
     
-    // Calculate net received from final billing state
-    acc.netReceived += billing.received_amount - (billing.transactions?.reduce((sum: number, t: { refund_amount?: number; }) => sum + (t.refund_amount || 0), 0) || 0);
-    
-    return acc;
-  }, {
-    discount: 0,
-    due: 0, 
-    received: 0,
-    netReceived: 0,
-    refund: 0,
-    cashTotal: 0,
-    cardTotal: 0,
-    upiTotal: 0
-  });
+    // Combine both totals
+    return {
+      ...dueTotals,
+      ...receivedTotals
+    };
   }, [rawApiData]); // Only recalculate when rawApiData changes
 
   return (

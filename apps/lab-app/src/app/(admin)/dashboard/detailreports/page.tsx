@@ -26,7 +26,7 @@ interface AmountReceivedItem {
 import { FaMoneyBillWave, FaFileInvoice, FaCalendarDay, FaArrowLeft } from 'react-icons/fa';
 import { DATE_FILTER_OPTIONS, DateFilterOption, getDateRange, formatDateForAPI } from '@/utils/dateUtils';
 import { VisitType, Patient } from '@/types/patient/patient';
-import { getAllPatientVisitsByDateRangeoflab } from '@/../services/patientServices';
+import { getDatewiseTransactionDetails } from '@/../services/patientServices';
 import { useLabs } from '@/context/LabContext';
 import Loader from '../../component/common/Loader';
 import { toast } from 'react-toastify';
@@ -49,7 +49,7 @@ interface PaymentTotals {
   upiTotal: number;
 }
 
-// Type aliases for external interfaces
+
 
 // Type conversion functions
 const convertPatientToApiResponse = (patient: Patient): unknown => {
@@ -76,6 +76,7 @@ const convertPatientToApiResponse = (patient: Patient): unknown => {
         paymentStatus: patient.visit.billing.paymentStatus,
         paymentMethod: patient.visit.billing.paymentMethod,
         paymentDate: patient.visit.billing.paymentDate,
+        billingDate: (patient.visit.billing as { billingDate?: string }).billingDate || patient.visit.billing.paymentDate,
         discount: patient.visit.billing.discount,
         netAmount: patient.visit.billing.netAmount,
         discountReason: patient.visit.billing.discountReason,
@@ -409,12 +410,17 @@ const Page = () => {
       const formattedStartDate = formatDateForAPI(startDate);
       const formattedEndDate = formatDateForAPI(endDate);
 
-      const data = await getAllPatientVisitsByDateRangeoflab(
+      // Use the new API endpoint for datewise transaction details
+      const response = await getDatewiseTransactionDetails(
         currentLab.id,
         formattedStartDate,
         formattedEndDate
       );
 
+
+      
+      // The new API returns data directly as an array, not wrapped in a data property
+      const data = Array.isArray(response) ? response : response?.data || [];
       setAmountReceivedData(data);
     } catch (error: unknown) {
       console.error('Error fetching amount received data:', error);
@@ -509,7 +515,23 @@ const Page = () => {
         });
         
         const convertedApiData = filteredData.map(convertPatientToApiResponse);
-        return <AmountReceivedTable data={dateFilteredData} rawApiData={convertedApiData as Parameters<typeof AmountReceivedTable>[0]['rawApiData']} showTitle={false} />;
+        // Get the current selected date for discount filtering
+        const { startDate, endDate } = getDateRange(dateRangeFilter, customStartDate, customEndDate);
+        
+        // Only set selectedDate for single date selections, not ranges
+        const isDateRange = startDate && endDate && startDate !== endDate;
+        const selectedDate = !isDateRange && startDate ? formatDateForAPI(startDate) : undefined;
+        const startDateStr = startDate ? formatDateForAPI(startDate) : undefined;
+        const endDateStr = endDate ? formatDateForAPI(endDate) : undefined;
+        
+        return <AmountReceivedTable 
+          data={dateFilteredData} 
+          rawApiData={convertedApiData as Parameters<typeof AmountReceivedTable>[0]['rawApiData']} 
+          showTitle={false}
+          selectedDate={selectedDate}
+          startDate={startDateStr}
+          endDate={endDateStr}
+        />;
       
       case 'bill-report':
         return (

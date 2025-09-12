@@ -198,3 +198,21 @@ export const makePartialPayment = async (labId: number, billingId: number, payme
         throw new Error('Network error. Please check your connection.');
     }
 }
+
+// New API endpoint for datewise transaction details
+export const getDatewiseTransactionDetails = async (labId: number, startDate: string, endDate: string) => {
+    try {
+        
+        const response = await api.get(`/lab/statistics/${labId}/datewise-transactionsdetails`, {
+            params: {
+                startDate,
+                endDate
+            }
+        });
+     
+        return response.data;
+    } catch (error: unknown) {
+        console.error('Error fetching datewise transaction details:', error);
+        throw new Error('An error occurred while fetching datewise transaction details.');
+    }
+}
