@@ -3,6 +3,192 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AmountReceivedTable, { transformApiDataToTableFormat } from '../../component/common/AmountReceivedTable';
+import BillReport from '../../component/common/BillReport';
+
+// Base types for type safety
+interface BaseTestResult {
+  id: number;
+  testId: number;
+  reportStatus: string;
+}
+
+interface BaseDiscount {
+  discountAmount: number;
+  discountPercent: number;
+  finalPrice: number;
+  id: number;
+}
+
+// Extended interfaces for type safety
+interface ExtendedTestResult extends BaseTestResult {
+  testName?: string;
+  category?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  filled?: boolean;
+}
+
+interface ExtendedDiscount extends BaseDiscount {
+  testName?: string;
+  category?: string;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+// Type that matches AmountReceivedTable's PatientApiResponse exactly
+interface PatientApiResponse {
+  id: number;
+  firstName: string;
+  phone: string;
+  city: string;
+  dateOfBirth: string;
+  age: string;
+  gender: string;
+  visit: {
+    visitId: number;
+    visitDate: string;
+    visitType: string;
+    visitStatus: string;
+    visitDescription: string;
+    doctorId: number | null;
+    testIds: number[];
+    packageIds: number[];
+    billing: {
+      billingId: number;
+      totalAmount: number;
+      paymentStatus: string;
+      paymentMethod: string;
+      paymentDate: string;
+      discount: number;
+      netAmount: number;
+      discountReason: string;
+      createdBy: string;
+      updatedBy: string;
+      billingTime: string;
+      billingDate: string;
+      createdAt: string;
+      updatedAt: string;
+      received_amount: number;
+      due_amount: number;
+      transactions: Array<{
+        id: number;
+        createdBy: string;
+        billing_id: number;
+        payment_method: string;
+        upi_id: string | null;
+        upi_amount: number;
+        card_amount: number;
+        cash_amount: number;
+        received_amount: number;
+        refund_amount: number;
+        due_amount: number;
+        payment_date: string;
+        remarks: string;
+        created_at: string;
+      }>;
+    };
+    createdBy: string;
+    updatedBy: string | null;
+    visitCancellationReason: string;
+    visitCancellationDate: string | null;
+    visitCancellationBy: string;
+    visitCancellationTime: string | null;
+    testResult: unknown[];
+    listofeachtestdiscount: unknown[];
+  };
+  createdBy: string;
+  updatedBy: string | null;
+}
+
+// Import PatientData type from BillReport
+interface PatientData {
+  id: number;
+  firstName: string;
+  phone: string;
+  city: string;
+  dateOfBirth: string;
+  age: string;
+  gender: string;
+  createdBy: string;
+  updatedBy: string | null;
+  doctorName?: string;
+  visit: {
+    visitId: number;
+    visitDate: string;
+    visitType: string;
+    visitStatus: string;
+    visitDescription: string;
+    doctorId: number | null;
+    testNames?: string[];
+    testIds: number[];
+    packageIds: number[];
+    packageNames: string[];
+    createdBy: string;
+    updatedBy: string | null;
+    visitCancellationReason: string;
+    visitCancellationDate: string;
+    visitCancellationBy: string;
+    visitCancellationTime: string | null;
+    doctorName?: string;
+    billing: {
+      billingId: number;
+      totalAmount: number;
+      paymentStatus: string;
+      paymentMethod: string;
+      paymentDate: string;
+      discount: number;
+      netAmount: number;
+      discountReason: string;
+      createdBy: string;
+      updatedBy: string;
+      billingTime: string;
+      billingDate: string;
+      createdAt: string;
+      updatedAt: string;
+      received_amount: number;
+      due_amount: number;
+      transactions: Array<{
+        id: number;
+        billing_id: number;
+        payment_method: string;
+        upi_id: string | null;
+        upi_amount: number;
+        card_amount: number;
+        cash_amount: number;
+        received_amount: number;
+        refund_amount: number;
+        due_amount: number;
+        payment_date: string;
+        created_at: string;
+        createdBy: string;
+      }>;
+    };
+    testResult: Array<{
+      id: number;
+      testId: number;
+      testName: string;
+      category: string;
+      reportStatus: string;
+      createdBy: string;
+      updatedBy: string;
+      createdAt: string;
+      updatedAt: string;
+      filled: boolean;
+    }>;
+    listofeachtestdiscount: Array<{
+      discountAmount: number;
+      discountPercent: number;
+      finalPrice: number;
+      testName: string;
+      category: string;
+      createdBy: string;
+      updatedBy: string;
+      id: number;
+    }>;
+  };
+}
 // Local interface for amount received data (matching csvUtils)
 interface AmountReceivedItem {
   slNo: number;
@@ -52,44 +238,47 @@ interface PaymentTotals {
 
 
 // Type conversion functions
-const convertPatientToApiResponse = (patient: Patient): unknown => {
+// Convert PatientData to PatientApiResponse for transformApiDataToTableFormat
+const convertPatientDataToApiResponse = (patientData: PatientData): PatientApiResponse => {
   return {
-    id: patient.id,
-    firstName: patient.firstName,
-    phone: patient.phone,
-    city: patient.city,
-    dateOfBirth: patient.dateOfBirth,
-    age: patient.age,
-    gender: patient.gender,
+    id: patientData.id,
+    firstName: patientData.firstName,
+    phone: patientData.phone,
+    city: patientData.city,
+    dateOfBirth: patientData.dateOfBirth,
+    age: patientData.age,
+    gender: patientData.gender,
+    createdBy: patientData.createdBy,
+    updatedBy: patientData.updatedBy,
     visit: {
-      visitId: patient.visit.visitId,
-      visitDate: patient.visit.visitDate,
-      visitType: patient.visit.visitType,
-      visitStatus: patient.visit.visitStatus,
-      visitDescription: patient.visit.visitDescription,
-      doctorId: patient.visit.doctorId,
-      testIds: patient.visit.testIds,
-      packageIds: patient.visit.packageIds,
+      visitId: patientData.visit.visitId,
+      visitDate: patientData.visit.visitDate,
+      visitType: patientData.visit.visitType,
+      visitStatus: patientData.visit.visitStatus,
+      visitDescription: patientData.visit.visitDescription,
+      doctorId: patientData.visit.doctorId,
+      testIds: patientData.visit.testIds,
+      packageIds: patientData.visit.packageIds,
       billing: {
-        billingId: patient.visit.billing.billingId,
-        totalAmount: patient.visit.billing.totalAmount,
-        paymentStatus: patient.visit.billing.paymentStatus,
-        paymentMethod: patient.visit.billing.paymentMethod,
-        paymentDate: patient.visit.billing.paymentDate,
-        billingDate: (patient.visit.billing as { billingDate?: string }).billingDate || patient.visit.billing.paymentDate,
-        discount: patient.visit.billing.discount,
-        netAmount: patient.visit.billing.netAmount,
-        discountReason: patient.visit.billing.discountReason,
-        discountPercentage: patient.visit.billing.discountPercentage,
-        upi_id: patient.visit.billing.upi_id,
-        received_amount: patient.visit.billing.received_amount,
-        refund_amount: patient.visit.billing.refund_amount,
-        upi_amount: patient.visit.billing.upi_amount,
-        card_amount: patient.visit.billing.card_amount,
-        cash_amount: patient.visit.billing.cash_amount,
-        due_amount: patient.visit.billing.due_amount,
-        transactions: patient.visit.billing.transactions?.map(transaction => ({
+        billingId: patientData.visit.billing.billingId,
+        totalAmount: patientData.visit.billing.totalAmount,
+        paymentStatus: patientData.visit.billing.paymentStatus,
+        paymentMethod: patientData.visit.billing.paymentMethod,
+        paymentDate: patientData.visit.billing.paymentDate,
+        discount: patientData.visit.billing.discount,
+        netAmount: patientData.visit.billing.netAmount,
+        discountReason: patientData.visit.billing.discountReason,
+        createdBy: patientData.visit.billing.createdBy,
+        updatedBy: patientData.visit.billing.updatedBy,
+        billingTime: patientData.visit.billing.billingTime,
+        billingDate: patientData.visit.billing.billingDate,
+        createdAt: patientData.visit.billing.createdAt,
+        updatedAt: patientData.visit.billing.updatedAt,
+        received_amount: patientData.visit.billing.received_amount,
+        due_amount: patientData.visit.billing.due_amount,
+        transactions: patientData.visit.billing.transactions.map(transaction => ({
           id: transaction.id,
+          createdBy: transaction.createdBy,
           billing_id: transaction.billing_id,
           payment_method: transaction.payment_method,
           upi_id: transaction.upi_id,
@@ -100,20 +289,133 @@ const convertPatientToApiResponse = (patient: Patient): unknown => {
           refund_amount: transaction.refund_amount,
           due_amount: transaction.due_amount,
           payment_date: transaction.payment_date,
-          created_at: transaction.created_at,
-          createdBy: transaction.createdBy
-        })) || [],
-        gstRate: patient.visit.billing.gstRate
+          remarks: '', // Add default remarks since it's required
+          created_at: transaction.created_at
+        }))
       },
-      visitCancellationReason: patient.visit.visitCancellationReason,
-      visitCancellationDate: patient.visit.visitCancellationDate,
-      visitCancellationBy: patient.visit.visitCancellationBy,
-      visitCancellationTime: patient.visit.visitCancellationTime,
-      testResult: patient.visit.testResult,
-      listofeachtestdiscount: patient.visit.listofeachtestdiscount
-    },
-    createdBy: 'system', // Default value since Patient doesn't have this field
-    updatedBy: null // Default value since Patient doesn't have this field
+      createdBy: patientData.visit.createdBy,
+      updatedBy: patientData.visit.updatedBy,
+      visitCancellationReason: patientData.visit.visitCancellationReason,
+      visitCancellationDate: patientData.visit.visitCancellationTime,
+      visitCancellationBy: patientData.visit.visitCancellationBy,
+      visitCancellationTime: patientData.visit.visitCancellationTime,
+      testResult: patientData.visit.testResult || [],
+      listofeachtestdiscount: patientData.visit.listofeachtestdiscount || []
+    }
+  };
+};
+
+const convertPatientToApiResponse = (patient: Patient): PatientData => {
+  const patientAny = patient as Patient & {
+    createdBy?: string;
+    updatedBy?: string | null;
+    doctorName?: string;
+    visit?: {
+      testNames?: string[];
+      packageNames?: string[];
+      createdBy?: string;
+      updatedBy?: string | null;
+      doctorName?: string;
+      billing?: {
+        createdBy?: string;
+        updatedBy?: string;
+        billingTime?: string;
+        createdAt?: string;
+        updatedAt?: string;
+      };
+    };
+  };
+  return {
+    id: patient.id || 0,
+    firstName: patient.firstName || '',
+    phone: patient.phone || '',
+    city: patient.city || '',
+    dateOfBirth: patient.dateOfBirth || '',
+    age: patient.age || '',
+    gender: patient.gender || '',
+    createdBy: patientAny.createdBy || '',
+    updatedBy: patientAny.updatedBy || null,
+    doctorName: patientAny.doctorName,
+    visit: {
+      visitId: patient.visit.visitId || 0,
+      visitDate: patient.visit.visitDate || '',
+      visitType: patient.visit.visitType || '',
+      visitStatus: patient.visit.visitStatus || '',
+      visitDescription: patient.visit.visitDescription || '',
+      doctorId: typeof patient.visit.doctorId === 'string' ? parseInt(patient.visit.doctorId) : patient.visit.doctorId || null,
+      testNames: patientAny.visit?.testNames,
+      testIds: patient.visit.testIds || [],
+      packageIds: patient.visit.packageIds || [],
+      packageNames: patientAny.visit?.packageNames || [],
+      createdBy: patientAny.visit?.createdBy || '',
+      updatedBy: patientAny.visit?.updatedBy || null,
+      visitCancellationReason: patient.visit.visitCancellationReason || '',
+      visitCancellationDate: patient.visit.visitCancellationDate || '',
+      visitCancellationBy: patient.visit.visitCancellationBy || '',
+      visitCancellationTime: patient.visit.visitCancellationTime || null,
+      doctorName: patientAny.visit?.doctorName,
+      billing: {
+        billingId: patient.visit.billing.billingId || 0,
+        totalAmount: patient.visit.billing.totalAmount || 0,
+        paymentStatus: patient.visit.billing.paymentStatus || '',
+        paymentMethod: patient.visit.billing.paymentMethod || '',
+        paymentDate: patient.visit.billing.paymentDate || '',
+        discount: patient.visit.billing.discount || 0,
+        netAmount: patient.visit.billing.netAmount || 0,
+        discountReason: patient.visit.billing.discountReason || '',
+        createdBy: patientAny.visit?.billing?.createdBy || '',
+        updatedBy: patientAny.visit?.billing?.updatedBy || '',
+        billingTime: patientAny.visit?.billing?.billingTime || '',
+        billingDate: (patient.visit.billing as { billingDate?: string }).billingDate || patient.visit.billing.paymentDate || '',
+        createdAt: patientAny.visit?.billing?.createdAt || '',
+        updatedAt: patientAny.visit?.billing?.updatedAt || '',
+        received_amount: patient.visit.billing.received_amount || 0,
+        due_amount: patient.visit.billing.due_amount || 0,
+        transactions: patient.visit.billing.transactions?.map(transaction => ({
+          id: transaction.id || 0,
+          billing_id: transaction.billing_id || 0,
+          payment_method: transaction.payment_method || '',
+          upi_id: transaction.upi_id || null,
+          upi_amount: transaction.upi_amount || 0,
+          card_amount: transaction.card_amount || 0,
+          cash_amount: transaction.cash_amount || 0,
+          received_amount: transaction.received_amount || 0,
+          refund_amount: transaction.refund_amount || 0,
+          due_amount: transaction.due_amount || 0,
+          payment_date: transaction.payment_date || '',
+          created_at: transaction.created_at || '',
+          createdBy: transaction.createdBy || ''
+        })) || []
+      },
+      testResult: patient.visit.testResult?.map(test => {
+        const testAny = test as ExtendedTestResult;
+        return {
+          id: test.id || 0,
+          testId: test.testId || 0,
+          testName: testAny.testName || '',
+          category: testAny.category || '',
+          reportStatus: test.reportStatus || '',
+          createdBy: testAny.createdBy || '',
+          updatedBy: testAny.updatedBy || '',
+          createdAt: testAny.createdAt || '',
+          updatedAt: testAny.updatedAt || '',
+          filled: testAny.filled || false
+        };
+      }) || [],
+      listofeachtestdiscount: patient.visit.listofeachtestdiscount?.map(discount => {
+        const discountAny = discount as ExtendedDiscount;
+        return {
+          discountAmount: discount.discountAmount || 0,
+          discountPercent: discount.discountPercent || 0,
+          finalPrice: discount.finalPrice || 0,
+          testName: discountAny.testName || '',
+          category: discountAny.category || '',
+          createdBy: discountAny.createdBy || '',
+          updatedBy: discountAny.updatedBy || '',
+          id: discount.id || 0
+        };
+      }) || []
+    }
   };
 };
 
@@ -137,23 +439,92 @@ const Page = () => {
   const { currentLab } = useLabs();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('amount-received');
-  const [dateRangeFilter, setDateRangeFilter] = useState<DateFilterOption>('today');
-  const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
-  const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
+  
+  // Separate filter states for each tab
+  const [amountReceivedDateFilter, setAmountReceivedDateFilter] = useState<DateFilterOption>('today');
+  const [amountReceivedCustomStartDate, setAmountReceivedCustomStartDate] = useState<Date | null>(null);
+  const [amountReceivedCustomEndDate, setAmountReceivedCustomEndDate] = useState<Date | null>(null);
+  const [amountReceivedVisitTypeFilter, setAmountReceivedVisitTypeFilter] = useState<string>('');
+  
+  const [billReportDateFilter, setBillReportDateFilter] = useState<DateFilterOption>('today');
+  const [billReportCustomStartDate, setBillReportCustomStartDate] = useState<Date | null>(null);
+  const [billReportCustomEndDate, setBillReportCustomEndDate] = useState<Date | null>(null);
+  const [billReportVisitTypeFilter, setBillReportVisitTypeFilter] = useState<string>('');
+  
+  // Legacy states for backward compatibility (will be removed)
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [visitTypeFilter, setVisitTypeFilter] = useState<string>('');
   const [amountReceivedData, setAmountReceivedData] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Separate state for Bill Report tab
+  const [billReportData, setBillReportData] = useState<Patient[]>([]);
+  const [isBillReportLoading, setIsBillReportLoading] = useState(false);
+  const [billReportError, setBillReportError] = useState<string | null>(null);
+
+  // Helper functions to get current filter values based on active tab
+  const getCurrentDateFilter = () => {
+    return activeTab === 'amount-received' ? amountReceivedDateFilter : billReportDateFilter;
+  };
+
+  const getCurrentCustomStartDate = () => {
+    return activeTab === 'amount-received' ? amountReceivedCustomStartDate : billReportCustomStartDate;
+  };
+
+  const getCurrentCustomEndDate = () => {
+    return activeTab === 'amount-received' ? amountReceivedCustomEndDate : billReportCustomEndDate;
+  };
+
+  const getCurrentVisitTypeFilter = () => {
+    return activeTab === 'amount-received' ? amountReceivedVisitTypeFilter : billReportVisitTypeFilter;
+  };
+
+  // Helper functions to set current filter values based on active tab
+  const setCurrentDateFilter = (filter: DateFilterOption) => {
+    if (activeTab === 'amount-received') {
+      setAmountReceivedDateFilter(filter);
+    } else {
+      setBillReportDateFilter(filter);
+    }
+  };
+
+  const setCurrentCustomStartDate = (date: Date | null) => {
+    if (activeTab === 'amount-received') {
+      setAmountReceivedCustomStartDate(date);
+    } else {
+      setBillReportCustomStartDate(date);
+    }
+  };
+
+  const setCurrentCustomEndDate = (date: Date | null) => {
+    if (activeTab === 'amount-received') {
+      setAmountReceivedCustomEndDate(date);
+    } else {
+      setBillReportCustomEndDate(date);
+    }
+  };
+
+  const setCurrentVisitTypeFilter = (filter: string) => {
+    if (activeTab === 'amount-received') {
+      setAmountReceivedVisitTypeFilter(filter);
+    } else {
+      setBillReportVisitTypeFilter(filter);
+    }
+  };
 
   // Handle CSV download
   const handleDownloadCSV = () => {
     if (activeTab === 'amount-received') {
       // Filter data based on visit type if selected
-      const filteredData = visitTypeFilter 
-        ? amountReceivedData.filter(patient => patient.visit.visitType === visitTypeFilter)
+      const filteredData = getCurrentVisitTypeFilter() 
+        ? amountReceivedData.filter(patient => patient.visit.visitType === getCurrentVisitTypeFilter())
         : amountReceivedData;
       
       const convertedData = filteredData.map(convertPatientToApiResponse);
-      const transformedData = transformApiDataToTableFormat(convertedData as Parameters<typeof transformApiDataToTableFormat>[0]);
+      const apiResponseData = convertedData.map(convertPatientDataToApiResponse);
+      const transformedData = transformApiDataToTableFormat(apiResponseData);
       
       if (transformedData.length === 0) {
         toast.warning('No data available to download');
@@ -361,7 +732,8 @@ const Page = () => {
         : amountReceivedData;
       
       const convertedData = filteredData.map(convertPatientToApiResponse);
-      const transformedData = transformApiDataToTableFormat(convertedData as Parameters<typeof transformApiDataToTableFormat>[0]);
+      const apiResponseData = convertedData.map(convertPatientDataToApiResponse);
+      const transformedData = transformApiDataToTableFormat(apiResponseData);
       
       if (transformedData.length === 0) {
         toast.warning('No data available to print');
@@ -397,10 +769,11 @@ const Page = () => {
   // Fetch amount received data
   const fetchAmountReceivedData = async () => {
     if (!currentLab?.id) return;
-
+    
     try {
       setIsLoading(true);
-      const { startDate, endDate } = getDateRange(dateRangeFilter, customStartDate, customEndDate);
+      setError(null);
+      const { startDate, endDate } = getDateRange(amountReceivedDateFilter, amountReceivedCustomStartDate, amountReceivedCustomEndDate);
       
       if (!startDate || !endDate) {
         toast.warning('Please select valid date range');
@@ -425,6 +798,7 @@ const Page = () => {
     } catch (error: unknown) {
       console.error('Error fetching amount received data:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch data';
+      setError(errorMessage);
       toast.error(errorMessage);
       setAmountReceivedData([]);
     } finally {
@@ -432,12 +806,52 @@ const Page = () => {
     }
   };
 
+  // Fetch bill report data
+  const fetchBillReportData = async () => {
+    if (!currentLab?.id) return;
+    
+    try {
+      setIsBillReportLoading(true);
+      setBillReportError(null);
+      const { startDate, endDate } = getDateRange(billReportDateFilter, billReportCustomStartDate, billReportCustomEndDate);
+      
+      if (!startDate || !endDate) {
+        toast.warning('Please select valid date range');
+        return;
+      }
+
+      const formattedStartDate = formatDateForAPI(startDate);
+      const formattedEndDate = formatDateForAPI(endDate);
+
+      // Use the new API endpoint for datewise transaction details
+      const response = await getDatewiseTransactionDetails(
+        currentLab.id,
+        formattedStartDate,
+        formattedEndDate
+      );
+
+      // The new API returns data directly as an array, not wrapped in a data property
+      const data = Array.isArray(response) ? response : response?.data || [];
+      setBillReportData(data);
+    } catch (error: unknown) {
+      console.error('Error fetching bill report data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch data';
+      setBillReportError(errorMessage);
+      toast.error(errorMessage);
+      setBillReportData([]);
+    } finally {
+      setIsBillReportLoading(false);
+    }
+  };
+
   // Fetch data when filters change (excluding visitTypeFilter as it's client-side filtering)
   useEffect(() => {
     if (activeTab === 'amount-received') {
       fetchAmountReceivedData();
+    } else if (activeTab === 'bill-report') {
+      fetchBillReportData();
     }
-  }, [currentLab, dateRangeFilter, customStartDate, customEndDate, activeTab]);
+  }, [currentLab, amountReceivedDateFilter, amountReceivedCustomStartDate, amountReceivedCustomEndDate, billReportDateFilter, billReportCustomStartDate, billReportCustomEndDate, activeTab]);
 
   const tabs = [
     {
@@ -458,6 +872,16 @@ const Page = () => {
   ];
 
   const renderTabContent = () => {
+    // Get the current selected date for the active tab
+    const { startDate, endDate } = getDateRange(getCurrentDateFilter(), getCurrentCustomStartDate(), getCurrentCustomEndDate());
+    
+    // Only set selectedDate for single date selections, not ranges
+    const isDateRange = startDate && endDate && startDate !== endDate;
+    const selectedDate = !isDateRange && startDate ? formatDateForAPI(startDate) : undefined;
+    const startDateStr = startDate ? formatDateForAPI(startDate) : undefined;
+    const endDateStr = endDate ? formatDateForAPI(endDate) : undefined;
+
+
     switch (activeTab) {
       case 'amount-received':
         if (isLoading) {
@@ -468,13 +892,36 @@ const Page = () => {
           );
         }
         
-        // Filter data based on visit type if selected
-        const filteredData = visitTypeFilter 
-          ? amountReceivedData.filter(patient => patient.visit.visitType === visitTypeFilter)
+        if (error) {
+          return (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center text-red-600">
+                <p className="text-lg font-medium">Error loading data</p>
+                <p className="text-sm">{error}</p>
+              </div>
+            </div>
+          );
+        }
+        
+        if (!amountReceivedData || amountReceivedData.length === 0) {
+          return (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center text-gray-500">
+                <p className="text-lg font-medium">No data available</p>
+                <p className="text-sm">Please select a date range to view amount received data</p>
+              </div>
+            </div>
+          );
+        }
+        
+        // Process data for amount-received tab
+        const filteredData = getCurrentVisitTypeFilter() 
+          ? amountReceivedData.filter(patient => patient.visit.visitType === getCurrentVisitTypeFilter())
           : amountReceivedData;
         
         const convertedData = filteredData.map(convertPatientToApiResponse);
-        const transformedData = transformApiDataToTableFormat(convertedData as Parameters<typeof transformApiDataToTableFormat>[0]);
+        const apiResponseData = convertedData.map(convertPatientDataToApiResponse);
+      const transformedData = transformApiDataToTableFormat(apiResponseData);
         
         // Filter transformed data based on transaction payment dates
         const dateFilteredData = transformedData.filter(item => {
@@ -488,7 +935,7 @@ const Page = () => {
           yesterday.setDate(yesterday.getDate() - 1);
           const yesterdayStr = yesterday.toISOString().split('T')[0];
           
-          switch (dateRangeFilter) {
+          switch (getCurrentDateFilter()) {
             case 'today':
               return itemDateStr === todayStr;
             case 'yesterday':
@@ -505,8 +952,8 @@ const Page = () => {
               const itemYear = new Date(itemDateStr);
               return itemYear.getFullYear() === today.getFullYear();
             case 'custom':
-              if (customStartDate && customEndDate) {
-                return itemDateStr >= customStartDate.toISOString().split('T')[0] && itemDateStr <= customEndDate.toISOString().split('T')[0];
+              if (getCurrentCustomStartDate() && getCurrentCustomEndDate()) {
+                return itemDateStr >= getCurrentCustomStartDate()!.toISOString().split('T')[0] && itemDateStr <= getCurrentCustomEndDate()!.toISOString().split('T')[0];
               }
               return true;
             default:
@@ -514,19 +961,9 @@ const Page = () => {
           }
         });
         
-        const convertedApiData = filteredData.map(convertPatientToApiResponse);
-        // Get the current selected date for discount filtering
-        const { startDate, endDate } = getDateRange(dateRangeFilter, customStartDate, customEndDate);
-        
-        // Only set selectedDate for single date selections, not ranges
-        const isDateRange = startDate && endDate && startDate !== endDate;
-        const selectedDate = !isDateRange && startDate ? formatDateForAPI(startDate) : undefined;
-        const startDateStr = startDate ? formatDateForAPI(startDate) : undefined;
-        const endDateStr = endDate ? formatDateForAPI(endDate) : undefined;
-        
         return <AmountReceivedTable 
           data={dateFilteredData} 
-          rawApiData={convertedApiData as Parameters<typeof AmountReceivedTable>[0]['rawApiData']} 
+          rawApiData={apiResponseData} 
           showTitle={false}
           selectedDate={selectedDate}
           startDate={startDateStr}
@@ -534,33 +971,54 @@ const Page = () => {
         />;
       
       case 'bill-report':
-        return (
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Bill Report</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bill ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                        No data available
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+        if (isBillReportLoading) {
+          return (
+            <div className="flex items-center justify-center h-64">
+              <Loader type="progress" fullScreen={false} text="Loading bill report data..." />
+            </div>
+          );
+        }
+        
+        if (billReportError) {
+          return (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center text-red-600">
+                <p className="text-lg font-medium">Error loading bill report data</p>
+                <p className="text-sm">{billReportError}</p>
               </div>
             </div>
-          </div>
-        );
+          );
+        }
+        
+        if (!billReportData || billReportData.length === 0) {
+          return (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center text-gray-500">
+                <p className="text-lg font-medium">No bill report data available</p>
+                <p className="text-sm">Please select a date range to view bill report data</p>
+              </div>
+            </div>
+          );
+        }
+        
+        // Process data for bill-report tab
+        const billFilteredData = getCurrentVisitTypeFilter() 
+          ? billReportData.filter(patient => patient.visit.visitType === getCurrentVisitTypeFilter())
+          : billReportData;
+        
+        // const billConvertedData = billFilteredData.map(convertPatientToApiResponse);
+        // const billApiResponseData = billConvertedData.map(convertPatientDataToApiResponse);
+        // const billTransformedData = transformApiDataToTableFormat(billApiResponseData);
+        
+        const billConvertedApiData = billFilteredData.map(convertPatientToApiResponse);
+        
+        return <BillReport 
+          data={billConvertedApiData as PatientData[]} 
+          rawApiData={billConvertedApiData as PatientData[]} 
+          startDate={startDateStr} 
+          endDate={endDateStr} 
+          selectedDate={selectedDate} 
+        />;
       
       case 'day-closing':
         return (
@@ -636,8 +1094,8 @@ const Page = () => {
               {/* Date Range Filter */}
               <div className="min-w-[150px]">
                 <select
-                  value={dateRangeFilter}
-                  onChange={(e) => setDateRangeFilter(e.target.value as DateFilterOption)}
+                  value={getCurrentDateFilter()}
+                  onChange={(e) => setCurrentDateFilter(e.target.value as DateFilterOption)}
                   className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                 >
                   {DATE_FILTER_OPTIONS.map(option => (
@@ -649,13 +1107,13 @@ const Page = () => {
               </div>
 
               {/* Custom Date Range */}
-              {dateRangeFilter === 'custom' && (
+              {getCurrentDateFilter() === 'custom' && (
                 <>
                   <div className="min-w-[150px]">
                     <input
                       type="date"
-                      value={customStartDate ? customStartDate.toISOString().split('T')[0] : ''}
-                      onChange={(e) => setCustomStartDate(e.target.value ? new Date(e.target.value) : null)}
+                      value={getCurrentCustomStartDate() ? getCurrentCustomStartDate()!.toISOString().split('T')[0] : ''}
+                      onChange={(e) => setCurrentCustomStartDate(e.target.value ? new Date(e.target.value) : null)}
                       className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                       placeholder="Start Date"
                     />
@@ -663,8 +1121,8 @@ const Page = () => {
                   <div className="min-w-[150px]">
                     <input
                       type="date"
-                      value={customEndDate ? customEndDate.toISOString().split('T')[0] : ''}
-                      onChange={(e) => setCustomEndDate(e.target.value ? new Date(e.target.value) : null)}
+                      value={getCurrentCustomEndDate() ? getCurrentCustomEndDate()!.toISOString().split('T')[0] : ''}
+                      onChange={(e) => setCurrentCustomEndDate(e.target.value ? new Date(e.target.value) : null)}
                       className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                       placeholder="End Date"
                     />
@@ -675,8 +1133,8 @@ const Page = () => {
               {/* Visit Type Filter */}
               <div className="min-w-[150px]">
                 <select
-                  value={visitTypeFilter}
-                  onChange={(e) => setVisitTypeFilter(e.target.value)}
+                  value={getCurrentVisitTypeFilter()}
+                  onChange={(e) => setCurrentVisitTypeFilter(e.target.value)}
                   className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                 >
                   <option value="">All Types</option>
@@ -687,13 +1145,13 @@ const Page = () => {
               </div>
 
               {/* Clear Filter */}
-              {(dateRangeFilter !== 'today' || visitTypeFilter) && (
+              {(getCurrentDateFilter() !== 'today' || getCurrentVisitTypeFilter()) && (
                 <button
                   onClick={() => {
-                    setDateRangeFilter('today');
-                    setCustomStartDate(null);
-                    setCustomEndDate(null);
-                    setVisitTypeFilter('');
+                    setCurrentDateFilter('today');
+                    setCurrentCustomStartDate(null);
+                    setCurrentCustomEndDate(null);
+                    setCurrentVisitTypeFilter('');
                   }}
                   className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:text-red-800 transition-colors duration-200 bg-white border border-gray-300 rounded-md shadow-sm"
                   title="Clear all filters"
