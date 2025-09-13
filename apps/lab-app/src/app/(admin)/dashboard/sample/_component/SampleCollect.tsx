@@ -40,7 +40,7 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
                 }));
                 setAllSamples(data);
             } catch (error) {
-                console.error("Error fetching samples:", error);
+                // Handle samples fetch error
             }
         };
 

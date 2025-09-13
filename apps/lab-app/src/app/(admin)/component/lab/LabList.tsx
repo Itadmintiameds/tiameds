@@ -26,7 +26,9 @@ const LabList = () => {
       .then((labs: LabResponse[]) => {
         setLabs(labs);
       })
-      .catch(console.error)
+      .catch(() => {
+        // Handle lab list fetch error
+      })
       .finally(() => setLoading(false));
   }, [currentLab, setLabs]);
   

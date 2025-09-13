@@ -212,7 +212,7 @@ export const getDatewiseTransactionDetails = async (labId: number, startDate: st
      
         return response.data;
     } catch (error: unknown) {
-        console.error('Error fetching datewise transaction details:', error);
+       
         throw new Error('An error occurred while fetching datewise transaction details.');
     }
 }

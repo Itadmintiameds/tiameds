@@ -52,7 +52,7 @@ const TestUpload = () => {
         toast.error('Please select a lab first');
       }
     } catch (error) {
-      console.error(error);
+      // Handle file upload error
       toast.error('An error occurred while uploading the file.');
     }
   };

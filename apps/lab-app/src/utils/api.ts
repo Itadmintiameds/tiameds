@@ -34,7 +34,6 @@ const isTokenExpired = (token: string): boolean => {
     // Check if token is expired (with 5 minute buffer)
     return payload.exp < (currentTime + 300);
   } catch (error) {
-    console.error('Error parsing token:', error);
     return true; // Consider invalid tokens as expired
   }
 };
@@ -56,7 +55,6 @@ api.interceptors.request.use(
       .find((row) => row.startsWith('token'))?.split('=')[1];
 
     if (!token) {
-      console.warn('Token not found in cookies.');
       // If no token and trying to access protected route, redirect to login
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/user-login') && !window.location.pathname.includes('/register-user')) {
         handleTokenExpiration();
@@ -66,7 +64,6 @@ api.interceptors.request.use(
 
     // Check if token is expired before making request
     if (token && isTokenExpired(token)) {
-      console.warn('Token is expired. Redirecting to login...');
       handleTokenExpiration();
       return Promise.reject(new Error('Token expired'));
     }
@@ -93,15 +90,13 @@ api.interceptors.response.use(
   (error) => {
     // Handle authentication errors
     if (error.response?.status === 401 || error.response?.status === 403) {
-      console.error(`Authentication error (${error.response.status}). Token may be expired. Redirecting to login...`);
       handleTokenExpiration();
       return Promise.reject(error);
     }
     
     // Handle network errors that might indicate authentication issues
     if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {
-      console.error('Network error. Checking authentication...');
-      // Don't redirect for network errors, just log them
+      // Don't redirect for network errors
     }
     
     return Promise.reject(error);

@@ -121,7 +121,7 @@ const Page = () => {
           setTests(testResults.filter((test) => test !== null) as TestList[]);
         }
       } catch (error) {
-        console.error('Error fetching tests:', error);
+        // Handle tests fetch error
       }
     };
 
@@ -133,7 +133,7 @@ const Page = () => {
           setDoctor(doctorResult.data);
         }
       } catch (error) {
-        console.error('Error fetching doctor:', error);
+        // Handle doctor fetch error
       }
     };
 
@@ -154,7 +154,7 @@ const Page = () => {
           setHealthPackage(healthPackageData as Packages[]);
         }
       } catch (error) {
-        console.error("Error fetching health packages:", error);
+        // Handle health packages fetch error
       }
     };
 

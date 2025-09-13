@@ -27,7 +27,7 @@ const ProfilePage = () => {
 
     useEffect(() => {
         if (user) {
-            console.log('User data from store:', user);
+            // User data loaded
         }
     }, [user]);
 

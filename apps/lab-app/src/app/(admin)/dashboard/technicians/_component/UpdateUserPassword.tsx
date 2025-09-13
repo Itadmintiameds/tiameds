@@ -120,7 +120,7 @@ const UpdateUserPassword = ({ member, setShowUpdatePassword }: UpdateUserPasswor
 
             toast.success('Password updated successfully', { autoClose: 2000 });
         } catch (error) {
-            console.error('Error updating password:', error);
+            // Handle password update error
             toast.error('Failed to update password');
         } finally {
             setLoading(false);

@@ -357,7 +357,7 @@ const AddMemberOnLab = () => {
                 }
             }
         } catch (error) {
-            console.error("Error:", error);
+            // Handle operation error
             toast.error("Operation failed");
         } finally {
             setLoading(false);

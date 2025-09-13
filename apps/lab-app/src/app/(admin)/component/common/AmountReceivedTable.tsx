@@ -277,11 +277,8 @@ const AmountReceivedTable: React.FC<AmountReceivedTableProps> = ({
           shouldIncludeDiscount = billingDate <= endDate;
         }
         
-        // Debug logging
-        console.log(`Visit ID: ${visit.visitId}, Billing Date: "${billingDate}", Start: "${startDate}", End: "${endDate}", Should Include: ${shouldIncludeDiscount}, Discount: ${billing.discount}`);
-        if (startDate && endDate) {
-          console.log(`Comparison: ${billingDate} >= ${startDate} = ${billingDate >= startDate}, ${billingDate} <= ${endDate} = ${billingDate <= endDate}`);
-        }
+      
+
         
         if (shouldIncludeDiscount) {
           acc.discount += billing.discount;

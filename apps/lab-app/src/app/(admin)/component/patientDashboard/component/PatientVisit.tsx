@@ -60,7 +60,7 @@ const PatientVisit = ({ newPatient, handleChange, doctors }: PatientVisitProps) 
                 toast.error('No lab selected!');
             }
         } catch (error) {
-            console.error('Error adding doctor:', error);
+            // Handle doctor add error
             toast.error('Doctor already exists!', { autoClose: 1000 });
 
         } finally {

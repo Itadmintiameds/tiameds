@@ -7,7 +7,6 @@ export const createDoctor = async (labId: number, DoctorData: Doctor) => {
         const response = await api.post(`/admin/lab/${labId}/doctors`, DoctorData);
         return response.data;
     } catch (error: unknown) {
-        console.error('Error creating doctor:', error);
         if (error instanceof Error) {
             throw new Error(`Error creating doctor: ${error.message}`);
         } else {
@@ -22,7 +21,6 @@ export const getDoctor = async (labId: number) => {
         const response = await api.get(`/admin/lab/${labId}/doctors`);
         return response.data;
     } catch (error: unknown) {
-        console.error('Error fetching doctors:', error);
         if (error instanceof Error) {
             throw new Error(`Error fetching doctors: ${error.message}`);
         } else {
@@ -37,7 +35,6 @@ export const updateDoctor = async (labId: number, doctorId: number, doctorData: 
         const response = await api.put(`/admin/lab/${labId}/doctors/${doctorId}`, doctorData);
         return response.data;
     } catch (error: unknown) {
-        console.error('Error updating doctor:', error);
         if (error instanceof Error) {
             throw new Error(`Error updating doctor: ${error.message}`);
         } else {
@@ -52,7 +49,6 @@ export const doctorDelete = async (labId: number, doctorId: number) => {
         const response = await api.delete(`/admin/lab/${labId}/doctors/${doctorId}`);
         return response.data;
     } catch (error: unknown) {
-        console.error('Error deleting doctor:', error);
         if (error instanceof Error) {
             throw new Error(`Error deleting doctor: ${error.message}`);
         } else {
@@ -67,7 +63,6 @@ export const doctorGetById = async (labId: string, doctorId: number) => {
         const response = await api.get(`/admin/lab/${labId}/doctors/${doctorId}`);
         return response.data;
     } catch (error: unknown) {
-        console.error('Error fetching doctor by ID:', error);
         if (error instanceof Error) {
             throw new Error(`Error fetching doctor by ID: ${error.message}`);
         } else {

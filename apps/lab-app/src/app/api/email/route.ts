@@ -6,7 +6,6 @@ async function validateEmail(email: string): Promise<boolean> {
     try {
         const apiKey = process.env.APILAYER_ACCESS_KEY; 
         if (!apiKey) {
-            console.error("❌ APILAYER_ACCESS_KEY is missing in .env file");
             return false;
         }
 
@@ -19,7 +18,6 @@ async function validateEmail(email: string): Promise<boolean> {
 
         return data.format_valid && data.smtp_check;
     } catch (error) {
-        console.error("❌ Email validation failed:", error);
         return false;
     }
 }
@@ -89,7 +87,6 @@ The Lab Management Team
 
         return NextResponse.json({ message: "✅ Email sent successfully!" });
     } catch (error) {
-        console.error("❌ Error sending email:", error);
         return NextResponse.json({ message: "❌ Failed to send email." }, { status: 500 });
     }
 }

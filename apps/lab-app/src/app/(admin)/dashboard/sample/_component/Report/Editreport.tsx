@@ -214,7 +214,7 @@
 
 //       setInputValues(initialInputValues);
 //     } catch (error) {
-//       console.error(error);
+//       // Handle error
 //       toast.error("Failed to load test and report data");
 //     } finally {
 //       setLoading(false);
@@ -285,7 +285,7 @@
 //       setShowModal(false);
 //       toast.success("Report updated successfully");
 //     } catch (error) {
-//       console.error(error);
+//       // Handle error
 //       toast.error("Failed to update report");
 //     } finally {
 //       setLoading(false);
@@ -648,7 +648,7 @@
 
 //       setInputValues(initialInputValues);
 //     } catch (error) {
-//       console.error(error);
+//       // Handle error
 //       toast.error("Failed to load test and report data");
 //     } finally {
 //       setLoading(false);
@@ -719,7 +719,7 @@
 //       setShowModal(false);
 //       toast.success("Report updated successfully");
 //     } catch (error) {
-//       console.error(error);
+//       // Handle error
 //       toast.error("Failed to update report");
 //     } finally {
 //       setLoading(false);
@@ -1136,7 +1136,7 @@
 //       setInputValues(initialInputValues);
 //       setRemovedReferences({});
 //     } catch (error) {
-//       console.error(error);
+//       // Handle error
 //       toast.error("Failed to load test and report data");
 //     } finally {
 //       setLoading(false);
@@ -1213,7 +1213,7 @@
 //       setShowModal(false);
 //       toast.success("Report updated successfully");
 //     } catch (error) {
-//       console.error(error);
+//       // Handle error
 //       toast.error("Failed to update report");
 //     } finally {
 //       setLoading(false);
@@ -1926,7 +1926,7 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
       setInputValues(initialInputValues);
       setRemovedReferences({});
     } catch (error) {
-      console.error(error);
+      // Handle error
       toast.error("Failed to load test and report data");
     } finally {
       setLoading(false);
@@ -2003,7 +2003,7 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
       setShowModal(false);
       toast.success("Report updated successfully");
     } catch (error) {
-      console.error(error);
+      // Handle error
       toast.error("Failed to update report");
     } finally {
       setLoading(false);

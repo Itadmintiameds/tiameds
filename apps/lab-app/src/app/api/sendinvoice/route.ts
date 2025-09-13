@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "✅ Email sent successfully!" }, { status: 200 });
 
   } catch (error) {
-    console.error("❌ Error sending email:", error);
+    // Handle email sending error
 
     // Handle Axios errors separately
     if (error instanceof AxiosError) {

@@ -101,7 +101,7 @@ const StatisticsMain = () => {
         ]);
       }
     } catch (error) {
-      console.error('❌ Error fetching lab stats:', error);
+      // Handle lab stats fetch error
     } finally {
       setLoading(false);
     }

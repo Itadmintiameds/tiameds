@@ -98,7 +98,7 @@ const ContactUsSection = () => {
         alert('There was an issue sending your message. Please try again.')
       }
     } catch (error) {
-      console.error('Error:', error)
+      // Handle contact form error
       alert('Something went wrong. Please try again.')
     }
   }

@@ -81,7 +81,7 @@ const PatientInvoice = ({ viewPatientDetails }: PatientDetails) => {
           setHealthPackage(healthPackageData as Packages[]);
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        // Handle data fetch error
       }
     };
 

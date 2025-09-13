@@ -184,7 +184,7 @@ export const updateReports = async (labId: number, reports: ReportData[]): Promi
         errorMessage = error.message;
       }
     }
-    console.error('Error updating reports:', error);
+
     throw new Error(errorMessage);
   }
 };

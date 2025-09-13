@@ -30,7 +30,6 @@ const ProtectedRoute = ({ children, requiredRoles }: ProtectedRouteProps) => {
 
     // Check role requirements if specified
     if (requiredRoles && user && !requiredRoles.some(role => user.roles?.includes(role))) {
-      console.warn('User does not have required roles. Redirecting...');
       router.push('/user-login');
       return;
     }

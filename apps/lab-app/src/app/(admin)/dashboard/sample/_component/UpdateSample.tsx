@@ -35,7 +35,7 @@ const UpdateSample = ({ visitId, sampleNames, onClose }: UpdateSampleProps) => {
                 }));
                 setAllSamples(data);
             } catch (error) {
-                console.error("Error fetching samples:", error);
+                // Handle samples fetch error
             }
         };
         fetchSamples();
@@ -48,7 +48,7 @@ const UpdateSample = ({ visitId, sampleNames, onClose }: UpdateSampleProps) => {
             onClose();
             toast.success("Samples updated successfully");
         } catch (error) {
-            console.error("Error updating samples:", error);
+            // Handle samples update error
             toast.error("Error updating samples");
         }
     };

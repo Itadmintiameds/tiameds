@@ -11,7 +11,6 @@ const isTokenExpired = (token: string): boolean => {
     // Check if token is expired (with 5 minute buffer)
     return payload.exp < (currentTime + 300);
   } catch (error) {
-    console.error('Error parsing token:', error);
     return true; // Consider invalid tokens as expired
   }
 };
@@ -21,7 +20,6 @@ export const useAuth = () => {
   
   // Function to handle automatic logout on token expiration
   const handleTokenExpiration = useCallback(() => {
-    console.log('Token expired, logging out automatically...');
     logout();
     
     // Redirect to login page if not already there

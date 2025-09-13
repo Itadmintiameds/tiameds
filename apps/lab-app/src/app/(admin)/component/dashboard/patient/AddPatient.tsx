@@ -127,7 +127,7 @@ const AddPatient = () => {
         setInsurances(insuranceData?.data || []);
         setPatient(patientData?.data || []);
       } catch (error) {
-        // console.error("Error fetching data:", error);
+   
         toast.error("An error occurred while fetching data.");
       }
     };
@@ -394,7 +394,7 @@ const AddPatient = () => {
         toast.error('An error occurred while adding the patient.');
       }
     } catch (error) {
-      console.error('Error adding patient:', error);
+    
       toast.error('An error occurred while adding the patient.');
     } finally {
       setLoading(false); // Ensures loading state is always reset

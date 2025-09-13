@@ -227,7 +227,7 @@ const Lab = () => {
     //         setRefreshLab(!refreshlab);
 
     //     } catch (error) {
-    //         console.error("Submission error:", error);
+    //         // Handle submission error
 
     //         if (error instanceof z.ZodError) {
     //             const fieldErrors = error.errors.reduce(
@@ -299,7 +299,7 @@ const Lab = () => {
             setShouldRedirect(true);
 
         } catch (error) {
-            console.error("Submission error:", error);
+            // Handle submission error
 
             if (error instanceof z.ZodError) {
                 const fieldErrors = error.errors.reduce(

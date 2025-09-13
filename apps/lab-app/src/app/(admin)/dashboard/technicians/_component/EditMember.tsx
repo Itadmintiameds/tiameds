@@ -41,7 +41,7 @@ const EditMember: React.FC<EditMemberProps> = ({ updateMember }) => {
                     setFormData(response.data);
                 }
             } catch (error) {
-                console.error("Failed to fetch member:", error);
+                // Handle member fetch error
             } finally {
                 setLoading(false); // Stop loading after fetching
             }
@@ -69,7 +69,7 @@ const EditMember: React.FC<EditMemberProps> = ({ updateMember }) => {
             toast.info("Update member is disabled in demo");
         
         } catch (error) {
-            console.error("Failed to update member:", error);
+            // Handle member update error
         }
     };
 

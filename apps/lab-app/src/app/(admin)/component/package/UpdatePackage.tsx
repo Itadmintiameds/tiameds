@@ -59,7 +59,7 @@ const UpdatePackage = ({
       const uniqueCategories = ['All', ...Array.from(new Set(fetchedTests.map(test => test.category)))];
       setCategories(uniqueCategories);
     } catch (error) {
-      console.error('Failed to fetch tests:', error);
+      // Handle tests fetch error
     } finally {
       setIsLoading(false);
     }

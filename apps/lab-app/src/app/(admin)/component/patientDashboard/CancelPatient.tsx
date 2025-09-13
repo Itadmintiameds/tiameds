@@ -116,7 +116,7 @@ const CancelPatientModal: React.FC<CancelPatientModalProps> = ({ isOpen, onClose
           setHealthPackage(validPackages as Packages[]);
         }
       } catch (error) {
-        console.error("Error fetching test/package data:", error);
+        // Handle test/package data fetch error
       } finally {
         setIsLoadingData(false);
       }
@@ -205,7 +205,7 @@ const CancelPatientModal: React.FC<CancelPatientModalProps> = ({ isOpen, onClose
 
       onClose();
     } catch (err) {
-      console.error("Cancellation failed:", err);
+      // Handle cancellation error
       setError(err instanceof Error ? err.message : "Failed to cancel patient visit");
     } finally {
       setIsCancelling(false);

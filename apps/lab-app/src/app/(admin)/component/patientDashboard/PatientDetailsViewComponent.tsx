@@ -65,7 +65,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
           setHealthPackage([]);
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        // Handle data fetch error
       } finally {
         setIsLoading(false);
       }
@@ -610,7 +610,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
               document.body.removeChild(tempDiv);
               resolve();
             } catch (err) {
-              console.error('Error generating page:', err);
+              // Handle page generation error
               document.body.removeChild(tempDiv);
               resolve();
             }
@@ -632,7 +632,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         pdf.save(`invoice_${patient?.firstName}_${patient?.lastName || 'patient'}${transactionSuffix}.pdf`);
       }
     } catch (err) {
-      console.error('PDF generation failed:', err);
+      // Handle PDF generation error
       setError('Failed to generate PDF. Please try again.');
     } finally {
       setIsGeneratingPDF(false);

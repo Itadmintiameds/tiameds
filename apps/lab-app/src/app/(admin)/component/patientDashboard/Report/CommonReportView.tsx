@@ -49,7 +49,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                         const doctorResult = await doctorGetById(currentLab.id.toString(), Number(patientData.doctorId));
                         setDoctor(doctorResult?.data);
                     } catch (error) {
-                        console.error("Error fetching doctor data:", error);
+                        // Handle doctor data fetch error
                     }
                 }
                 
@@ -59,7 +59,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                     setReports([]);
                 }
             } catch (error) {
-                console.error("Error fetching report data:", error);
+                // Handle report data fetch error
                 setReports([]);
             } finally {
                 setLoading(false);
@@ -101,7 +101,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
             window.open(pdfUrl, '_blank');
 
         } catch (error) {
-            console.error('Error generating PDF:', error);
+            // Handle PDF generation error
             toast.error("Failed to generate PDF");
         } finally {
             setLoading(false);

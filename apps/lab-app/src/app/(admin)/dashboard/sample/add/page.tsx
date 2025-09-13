@@ -34,7 +34,7 @@
 //       const data = await getSamples();
 //       setSamples(data);
 //     } catch (error) {
-//       console.error("Error loading samples:", error);
+//       // Handle samples load error
 //     }
 //   };
 
@@ -94,7 +94,7 @@
 //         toast.success("Sample deleted successfully");
 //         loadSamples(); // Refresh list
 //       } catch (error) {
-//         console.error("Error deleting sample:", error);
+//         // Handle sample delete error
 //       }
 //     }
 //   };
@@ -239,7 +239,7 @@ const Page = () => {
       const data = await getSamples();
       setSamples(data);
     } catch (error) {
-      console.error("Error loading samples:", error);
+      // Handle samples load error
     }
   };
 

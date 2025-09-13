@@ -796,7 +796,7 @@ const Page = () => {
       const data = Array.isArray(response) ? response : response?.data || [];
       setAmountReceivedData(data);
     } catch (error: unknown) {
-      console.error('Error fetching amount received data:', error);
+
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch data';
       setError(errorMessage);
       toast.error(errorMessage);
@@ -834,7 +834,7 @@ const Page = () => {
       const data = Array.isArray(response) ? response : response?.data || [];
       setBillReportData(data);
     } catch (error: unknown) {
-      console.error('Error fetching bill report data:', error);
+    
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch data';
       setBillReportError(errorMessage);
       toast.error(errorMessage);

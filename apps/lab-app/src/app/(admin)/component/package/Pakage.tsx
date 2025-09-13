@@ -50,7 +50,7 @@ const PackageCreation = () => {
         const uniqueCategories = Array.from(new Set(testsData.map((test) => test.category)));
         setCategories(['All', ...uniqueCategories]);
       } catch (error) {
-        console.error('Error fetching tests:', error);
+        // Handle tests fetch error
         toast.error('Failed to load tests. Please try again.');
       } finally {
         setLoading(false);
@@ -186,7 +186,7 @@ const PackageCreation = () => {
       // Validate with schema
       const validationResult = packageDataSchema.safeParse(cleanPackageData);
       if (!validationResult.success) {
-        console.error('Validation errors:', validationResult.error.errors);
+        // Handle validation errors
         const errorMessages = validationResult.error.errors.map(err => err.message).join(', ');
         toast.error(`Validation failed: ${errorMessages}`, {
           className: 'bg-error text-white'
@@ -210,7 +210,7 @@ const PackageCreation = () => {
         toast.error('Current lab is not available.');
       }
     } catch (error) {
-      console.error('Error:', error);
+      // Handle package creation error
       if (error && typeof error === 'object' && 'message' in error) {
         toast.error((error as { message: string }).message || 'Failed to create package. Please check the inputs.', {
           className: 'bg-error text-white'

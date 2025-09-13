@@ -30,7 +30,7 @@ const PrintBill: React.FC<{ billingData: Bill }> = ({ billingData }) => {
       pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
       pdf.save(`${billingData?.patient?.name || "Lab_Incoice"}.pdf`); // Use correct path to patient name
     } catch (error) {
-      console.error("Error generating PDF:", error);
+      // Handle PDF generation error
       toast.error("Failed to generate PDF.");
     }
   };
@@ -71,7 +71,7 @@ const PrintBill: React.FC<{ billingData: Bill }> = ({ billingData }) => {
         throw new Error("Failed to send email");
       }
     } catch (error) {
-      console.error("Error sending email:", error);
+      // Handle email sending error
       toast.error("Failed to send report via email.");
     }
   };

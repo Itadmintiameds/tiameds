@@ -43,7 +43,7 @@ const UploadTestReference = () => {
         toast.error('Current lab is not selected.');
       }
     } catch (error) {
-      console.error(error);
+      // Handle file upload error
       toast.error('An error occurred while uploading the file.');
     }
   };

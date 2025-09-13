@@ -153,7 +153,7 @@ const PendingTable: React.FC = () => {
       setLoading(false);
       setShowModal(false);
     } catch (error) {
-      console.error("Error adding samples to visit:", error);
+      // Handle samples add error
       setLoading(false);
     }
   };

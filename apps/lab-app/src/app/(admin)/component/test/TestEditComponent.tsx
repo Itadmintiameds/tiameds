@@ -78,7 +78,6 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
                 })
                 .catch((err) => {
                     toast.error(err.message || "Failed to update test");
-                    console.error(err);
                 })
                 .finally(() => setIsLoading(false));
         }

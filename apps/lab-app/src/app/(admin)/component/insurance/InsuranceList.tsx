@@ -37,7 +37,7 @@ const InsuranceList = () => {
           setInsurance(response.data);
           setTotalPages(Math.ceil(response.data.length / 10)); // Assuming 10 items per page
         } catch (error) {
-          console.error('Error fetching insurance: ', error);
+          // Handle insurance fetch error
         } finally {
           setLoading(false);
         }
@@ -69,8 +69,8 @@ const InsuranceList = () => {
           setShowAddInsurance(false);
           toast.success('Insurance added successfully', { autoClose: 2000 });
         })
-        .catch((error) => {
-          console.error('Error adding insurance: ', error);
+        .catch(() => {
+          // Handle insurance add error
           toast.error('Error adding insurance', { autoClose: 2000 });
         });
     } else {
@@ -87,8 +87,8 @@ const InsuranceList = () => {
           setShowEditInsurance(false);
           toast.success('Insurance updated successfully', { autoClose: 2000 });
         })
-        .catch((error) => {
-          console.error('Error updating insurance: ', error);
+        .catch(() => {
+          // Handle insurance update error
           toast.error('Error updating insurance', { autoClose: 2000 });
         });
     } else {
@@ -104,8 +104,8 @@ const InsuranceList = () => {
           setInsurance(insurance.filter((ins) => ins.id !== Number(insuranceId)));
           toast.success('Insurance deleted successfully', { autoClose: 2000 });
         })
-        .catch((error) => {
-          console.error('Error deleting insurance: ', error);
+        .catch(() => {
+          // Handle insurance delete error
           toast.error('Error deleting insurance', { autoClose: 2000 });
         });
     } else {

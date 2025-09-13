@@ -16,8 +16,6 @@ export const handleLogout = async () => {
     });
   } catch (error) {
     // Even if API call fails, we should still clear local state
-    console.warn('Logout API failed, but clearing local state:', error);
-    
     toast.warning("Logged out locally (server logout failed)", {
       position: "top-right",
       autoClose: 2000,

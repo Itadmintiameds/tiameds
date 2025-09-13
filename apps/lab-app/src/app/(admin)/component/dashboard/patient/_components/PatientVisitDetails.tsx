@@ -43,7 +43,7 @@ const PatientVisitDetails = ({ patinetVisitDetails }: PatientVisitDetailsProps) 
                     setTests(testResults.filter((test) => test !== null) as TestList[]);
                 }
             } catch (error) {
-                console.error('Error fetching tests:', error);
+                // Handle tests fetch error
             }
         };
 
@@ -55,7 +55,7 @@ const PatientVisitDetails = ({ patinetVisitDetails }: PatientVisitDetailsProps) 
                     setDoctor(doctorResult.data);
                 }
             } catch (error) {
-                console.error('Error fetching doctor:', error);
+                // Handle doctor fetch error
             }
         };
 
@@ -76,7 +76,7 @@ const PatientVisitDetails = ({ patinetVisitDetails }: PatientVisitDetailsProps) 
                     setHealthPackage(healthPackageData as Packages[]);
                 }
             } catch (error) {
-                console.error("Error fetching health packages:", error);
+                // Handle health packages fetch error
             }
         };
 
@@ -100,7 +100,7 @@ const PatientVisitDetails = ({ patinetVisitDetails }: PatientVisitDetailsProps) 
                     setInsurance(insuranceData as Insurance[]);
                 }
             } catch (error) {
-                console.error("Error fetching insurance:", error);
+                // Handle insurance fetch error
             }
         };
 

@@ -318,7 +318,7 @@ const TestReferancePoints = () => {
       toast.success("Test reference range updated successfully.");
       setEditModalOpen(false);
     } catch (error) {
-      console.error("Update error:", error);
+      // Handle update error
       toast.error((error as Error).message || "Failed to update test reference range");
     } finally {
       setLoading(false);
@@ -338,7 +338,6 @@ const TestReferancePoints = () => {
   const handleDelete = async (id: number | undefined) => {
     if (!id) {
       toast.error("Invalid test reference range ID.", { autoClose: 2000 });
-      console.error("Invalid test reference range ID:", id);
       return;
     }
 
@@ -357,7 +356,6 @@ const TestReferancePoints = () => {
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "An unexpected error occurred while deleting the test reference range.";
       toast.error(message, { autoClose: 2000 });
-      console.error("Delete error:", error);
     } finally {
       setLoading(false);
     }

@@ -104,7 +104,6 @@ const CollectionTable: React.FC = () => {
         formatDateForAPI(startDate),
         formatDateForAPI(endDate),
       );
-      console.log("Fetched Visits:", response);
 
              const collectedVisits = response
          .filter(visit => {

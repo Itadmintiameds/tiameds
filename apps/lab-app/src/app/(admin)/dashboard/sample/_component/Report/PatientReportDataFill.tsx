@@ -74,7 +74,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   const [hasMissingDescriptions, setHasMissingDescriptions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
- console.log("selectedPatient",selectedPatient.dateOfBirth);
+ 
 
   // Function to determine value status based on reference range
   const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
@@ -204,7 +204,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
         }));
       }
     } catch (error) {
-      console.error('Error fetching reference data:', error);
+  
       toast.error('Failed to fetch test reference data');
     } finally {
       setLoading(false);
@@ -272,7 +272,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     allTests.forEach((test) => {
       // Handle radiology tests differently - create minimal report data
       if (test.category === 'RADIOLOGY') {
-        console.log('Processing radiology test:', test.name);
+     
         
         const formattedTestName = test.name
           .split(' ')
@@ -385,24 +385,24 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   const submitReport = async () => {
     try {
       setIsSubmitting(true);
-      console.log('Submitting report with payload:', reportPreview);
+     
       const response = await createReportWithTestResult(currentLab?.id.toString() || '', reportPreview);
-      console.log('API Response:', response);
+     
 
       // Check if response exists and is valid
       // The API returns ReportData[] which can be empty array on success
       if (response !== undefined && response !== null) {
-        console.log('Report submitted successfully, response:', response);
+       
         toast.success('Report submitted successfully!');
         setShowConfirmation(false);
         setUpdateCollectionTable(prev => !prev);
         setShowModal(false); // Close the main modal
       } else {
-        console.log('Report submission failed, response:', response);
+       
         toast.error('Failed to submit report');
       }
     } catch (error) {
-      console.error('Error submitting report:', error);
+     
       toast.error('Failed to submit report');
     } finally {
       setIsSubmitting(false);

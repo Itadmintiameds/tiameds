@@ -20,7 +20,7 @@ const TestDownload = () => {
       await downloadTestCsv(currentLab.id.toString());
       toast.success('CSV file downloaded successfully!');
     } catch (error) {
-      console.error(error);
+      // Handle CSV download error
       toast.error('An error occurred while downloading the CSV file.');
     }
   };
@@ -54,7 +54,7 @@ const TestDownload = () => {
 
       toast.success('Excel file downloaded successfully!');
     } catch (error) {
-      console.error(error);
+      // Handle Excel download error
       toast.error('An error occurred while downloading the Excel file.');
     }
   };

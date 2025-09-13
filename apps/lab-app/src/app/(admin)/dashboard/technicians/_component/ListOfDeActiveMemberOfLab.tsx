@@ -43,7 +43,7 @@ const ListOfDeActiveMemberOfLab = () => {
                     setMembers(activeMembers);
                     setTotalItems(activeMembers.length);
                 } catch (error) {
-                    console.error('Failed to fetch members:', error);
+                    // Handle members fetch error
                 } finally {
                     setLoading(false);
                 }
