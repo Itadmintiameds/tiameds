@@ -46,8 +46,8 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
         }));
       }
     } else if (name === 'category' || name === 'name') {
-      // Only allow letters, spaces, and common punctuation for category and name
-      if (/^[a-zA-Z\s\-_&().]*$/.test(value)) {
+      // Only allow letters and common punctuation for category and name (no spaces)
+      if (/^[a-zA-Z\-_&().]*$/.test(value)) {
         setFormData((prev) => ({
           ...prev,
           [name]: value.toUpperCase()

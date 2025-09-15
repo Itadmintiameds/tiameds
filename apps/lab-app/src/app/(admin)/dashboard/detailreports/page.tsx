@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AmountReceivedTable, { transformApiDataToTableFormat } from '../../component/common/AmountReceivedTable';
 import BillReport from '../../component/common/BillReport';
+import DayClosingSummary from '../../component/common/DayClosingSummary';
+import ReceiptsSummary from '../../component/common/ReceiptsSummary';
 
 // Base types for type safety
 interface BaseTestResult {
@@ -209,7 +211,7 @@ interface AmountReceivedItem {
   receivedBy: string;
   refund?: number;
 }
-import { FaMoneyBillWave, FaFileInvoice, FaCalendarDay, FaArrowLeft } from 'react-icons/fa';
+import { FaMoneyBillWave, FaFileInvoice, FaCalendarDay, FaReceipt, FaArrowLeft } from 'react-icons/fa';
 import { DATE_FILTER_OPTIONS, DateFilterOption, getDateRange, formatDateForAPI } from '@/utils/dateUtils';
 import { VisitType, Patient } from '@/types/patient/patient';
 import { getDatewiseTransactionDetails } from '@/../services/patientServices';
@@ -537,11 +539,156 @@ const Page = () => {
       
       downloadCSV(csvContent, filename);
       toast.success('CSV file downloaded successfully');
+    } else if (activeTab === 'receipts') {
+      // Generate CSV content for receipts
+      const csvContent = generateReceiptsCSVContent();
+      const filename = `receipts-summary-${new Date().toISOString().split('T')[0]}.csv`;
+      
+      downloadCSV(csvContent, filename);
+      toast.success('CSV file downloaded successfully');
     } else {
-      toast.info('CSV download is only available for "Amount Received by Me" tab');
+      toast.info('CSV download is only available for "Amount Received by Me" and "Receipts" tabs');
     }
   };
 
+
+  // Generate print content for receipts
+  const generateReceiptsPrintContent = () => {
+    const currentDate = new Date().toLocaleDateString('en-GB');
+    const currentLabName = currentLab?.name || "Lab Name";
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Receipts Summary - ${currentDate}</title>
+        <style>
+          @media print {
+            @page { margin: 0.5in; }
+            body { font-family: Arial, sans-serif; font-size: 12px; }
+            .no-print { display: none !important; }
+          }
+          body { font-family: Arial, sans-serif; font-size: 12px; margin: 0; padding: 20px; }
+          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          .lab-name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+          .date-range { font-size: 14px; color: #666; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background-color: #f5f5f5; font-weight: bold; }
+          .section-header { background-color: #e3f2fd; font-weight: bold; }
+          .total-row { background-color: #f0f0f0; font-weight: bold; }
+          .net-amount-row { background-color: #e8f5e8; font-weight: bold; }
+          .outsource-row { background-color: #fff3e0; font-weight: bold; }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .pl-8 { padding-left: 32px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="lab-name">${currentLabName}</div>
+          <div class="date-range">Receipts Summary - ${currentDate}</div>
+        </div>
+        
+        <h3>Receipt Summary</h3>
+        <table>
+          <tr><td>Total Sales</td><td class="text-right">₹450.0</td></tr>
+          <tr><td>Total Discount</td><td class="text-right">₹0.0</td></tr>
+          <tr><td>Net Amount</td><td class="text-right">₹450.0</td></tr>
+          <tr><td>Cash Sales</td><td class="text-right">₹450.0</td></tr>
+          <tr><td>Credit Sales</td><td class="text-right">₹0.0</td></tr>
+          <tr><td>Due</td><td class="text-right">₹0.0</td></tr>
+          <tr><td>Excess Received</td><td class="text-right">₹0.0</td></tr>
+          <tr><td>Refund</td><td class="text-right">₹0.0</td></tr>
+          <tr><td>Total Receipts</td><td class="text-right">₹550.0</td></tr>
+          <tr><td>Net Receipts</td><td class="text-right">₹550.0</td></tr>
+        </table>
+        
+        <h3>Mode of Payment</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Mode of Payment</th>
+              <th class="text-center">Cash</th>
+              <th class="text-center">Card</th>
+              <th class="text-center">Cheque</th>
+              <th class="text-center">IMPS</th>
+              <th class="text-center">Wallet</th>
+              <th class="text-center">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="section-header"><td colspan="7">Receipt Details</td></tr>
+            <tr><td class="pl-8">Receipt for current cash bills</td><td class="text-center">₹450.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹450.0</td></tr>
+            <tr><td class="pl-8">Receipt for current credit bills</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td></tr>
+            <tr><td class="pl-8">Receipt for past cash bills</td><td class="text-center">₹100.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹100.0</td></tr>
+            <tr><td class="pl-8">Receipt for past credit bills</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td></tr>
+            <tr><td class="pl-8">Other Receipts</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td></tr>
+            <tr><td class="pl-8">Advance Receipt</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td></tr>
+            <tr class="total-row"><td class="pl-8">Total Receipt</td><td class="text-center">₹550.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹550.0</td></tr>
+            <tr><td colspan="7"></td></tr>
+            <tr class="section-header"><td colspan="7">Payment Details</td></tr>
+            <tr><td class="pl-8">Refund</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td></tr>
+            <tr><td class="pl-8">Other Payments</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td></tr>
+            <tr class="total-row"><td class="pl-8">Total Payment</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td></tr>
+            <tr><td colspan="7"></td></tr>
+            <tr class="net-amount-row"><td class="pl-8">Net Amount</td><td class="text-center">₹550.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹550.0</td></tr>
+            <tr><td colspan="7"></td></tr>
+            <tr class="outsource-row"><td class="pl-8">Outsource Test Amount</td><td class="text-center">₹150.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹0.0</td><td class="text-center">₹150.0</td></tr>
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+  };
+
+  // Generate CSV content for receipts
+  const generateReceiptsCSVContent = () => {
+    const headers = [
+      'Receipt Summary',
+      'Value',
+      'Mode of Payment',
+      'Cash',
+      'Card', 
+      'Cheque',
+      'IMPS',
+      'Wallet',
+      'Total'
+    ];
+    
+    const rows = [
+      ['Total Sales', '450.0', '', '', '', '', '', '', ''],
+      ['Total Discount', '0.0', '', '', '', '', '', '', ''],
+      ['Net Amount', '450.0', '', '', '', '', '', '', ''],
+      ['Cash Sales', '450.0', '', '', '', '', '', '', ''],
+      ['Credit Sales', '0.0', '', '', '', '', '', '', ''],
+      ['Due', '0.0', '', '', '', '', '', '', ''],
+      ['Excess Received', '0.0', '', '', '', '', '', '', ''],
+      ['Refund', '0.0', '', '', '', '', '', '', ''],
+      ['Total Receipts', '550.0', '', '', '', '', '', '', ''],
+      ['Net Receipts', '550.0', '', '', '', '', '', '', ''],
+      ['', '', 'Receipt Details', '', '', '', '', '', ''],
+      ['', '', 'Receipt for current cash bills', '450.0', '0.0', '0.0', '0.0', '0.0', '450.0'],
+      ['', '', 'Receipt for current credit bills', '0.0', '0.0', '0.0', '0.0', '0.0', '0.0'],
+      ['', '', 'Receipt for past cash bills', '100.0', '0.0', '0.0', '0.0', '0.0', '100.0'],
+      ['', '', 'Receipt for past credit bills', '0.0', '0.0', '0.0', '0.0', '0.0', '0.0'],
+      ['', '', 'Other Receipts', '0.0', '0.0', '0.0', '0.0', '0.0', '0.0'],
+      ['', '', 'Advance Receipt', '0.0', '0.0', '0.0', '0.0', '0.0', '0.0'],
+      ['', '', 'Total Receipt', '550.0', '0.0', '0.0', '0.0', '0.0', '550.0'],
+      ['', '', 'Payment Details', '', '', '', '', '', ''],
+      ['', '', 'Refund', '0.0', '0.0', '0.0', '0.0', '0.0', '0.0'],
+      ['', '', 'Other Payments', '0.0', '0.0', '0.0', '0.0', '0.0', '0.0'],
+      ['', '', 'Total Payment', '0.0', '0.0', '0.0', '0.0', '0.0', '0.0'],
+      ['', '', 'Net Amount', '550.0', '0.0', '0.0', '0.0', '0.0', '550.0'],
+      ['', '', 'Outsource Test Amount', '150.0', '0.0', '0.0', '0.0', '0.0', '150.0']
+    ];
+    
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+    
+    return csvContent;
+  };
 
   // Generate print content
   const generatePrintContent = (data: AmountReceivedItem[], rawApiData: Patient[]) => {
@@ -761,8 +908,30 @@ const Page = () => {
       };
       
       toast.success('Print dialog opened');
+    } else if (activeTab === 'receipts') {
+      // Generate print content for receipts
+      const printContent = generateReceiptsPrintContent();
+      
+      // Create a new window for printing
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast.error('Please allow popups to print');
+        return;
+      }
+      
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      
+      // Wait for content to load then print
+      printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+      };
+      
+      toast.success('Print dialog opened');
     } else {
-      toast.info('Print is only available for "Amount Received by Me" tab');
+      toast.info('Print is only available for "Amount Received by Me" and "Receipts" tabs');
     }
   };
 
@@ -868,6 +1037,11 @@ const Page = () => {
       id: 'day-closing',
       label: 'Day Closing Summary',
       icon: <FaCalendarDay />
+    },
+    {
+      id: 'receipts',
+      label: 'Receipts',
+      icon: <FaReceipt />
     }
   ];
 
@@ -1022,31 +1196,307 @@ const Page = () => {
       
       case 'day-closing':
         return (
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Day Closing Summary</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Tests</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Revenue</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cash</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Digital</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                        No data available
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <DayClosingSummary
+            labName={currentLab?.name || "Lab Name"}
+            dateRange={`${startDateStr || 'Start Date'} to ${endDateStr || 'End Date'}`}
+            // For now, using static data - will be replaced with actual API data later
+            billCountData={{
+              totalBills: 0,
+              cashBills: 0,
+              creditBills: 0
+            }}
+            amountBilledData={{
+              totalSales: 0,
+              discount: 0,
+              netSales: 0,
+              cashBills: 0.0,
+              creditBills: 0.0,
+              totalWriteOff: 0
+            }}
+            billDueAmountData={{
+              totalBillDue: 0.0,
+              cashBillDue: 0.0,
+              creditBillDue: 0.0,
+              excessReceived: 0.0
+            }}
+            receiptsData={{
+              totalReceipts: 0.0,
+              totalPayments: 0.0,
+              netReceipts: 0.0
+            }}
+            modeOfPaymentData={{
+              receiptForCurrentBills: {
+                cash: 0,
+                card: 0,
+                cheque: 0,
+                imps: 0,
+                wallet: 0,
+                total: 0
+              },
+              receiptForPastBills: {
+                cash: 0,
+                card: 0,
+                cheque: 0,
+                imps: 0,
+                wallet: 0,
+                total: 0
+              },
+              otherReceipt: {
+                cash: 0,
+                card: 0,
+                cheque: 0,
+                imps: 0,
+                wallet: 0,
+                total: 0
+              },
+              advanceReceipt: {
+                cash: 0,
+                card: 0,
+                cheque: 0,
+                imps: 0,
+                wallet: 0,
+                total: 0
+              },
+              totalReceipt: {
+                cash: 0,
+                card: 0,
+                cheque: 0,
+                imps: 0,
+                wallet: 0,
+                total: 0
+              },
+              refund: {
+                cash: 0,
+                card: 0,
+                cheque: 0,
+                imps: 0,
+                wallet: 0,
+                total: 0
+              },
+              otherPayments: {
+                cash: 0,
+                card: 0,
+                cheque: 0,
+                imps: 0,
+                wallet: 0,
+                total: 0
+              },
+              totalPayment: {
+                cash: 0,
+                card: 0,
+                cheque: 0,
+                imps: 0,
+                wallet: 0,
+                total: 0
+              },
+              netAmount: {
+                cash: 0,
+                card: 0,
+                cheque: 0,
+                imps: 0,
+                wallet: 0,
+                total: 0
+              }
+            }}
+            outsourcedLabTests={[
+              {
+                labTest: "Blood Test",
+                count: 0,
+                amount: 0
+              },
+              {
+                labTest: "Urine Test", 
+                count: 0,
+                amount: 0
+              }
+            ]}
+            currentBillDetails={[
+              {
+                slNo: 1,
+                billNo: "030593",
+                billName: "Ms. PRIYA",
+                regLabNo: "25090240 / 28583",
+                refCenter: "CITY HOSPITAL / Dr. KUMAR",
+                billedAt: "15-09-2025 10:30 AM",
+                type: "card",
+                amount: 250.0,
+                discount: 25.0,
+                netAmount: 225.0,
+                refund: 0,
+                writeoff: 0.0,
+                received: 200.0,
+                advance: 0,
+                due: 25.0
+              },
+              {
+                slNo: 2,
+                billNo: "030594",
+                billName: "Mr. RAJESH",
+                regLabNo: "25090241 / 28584",
+                refCenter: "GENERAL HOSPITAL / Dr. SHARMA",
+                billedAt: "15-09-2025 02:15 PM",
+                type: "upi",
+                amount: 180.0,
+                discount: 0.0,
+                netAmount: 180.0,
+                refund: 0,
+                writeoff: 0.0,
+                received: 180.0,
+                advance: 0,
+                due: 0.0
+              }
+            ]}
+            pastBillDetails={[
+              {
+                slNo: 1,
+                billNo: "030592",
+                billName: "Mr. RAFI",
+                regLabNo: "25090239 / 28582",
+                refCenter: "DISHA HOSPITAL / Dr. ANAND",
+                billedAt: "14-08-2025 11:16 PM",
+                type: "cash",
+                amount: 100.0,
+                discount: 0.0,
+                netAmount: 100.0,
+                refund: 0,
+                writeoff: 0.0,
+                received: 100.0,
+                advance: 0,
+                due: 0.0
+              }
+            ]}
+            currentBillTotals={{
+              amount: 430.0,
+              discount: 25.0,
+              netAmount: 405.0,
+              refund: 0,
+              writeoff: 0,
+              received: 380.0,
+              advance: 0,
+              due: 25.0
+            }}
+            pastBillTotals={{
+              amount: 100.0,
+              discount: 0.0,
+              netAmount: 100.0,
+              refund: 0,
+              writeoff: 0.0,
+              received: 100.0,
+              advance: 0,
+              due: 0.0
+            }}
+          />
+        );
+      
+      case 'receipts':
+        return (
+          <ReceiptsSummary
+            receiptSummaryData={{
+              totalSales: 450.0,
+              totalDiscount: 0.0,
+              netAmount: 450.0,
+              cashSales: 450.0,
+              creditSales: 0.0,
+              due: 0.0,
+              excessReceived: 0.0,
+              refund: 0.0,
+              totalReceipts: 550.0,
+              netReceipts: 550.0
+            }}
+            modeOfPaymentData={{
+              receiptForCurrentCashBills: {
+                cash: 450.0,
+                card: 0.0,
+                cheque: 0.0,
+                imps: 0.0,
+                wallet: 0.0,
+                total: 450.0
+              },
+              receiptForCurrentCreditBills: {
+                cash: 0.0,
+                card: 0.0,
+                cheque: 0.0,
+                imps: 0.0,
+                wallet: 0.0,
+                total: 0.0
+              },
+              receiptForPastCashBills: {
+                cash: 100.0,
+                card: 0.0,
+                cheque: 0.0,
+                imps: 0.0,
+                wallet: 0.0,
+                total: 100.0
+              },
+              receiptForPastCreditBills: {
+                cash: 0.0,
+                card: 0.0,
+                cheque: 0.0,
+                imps: 0.0,
+                wallet: 0.0,
+                total: 0.0
+              },
+              otherReceipt: {
+                cash: 0.0,
+                card: 0.0,
+                cheque: 0.0,
+                imps: 0.0,
+                wallet: 0.0,
+                total: 0.0
+              },
+              advanceReceipt: {
+                cash: 0.0,
+                card: 0.0,
+                cheque: 0.0,
+                imps: 0.0,
+                wallet: 0.0,
+                total: 0.0
+              },
+              totalReceipt: {
+                cash: 550.0,
+                card: 0.0,
+                cheque: 0.0,
+                imps: 0.0,
+                wallet: 0.0,
+                total: 550.0
+              },
+              refund: {
+                cash: 0.0,
+                card: 0.0,
+                cheque: 0.0,
+                imps: 0.0,
+                wallet: 0.0,
+                total: 0.0
+              },
+              otherPayments: {
+                cash: 0.0,
+                card: 0.0,
+                cheque: 0.0,
+                imps: 0.0,
+                wallet: 0.0,
+                total: 0.0
+              },
+              totalPayment: {
+                cash: 0.0,
+                card: 0.0,
+                cheque: 0.0,
+                imps: 0.0,
+                wallet: 0.0,
+                total: 0.0
+              },
+              netAmount: {
+                cash: 550.0,
+                card: 0.0,
+                cheque: 0.0,
+                imps: 0.0,
+                wallet: 0.0,
+                total: 550.0
+              }
+            }}
+            outsourceTestAmount={{
+              amount: 150.0
+            }}
+          />
         );
       
       default:
@@ -1162,6 +1612,7 @@ const Page = () => {
             </div>
 
             {/* Right side - Action Buttons */}
+            {activeTab !== 'bill-report' && (
             <div className="flex items-center gap-3">
               <button
                 onClick={handlePrint}
@@ -1184,6 +1635,7 @@ const Page = () => {
                 Download CSV
               </button>
             </div>
+            )}
           </div>
 
           {/* Table Content */}

@@ -6,7 +6,7 @@ import {
   PaymentStatus,
   DiscountReason,
 } from '@/types/patient/patient';
-import React, { useEffect } from 'react';
+import React, { useEffect} from 'react';
 import {
   FaCalendarAlt,
   FaCreditCard,
@@ -144,14 +144,73 @@ const PatientBilling = ({
     }
   };
 
+  const handleReceivedAmountInput = (e: React.FormEvent<HTMLInputElement>) => {
+    const target = e.target as HTMLInputElement;
+    const { name, value } = target;
+    
+    // Remove leading zeros for direct input fields (CASH, CARD, UPI)
+    let cleanValue = value;
+    if (paymentMethod === PaymentMethod.CASH || paymentMethod === PaymentMethod.CARD || paymentMethod === PaymentMethod.UPI) {
+      cleanValue = value.replace(/^0+/, '') || '0';
+      
+      // Limit to 2 decimal places
+      if (cleanValue.includes('.')) {
+        const parts = cleanValue.split('.');
+        if (parts[1] && parts[1].length > 2) {
+          cleanValue = parts[0] + '.' + parts[1].substring(0, 2);
+        }
+      }
+    }
+    
+    // Update the state without causing cursor jumping
+    handleChange({ target: { name, value: cleanValue } } as React.ChangeEvent<HTMLInputElement>);
+    
+    // Handle payment logic
+    const receivedAmount = getSafeDecimal(cleanValue);
+    
+    if (paymentMethod === PaymentMethod.CASH) {
+      handleChange({ target: { name: 'visit.billing.cash_amount', value: cleanValue } } as React.ChangeEvent<HTMLInputElement>);
+    } else if (paymentMethod === PaymentMethod.CARD) {
+      if (receivedAmount.gt(0)) {
+        handleChange({ target: { name: 'visit.billing.card_amount', value: cleanValue } } as React.ChangeEvent<HTMLInputElement>);
+      }
+    } else if (paymentMethod === PaymentMethod.UPI) {
+      if (receivedAmount.gt(0)) {
+        handleChange({ target: { name: 'visit.billing.upi_amount', value: cleanValue } } as React.ChangeEvent<HTMLInputElement>);
+      }
+    }
+    
+    // Calculate refund, due, and status for all payment methods
+    const { refund, due } = calculateRefundDueAmounts(receivedAmount, netAmount);
+    
+    if (receivedAmount.gt(0) || newPatient.visit?.billing?.paymentStatus) {
+      const status = calculatePaymentStatus(receivedAmount, netAmount);
+      handleChange({ target: { name: 'visit.billing.paymentStatus', value: status } } as React.ChangeEvent<HTMLInputElement>);
+    }
+
+    handleChange({ target: { name: 'visit.billing.refund_amount', value: refund.toString() } } as React.ChangeEvent<HTMLInputElement>);
+    handleChange({ target: { name: 'visit.billing.due_amount', value: due.toString() } } as React.ChangeEvent<HTMLInputElement>);
+  };
+
   const handlePaymentFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const receivedAmount = getSafeDecimal(value);
+    
+    // Limit decimal places to 2 for individual amount fields
+    let cleanValue = value;
+    if (name === 'visit.billing.upi_amount' || name === 'visit.billing.cash_amount' || name === 'visit.billing.card_amount') {
+      if (value.includes('.')) {
+        const parts = value.split('.');
+        if (parts[1] && parts[1].length > 2) {
+          cleanValue = parts[0] + '.' + parts[1].substring(0, 2);
+        }
+      }
+    }
+    
+    const receivedAmount = getSafeDecimal(cleanValue);
 
-         // For CASH payment method (allow any amount including 0)
-     if (paymentMethod === PaymentMethod.CASH && name === 'visit.billing.received_amount') {
-      
-      handleChange({ target: { name: 'visit.billing.received_amount', value } } as React.ChangeEvent<HTMLInputElement>);
+    // For CASH payment method (allow any amount including 0)
+    if (paymentMethod === PaymentMethod.CASH && name === 'visit.billing.received_amount') {
+      // Don't update received_amount here to avoid cursor jumping
       handleChange({ target: { name: 'visit.billing.cash_amount', value } } as React.ChangeEvent<HTMLInputElement>);
 
       const { refund, due } = calculateRefundDueAmounts(receivedAmount, netAmount);
@@ -216,18 +275,18 @@ const PatientBilling = ({
          // For UPI_CASH payment method (sum amounts → received amount)
      if (paymentMethod === PaymentMethod.UPI_CASH && 
          (name === 'visit.billing.upi_amount' || name === 'visit.billing.cash_amount')) {
-       const upiAmount = getSafeDecimal(name === 'visit.billing.upi_amount' ? value : newPatient.visit?.billing?.upi_amount);
-       const cashAmount = getSafeDecimal(name === 'visit.billing.cash_amount' ? value : newPatient.visit?.billing?.cash_amount);
+       const upiAmount = getSafeDecimal(name === 'visit.billing.upi_amount' ? cleanValue : newPatient.visit?.billing?.upi_amount);
+       const cashAmount = getSafeDecimal(name === 'visit.billing.cash_amount' ? cleanValue : newPatient.visit?.billing?.cash_amount);
        const totalReceived = upiAmount.add(cashAmount);
 
        // Allow typing in individual fields, but only calculate total if both are positive
        if (upiAmount.lte(0) && cashAmount.lte(0)) {
          // If both amounts are 0 or negative, just update the field being typed in
-         handleChange({ target: { name, value } } as React.ChangeEvent<HTMLInputElement>);
+         handleChange({ target: { name, value: cleanValue } } as React.ChangeEvent<HTMLInputElement>);
          return;
        }
 
-      handleChange({ target: { name, value } } as React.ChangeEvent<HTMLInputElement>);
+      handleChange({ target: { name, value: cleanValue } } as React.ChangeEvent<HTMLInputElement>);
       handleChange({ target: { name: 'visit.billing.received_amount', value: totalReceived.toString() } } as React.ChangeEvent<HTMLInputElement>);
 
       const { refund, due } = calculateRefundDueAmounts(totalReceived, netAmount);
@@ -246,18 +305,18 @@ const PatientBilling = ({
          // For CARD_CASH payment method (sum amounts → received amount)
      if (paymentMethod === PaymentMethod.CARD_CASH && 
          (name === 'visit.billing.card_amount' || name === 'visit.billing.cash_amount')) {
-       const cardAmount = getSafeDecimal(name === 'visit.billing.card_amount' ? value : newPatient.visit?.billing?.card_amount);
-       const cashAmount = getSafeDecimal(name === 'visit.billing.cash_amount' ? value : newPatient.visit?.billing?.cash_amount);
+       const cardAmount = getSafeDecimal(name === 'visit.billing.card_amount' ? cleanValue : newPatient.visit?.billing?.card_amount);
+       const cashAmount = getSafeDecimal(name === 'visit.billing.cash_amount' ? cleanValue : newPatient.visit?.billing?.cash_amount);
        const totalReceived = cardAmount.add(cashAmount);
 
        // Allow typing in individual fields, but only calculate total if both are positive
        if (cardAmount.lte(0) && cashAmount.lte(0)) {
          // If both amounts are 0 or negative, just update the field being typed in
-         handleChange({ target: { name, value } } as React.ChangeEvent<HTMLInputElement>);
+         handleChange({ target: { name, value: cleanValue } } as React.ChangeEvent<HTMLInputElement>);
          return;
        }
 
-      handleChange({ target: { name, value } } as React.ChangeEvent<HTMLInputElement>);
+      handleChange({ target: { name, value: cleanValue } } as React.ChangeEvent<HTMLInputElement>);
       handleChange({ target: { name: 'visit.billing.received_amount', value: totalReceived.toString() } } as React.ChangeEvent<HTMLInputElement>);
 
       const { refund, due } = calculateRefundDueAmounts(totalReceived, netAmount);
@@ -525,11 +584,8 @@ const PatientBilling = ({
                  step="0.01"
                  required
                  value={newPatient.visit?.billing?.received_amount || '0'}
-                 onChange={handlePaymentFieldChange}
-                 onInput={(e) => {
-                   // Remove leading zeros for immediate visual feedback
-                   (e.target as HTMLInputElement).value = (e.target as HTMLInputElement).value.replace(/^0+/, '');
-                 }}
+                 onInput={handleReceivedAmountInput}
+                 onChange={() => {}} // Empty onChange to prevent React warnings
                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
                />
              </div>  
@@ -547,11 +603,8 @@ const PatientBilling = ({
                  min="0"
                  step="0.01"
                  value={newPatient.visit?.billing?.received_amount || '0'}
-                 onChange={handlePaymentFieldChange}
-                 onInput={(e) => {
-                   // Remove leading zeros for immediate visual feedback
-                   (e.target as HTMLInputElement).value = (e.target as HTMLInputElement).value.replace(/^0+/, '');
-                 }}
+                 onInput={handleReceivedAmountInput}
+                 onChange={() => {}} // Empty onChange to prevent React warnings
                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
                />
              </div>  
@@ -620,7 +673,7 @@ const PatientBilling = ({
                   min="0"
                   step="0.01"
                   required
-                  value={formatAmount(newPatient.visit?.billing?.upi_amount) || '0'}
+                  value={newPatient.visit?.billing?.upi_amount || ''}
                   onChange={handlePaymentFieldChange}
                   className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
@@ -635,7 +688,7 @@ const PatientBilling = ({
                   min="0"
                   step="0.01"
                   required
-                  value={formatAmount(newPatient.visit?.billing?.cash_amount) || '0'}
+                  value={newPatient.visit?.billing?.cash_amount || ''}
                   onChange={handlePaymentFieldChange}
                   className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
@@ -655,7 +708,7 @@ const PatientBilling = ({
                   min="0"
                   step="0.01"
                   required
-                  value={formatAmount(newPatient.visit?.billing?.card_amount) || '0'}
+                  value={newPatient.visit?.billing?.card_amount || ''}
                   onChange={handlePaymentFieldChange}
                   className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
@@ -670,7 +723,7 @@ const PatientBilling = ({
                   min="0"
                   step="0.01"
                   required
-                  value={formatAmount(newPatient.visit?.billing?.cash_amount) || '0'}
+                  value={newPatient.visit?.billing?.cash_amount || ''}
                   onChange={handlePaymentFieldChange}
                   className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />

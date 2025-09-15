@@ -50,16 +50,16 @@ const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange })
             {user.firstName} {user.lastName}
           </h1>
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <div className="relative group">
-              <button className="flex items-center space-x-1 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-md px-2 py-0.5 border border-blue-100 hover:from-blue-100 hover:to-cyan-100 transition-colors">
-                <FiUser className="h-3.5 w-3.5 text-blue-600" />
-                <span className="text-blue-700 font-medium">
-                  {user.roles.length > 1 ? `${user.roles[0]} +${user.roles.length - 1}` : user.roles[0]}
-                </span>
-                <FiChevronDown className="h-3 w-3 text-blue-500" />
-              </button>
-              
-              {user.roles.length > 1 && (
+            {user.roles.length > 1 ? (
+              <div className="relative group">
+                <button className="flex items-center space-x-1 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-md px-2 py-0.5 border border-blue-100 hover:from-blue-100 hover:to-cyan-100 transition-colors">
+                  <FiUser className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="text-blue-700 font-medium">
+                    {user.roles[0]} +{user.roles.length - 1}
+                  </span>
+                  <FiChevronDown className="h-3 w-3 text-blue-500" />
+                </button>
+                
                 <div className="absolute z-10 mt-1 w-48 bg-white rounded-md shadow-lg py-1 hidden group-hover:block border border-blue-100">
                   <div className="px-3 py-2 text-xs font-medium text-blue-600 border-b border-blue-50">
                     Your Roles
@@ -70,8 +70,15 @@ const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange })
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-1 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-md px-2 py-0.5 border border-blue-100">
+                <FiUser className="h-3.5 w-3.5 text-blue-600" />
+                <span className="text-blue-700 font-medium">
+                  {user.roles[0]}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -90,23 +97,31 @@ const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange })
 
         {labs?.length > 0 && (
           <div className="relative">
-            <HiOutlineBuildingOffice2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-amber-600" />
-            <select
-              className="text-xs bg-gray-50 text-gray-700 rounded-md pl-8 pr-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-200 hover:from-amber-100 hover:to-yellow-100 transition border border-amber-200 shadow-xs cursor-pointer min-w-[160px] appearance-none"
-              onChange={handleChange}
-              defaultValue=""
-              title="Select Lab"
-              value={currentLab?.name || ""}
-            >
-              {/* <option value="" disabled>
-                {currentLab?.name || "Select Lab"}
-              </option> */}
-              {labs.map((lab) => (
-                <option key={lab.id} value={lab.name}>
-                  {lab.name}
-                </option>
-              ))}
-            </select>
+            {labs.length > 1 ? (
+              <>
+                <HiOutlineBuildingOffice2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-amber-600" />
+                <select
+                  className="text-xs bg-gray-50 text-gray-700 rounded-md pl-8 pr-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-200 hover:from-amber-100 hover:to-yellow-100 transition border border-amber-200 shadow-xs cursor-pointer min-w-[160px] appearance-none"
+                  onChange={handleChange}
+                  defaultValue=""
+                  title="Select Lab"
+                  value={currentLab?.name || ""}
+                >
+                  {labs.map((lab) => (
+                    <option key={lab.id} value={lab.name}>
+                      {lab.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <div className="flex items-center space-x-2 text-xs bg-gradient-to-r from-amber-50 to-yellow-50 text-gray-700 px-3 py-1.5 rounded-md border border-amber-200">
+                <HiOutlineBuildingOffice2 className="h-3.5 w-3.5 text-amber-600" />
+                <span className="font-medium">
+                  {currentLab?.name || labs[0]?.name}
+                </span>
+              </div>
+            )}
           </div>
         )}
 

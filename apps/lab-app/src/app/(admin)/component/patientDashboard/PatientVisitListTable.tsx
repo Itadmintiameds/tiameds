@@ -592,7 +592,7 @@ const PatientVisitListTable: React.FC = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
               >
-                <option value="">All Statuses</option>
+                <option value="">All Status</option>
                 {Object.values(VisitStatus).map((status) => (
                   // Hide "Cancelled" option for non-admin users
                   (status === VisitStatus.CANCELLED && !canAccessCancelledFilter) ? null : (

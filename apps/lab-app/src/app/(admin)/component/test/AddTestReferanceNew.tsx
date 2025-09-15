@@ -790,11 +790,11 @@ const AddTestReferanceNew = ({
                     <label className="text-gray-700 mb-1">Gender</label>
                     <select
                         name="gender"
-                        value={newReferanceRecord?.gender}
+                        value={newReferanceRecord?.gender === undefined ? "" : newReferanceRecord?.gender}
                         onChange={handleChangeRef}
                         className="w-full border border-gray-300 p-2 rounded-md focus:ring-1 focus:ring-blue-500"
                     >
-                        <option value="" disabled>Select</option>
+                        <option value="" disabled>Select Gender</option>
                         <option value="M">Male</option>
                         <option value="F">Female</option>
                         {/* <option value="U">Unspecified</option> */}

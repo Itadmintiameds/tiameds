@@ -455,7 +455,7 @@ const PackageCreation = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              <FiPlusCircle className="mx-auto text-3xl text-gray-300 mb-2 -mt-8" />
+              {/* <FiPlusCircle className="mx-auto text-3xl text-gray-300 mb-2 -mt-8" /> */}
               <p className="text-sm text-gray-500">No tests selected yet. Search and add tests above.</p>
             </motion.div>
           )}

@@ -197,11 +197,12 @@
 
 
 
-import React from "react";
+import React, { useState } from "react";
 import { TestReferancePoint } from "@/types/test/testlist";
 import Button from "../common/Button";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { TrashIcon } from "lucide-react";
+import { toast } from "react-toastify";
 
 interface TestAddReferanceProps {
     handleAddExistingReferanceRecord: (e: React.FormEvent) => void;
@@ -216,6 +217,65 @@ const AddExistingTestReferance = ({
     existingTestReferanceRecord,
     setExistingTestReferanceRecord,
 }: TestAddReferanceProps) => {
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+    // Custom validation function
+    const validateForm = () => {
+        const errors: Record<string, string> = {};
+
+        // Required fields validation
+        if (!existingTestReferanceRecord.testDescription?.trim()) {
+            errors.testDescription = "Test description is required";
+        }
+        if (!existingTestReferanceRecord.units?.trim()) {
+            errors.units = "Units are required";
+        }
+        if (!existingTestReferanceRecord.gender) {
+            errors.gender = "Gender selection is required";
+        }
+        if (existingTestReferanceRecord.ageMin === undefined || existingTestReferanceRecord.ageMin === null) {
+            errors.ageMin = "Minimum age is required";
+        }
+        if (existingTestReferanceRecord.minReferenceRange === undefined || existingTestReferanceRecord.minReferenceRange === null) {
+            errors.minReferenceRange = "Minimum reference range is required";
+        }
+        if (existingTestReferanceRecord.maxReferenceRange === undefined || existingTestReferanceRecord.maxReferenceRange === null) {
+            errors.maxReferenceRange = "Maximum reference range is required";
+        }
+
+        // Age validation
+        if (existingTestReferanceRecord.ageMin !== undefined && existingTestReferanceRecord.ageMin < 0) {
+            errors.ageMin = "Minimum age cannot be negative";
+        }
+        if (existingTestReferanceRecord.ageMax !== undefined && existingTestReferanceRecord.ageMax < 0) {
+            errors.ageMax = "Maximum age cannot be negative";
+        }
+        if (existingTestReferanceRecord.ageMin !== undefined && existingTestReferanceRecord.ageMax !== undefined && 
+            existingTestReferanceRecord.ageMin > existingTestReferanceRecord.ageMax) {
+            errors.ageMax = "Maximum age must be greater than minimum age";
+        }
+
+        // Range validation
+        if (existingTestReferanceRecord.minReferenceRange !== undefined && existingTestReferanceRecord.maxReferenceRange !== undefined && 
+            existingTestReferanceRecord.minReferenceRange > existingTestReferanceRecord.maxReferenceRange) {
+            errors.maxReferenceRange = "Maximum range must be greater than minimum range";
+        }
+
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    // Custom form submission handler
+    const handleFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        if (validateForm()) {
+            handleAddExistingReferanceRecord(e);
+        } else {
+            toast.error("Please fix the validation errors before submitting");
+        }
+    };
+
     // Custom handler for description field to ensure uppercase
     const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -223,6 +283,14 @@ const AddExistingTestReferance = ({
             ...prev,
             [name]: value.toUpperCase()
         }));
+        
+        // Clear validation error when user starts typing
+        if (validationErrors[name]) {
+            setValidationErrors(prev => ({
+                ...prev,
+                [name]: ""
+            }));
+        }
     };
 
     // Custom handler for age fields to prevent negative values and values > 100
@@ -249,7 +317,7 @@ const AddExistingTestReferance = ({
                 </h2>
             </div>
 
-            <form onSubmit={handleAddExistingReferanceRecord} className="space-y-4">
+            <form onSubmit={handleFormSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Non-editable Test Name and Category */}
                     <div>
@@ -274,10 +342,12 @@ const AddExistingTestReferance = ({
                             list="existingTestDescriptionOptions"
                             value={existingTestReferanceRecord.testDescription || ""}
                             onChange={handleDescriptionChange} // Using custom handler
-                            className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all uppercase-input"
+                            className={`w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all uppercase-input ${validationErrors.testDescription ? 'border-red-300 focus:ring-red-300' : ''}`}
                             placeholder="Type or select test description (will be capitalized)"
-                            required
                         />
+                        {validationErrors.testDescription && (
+                            <p className="text-xs text-red-500 mt-1">{validationErrors.testDescription}</p>
+                        )}
                         <datalist id="existingTestDescriptionOptions">
                             <option value="DESCRIPTION">Description</option>
                             <option value="DROPDOWN">Dropdown</option>
@@ -298,9 +368,12 @@ const AddExistingTestReferance = ({
                             name="units"
                             value={existingTestReferanceRecord.units || ""}
                             onChange={handleChangeRef}
-                            className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                            className={`w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all ${validationErrors.units ? 'border-red-300 focus:ring-red-300' : ''}`}
                             placeholder="Enter units (e.g., mg/dL)"
                         />
+                        {validationErrors.units && (
+                            <p className="text-xs text-red-500 mt-1">{validationErrors.units}</p>
+                        )}
                     </div>
 
                     {/* Gender Select */}
@@ -310,13 +383,16 @@ const AddExistingTestReferance = ({
                             name="gender"
                             value={existingTestReferanceRecord.gender || ""}
                             onChange={handleChangeRef}
-                            className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                            className={`w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all ${validationErrors.gender ? 'border-red-300 focus:ring-red-300' : ''}`}
                         >
                             <option value="" disabled>Select Gender</option>
                             <option value="M">Male</option>
                             <option value="F">Female</option>
                             {/* <option value="U">Unisex</option> */}
                         </select>
+                        {validationErrors.gender && (
+                            <p className="text-xs text-red-500 mt-1">{validationErrors.gender}</p>
+                        )}
                     </div>
 
                     {/* Min Age with Unit */}
@@ -330,7 +406,7 @@ const AddExistingTestReferance = ({
                                 max={100}
                                 value={existingTestReferanceRecord.ageMin || ""}
                                 onChange={handleAgeChange}
-                                className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                                className={`w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all ${validationErrors.ageMin ? 'border-red-300 focus:ring-red-300' : ''}`}
                                 placeholder="Min Age"
                             />
                             <select
@@ -345,6 +421,9 @@ const AddExistingTestReferance = ({
                                 <option value="DAYS">Days</option>
                             </select>
                         </div>
+                        {validationErrors.ageMin && (
+                            <p className="text-xs text-red-500 mt-1">{validationErrors.ageMin}</p>
+                        )}
                     </div>
 
                     {/* Max Age with Unit */}
@@ -358,7 +437,7 @@ const AddExistingTestReferance = ({
                                 max={100}
                                 value={existingTestReferanceRecord.ageMax || ""}
                                 onChange={handleAgeChange}
-                                className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                                className={`w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all ${validationErrors.ageMax ? 'border-red-300 focus:ring-red-300' : ''}`}
                                 placeholder="Max Age"
                             />
                             <select
@@ -373,6 +452,9 @@ const AddExistingTestReferance = ({
                                 <option value="DAYS">Days</option>
                             </select>
                         </div>
+                        {validationErrors.ageMax && (
+                            <p className="text-xs text-red-500 mt-1">{validationErrors.ageMax}</p>
+                        )}
                     </div>
 
                     {/* Min/Max Range Inputs */}
@@ -388,9 +470,12 @@ const AddExistingTestReferance = ({
                                  min={0}
                                 value={existingTestReferanceRecord[name as keyof TestReferancePoint] || ""}
                                 onChange={handleChangeRef}
-                                className="w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all"
+                                className={`w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all ${validationErrors[name] ? 'border-red-300 focus:ring-red-300' : ''}`}
                                 placeholder={label}
                             />
+                            {validationErrors[name] && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors[name]}</p>
+                            )}
                         </div>
                     ))}
                 </div>

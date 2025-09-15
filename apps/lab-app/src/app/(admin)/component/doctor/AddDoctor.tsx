@@ -43,12 +43,18 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 if (!value || value.trim() === '') return 'Name is required';
                 if (value.length < 2) return 'Name must be at least 2 characters long';
                 if (!/^[a-zA-Z\s]+$/.test(value)) return 'Name should contain only alphabets and spaces';
+                // Check for leading spaces
+                if (value.startsWith(' ')) return 'Name should not start with a space';
+                // Check for multiple consecutive spaces
+                if (/\s{2,}/.test(value)) return 'Name should not contain multiple consecutive spaces';
                 return '';
             
             case 'email':
                 if (typeof value !== 'string') return 'Email must be a valid value';
                 if (!value || value.trim() === '') return 'Email is required';
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
+                // Check for leading spaces
+                if (value.startsWith(' ')) return 'Email should not start with a space';
                 return '';
             
             case 'phone':
@@ -75,40 +81,66 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 if (typeof value !== 'string') return 'Hospital affiliation must be a valid value';
                 if (!value || value.trim() === '') return 'Hospital affiliation is required';
                 if (!/^[a-zA-Z\s]+$/.test(value)) return 'Hospital affiliation should contain only alphabets and spaces';
+                // Check for leading spaces
+                if (value.startsWith(' ')) return 'Hospital affiliation should not start with a space';
+                // Check for multiple consecutive spaces
+                if (/\s{2,}/.test(value)) return 'Hospital affiliation should not contain multiple consecutive spaces';
                 return '';
             
             case 'address':
                 if (typeof value !== 'string') return 'Address must be a valid value';
                 if (!value || value.trim() === '') return 'Address is required';
                 if (value.length < 5) return 'Address must be at least 5 characters long';
+                // Check for leading spaces
+                if (value.startsWith(' ')) return 'Address should not start with a space';
                 return '';
             
             case 'city':
                 if (typeof value !== 'string') return 'City must be a valid value';
                 if (!value || value.trim() === '') return 'City is required';
                 if (!/^[a-zA-Z\s]+$/.test(value)) return 'City should contain only alphabets and spaces';
+                // Check for leading spaces
+                if (value.startsWith(' ')) return 'City should not start with a space';
+                // Check for multiple consecutive spaces
+                if (/\s{2,}/.test(value)) return 'City should not contain multiple consecutive spaces';
                 return '';
             
             case 'state':
                 if (typeof value !== 'string') return 'State must be a valid value';
                 if (!value || value.trim() === '') return 'State is required';
                 if (!/^[a-zA-Z\s]+$/.test(value)) return 'State should contain only alphabets and spaces';
+                // Check for leading spaces
+                if (value.startsWith(' ')) return 'State should not start with a space';
+                // Check for multiple consecutive spaces
+                if (/\s{2,}/.test(value)) return 'State should not contain multiple consecutive spaces';
                 return '';
             
             case 'country':
                 if (typeof value !== 'string') return 'Country must be a valid value';
                 if (!value || value.trim() === '') return 'Country is required';
                 if (!/^[a-zA-Z\s]+$/.test(value)) return 'Country should contain only alphabets and spaces';
+                // Check for leading spaces
+                if (value.startsWith(' ')) return 'Country should not start with a space';
+                // Check for multiple consecutive spaces
+                if (/\s{2,}/.test(value)) return 'Country should not contain multiple consecutive spaces';
                 return '';
             
             case 'speciality':
                 if (typeof value !== 'string') return 'Speciality must be a valid value';
                 if (value && !/^[a-zA-Z\s]+$/.test(value)) return 'Speciality should contain only alphabets and spaces';
+                // Check for leading spaces
+                if (value && value.startsWith(' ')) return 'Speciality should not start with a space';
+                // Check for multiple consecutive spaces
+                if (value && /\s{2,}/.test(value)) return 'Speciality should not contain multiple consecutive spaces';
                 return '';
             
             case 'qualification':
                 if (typeof value !== 'string') return 'Qualification must be a valid value';
                 if (value && !/^[a-zA-Z\s]+$/.test(value)) return 'Qualification should contain only alphabets and spaces';
+                // Check for leading spaces
+                if (value && value.startsWith(' ')) return 'Qualification should not start with a space';
+                // Check for multiple consecutive spaces
+                if (value && /\s{2,}/.test(value)) return 'Qualification should not contain multiple consecutive spaces';
                 return '';
             
             default:
@@ -132,10 +164,17 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 ...prevState,
                 [name]: numericValue ? parseInt(numericValue) : '',
             }));
+        } else if (name === 'email') {
+            // Prevent leading spaces for email
+            const emailValue = value.replace(/^\s+/, '');
+            setDoctor((prevState) => ({
+                ...prevState,
+                [name]: emailValue,
+            }));
         } else if (name === 'name' || name === 'speciality' || name === 'qualification' || 
                    name === 'hospitalAffiliation' || name === 'city' || name === 'state' || name === 'country') {
-            // Only allow alphabets and spaces for name fields
-            const alphabeticValue = value.replace(/[^a-zA-Z\s]/g, '');
+            // Only allow alphabets and spaces for name fields, prevent leading spaces and multiple consecutive spaces
+            const alphabeticValue = value.replace(/[^a-zA-Z\s]/g, '').replace(/^\s+/, '').replace(/\s{2,}/g, ' ');
             setDoctor((prevState) => ({
                 ...prevState,
                 [name]: alphabeticValue,
@@ -148,8 +187,8 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 [name]: alphanumericValue,
             }));
         } else if (name === 'address') {
-            // Allow alphanumeric, spaces, and common address characters
-            const addressValue = value.replace(/[^a-zA-Z0-9\s.,#-]/g, '');
+            // Allow alphanumeric, spaces, and common address characters, prevent leading spaces
+            const addressValue = value.replace(/[^a-zA-Z0-9\s.,#-]/g, '').replace(/^\s+/, '');
             setDoctor((prevState) => ({
                 ...prevState,
                 [name]: addressValue,

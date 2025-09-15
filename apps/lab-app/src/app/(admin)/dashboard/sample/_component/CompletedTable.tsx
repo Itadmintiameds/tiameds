@@ -8,9 +8,7 @@ import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
 import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, formatDisplayDate, getDateRange } from '@/utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import { FiCalendar, FiFilter } from 'react-icons/fi';
+import { FiCalendar } from 'react-icons/fi';
 import {  TbReport } from 'react-icons/tb';
 import { toast } from 'react-toastify';
 import { getCollectedCompleted } from '../../../../../../services/sampleServices';
@@ -74,7 +72,6 @@ const CompletedTable = () => {
     const [dateFilter, setDateFilter] = useState<DateFilterOption>('today');
     const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
     const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
-    const [showDateFilter, setShowDateFilter] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     
     // State for expanded rows
@@ -82,9 +79,6 @@ const CompletedTable = () => {
 
     const handleFilterChange = (filter: DateFilterOption) => {
         setDateFilter(filter);
-        if (filter !== 'custom') {
-            setShowDateFilter(false);
-        }
     };
 
     // Toggle row expansion
@@ -493,97 +487,44 @@ const CompletedTable = () => {
                     <p className="text-xs text-gray-500">View and manage completed test reports</p>
                 </div>
 
-                <div
-                    className="relative"
-                    onBlur={(e) => {
-                        // Close dropdown when clicking outside
-                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                            setShowDateFilter(false);
-                        }
-                    }}
-                    tabIndex={-1}
-                >
-                    <button
-                        onClick={() => setShowDateFilter(!showDateFilter)}
-                        className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                        aria-expanded={showDateFilter}
-                        aria-haspopup="true"
-                        aria-label="Filter by date"
-                    >
-                        <FiFilter className="w-3 h-3" />
-                        <span>Filter by Date</span>
-                    </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex flex-col w-40">
+                        <label className="text-xs font-semibold mb-1 text-gray-600">Date Range:</label>
+                        <select
+                            value={dateFilter}
+                            onChange={(e) => handleFilterChange(e.target.value as DateFilterOption)}
+                            className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                        >
+                            {DATE_FILTER_OPTIONS.map(option => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
-                    {showDateFilter && (
-                        <div className="absolute z-10 mt-1 right-0 bg-white p-3 rounded-lg shadow-lg border border-gray-200 w-64">
-                            <div className="space-y-2">
-                                <div className="space-y-1">
-                                    <label className="block text-xs font-medium text-gray-600">Date Range</label>
-                                    <select
-                                        value={dateFilter}
-                                        onChange={(e) => {
-                                            const newFilter = e.target.value as DateFilterOption;
-                                            handleFilterChange(newFilter);
-                                        }}
-                                        className="w-full p-1.5 border border-gray-300 rounded-md text-xs"
-                                    >
-                                        {DATE_FILTER_OPTIONS.map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                {dateFilter === 'custom' && (
-                                    <div className="space-y-1">
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
-                                            <DatePicker
-                                                selected={customStartDate}
-                                                onChange={(date) => setCustomStartDate(date)}
-                                                selectsStart
-                                                startDate={customStartDate}
-                                                endDate={customEndDate}
-                                                className="w-full p-1.5 border border-gray-300 rounded-md text-xs"
-                                                maxDate={new Date()}
-                                                placeholderText="Select start date"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
-                                            <DatePicker
-                                                selected={customEndDate}
-                                                onChange={(date) => setCustomEndDate(date)}
-                                                selectsEnd
-                                                startDate={customStartDate}
-                                                endDate={customEndDate}
-                                                minDate={customStartDate ?? undefined}
-                                                maxDate={new Date()}
-                                                placeholderText="Select end date"
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                if (!customStartDate || !customEndDate) {
-                                                    toast.warning("Please select both start and end dates");
-                                                    return;
-                                                }
-                                                if (customStartDate > customEndDate) {
-                                                    toast.warning("Start date cannot be after end date");
-                                                    return;
-                                                }
-                                                setDateFilter('custom');
-                                                setShowDateFilter(false);
-                                            }}
-                                            className="w-full bg-blue-600 text-white py-1.5 rounded-md text-xs font-medium hover:bg-blue-700 transition-colors"
-                                        >
-                                            Apply Custom Filter
-                                        </button>
-                                    </div>
-                                )}
+                    {dateFilter === 'custom' && (
+                        <>
+                            <div className="flex flex-col w-40">
+                                <label className="text-xs font-semibold mb-1 text-gray-600">Start Date:</label>
+                                <input
+                                    type="date"
+                                    value={customStartDate ? customStartDate.toISOString().split('T')[0] : ''}
+                                    onChange={(e) => setCustomStartDate(e.target.value ? new Date(e.target.value) : null)}
+                                    className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                                />
                             </div>
-                        </div>
+
+                            <div className="flex flex-col w-40">
+                                <label className="text-xs font-semibold mb-1 text-gray-600">End Date:</label>
+                                <input
+                                    type="date"
+                                    value={customEndDate ? customEndDate.toISOString().split('T')[0] : ''}
+                                    onChange={(e) => setCustomEndDate(e.target.value ? new Date(e.target.value) : null)}
+                                    className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                                />
+                            </div>
+                        </>
                     )}
                 </div>
             </div>

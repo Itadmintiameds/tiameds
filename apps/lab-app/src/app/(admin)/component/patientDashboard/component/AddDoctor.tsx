@@ -80,17 +80,21 @@ const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLo
         if (!doctor?.name || doctor.name.toString().trim() === '') {
             newErrors.name = 'Doctor name is required';
         } else {
-            // Additional validation: ensure name doesn't contain only numbers
+            // Additional validation: ensure name contains only letters after Dr. prefix
             const nameWithoutPrefix = doctor.name.toString().replace(/^Dr\.\s*/, '').trim();
-            if (!nameWithoutPrefix || /^\d+$/.test(nameWithoutPrefix)) {
-                newErrors.name = 'Doctor name must contain letters, not just numbers';
+            if (!nameWithoutPrefix || !/^[a-zA-Z]+$/.test(nameWithoutPrefix)) {
+                newErrors.name = 'Doctor name must contain only letters (no numbers, spaces, or special characters)';
+            } else if (nameWithoutPrefix.length < 2) {
+                newErrors.name = 'Doctor name must be at least 2 characters long';
             }
         }
         
         if (!doctor?.speciality || doctor.speciality.toString().trim() === '') {
             newErrors.speciality = 'Doctor speciality is required';
-        } else if (/^\d+$/.test(doctor.speciality.toString().trim())) {
-            newErrors.speciality = 'Speciality must contain letters, not just numbers';
+        } else if (!/^[a-zA-Z]+$/.test(doctor.speciality.toString().trim())) {
+            newErrors.speciality = 'Speciality must contain only letters (no numbers, spaces, or special characters)';
+        } else if (doctor.speciality.toString().trim().length < 2) {
+            newErrors.speciality = 'Speciality must be at least 2 characters long';
         }
         
         // Phone validation: required and must be exactly 10 digits
@@ -126,11 +130,11 @@ const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLo
             value = value.substring(3).trim();
         }
         
-        // Only allow letters, spaces, and common name characters (no numbers)
-        value = value.replace(/[^a-zA-Z\s\.\-']/g, '');
+        // Only allow letters (no numbers, special characters, or spaces)
+        value = value.replace(/[^a-zA-Z]/g, '');
         
         // Add Dr. prefix automatically
-        value = `Dr. ${value.trimStart()}`;
+        value = `Dr. ${value}`;
         
         setDoctor((prevDoctor) => ({
             ...prevDoctor,
@@ -146,8 +150,8 @@ const AddDoctor = ({ handleAddDoctor, doctor, setDoctor, errors, isDoctorAddedLo
     const handleSpecialityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         
-        // Only allow letters, spaces, and common speciality characters (no numbers)
-        const cleanValue = value.replace(/[^a-zA-Z\s\.\-&]/g, '');
+        // Only allow letters (no numbers, spaces, or special characters)
+        const cleanValue = value.replace(/[^a-zA-Z]/g, '');
         
         setDoctor((prevDoctor) => ({
             ...prevDoctor,
