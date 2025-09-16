@@ -7,6 +7,20 @@ interface PatientBasicInfoProps {
 
 
 const PatientBasicInfo = ({ patient }: PatientBasicInfoProps) => {
+    // Format date to DD-MM-YYYY format
+    const formatDate = (dateString: string | undefined) => {
+        if (!dateString) return '';
+        try {
+            const date = new Date(dateString);
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+        } catch (error) {
+            return dateString; // Return original if parsing fails
+        }
+    };
+
     return (
         <div className="bg-white rounded-lg border border-gray-200 p-4 my-4 shadow-xs">
             <div className="flex justify-between items-center mb-3">
@@ -27,8 +41,8 @@ const PatientBasicInfo = ({ patient }: PatientBasicInfoProps) => {
                             <InfoItem icon={<FaVenusMars className="text-purple-500" />} label="Gender" value={patient.gender} />
                             <InfoItem icon={<FaPhone className="text-green-500" />} label="Contact" value={patient.contactNumber} />
                             <InfoItem icon={<FaEnvelope className="text-red-500" />} label="Email" value={patient.email} />
-                            <InfoItem icon={<FaCalendarAlt className="text-orange-500" />} label="DOB" value={patient.dateOfBirth ?? ''} />
-                            <InfoItem icon={<FaCalendarAlt className="text-blue-400" />} label="Visit" value={patient.visitDate} />
+                            <InfoItem icon={<FaCalendarAlt className="text-orange-500" />} label="DOB" value={formatDate(patient.dateOfBirth)} />
+                            <InfoItem icon={<FaCalendarAlt className="text-blue-400" />} label="Visit" value={formatDate(patient.visitDate)} />
                             <InfoItem icon={<FaCalendarAlt className="text-gray-500" />} label="Status" value={patient.visitStatus} />
                             <InfoItem icon={<FaVial className="text-yellow-500" />} label="Samples" value={patient.sampleNames?.join(", ") ?? ''} />
                             <InfoItem icon={<FaFlask className="text-indigo-500" />} label="Tests" value={patient.testIds?.join(", ") ?? ''} />

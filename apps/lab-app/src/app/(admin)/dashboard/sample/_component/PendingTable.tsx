@@ -448,6 +448,7 @@ const PendingTable: React.FC = () => {
                 handleVititSample={handleVititSample}
                 loading={loading}
                 setShowModal={setShowModal}
+                onClose={() => setShowModal(false)}
               />
             </Modal>
           )}

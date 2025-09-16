@@ -3,8 +3,9 @@ import { Disclosure, DisclosureButton, DisclosurePanel } from "@headlessui/react
 import clsx from "clsx";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowLeft, ArrowRight, ChevronRightIcon, Sparkles } from "lucide-react";
-import { navigation } from "./Navigation";
+import { getNavigation } from "./Navigation";
 import Button from '../common/Button';
 
 interface SideBarProps {
@@ -13,6 +14,9 @@ interface SideBarProps {
 }
 
 const SideBar = ({ isOpen, setIsOpen }: SideBarProps) => {
+  const pathname = usePathname();
+  const navigation = getNavigation(pathname);
+  
   return (
     <aside
       className={`fixed inset-y-0 left-0 z-30 bg-[#E1C4F8] shadow-2xl transform transition-all duration-300 ease-in-out flex flex-col ${isOpen ? "w-64" : "w-24"

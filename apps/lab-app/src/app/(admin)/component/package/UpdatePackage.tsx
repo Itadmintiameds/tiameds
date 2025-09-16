@@ -115,23 +115,66 @@ const UpdatePackage = ({
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setPackageDetails(prev => ({
-      ...prev,
-      [name]: name === 'discount' ? Math.min(100, Math.max(0, parseFloat(value) || 0)) : value
-    }));
+    
+    if (name === 'packageName') {
+      // Only allow letters and spaces, remove leading spaces
+      let filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
+      filteredValue = filteredValue.replace(/^\s+/, '');
+      setPackageDetails(prev => ({
+        ...prev,
+        [name]: filteredValue
+      }));
+    } else {
+      setPackageDetails(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Remove leading zeros and non-numeric characters except decimal point
-    const cleanValue = value.replace(/^0+/, '').replace(/[^\d.]/g, '');
-    const numValue = parseFloat(cleanValue) || 0;
-    const clampedValue = Math.min(100, Math.max(0, numValue));
     
-    setPackageDetails(prev => ({
-      ...prev,
-      discount: clampedValue
-    }));
+    if (value === '') {
+      setPackageDetails(prev => ({
+        ...prev,
+        discount: 0
+      }));
+      return;
+    }
+    
+    // Allow numbers and one decimal point
+    let numericValue = value.replace(/[^0-9.]/g, '');
+    
+    // Ensure only one decimal point
+    const parts = numericValue.split('.');
+    if (parts.length > 2) {
+      numericValue = parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    // Limit to 2 decimal places
+    if (parts.length === 2 && parts[1].length > 2) {
+      numericValue = parts[0] + '.' + parts[1].substring(0, 2);
+    }
+    
+    // Validate range (0-100)
+    const numValue = parseFloat(numericValue);
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+      setPackageDetails(prev => ({
+        ...prev,
+        discount: numValue
+      }));
+    } else if (numValue > 100) {
+      setPackageDetails(prev => ({
+        ...prev,
+        discount: 100
+      }));
+    } else if (numValue < 0) {
+      setPackageDetails(prev => ({
+        ...prev,
+        discount: 0
+      }));
+    }
   };
 
   const addTestToPackage = (test: TestList) => {
@@ -151,6 +194,31 @@ const UpdatePackage = ({
   };
 
   const submitPackageUpdate = () => {
+    // Validate package name
+    if (!packageDetails.packageName.trim()) {
+      alert('Package name is required.');
+      return;
+    }
+
+    if (packageDetails.packageName.trim().length < 3) {
+      alert('Package name must be at least 3 characters long.');
+      return;
+    }
+
+    // Validate package name format - only alpha characters and spaces
+    const packageNameRegex = /^[a-zA-Z\s]+$/;
+    if (!packageNameRegex.test(packageDetails.packageName.trim())) {
+      alert('Package name can only contain letters and spaces.');
+      return;
+    }
+
+    // Check if package name contains at least one alphanumeric character
+    const hasAlphanumeric = /[a-zA-Z0-9]/.test(packageDetails.packageName.trim());
+    if (!hasAlphanumeric) {
+      alert('Package name must contain at least one letter or number.');
+      return;
+    }
+
     handleUpdatePackage(packageDetails);
     onClose();
   };
@@ -183,14 +251,17 @@ const UpdatePackage = ({
               Discount Percentage
             </label>
             <div className="relative">
-                             <input
-                 type="text"
-                 name="discount"
-                 value={packageDetails.discount || ''}
-                 onChange={handleDiscountChange}
-                 className="w-full px-4 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                 placeholder="0"
-               />
+            <input
+              type="number"
+              name="discount"
+              value={packageDetails.discount || ''}
+              onChange={handleDiscountChange}
+              className="w-full px-4 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              placeholder="0.00"
+              min="0"
+              max="100"
+              step="0.01"
+            />
               <span className="absolute right-8 top-2 text-gray-500">%</span>
             </div>
           </div>

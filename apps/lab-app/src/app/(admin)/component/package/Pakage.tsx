@@ -14,7 +14,14 @@ import { FiCheck, FiPlusCircle, FiSearch, FiTag, FiTrash2 } from 'react-icons/fi
 import { LuTestTube } from "react-icons/lu";
 import { toast } from 'react-toastify';
 
-interface Package {
+// interface Package {
+//   packageName: string;
+//   price: number;
+//   discount: number;
+//   testIds: number[];
+// }
+
+interface PackageFormData {
   packageName: string;
   price: number;
   discount: number;
@@ -22,7 +29,7 @@ interface Package {
 }
 
 const PackageCreation = () => {
-  const [packageData, setPackageData] = useState<Package>({
+  const [packageData, setPackageData] = useState<PackageFormData>({
     packageName: '',
     price: 0,
     discount: 0,
@@ -34,7 +41,7 @@ const PackageCreation = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [discount, setDiscount] = useState(0);
+  const [discount, setDiscount] = useState<string>("0");
   const { currentLab } = useLabs();
   const [loading, setLoading] = useState(false);
   // const [isCalculating, setIsCalculating] = useState(false);
@@ -123,7 +130,8 @@ const PackageCreation = () => {
 
   const calculateFinalPrice = () => {
     const total = calculateTotal();
-    const finalPrice = total - (total * discount) / 100;
+    const discountValue = parseFloat(discount) || 0;
+    const finalPrice = total - (total * discountValue) / 100;
   
     return finalPrice;
   };
@@ -135,7 +143,8 @@ const PackageCreation = () => {
   };
 
   useEffect(() => {
-    if (selectedTests.length > 0 || discount > 0) {
+    const discountValue = parseFloat(discount) || 0;
+    if (selectedTests.length > 0 || discountValue > 0) {
       animatePriceChange();
     }
   }, [selectedTests, discount]);
@@ -153,6 +162,24 @@ const PackageCreation = () => {
 
       if (packageData.packageName.trim().length < 3) {
         toast.error('Package name must be at least 3 characters long.', {
+          className: 'bg-error text-white'
+        });
+        return;
+      }
+
+      // Validate package name format - only alpha characters and spaces
+      const packageNameRegex = /^[a-zA-Z\s]+$/;
+      if (!packageNameRegex.test(packageData.packageName.trim())) {
+        toast.error('Package name can only contain letters and spaces.', {
+          className: 'bg-error text-white'
+        });
+        return;
+      }
+
+      // Check if package name contains at least one alphanumeric character
+      const hasAlphanumeric = /[a-zA-Z0-9]/.test(packageData.packageName.trim());
+      if (!hasAlphanumeric) {
+        toast.error('Package name must contain at least one letter or number.', {
           className: 'bg-error text-white'
         });
         return;
@@ -178,7 +205,7 @@ const PackageCreation = () => {
         packageName: packageData.packageName.trim(),
         testIds: packageData.testIds,
         price: finalPrice,
-        discount: discount,
+        discount: parseFloat(discount) || 0,
       };
 
     
@@ -205,7 +232,7 @@ const PackageCreation = () => {
 
         setPackageData({ packageName: '', price: 0, testIds: [], discount: 0 });
         setSelectedTests([]);
-        setDiscount(0);
+        setDiscount("0");
       } else {
         toast.error('Current lab is not available.');
       }
@@ -258,7 +285,14 @@ const PackageCreation = () => {
             <input
               type="text"
               value={packageData.packageName}
-              onChange={(e) => setPackageData({ ...packageData, packageName: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Only allow letters and spaces
+                let filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
+                // Remove leading spaces
+                filteredValue = filteredValue.replace(/^\s+/, '');
+                setPackageData({ ...packageData, packageName: filteredValue });
+              }}
               placeholder="e.g., Complete Health Checkup"
               className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
             />
@@ -274,11 +308,56 @@ const PackageCreation = () => {
               type="number"
               value={discount}
               onChange={(e) => {
-                const input = Math.max(0, Math.min(100, +e.target.value));
-                setDiscount(input);
+                const value = e.target.value;
+                if (value === '') {
+                  setDiscount("0");
+                } else {
+                  // Allow numbers and one decimal point
+                  let numericValue = value.replace(/[^0-9.]/g, '');
+                  
+                  // Ensure only one decimal point
+                  const parts = numericValue.split('.');
+                  if (parts.length > 2) {
+                    numericValue = parts[0] + '.' + parts.slice(1).join('');
+                  }
+                  
+                  // Limit to 2 decimal places
+                  if (parts.length === 2 && parts[1].length > 2) {
+                    numericValue = parts[0] + '.' + parts[1].substring(0, 2);
+                  }
+                  
+                  // Validate range (0-100)
+                  const numValue = parseFloat(numericValue);
+                  if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+                    setDiscount(numericValue);
+                  } else if (numValue > 100) {
+                    setDiscount("100.00");
+                  } else if (numValue < 0) {
+                    setDiscount("0");
+                  }
+                }
               }}
-              placeholder="0-100%"
-              className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
+              onInput={(e) => {
+                const input = e.target as HTMLInputElement;
+                let value = input.value;
+                
+                // Remove leading zeros but keep decimal point
+                if (value.length > 1 && value.startsWith('0') && !value.startsWith('0.')) {
+                  value = value.replace(/^0+/, '');
+                  // If all zeros were removed, set to 0
+                  if (value === '') {
+                    value = '0';
+                  }
+                  // Update the input value directly
+                  input.value = value;
+                  setDiscount(value);
+                }
+              }}
+              placeholder="0.00"
+              min="0"
+              max="100"
+              step="0.01"
+              className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <div className="absolute right-3 top-3 text-gray-400 text-sm">%</div>
           </div>
@@ -355,7 +434,8 @@ const PackageCreation = () => {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ type: 'spring', stiffness: 300 }}
-                  className="py-3 flex justify-between items-center group"
+                  className="py-3 flex justify-between items-center group cursor-pointer hover:bg-gray-50 rounded-lg px-2 transition-colors"
+                  onClick={() => handleAddTest(test)}
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-indigo-50 rounded-lg">
@@ -374,7 +454,10 @@ const PackageCreation = () => {
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => handleAddTest(test)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent row click when button is clicked
+                      handleAddTest(test);
+                    }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-indigo-100 rounded-full text-indigo-600 hover:bg-indigo-200"
                     title="Add to package"
                   >
@@ -481,7 +564,7 @@ const PackageCreation = () => {
 
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Discount ({discount}%):</span>
-            <span className="text-sm font-medium text-red-500">-₹{(calculateTotal() * discount / 100).toFixed(2)}</span>
+            <span className="text-sm font-medium text-red-500">-₹{((calculateTotal() * (parseFloat(discount) || 0)) / 100).toFixed(2)}</span>
           </div>
 
           <div className="border-t border-gray-200 my-2"></div>

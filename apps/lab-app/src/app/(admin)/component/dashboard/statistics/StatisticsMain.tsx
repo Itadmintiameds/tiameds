@@ -6,7 +6,6 @@
 import { useLabs } from '@/context/LabContext';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
-import DatePicker from "react-datepicker";
 import 'react-datepicker/dist/react-datepicker.css';
 import {
   FaBox,
@@ -20,8 +19,7 @@ import {
   FaUserMd,
   FaVial,
   FaWallet,
-  FaCalendarAlt,
-  FaFilter
+
 } from 'react-icons/fa';
 import { getLabStatsData } from '../../../../../../services/statusServices';
 import Loader from '../../common/Loader';
@@ -30,18 +28,18 @@ import PieChartStatus from "./PieChartStatus";
 
 const TopStats = ({ stats }: { stats: { name: string; value: number | string; icon: JSX.Element }[] }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
       {stats.map((stat, idx) => (
         <div
           key={idx}
-          className="flex items-center bg-gradient-to-br from-white to-gray-50 rounded-xl p-4 shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 hover:border-primary/20"
+          className="flex items-center bg-gradient-to-br from-white to-gray-50 rounded-xl p-3 shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 hover:border-primary/20 min-h-[75px]"
         >
-          <div className="p-3 bg-white rounded-xl shadow-md mr-4 text-primary">
+          <div className="flex-shrink-0 p-2 bg-white rounded-lg shadow-md mr-3 text-primary">
             {stat.icon}
           </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-lg text-gray-800">{stat.value}</span>
-            <span className="text-sm text-gray-500">{stat.name}</span>
+          <div className="flex flex-col justify-center min-w-0 flex-1">
+            <span className="font-bold text-base text-gray-800 leading-tight mb-1">{stat.value}</span>
+            <span className="text-xs text-gray-500 leading-tight">{stat.name}</span>
           </div>
         </div>
       ))}
@@ -127,45 +125,13 @@ const StatisticsMain = () => {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
-          {selectedFilter === "custom" && (
-            <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-200 w-full sm:w-auto">
-              <FaCalendarAlt className="text-gray-400" />
-              <DatePicker
-                selected={customRange.startDate}
-                onChange={(date: Date | null) =>
-                  setCustomRange({ ...customRange, startDate: date })
-                }
-                selectsStart
-                startDate={customRange.startDate}
-                endDate={customRange.endDate}
-                placeholderText="Start Date"
-                className="p-2 w-36 rounded-lg border border-gray-300 focus:border-primary focus:ring-primary/50"
-              />
-              <span className="text-gray-400">to</span>
-              <DatePicker
-                selected={customRange.endDate}
-                onChange={(date: Date | null) =>
-                  setCustomRange({ ...customRange, endDate: date })
-                }
-                selectsEnd
-                startDate={customRange.startDate}
-                endDate={customRange.endDate}
-                minDate={customRange.startDate || undefined}
-                placeholderText="End Date"
-                className="p-2 w-36 rounded-lg border border-gray-300 focus:border-primary focus:ring-primary/50"
-              />
-            </div>
-          )}
-
-          <div className="relative w-full sm:w-auto">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaFilter className="text-gray-400" />
-            </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col w-40">
+            <label className="text-xs font-semibold mb-1 text-gray-600">Date Range:</label>
             <select
-              className="pl-10 pr-4 py-2 rounded-xl border border-gray-300 bg-white shadow-sm focus:border-primary focus:ring-primary transition hover:border-primary cursor-pointer appearance-none w-full sm:w-auto"
               value={selectedFilter}
               onChange={(e) => setSelectedFilter(e.target.value)}
+              className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
             >
               <option value="today">Today</option>
               <option value="last7Days">Last 7 Days</option>
@@ -174,6 +140,30 @@ const StatisticsMain = () => {
               <option value="custom">Custom Range</option>
             </select>
           </div>
+
+          {selectedFilter === "custom" && (
+            <>
+              <div className="flex flex-col w-40">
+                <label className="text-xs font-semibold mb-1 text-gray-600">Start Date:</label>
+                <input
+                  type="date"
+                  value={customRange.startDate ? customRange.startDate.toISOString().split('T')[0] : ''}
+                  onChange={(e) => setCustomRange({ ...customRange, startDate: e.target.value ? new Date(e.target.value) : null })}
+                  className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                />
+              </div>
+
+              <div className="flex flex-col w-40">
+                <label className="text-xs font-semibold mb-1 text-gray-600">End Date:</label>
+                <input
+                  type="date"
+                  value={customRange.endDate ? customRange.endDate.toISOString().split('T')[0] : ''}
+                  onChange={(e) => setCustomRange({ ...customRange, endDate: e.target.value ? new Date(e.target.value) : null })}
+                  className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 

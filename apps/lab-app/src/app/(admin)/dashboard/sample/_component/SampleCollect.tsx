@@ -28,6 +28,15 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
     loading,
     onClose,
 }) => {
+    const handleCancel = () => {
+        // Clear any selected samples when canceling
+        setSamples([]);
+        setSelectedSample("");
+        // Call the onClose function if provided
+        if (onClose) {
+            onClose();
+        }
+    };
     const [allSamples, setAllSamples] = useState<Sample[]>([]);
     const [selectedSample, setSelectedSample] = useState<string>("");
 
@@ -81,7 +90,7 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
                 </div>
                 {onClose && (
                     <button 
-                        onClick={onClose}
+                        onClick={handleCancel}
                         className="text-white hover:text-blue-200 transition-colors"
                     >
                         <FaTimes className="text-lg" />
@@ -159,7 +168,7 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
                     </button>
                 )}
                 <button
-                    onClick={onClose}
+                    onClick={handleCancel}
                     className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
                 >
                     Cancel

@@ -140,7 +140,15 @@ const AddMemberOnLab = () => {
 
     // Validate individual field
     const validateField = (name: string, value: unknown): string => {
-        // Type guard to ensure value is a string
+        // Handle roles as array, others as string
+        if (name === 'roles') {
+            if (!Array.isArray(value) || value.length === 0) {
+                return 'At least one role is required';
+            }
+            return '';
+        }
+        
+        // Type guard to ensure value is a string for other fields
         if (typeof value !== 'string') {
             return `${name} must be a valid value`;
         }
@@ -189,9 +197,6 @@ const AddMemberOnLab = () => {
                 if (value && !/[0-9]/.test(value)) return 'Password must contain at least one number';
                 return '';
             
-            case 'roles':
-                if (!value || value.length === 0) return 'At least one role is required';
-                return '';
             
             default:
                 return '';
@@ -730,12 +735,94 @@ const AddMemberOnLab = () => {
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Roles*</label>
                                                 <Select
                                                     isMulti
+                                                    isClearable={false}
                                                     options={roleOptions}
                                                     value={selectedRoles}
                                                     onChange={handleRoleChange}
                                                     placeholder="Select roles..."
                                                     className={`react-select-container ${errors.roles && touched.roles ? 'border-red-500 rounded-lg' : ''}`}
                                                     classNamePrefix="react-select"
+                                                    styles={{
+                                                        control: (provided, state) => ({
+                                                            ...provided,
+                                                            minHeight: '38px',
+                                                            padding: '0 8px',
+                                                            border: errors.roles && touched.roles ? '1px solid #ef4444' : '1px solid #d1d5db',
+                                                            borderRadius: '8px',
+                                                            boxShadow: state.isFocused ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
+                                                            '&:hover': {
+                                                                border: errors.roles && touched.roles ? '1px solid #ef4444' : '1px solid #9ca3af'
+                                                            }
+                                                        }),
+                                                        valueContainer: (provided) => ({
+                                                            ...provided,
+                                                            padding: '0 4px',
+                                                            minHeight: '36px'
+                                                        }),
+                                                        multiValue: (provided) => ({
+                                                            ...provided,
+                                                            margin: '2px',
+                                                            backgroundColor: '#dbeafe',
+                                                            borderRadius: '6px',
+                                                            display: 'flex',
+                                                            alignItems: 'center'
+                                                        }),
+                                                        multiValueLabel: (provided) => ({
+                                                            ...provided,
+                                                            color: '#1e40af',
+                                                            fontSize: '12px',
+                                                            padding: '2px 6px',
+                                                            fontWeight: '500'
+                                                        }),
+                                                        multiValueRemove: (provided) => ({
+                                                            ...provided,
+                                                            color: '#1e40af',
+                                                            backgroundColor: 'transparent',
+                                                            border: 'none',
+                                                            borderRadius: '0 6px 6px 0',
+                                                            padding: '2px 6px',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            '&:hover': {
+                                                                backgroundColor: '#bfdbfe',
+                                                                color: '#1e40af'
+                                                            }
+                                                        }),
+                                                        placeholder: (provided) => ({
+                                                            ...provided,
+                                                            fontSize: '14px',
+                                                            color: '#9ca3af'
+                                                        }),
+                                                        input: (provided) => ({
+                                                            ...provided,
+                                                            margin: '0',
+                                                            padding: '0'
+                                                        }),
+                                                        option: (provided, state) => ({
+                                                            ...provided,
+                                                            backgroundColor: state.isSelected ? '#dbeafe' : state.isFocused ? '#f3f4f6' : 'white',
+                                                            color: state.isSelected ? '#1e40af' : '#374151',
+                                                            padding: '8px 12px',
+                                                            cursor: 'pointer',
+                                                            '&:hover': {
+                                                                backgroundColor: state.isSelected ? '#dbeafe' : '#f3f4f6'
+                                                            }
+                                                        }),
+                                                        menu: (provided) => ({
+                                                            ...provided,
+                                                            zIndex: 9999,
+                                                            border: '1px solid #d1d5db',
+                                                            borderRadius: '8px',
+                                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                                        }),
+                                                        menuList: (provided) => ({
+                                                            ...provided,
+                                                            padding: '4px 0',
+                                                            maxHeight: '200px'
+                                                        })
+                                                    }}
                                                 />
                                                 {errors.roles && touched.roles && (
                                                     <p className="mt-1 text-sm text-red-600">{errors.roles}</p>

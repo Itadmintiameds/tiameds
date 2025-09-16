@@ -249,13 +249,13 @@ const UpdatePatient: React.FC<PatientProps> = ({ handleUpdate, patient }) => {
             )}
 
             <Button
+            onClick={()=>{}}
                 text={isSubmitting ? 'Updating...' : 'Update Patient'}
                 type="submit"
-                onClick={() => null}
-                className="w-full px-4 py-2 text-xs bg-button-tertiary text-white rounded-md hover:bg-button-tertiary-dark focus:outline-none flex items-center justify-center space-x-2"
+                className="w-full px-6 py-3 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center space-x-2 shadow-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isSubmitting}
             />
-        </form>
+        </form> 
     );
 };
 
