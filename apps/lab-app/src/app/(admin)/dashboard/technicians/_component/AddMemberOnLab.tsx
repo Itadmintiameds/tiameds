@@ -732,10 +732,11 @@ const AddMemberOnLab = () => {
                                             </div>
 
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Roles*</label>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Roles*</label>
                                                 <Select
                                                     isMulti
                                                     isClearable={false}
+                                                    isSearchable={false}
                                                     options={roleOptions}
                                                     value={selectedRoles}
                                                     onChange={handleRoleChange}
@@ -745,8 +746,8 @@ const AddMemberOnLab = () => {
                                                     styles={{
                                                         control: (provided, state) => ({
                                                             ...provided,
-                                                            minHeight: '38px',
-                                                            padding: '0 8px',
+                                                            minHeight: '42px',
+                                                            padding: '2px 8px',
                                                             border: errors.roles && touched.roles ? '1px solid #ef4444' : '1px solid #d1d5db',
                                                             borderRadius: '8px',
                                                             boxShadow: state.isFocused ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
@@ -756,58 +757,67 @@ const AddMemberOnLab = () => {
                                                         }),
                                                         valueContainer: (provided) => ({
                                                             ...provided,
-                                                            padding: '0 4px',
-                                                            minHeight: '36px'
+                                                            padding: '0',
+                                                            minHeight: '38px',
+                                                            flexWrap: 'wrap',
+                                                            gap: '4px'
                                                         }),
                                                         multiValue: (provided) => ({
                                                             ...provided,
-                                                            margin: '2px',
-                                                            backgroundColor: '#dbeafe',
+                                                            margin: '0',
+                                                            backgroundColor: '#e0f2fe',
                                                             borderRadius: '6px',
                                                             display: 'flex',
-                                                            alignItems: 'center'
+                                                            alignItems: 'center',
+                                                            border: '1px solid #bae6fd',
+                                                            fontSize: '12px'
                                                         }),
                                                         multiValueLabel: (provided) => ({
                                                             ...provided,
-                                                            color: '#1e40af',
+                                                            color: '#0369a1',
                                                             fontSize: '12px',
-                                                            padding: '2px 6px',
-                                                            fontWeight: '500'
+                                                            padding: '4px 8px',
+                                                            fontWeight: '500',
+                                                            lineHeight: '1.2'
                                                         }),
                                                         multiValueRemove: (provided) => ({
                                                             ...provided,
-                                                            color: '#1e40af',
+                                                            color: '#0369a1',
                                                             backgroundColor: 'transparent',
                                                             border: 'none',
                                                             borderRadius: '0 6px 6px 0',
-                                                            padding: '2px 6px',
+                                                            padding: '4px 6px',
                                                             cursor: 'pointer',
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
+                                                            fontSize: '14px',
                                                             '&:hover': {
-                                                                backgroundColor: '#bfdbfe',
-                                                                color: '#1e40af'
+                                                                backgroundColor: '#bae6fd',
+                                                                color: '#0369a1'
                                                             }
                                                         }),
                                                         placeholder: (provided) => ({
                                                             ...provided,
                                                             fontSize: '14px',
-                                                            color: '#9ca3af'
+                                                            color: '#9ca3af',
+                                                            margin: '0'
                                                         }),
                                                         input: (provided) => ({
                                                             ...provided,
                                                             margin: '0',
-                                                            padding: '0'
+                                                            padding: '0',
+                                                            display: 'none'
                                                         }),
                                                         option: (provided, state) => ({
                                                             ...provided,
-                                                            backgroundColor: state.isSelected ? '#dbeafe' : state.isFocused ? '#f3f4f6' : 'white',
-                                                            color: state.isSelected ? '#1e40af' : '#374151',
-                                                            padding: '8px 12px',
+                                                            backgroundColor: state.isSelected ? '#e0f2fe' : state.isFocused ? '#f8fafc' : 'white',
+                                                            color: state.isSelected ? '#0369a1' : '#374151',
+                                                            padding: '10px 12px',
                                                             cursor: 'pointer',
+                                                            fontSize: '14px',
                                                             '&:hover': {
-                                                                backgroundColor: state.isSelected ? '#dbeafe' : '#f3f4f6'
+                                                                backgroundColor: state.isSelected ? '#e0f2fe' : '#f8fafc'
                                                             }
                                                         }),
                                                         menu: (provided) => ({
@@ -815,17 +825,29 @@ const AddMemberOnLab = () => {
                                                             zIndex: 9999,
                                                             border: '1px solid #d1d5db',
                                                             borderRadius: '8px',
-                                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                                            marginTop: '4px'
                                                         }),
                                                         menuList: (provided) => ({
                                                             ...provided,
                                                             padding: '4px 0',
                                                             maxHeight: '200px'
+                                                        }),
+                                                        indicatorsContainer: (provided) => ({
+                                                            ...provided,
+                                                            padding: '0 8px'
+                                                        }),
+                                                        dropdownIndicator: (provided) => ({
+                                                            ...provided,
+                                                            color: '#6b7280',
+                                                            '&:hover': {
+                                                                color: '#374151'
+                                                            }
                                                         })
                                                     }}
                                                 />
                                                 {errors.roles && touched.roles && (
-                                                    <p className="mt-1 text-sm text-red-600">{errors.roles}</p>
+                                                    <p className="mt-2 text-sm text-red-600">{errors.roles}</p>
                                                 )}
                                             </div>
                                             {isEditing && (
