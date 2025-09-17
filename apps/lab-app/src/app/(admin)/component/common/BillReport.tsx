@@ -604,7 +604,7 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
           </div>
           <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200 shadow-sm">
             <div className="text-sm text-green-600 font-medium">Net Amount</div>
-            <div className="text-2xl font-bold text-green-900">₹{billData.netReceived.toFixed(1)}</div>
+            <div className="text-2xl font-bold text-green-900">₹{billData.netAmount.toFixed(1)}</div>
           </div>
           <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200 shadow-sm">
             <div className="text-sm text-red-600 font-medium">Refund Amount</div>

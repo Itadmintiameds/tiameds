@@ -452,6 +452,14 @@ const Page = () => {
   const [billReportCustomStartDate, setBillReportCustomStartDate] = useState<Date | null>(null);
   const [billReportCustomEndDate, setBillReportCustomEndDate] = useState<Date | null>(null);
   const [billReportVisitTypeFilter, setBillReportVisitTypeFilter] = useState<string>('');
+
+  const [dayClosingDateFilter, setDayClosingDateFilter] = useState<DateFilterOption>('today');
+  const [dayClosingCustomStartDate, setDayClosingCustomStartDate] = useState<Date | null>(null);
+  const [dayClosingCustomEndDate, setDayClosingCustomEndDate] = useState<Date | null>(null);
+  
+  const [receiptsDateFilter, setReceiptsDateFilter] = useState<DateFilterOption>('today');
+  const [receiptsCustomStartDate, setReceiptsCustomStartDate] = useState<Date | null>(null);
+  const [receiptsCustomEndDate, setReceiptsCustomEndDate] = useState<Date | null>(null);
   
   // Legacy states for backward compatibility (will be removed)
 
@@ -468,15 +476,48 @@ const Page = () => {
 
   // Helper functions to get current filter values based on active tab
   const getCurrentDateFilter = () => {
-    return activeTab === 'amount-received' ? amountReceivedDateFilter : billReportDateFilter;
+    switch (activeTab) {
+      case 'amount-received':
+        return amountReceivedDateFilter;
+      case 'bill-report':
+        return billReportDateFilter;
+      case 'day-closing':
+        return dayClosingDateFilter;
+      case 'receipts':
+        return receiptsDateFilter;
+      default:
+        return 'today';
+    }
   };
 
   const getCurrentCustomStartDate = () => {
-    return activeTab === 'amount-received' ? amountReceivedCustomStartDate : billReportCustomStartDate;
+    switch (activeTab) {
+      case 'amount-received':
+        return amountReceivedCustomStartDate;
+      case 'bill-report':
+        return billReportCustomStartDate;
+      case 'day-closing':
+        return dayClosingCustomStartDate;
+      case 'receipts':
+        return receiptsCustomStartDate;
+      default:
+        return null;
+    }
   };
 
   const getCurrentCustomEndDate = () => {
-    return activeTab === 'amount-received' ? amountReceivedCustomEndDate : billReportCustomEndDate;
+    switch (activeTab) {
+      case 'amount-received':
+        return amountReceivedCustomEndDate;
+      case 'bill-report':
+        return billReportCustomEndDate;
+      case 'day-closing':
+        return dayClosingCustomEndDate;
+      case 'receipts':
+        return receiptsCustomEndDate;
+      default:
+        return null;
+    }
   };
 
   const getCurrentVisitTypeFilter = () => {
@@ -485,26 +526,53 @@ const Page = () => {
 
   // Helper functions to set current filter values based on active tab
   const setCurrentDateFilter = (filter: DateFilterOption) => {
-    if (activeTab === 'amount-received') {
-      setAmountReceivedDateFilter(filter);
-    } else {
-      setBillReportDateFilter(filter);
+    switch (activeTab) {
+      case 'amount-received':
+        setAmountReceivedDateFilter(filter);
+        break;
+      case 'bill-report':
+        setBillReportDateFilter(filter);
+        break;
+      case 'day-closing':
+        setDayClosingDateFilter(filter);
+        break;
+      case 'receipts':
+        setReceiptsDateFilter(filter);
+        break;
     }
   };
 
   const setCurrentCustomStartDate = (date: Date | null) => {
-    if (activeTab === 'amount-received') {
-      setAmountReceivedCustomStartDate(date);
-    } else {
-      setBillReportCustomStartDate(date);
+    switch (activeTab) {
+      case 'amount-received':
+        setAmountReceivedCustomStartDate(date);
+        break;
+      case 'bill-report':
+        setBillReportCustomStartDate(date);
+        break;
+      case 'day-closing':
+        setDayClosingCustomStartDate(date);
+        break;
+      case 'receipts':
+        setReceiptsCustomStartDate(date);
+        break;
     }
   };
 
   const setCurrentCustomEndDate = (date: Date | null) => {
-    if (activeTab === 'amount-received') {
-      setAmountReceivedCustomEndDate(date);
-    } else {
-      setBillReportCustomEndDate(date);
+    switch (activeTab) {
+      case 'amount-received':
+        setAmountReceivedCustomEndDate(date);
+        break;
+      case 'bill-report':
+        setBillReportCustomEndDate(date);
+        break;
+      case 'day-closing':
+        setDayClosingCustomEndDate(date);
+        break;
+      case 'receipts':
+        setReceiptsCustomEndDate(date);
+        break;
     }
   };
 
@@ -1199,303 +1267,16 @@ const Page = () => {
           <DayClosingSummary
             labName={currentLab?.name || "Lab Name"}
             dateRange={`${startDateStr || 'Start Date'} to ${endDateStr || 'End Date'}`}
-            // For now, using static data - will be replaced with actual API data later
-            billCountData={{
-              totalBills: 0,
-              cashBills: 0,
-              creditBills: 0
-            }}
-            amountBilledData={{
-              totalSales: 0,
-              discount: 0,
-              netSales: 0,
-              cashBills: 0.0,
-              creditBills: 0.0,
-              totalWriteOff: 0
-            }}
-            billDueAmountData={{
-              totalBillDue: 0.0,
-              cashBillDue: 0.0,
-              creditBillDue: 0.0,
-              excessReceived: 0.0
-            }}
-            receiptsData={{
-              totalReceipts: 0.0,
-              totalPayments: 0.0,
-              netReceipts: 0.0
-            }}
-            modeOfPaymentData={{
-              receiptForCurrentBills: {
-                cash: 0,
-                card: 0,
-                cheque: 0,
-                imps: 0,
-                wallet: 0,
-                total: 0
-              },
-              receiptForPastBills: {
-                cash: 0,
-                card: 0,
-                cheque: 0,
-                imps: 0,
-                wallet: 0,
-                total: 0
-              },
-              otherReceipt: {
-                cash: 0,
-                card: 0,
-                cheque: 0,
-                imps: 0,
-                wallet: 0,
-                total: 0
-              },
-              advanceReceipt: {
-                cash: 0,
-                card: 0,
-                cheque: 0,
-                imps: 0,
-                wallet: 0,
-                total: 0
-              },
-              totalReceipt: {
-                cash: 0,
-                card: 0,
-                cheque: 0,
-                imps: 0,
-                wallet: 0,
-                total: 0
-              },
-              refund: {
-                cash: 0,
-                card: 0,
-                cheque: 0,
-                imps: 0,
-                wallet: 0,
-                total: 0
-              },
-              otherPayments: {
-                cash: 0,
-                card: 0,
-                cheque: 0,
-                imps: 0,
-                wallet: 0,
-                total: 0
-              },
-              totalPayment: {
-                cash: 0,
-                card: 0,
-                cheque: 0,
-                imps: 0,
-                wallet: 0,
-                total: 0
-              },
-              netAmount: {
-                cash: 0,
-                card: 0,
-                cheque: 0,
-                imps: 0,
-                wallet: 0,
-                total: 0
-              }
-            }}
-            outsourcedLabTests={[
-              {
-                labTest: "Blood Test",
-                count: 0,
-                amount: 0
-              },
-              {
-                labTest: "Urine Test", 
-                count: 0,
-                amount: 0
-              }
-            ]}
-            currentBillDetails={[
-              {
-                slNo: 1,
-                billNo: "030593",
-                billName: "Ms. PRIYA",
-                regLabNo: "25090240 / 28583",
-                refCenter: "CITY HOSPITAL / Dr. KUMAR",
-                billedAt: "15-09-2025 10:30 AM",
-                type: "card",
-                amount: 250.0,
-                discount: 25.0,
-                netAmount: 225.0,
-                refund: 0,
-                writeoff: 0.0,
-                received: 200.0,
-                advance: 0,
-                due: 25.0
-              },
-              {
-                slNo: 2,
-                billNo: "030594",
-                billName: "Mr. RAJESH",
-                regLabNo: "25090241 / 28584",
-                refCenter: "GENERAL HOSPITAL / Dr. SHARMA",
-                billedAt: "15-09-2025 02:15 PM",
-                type: "upi",
-                amount: 180.0,
-                discount: 0.0,
-                netAmount: 180.0,
-                refund: 0,
-                writeoff: 0.0,
-                received: 180.0,
-                advance: 0,
-                due: 0.0
-              }
-            ]}
-            pastBillDetails={[
-              {
-                slNo: 1,
-                billNo: "030592",
-                billName: "Mr. RAFI",
-                regLabNo: "25090239 / 28582",
-                refCenter: "DISHA HOSPITAL / Dr. ANAND",
-                billedAt: "14-08-2025 11:16 PM",
-                type: "cash",
-                amount: 100.0,
-                discount: 0.0,
-                netAmount: 100.0,
-                refund: 0,
-                writeoff: 0.0,
-                received: 100.0,
-                advance: 0,
-                due: 0.0
-              }
-            ]}
-            currentBillTotals={{
-              amount: 430.0,
-              discount: 25.0,
-              netAmount: 405.0,
-              refund: 0,
-              writeoff: 0,
-              received: 380.0,
-              advance: 0,
-              due: 25.0
-            }}
-            pastBillTotals={{
-              amount: 100.0,
-              discount: 0.0,
-              netAmount: 100.0,
-              refund: 0,
-              writeoff: 0.0,
-              received: 100.0,
-              advance: 0,
-              due: 0.0
-            }}
+            startDate={startDateStr}
+            endDate={endDateStr}
           />
         );
       
       case 'receipts':
         return (
           <ReceiptsSummary
-            receiptSummaryData={{
-              totalSales: 450.0,
-              totalDiscount: 0.0,
-              netAmount: 450.0,
-              cashSales: 450.0,
-              creditSales: 0.0,
-              due: 0.0,
-              excessReceived: 0.0,
-              refund: 0.0,
-              totalReceipts: 550.0,
-              netReceipts: 550.0
-            }}
-            modeOfPaymentData={{
-              receiptForCurrentCashBills: {
-                cash: 450.0,
-                card: 0.0,
-                cheque: 0.0,
-                imps: 0.0,
-                wallet: 0.0,
-                total: 450.0
-              },
-              receiptForCurrentCreditBills: {
-                cash: 0.0,
-                card: 0.0,
-                cheque: 0.0,
-                imps: 0.0,
-                wallet: 0.0,
-                total: 0.0
-              },
-              receiptForPastCashBills: {
-                cash: 100.0,
-                card: 0.0,
-                cheque: 0.0,
-                imps: 0.0,
-                wallet: 0.0,
-                total: 100.0
-              },
-              receiptForPastCreditBills: {
-                cash: 0.0,
-                card: 0.0,
-                cheque: 0.0,
-                imps: 0.0,
-                wallet: 0.0,
-                total: 0.0
-              },
-              otherReceipt: {
-                cash: 0.0,
-                card: 0.0,
-                cheque: 0.0,
-                imps: 0.0,
-                wallet: 0.0,
-                total: 0.0
-              },
-              advanceReceipt: {
-                cash: 0.0,
-                card: 0.0,
-                cheque: 0.0,
-                imps: 0.0,
-                wallet: 0.0,
-                total: 0.0
-              },
-              totalReceipt: {
-                cash: 550.0,
-                card: 0.0,
-                cheque: 0.0,
-                imps: 0.0,
-                wallet: 0.0,
-                total: 550.0
-              },
-              refund: {
-                cash: 0.0,
-                card: 0.0,
-                cheque: 0.0,
-                imps: 0.0,
-                wallet: 0.0,
-                total: 0.0
-              },
-              otherPayments: {
-                cash: 0.0,
-                card: 0.0,
-                cheque: 0.0,
-                imps: 0.0,
-                wallet: 0.0,
-                total: 0.0
-              },
-              totalPayment: {
-                cash: 0.0,
-                card: 0.0,
-                cheque: 0.0,
-                imps: 0.0,
-                wallet: 0.0,
-                total: 0.0
-              },
-              netAmount: {
-                cash: 550.0,
-                card: 0.0,
-                cheque: 0.0,
-                imps: 0.0,
-                wallet: 0.0,
-                total: 550.0
-              }
-            }}
-            outsourceTestAmount={{
-              amount: 150.0
-            }}
+            startDate={startDateStr}
+            endDate={endDateStr}
           />
         );
       

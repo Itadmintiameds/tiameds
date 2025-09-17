@@ -115,6 +115,17 @@ export const transformApiDataToTableFormat = (apiData: PatientApiResponse[]): Am
     const { visit } = patient;
     const { billing } = visit;
     
+    // Calculate minimum due amount for this visit (same logic as Day Closing Summary)
+    let minDue = billing.due_amount || 0;
+    if (billing.transactions && billing.transactions.length > 0) {
+      minDue = billing.netAmount || 0;
+      billing.transactions.forEach((transaction: BillingTransaction) => {
+        if (transaction.due_amount !== undefined && transaction.due_amount !== null) {
+          minDue = Math.min(minDue, transaction.due_amount);
+        }
+      });
+    }
+    
     // Create a row for each transaction (including zero received amounts)
     billing.transactions?.forEach((transaction) => {
       // Calculate net received for this specific transaction
@@ -134,7 +145,7 @@ export const transformApiDataToTableFormat = (apiData: PatientApiResponse[]): Am
       billedDate: billing.billingDate,
       totalAmount: billing.totalAmount,
       discount: billing.discount,
-      due: transaction.due_amount,
+      due: minDue, // Use minimum due amount instead of transaction.due_amount
       received: transaction.received_amount,
       netReceived: netReceived,
       receivedBy: transaction.createdBy,
@@ -158,83 +169,72 @@ const AmountReceivedTable: React.FC<AmountReceivedTableProps> = ({
 }) => {
   // Memoize totals calculation to prevent recalculation on every render
   const totals = useMemo(() => {
-    // Group patients by patient ID to get the latest transaction for each patient (for due amounts)
-    const patientMap = new Map();
+    // Group by visit ID to get unique visits (same logic as Day Closing Summary)
+    const visitMap = new Map();
     
     rawApiData.forEach((patient) => {
-      // Group by patient ID only - each patient ID should have only one latest visit
-      const patientKey = patient.id;
-      const existingPatient = patientMap.get(patientKey);
+      // Group by visit ID - each visit should be counted once
+      const visitKey = patient.visit.visitId;
+      const existingVisit = visitMap.get(visitKey);
       
-      // If this is the first time we see this patient ID, or if this visit/transaction is more recent
-      let currentVisitDate: Date;
-      let existingVisitDate: Date | null = null;
+      // If this is the first time we see this visit ID, or if this transaction is more recent
+      let currentTransactionTime: Date | null = null;
+      let existingTransactionTime: Date | null = null;
       
       try {
-        currentVisitDate = new Date(patient.visit.visitDate);
-        if (isNaN(currentVisitDate.getTime())) {
-       
-          return; // Skip this patient if date is invalid
+        // Get the latest transaction time for current visit
+        const currentLatestTransaction = patient.visit.billing.transactions?.reduce((latest: BillingTransaction | null, transaction: BillingTransaction) => {
+          try {
+            const transactionTime = new Date(transaction.created_at);
+            if (isNaN(transactionTime.getTime())) {
+              return latest;
+            }
+            return !latest || transactionTime > new Date(latest.created_at) ? transaction : latest;
+          } catch (error) {
+            return latest;
+          }
+        }, null as BillingTransaction | null);
+        
+        if (currentLatestTransaction) {
+          currentTransactionTime = new Date(currentLatestTransaction.created_at);
         }
         
-        if (existingPatient) {
-          existingVisitDate = new Date(existingPatient.visit.visitDate);
-          if (isNaN(existingVisitDate.getTime())) {
-       
-            existingVisitDate = null;
+        if (existingVisit) {
+          const existingLatestTransaction = existingVisit.visit.billing.transactions?.reduce((latest: BillingTransaction | null, transaction: BillingTransaction) => {
+            try {
+              const transactionTime = new Date(transaction.created_at);
+              if (isNaN(transactionTime.getTime())) {
+                return latest;
+              }
+              return !latest || transactionTime > new Date(latest.created_at) ? transaction : latest;
+            } catch (error) {
+              return latest;
+            }
+          }, null as BillingTransaction | null);
+          
+          if (existingLatestTransaction) {
+            existingTransactionTime = new Date(existingLatestTransaction.created_at);
           }
         }
       } catch (error) {
-   
-        return; // Skip this patient if date parsing fails
+        return; // Skip this visit if date parsing fails
       }
       
-      // Get the latest transaction time for comparison
-      const currentLatestTransaction = patient.visit.billing.transactions?.reduce((latest: BillingTransaction | null, transaction: BillingTransaction) => {
-        try {
-          const transactionTime = new Date(transaction.created_at);
-          if (isNaN(transactionTime.getTime())) {
-         
-            return latest;
-          }
-          return !latest || transactionTime > new Date(latest.created_at) ? transaction : latest;
-        } catch (error) {
-    
-          return latest;
-        }
-      }, null as BillingTransaction | null);
-      
-      const existingLatestTransaction = existingPatient?.visit.billing.transactions?.reduce((latest: BillingTransaction | null, transaction: BillingTransaction) => {
-        try {
-          const transactionTime = new Date(transaction.created_at);
-          if (isNaN(transactionTime.getTime())) {
-      
-            return latest;
-          }
-          return !latest || transactionTime > new Date(latest.created_at) ? transaction : latest;
-        } catch (error) {
-       
-          return latest;
-        }
-      }, null as BillingTransaction | null);
-      
-      const shouldUpdate = !existingPatient || 
-        (existingVisitDate && currentVisitDate > existingVisitDate) ||
-        (existingVisitDate && currentVisitDate.getTime() === existingVisitDate.getTime() && 
-         currentLatestTransaction && existingLatestTransaction &&
-         new Date(currentLatestTransaction.created_at) > new Date(existingLatestTransaction.created_at));
+      const shouldUpdate = !existingVisit || 
+        (currentTransactionTime && existingTransactionTime && currentTransactionTime > existingTransactionTime) ||
+        (!existingTransactionTime && currentTransactionTime);
       
       if (shouldUpdate) {
-        patientMap.set(patientKey, patient);
+        visitMap.set(visitKey, patient);
       }
     });
     
-    // Calculate totals: use latest due amounts per patient, but sum all transactions for received amounts
-    const latestPatients = Array.from(patientMap.values());
+    // Calculate totals: use unique visits for due amounts, but sum all transactions for received amounts
+    const uniqueVisits = Array.from(visitMap.values());
     
-    // First, calculate due amounts using only latest transactions per patient
+    // First, calculate due amounts using minimum due calculation (same as Day Closing Summary)
     // Only include discount for billing dates that match the selected date
-    const dueTotals = latestPatients.reduce((acc, patient) => {
+    const dueTotals = uniqueVisits.reduce((acc, patient) => {
       const { visit } = patient;
       const { billing } = visit;
       
@@ -277,14 +277,23 @@ const AmountReceivedTable: React.FC<AmountReceivedTableProps> = ({
           shouldIncludeDiscount = billingDate <= endDate;
         }
         
-      
-
-        
         if (shouldIncludeDiscount) {
           acc.discount += billing.discount;
         }
       }
-      acc.due += billing.due_amount;
+      
+      // Calculate minimum due amount using same logic as Day Closing Summary
+      let minDue = billing.due_amount || 0;
+      if (billing.transactions && billing.transactions.length > 0) {
+        // Find the minimum due amount from all transactions
+        minDue = billing.netAmount || 0;
+        billing.transactions.forEach((transaction: BillingTransaction) => {
+          if (transaction.due_amount !== undefined && transaction.due_amount !== null) {
+            minDue = Math.min(minDue, transaction.due_amount);
+          }
+        });
+      }
+      acc.due += minDue;
       
       return acc;
     }, { discount: 0, due: 0 });
