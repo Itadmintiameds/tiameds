@@ -103,6 +103,14 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
     }
   }, [billing]);
 
+  // Handle UPI ID input with space validation
+  const handleUpiIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Remove spaces from UPI ID
+    const cleanValue = value.replace(/\s/g, '');
+    setPaymentData({ ...paymentData, upiId: cleanValue });
+  };
+
   const handlePaymentFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     const decimalValue = getSafeDecimal(value);
@@ -436,14 +444,17 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
             {/* UPI ID Field */}
             {(paymentMethod === PaymentMethod.UPI || paymentMethod === PaymentMethod.UPI_CASH) && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">UPI ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  UPI ID <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="upiId"
                   value={paymentData.upiId}
-                  onChange={(e) => setPaymentData({ ...paymentData, upiId: e.target.value })}
+                  onChange={handleUpiIdChange}
                   className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="yourname@upi"
+                  placeholder="Enter UPI ID"
+                  required
                 />
               </div>
             )}

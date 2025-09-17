@@ -219,6 +219,33 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   }, [selectedTest, fetchReferenceData]);
 
   const handleInputChange = (testName: string, index: number | string, value: string) => {
+    // Check if the value is negative for numeric inputs
+    const numericValue = parseFloat(value);
+    
+    // Only show error for negative values if it's not an auto-calculated field
+    // Auto-calculated fields are identified by checking if the field is read-only
+    // We'll allow negative values to pass through and let the individual components handle validation
+    if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
+      // Check if this might be an auto-calculated field by looking at the reference data
+      const referenceData = referencePoints[testName] || [];
+      const point = referenceData[typeof index === 'number' ? index : 0];
+      
+      // If it's a known auto-calculated field type, allow negative values
+      const isAutoCalculatedField = point?.testDescription?.toUpperCase().includes('GLOBULIN') ||
+                                   point?.testDescription?.toUpperCase().includes('INDIRECT BILIRUBIN') ||
+                                   point?.testDescription?.toUpperCase().includes('A/G RATIO') ||
+                                   point?.testDescription?.toUpperCase().includes('MEAN BLOOD GLUCOSE') ||
+                                   point?.testDescription?.toUpperCase().includes('ABSOLUTE EOSINOPHIL COUNT') ||
+                                   point?.testDescription?.toUpperCase().includes('HDL CHOLESTEROL - DIRECT') ||
+                                   point?.testDescription?.toUpperCase().includes('LDL CHOLESTEROL - DIRECT') ||
+                                   point?.testDescription?.toUpperCase().includes('VLDL CHOLESTEROL');
+      
+      if (!isAutoCalculatedField) {
+        toast.error('Negative values are not allowed');
+        return; // Don't update the state with negative values
+      }
+    }
+
     setInputValues(prev => ({
       ...prev,
       [testName]: {

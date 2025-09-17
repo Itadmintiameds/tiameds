@@ -601,19 +601,12 @@ const CollectionTable: React.FC = () => {
       header: 'Barcode',
       accessor: (row: Patient) => {
         const age = row.dateOfBirth ? calculateAge(row.dateOfBirth) : 'N/A';
-        const dobFormatted = row.dateOfBirth ? formatDisplayDate(row.dateOfBirth) : 'N/A';
+        // const dobFormatted = row.dateOfBirth ? formatDisplayDate(row.dateOfBirth) : 'N/A';
 
         return (
           <div className="flex items-center justify-center">
             <div ref={barcodeRef} style={{ position: 'absolute', left: '-9999px' }}>
               {/* Hidden barcode for download functionality */}
-              <div className="text-center text-xs">
-                <div className="font-bold">Patient ID: {row.visitId}</div>
-                <div>Name: {row.patientname}</div>
-                <div>DOB: {dobFormatted}</div>
-                <div>Age: {age}</div>
-                <div>Gender: {row.gender || 'N/A'}</div>
-              </div>
               <Barcode
                 value={
                   "Patient ID: " + row.visitId +

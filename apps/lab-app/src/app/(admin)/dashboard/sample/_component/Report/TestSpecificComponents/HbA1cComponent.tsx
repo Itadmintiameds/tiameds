@@ -98,7 +98,7 @@ const HbA1cComponent: React.FC<HbA1cComponentProps> = ({
     if (!derivedValues || derivedValues.meanBloodGlucoseIndex === -1) return;
 
     // Update MEAN BLOOD GLUCOSE
-    if (!isNaN(derivedValues.calculatedMeanBloodGlucose) && derivedValues.calculatedMeanBloodGlucose > 0) {
+    if (!isNaN(derivedValues.calculatedMeanBloodGlucose)) {
       const newValue = derivedValues.calculatedMeanBloodGlucose.toFixed(1);
       const currentValue = (inputValues[testName]?.[derivedValues.meanBloodGlucoseIndex] || '').trim();
       
@@ -106,8 +106,8 @@ const HbA1cComponent: React.FC<HbA1cComponentProps> = ({
       if (parseFloat(currentValue) !== parseFloat(newValue)) {
         onInputChange(testName, derivedValues.meanBloodGlucoseIndex, newValue);
       }
-    } else if (derivedValues.calculatedMeanBloodGlucose === 0) {
-      // Clear the field if HbA1c is 0 or empty
+    } else {
+      // Clear the field if calculation is invalid
       const currentValue = (inputValues[testName]?.[derivedValues.meanBloodGlucoseIndex] || '').trim();
       if (currentValue !== '') {
         onInputChange(testName, derivedValues.meanBloodGlucoseIndex, '');
@@ -131,7 +131,7 @@ const HbA1cComponent: React.FC<HbA1cComponentProps> = ({
         let isReadOnly = false;
 
         if (isAutoField) {
-          displayValue = derivedValues.calculatedMeanBloodGlucose > 0 ? derivedValues.calculatedMeanBloodGlucose.toFixed(1) : '';
+          displayValue = !isNaN(derivedValues.calculatedMeanBloodGlucose) ? derivedValues.calculatedMeanBloodGlucose.toFixed(1) : '';
           isReadOnly = true;
         }
 
@@ -210,15 +210,23 @@ const HbA1cComponent: React.FC<HbA1cComponentProps> = ({
                       onChange={(e) => {
                         if (!isReadOnly) {
                           const value = e.target.value;
-                          // Prevent negative values for non-auto-populated fields
-                          if (!isAutoField && value.startsWith('-')) {
-                            return; // Don't allow negative values
+                          // For auto-calculated fields, allow negative values
+                          // For user input fields, prevent negative values
+                          if (isAutoField) {
+                            // Allow any numeric value including negative for calculated fields
+                            if (value === '' || /^-?[0-9]*\.?[0-9]*$/.test(value)) {
+                              onInputChange(testName, unsortedIndex, value);
+                            }
+                          } else {
+                            // For user input, prevent negative values
+                            if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                              onInputChange(testName, unsortedIndex, value);
+                            }
                           }
-                          onInputChange(testName, unsortedIndex, value);
                         }
                       }}
                       onKeyDown={(e) => {
-                        // Prevent typing minus sign for non-auto-populated fields
+                        // Allow minus sign for auto-calculated fields, prevent for user input fields
                         if (!isReadOnly && !isAutoField && e.key === '-') {
                           e.preventDefault();
                         }

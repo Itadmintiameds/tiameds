@@ -192,6 +192,19 @@ const PatientBilling = ({
     handleChange({ target: { name: 'visit.billing.due_amount', value: due.toString() } } as React.ChangeEvent<HTMLInputElement>);
   };
 
+  // Handle UPI ID input with space validation
+  const handleUpiIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Remove spaces from UPI ID
+    const cleanValue = value.replace(/\s/g, '');
+    handleChange({
+      target: {
+        name: 'visit.billing.upi_id',
+        value: cleanValue
+      }
+    } as React.ChangeEvent<HTMLInputElement>);
+  };
+
   const handlePaymentFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
@@ -558,15 +571,16 @@ const PatientBilling = ({
           {(paymentMethod === PaymentMethod.UPI || paymentMethod === PaymentMethod.UPI_CASH) && (
             <div className="flex flex-col">
               <label className="text-xs font-medium text-gray-600 mb-1">
-                UPI ID
+                UPI ID <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 name="visit.billing.upi_id"
                 value={newPatient.visit?.billing?.upi_id ?? ''}
-                onChange={handleChange}
+                onChange={handleUpiIdChange}
                 className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Enter UPI ID"
+                required
               />
             </div>
           )}

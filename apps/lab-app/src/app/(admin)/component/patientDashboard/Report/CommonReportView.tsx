@@ -343,7 +343,9 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                     if (isDropdownWithDescription) {
                                         return (
                                             <div className="text-center">
-                                                <div className="font-medium">{param.enteredValue || 'N/A'}</div>
+                                                <div className={`${isOutOfRange ? 'font-black text-black' : 'font-medium'}`}>
+                                                    {param.enteredValue || 'N/A'}
+                                                </div>
                                             </div>
                                         );
                                     }
@@ -351,7 +353,9 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                     if (isDropdownField) {
                                         return (
                                             <div className="text-center">
-                                                <div className="font-medium">{param.enteredValue || 'N/A'}</div>
+                                                <div className={`${isOutOfRange ? 'font-black text-black' : 'font-medium'}`}>
+                                                    {param.enteredValue || 'N/A'}
+                                                </div>
                                             </div>
                                         );
                                     }
@@ -359,31 +363,54 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                     // For numeric/other fields
                                     return (
                                         <div className="text-center">
-                                            <span className="font-medium">{param.enteredValue || 'N/A'}</span>
+                                            <span className={`${isOutOfRange ? 'font-black text-black' : 'font-medium'}`}>
+                                                {param.enteredValue || 'N/A'}
+                                            </span>
                                         </div>
                                     );
                                 };
 
                                 // Determine if result is out of range (for numeric fields only)
-                                // const isOutOfRange = (() => {
-                                //     if (isDescriptionField || isDropdownField) return false;
+                                const isOutOfRange = (() => {
+                                    if (isDescriptionField || isDropdownField || fieldType === 'RADIOLOGY_TEST') return false;
                                     
-                                //     const value = parseFloat(param.enteredValue);
-                                //     if (isNaN(value)) return false;
+                                    const value = parseFloat(param.enteredValue);
+                                    if (isNaN(value)) return false;
                                     
-                                //     const range = param.referenceRange;
-                                //     if (!range) return false;
+                                    const range = param.referenceRange;
+                                    if (!range || range === 'N/A') return false;
                                     
-                                //     // Simple range check
-                                //     const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-                                //     if (rangeMatch) {
-                                //         const min = parseFloat(rangeMatch[1]);
-                                //         const max = parseFloat(rangeMatch[2]);
-                                //         return value < min || value > max;
-                                //     }
+                                    // Enhanced range check to handle various formats
+                                    // Format 1: "4.0 - 10.0" or "4.0-10.0"
+                                    const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+                                    if (rangeMatch) {
+                                        const min = parseFloat(rangeMatch[1]);
+                                        const max = parseFloat(rangeMatch[2]);
+                                        return value < min || value > max;
+                                    }
                                     
-                                //     return false;
-                                // })();
+                                    // Format 2: "< 5.0" or "> 10.0"
+                                    const lessThanMatch = range.match(/<\s*(\d+(?:\.\d+)?)/);
+                                    if (lessThanMatch) {
+                                        const threshold = parseFloat(lessThanMatch[1]);
+                                        return value >= threshold;
+                                    }
+                                    
+                                    const greaterThanMatch = range.match(/>\s*(\d+(?:\.\d+)?)/);
+                                    if (greaterThanMatch) {
+                                        const threshold = parseFloat(greaterThanMatch[1]);
+                                        return value <= threshold;
+                                    }
+                                    
+                                    // Format 3: "Normal" or other non-numeric ranges
+                                    if (range.toLowerCase().includes('normal') || 
+                                        range.toLowerCase().includes('negative') ||
+                                        range.toLowerCase().includes('positive')) {
+                                        return false; // Don't mark as out of range for qualitative results
+                                    }
+                                    
+                                    return false;
+                                })();
 
                                 const hasDescriptionAny = testResults.some(p => (p.referenceDescription?.toUpperCase() || '').includes('DROPDOWN WITH DESCRIPTION'));
                                 const hasReferenceRangeAny = testResults.some(p => {
@@ -426,8 +453,10 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                                  return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
                                              }) && (
                                                  <td className="p-2 text-center text-xs border-l border-gray-300">
-                                                     {param.referenceRange || 'N/A'}
-                                                         </td>
+                                                     <div>
+                                                         {param.referenceRange || 'N/A'}
+                                                     </div>
+                                                 </td>
                                              )}
                                         </tr>
                                         {shouldInsertDiffHeading && (

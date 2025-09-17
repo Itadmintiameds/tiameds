@@ -134,11 +134,11 @@ const LPTComponent: React.FC<LPTComponentProps> = ({
         let displayValue = currentValue;
         if (isAutoField) {
           if (point.testDescription?.toUpperCase().includes('HDL CHOLESTEROL - DIRECT')) {
-            displayValue = derivedValues.calculatedHDL > 0 ? derivedValues.calculatedHDL.toFixed(2) : 'Auto-calculated';
+            displayValue = !isNaN(derivedValues.calculatedHDL) ? derivedValues.calculatedHDL.toFixed(2) : 'Auto-calculated';
           } else if (point.testDescription?.toUpperCase().includes('LDL CHOLESTEROL - DIRECT')) {
-            displayValue = derivedValues.calculatedLDL > 0 ? Math.max(0, derivedValues.calculatedLDL).toFixed(2) : 'Auto-calculated';
+            displayValue = !isNaN(derivedValues.calculatedLDL) ? derivedValues.calculatedLDL.toFixed(2) : 'Auto-calculated';
           } else if (point.testDescription?.toUpperCase().includes('VLDL CHOLESTEROL')) {
-            displayValue = derivedValues.calculatedVLDL > 0 ? derivedValues.calculatedVLDL.toFixed(2) : 'Auto-calculated';
+            displayValue = !isNaN(derivedValues.calculatedVLDL) ? derivedValues.calculatedVLDL.toFixed(2) : 'Auto-calculated';
           }
         }
 
@@ -199,10 +199,10 @@ const LPTComponent: React.FC<LPTComponentProps> = ({
                       onChange={(e) => {
                         if (!isAutoField) {
                           const value = e.target.value;
-                          if (value.startsWith('-')) {
-                            return; // Don't allow negative values
+                          // For user input fields, prevent negative values
+                          if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                            onInputChange(testName, index, value);
                           }
-                          onInputChange(testName, index, value);
                         }
                       }}
                       onKeyDown={(e) => {

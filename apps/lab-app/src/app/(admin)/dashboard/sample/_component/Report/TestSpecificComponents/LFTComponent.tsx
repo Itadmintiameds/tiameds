@@ -90,7 +90,7 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
     // Only calculate if BOTH fields are filled and valid
     const hasBothBiliInputs = totalBilirubinRaw !== '' && directBilirubinRaw !== '';
     let indirectBilirubin = NaN;
-    if (hasBothBiliInputs && totalBilirubin >= 0 && directBilirubin >= 0 && totalBilirubin >= directBilirubin) {
+    if (hasBothBiliInputs && totalBilirubin >= 0 && directBilirubin >= 0) {
       indirectBilirubin = totalBilirubin - directBilirubin;
     }
 
@@ -135,9 +135,10 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
       const totalProtein = parseFloat(inputValues[testName]?.[totalProteinIndex] || '0');
       const sAlbumin = parseFloat(inputValues[testName]?.[sAlbuminIndex] || '0');
 
-      if (totalProtein > 0 && sAlbumin > 0) {
+      // Calculate A/G RATIO for any valid numeric values (including negative)
+      if (!isNaN(totalProtein) && !isNaN(sAlbumin)) {
         const sGlobulin = totalProtein - sAlbumin;
-        if (sGlobulin > 0) {
+        if (sGlobulin !== 0) {
           return (sAlbumin / sGlobulin).toFixed(2);
         }
       }
@@ -235,7 +236,7 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
         let isReadOnly = false;
 
         if (point.testDescription?.toUpperCase().includes('GLOBULIN')) {
-          displayValue = (derivedValues.totalProteinRaw !== '' && derivedValues.sAlbuminRaw !== '' && derivedValues.sGlobulin > 0)
+          displayValue = (derivedValues.totalProteinRaw !== '' && derivedValues.sAlbuminRaw !== '' && !isNaN(derivedValues.sGlobulin))
             ? derivedValues.sGlobulin.toFixed(2)
             : '';
           isReadOnly = true;
@@ -244,7 +245,7 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
           displayValue = canShowIB ? derivedValues.indirectBilirubin.toFixed(2) : '';
           isReadOnly = true;
         } else if (isAGRatio) {
-          const canShowAG = derivedValues.totalProteinRaw !== '' && derivedValues.sAlbuminRaw !== '' && agRatio;
+          const canShowAG = derivedValues.totalProteinRaw !== '' && derivedValues.sAlbuminRaw !== '' && agRatio !== '';
           displayValue = canShowAG ? agRatio : '';
           isReadOnly = true;
         }
@@ -322,11 +323,19 @@ const LFTComponent: React.FC<LFTComponentProps> = ({
                       onChange={(e) => {
                         if (!isReadOnly) {
                           const value = e.target.value;
-                          // Prevent negative values for non-auto-populated fields
-                          if (!isAutoField && value.startsWith('-')) {
-                            return; // Don't allow negative values
+                          // For auto-calculated fields, allow negative values
+                          // For user input fields, prevent negative values
+                          if (isAutoField) {
+                            // Allow any numeric value including negative for calculated fields
+                            if (value === '' || /^-?[0-9]*\.?[0-9]*$/.test(value)) {
+                              onInputChange(testName, index, value);
+                            }
+                          } else {
+                            // For user input, prevent negative values
+                            if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                              onInputChange(testName, index, value);
+                            }
                           }
-                          onInputChange(testName, index, value);
                         }
                       }}
                       onKeyDown={(e) => {

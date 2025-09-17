@@ -462,23 +462,23 @@ const Lab = () => {
 
   const renderBasicInfoTab = () => {
     const basicFields: FormFieldConfigWithSelect[] = [
-      { id: 'name', label: 'Lab Name', icon: FaBuilding, placeholder: 'PrimeCare Diagnostics' },
+      { id: 'name', label: 'Lab Name', icon: FaBuilding, placeholder: 'Enter Lab Name' },
       {
         id: 'labType',
         label: 'Lab Type',
         icon: MdMedicalServices,
-        placeholder: 'Diagnostic',
+        placeholder: 'Enter Lab Type',
         isSelect: true,
         options: ['Diagnostic', 'Research', 'Clinical', 'Pathology']
       },
     ];
 
     const addressFields: FormFieldConfig[] = [
-      { id: 'address', label: 'Address', icon: FaMapMarkerAlt, placeholder: '555 Prime Lane' },
-      { id: 'city', label: 'City', icon: FaCity, placeholder: 'MedCity' },
-      { id: 'state', label: 'State', icon: FaGlobe, placeholder: 'VitalCare State' },
-      { id: 'labZip', label: 'ZIP Code', icon: FaMapMarkerAlt, placeholder: '560005' },
-      { id: 'labCountry', label: 'Country', icon: FaGlobe, placeholder: 'India' },
+      { id: 'address', label: 'Address', icon: FaMapMarkerAlt, placeholder: 'Enter Address' },
+      { id: 'city', label: 'City', icon: FaCity, placeholder: 'Enter City' },
+      { id: 'state', label: 'State', icon: FaGlobe, placeholder: 'Enter State' },
+      { id: 'labZip', label: 'ZIP Code', icon: FaMapMarkerAlt, placeholder: 'Enter ZIP Code' },
+      { id: 'labCountry', label: 'Country', icon: FaGlobe, placeholder: 'Enter Country' },
     ];
 
     return (
@@ -535,7 +535,7 @@ const Lab = () => {
                     className={`block w-full pl-10 pr-3 py-2.5 text-sm border ${errors[id] ? 'border-red-500' : 'border-gray-300'
                       } rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-gray-800`}
                   >
-                    <option value="">Select lab type</option>
+                    <option value="" disabled>Select Lab Type</option>
                     {options?.map(option => (
                       <option key={option} value={option}>{option}</option>
                     ))}
@@ -575,7 +575,7 @@ const Lab = () => {
               className={`block w-full pl-10 pr-3 py-2.5 text-sm border ${errors.description ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
                 : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
                 } rounded-md shadow-sm text-gray-800`}
-              placeholder="Premium diagnostic services with state-of-the-art technology."
+              placeholder="Enter Description"
               rows={4}
             />
             {errors.description && (

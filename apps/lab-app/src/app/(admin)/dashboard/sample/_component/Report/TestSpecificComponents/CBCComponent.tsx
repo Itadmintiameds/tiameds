@@ -282,11 +282,11 @@ const CBCComponent: React.FC<CBCComponentProps> = ({
                       value={currentValue}
                       onChange={(e) => {
                         const value = e.target.value;
-                        // Prevent negative values
-                        if (value.startsWith('-')) {
-                          return;
+                        // Allow empty string, numbers, and decimal point
+                        // Prevent negative values by not allowing minus sign
+                        if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                          onInputChange(testName, index, value);
                         }
-                        onInputChange(testName, index, value);
                       }}
                       onKeyDown={(e) => {
                         // Prevent typing minus sign

@@ -103,7 +103,7 @@ const AECComponent: React.FC<AECComponentProps> = ({
         let displayValue = currentValue;
         let isReadOnly = false;
         if (isAutoField) {
-          displayValue = derivedValues.calculatedAbsEos > 0 ? derivedValues.calculatedAbsEos.toFixed(0) : '';
+          displayValue = !isNaN(derivedValues.calculatedAbsEos) ? derivedValues.calculatedAbsEos.toFixed(0) : '';
           isReadOnly = true;
         }
 
@@ -163,10 +163,19 @@ const AECComponent: React.FC<AECComponentProps> = ({
                       onChange={(e) => {
                         if (!isReadOnly) {
                           const value = e.target.value;
-                          if (!isAutoField && value.startsWith('-')) {
-                            return;
+                          // For auto-calculated fields, allow negative values
+                          // For user input fields, prevent negative values
+                          if (isAutoField) {
+                            // Allow any numeric value including negative for calculated fields
+                            if (value === '' || /^-?[0-9]*\.?[0-9]*$/.test(value)) {
+                              onInputChange(testName, unsortedIndex, value);
+                            }
+                          } else {
+                            // For user input, prevent negative values
+                            if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                              onInputChange(testName, unsortedIndex, value);
+                            }
                           }
-                          onInputChange(testName, unsortedIndex, value);
                         }
                       }}
                       onKeyDown={(e) => {
