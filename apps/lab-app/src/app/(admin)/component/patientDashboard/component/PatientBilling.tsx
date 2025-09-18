@@ -418,7 +418,23 @@ const PatientBilling = ({
   };
 
   const totalReceived = getTotalReceivedAmount();
-  const { refund, due } = calculateRefundDueAmounts(totalReceived, netAmount);
+  
+  // Calculate collected amount from existing transactions
+  const existingTransactions = newPatient.visit?.billing?.transactions || [];
+  const collectedAmount = existingTransactions.reduce(
+    (acc, transaction) => acc + (transaction.received_amount || 0),
+    0
+  );
+  
+  // Simple due calculation: Net Amount - Collected Amount - New Payment
+  const totalAllReceived = collectedAmount + totalReceived.toNumber();
+  const dueAmount = Math.max(0, netAmount.toNumber() - totalAllReceived);
+  const refundAmount = Math.max(0, totalAllReceived - netAmount.toNumber());
+  
+  const { refund, due } = {
+    refund: new Decimal(refundAmount),
+    due: new Decimal(dueAmount)
+  };
 
   return (
     <section className="bg-gray-50 rounded-lg border border-gray-200 shadow-xs overflow-hidden">
@@ -506,6 +522,18 @@ const PatientBilling = ({
               </p>
             </div>
           </div>
+
+          {/* Only show Collected Amount in edit mode (when there are existing transactions) */}
+          {existingTransactions.length > 0 && (
+            <div className="flex flex-col min-w-auto">
+              <p className="text-xs font-medium text-gray-500 mb-1">Collected Amount</p>
+              <div className="border border-gray-200 bg-gray-50 rounded-md px-3 py-2 h-[38px] flex items-center">
+                <p className="text-sm font-semibold text-gray-800">
+                  ₹{collectedAmount.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

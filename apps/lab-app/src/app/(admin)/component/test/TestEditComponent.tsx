@@ -21,7 +21,7 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
         id: test?.id || 0,
         category: test?.category || '',
         name: test?.name || '',
-        price: test?.price || undefined, // Changed from 0 to undefined
+        price: test?.price?.toString() || undefined, // Store as string
     });
     const { currentLab } = useLabs();
 
@@ -30,10 +30,10 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
         
         if (name === 'price') {
             // Only allow numbers with max 2 digits after decimal
-            if (value === '' || /^\d+(\.\d{1,2})?$/.test(value)) {
+            if (value === '' || /^\d+(\.\d{0,2})?$/.test(value)) {
                 setFormData((prev) => ({
                     ...prev,
-                    [name]: value === '' ? undefined : Number(value)
+                    [name]: value === '' ? undefined : value
                 }));
             }
         } else if (name === 'category' || name === 'name') {
@@ -63,7 +63,7 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
             toast.error('Test name is required');
             return;
         }
-        if (formData.price === undefined || formData.price < 0) {
+        if (formData.price === undefined || Number(formData.price) < 0) {
             toast.error('Price must be a valid positive number');
             return;
         }
@@ -74,7 +74,7 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
                 ...formData,
                 category: cleanedCategory,
                 name: cleanedName,
-                price: formData.price || 0 // Ensure price is 0 if undefined when submitting
+                price: Number(formData.price) || 0 // Convert string to number when submitting
             };
             updateTest(currentLab.id.toString(), test?.id.toString() || '', updatedData)
                 .then(() => {
@@ -143,11 +143,29 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
                             <FaRupeeSign className="absolute top-2.5 left-3 text-gray-400" />
                             <input
                                 id="price"
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 name="price"
-                                value={formData.price || ''}
+                                value={formData.price ?? ''}
                                 onChange={handleInputChange}
-                                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                onKeyDown={(e) => {
+                                    if (!/[0-9.]|\b/.test(e.key)) {
+                                        e.preventDefault();
+                                    }
+                                    // Prevent multiple dots
+                                    if (e.key === '.' && e.currentTarget.value.includes('.')) {
+                                        e.preventDefault();
+                                    }
+                                }}
+                                onBlur={(e) => {
+                                    const val = e.target.value;
+                                    if (val && !/^\d+(\.\d{1,2})?$/.test(val)) {
+                                        e.target.value = '';
+                                        setFormData((prev) => ({ ...prev, price: undefined }));
+                                    }
+                                }}
+                                pattern="^\d+(\.\d{0,2})?$"
+                                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
                                 placeholder="Enter price"
                             />
                         </div>

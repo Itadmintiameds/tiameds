@@ -571,8 +571,19 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
       const cardAmount = Number(billing.card_amount || 0);
       const upiAmount = Number(billing.upi_amount || 0);
       const receivedAmount = Number(billing.received_amount || 0);
-      const refundAmount = Number(billing.refund_amount || 0);
-      const dueAmount = Number(billing.due_amount || 0);
+      
+      // Calculate the correct due amount based on existing transactions and new payment
+      const existingTransactions = billing.transactions || [];
+      const collectedAmount = existingTransactions.reduce(
+        (acc, transaction) => acc + (transaction.received_amount || 0),
+        0
+      );
+      const totalAllReceived = collectedAmount + receivedAmount;
+      const calculatedDueAmount = Math.max(0, netAmount - totalAllReceived);
+      const calculatedRefundAmount = Math.max(0, totalAllReceived - netAmount);
+      
+      const dueAmount = calculatedDueAmount;
+      const refundAmount = calculatedRefundAmount;
       const paymentDate = billing.paymentDate || new Date().toISOString().split('T')[0];
 
       const transactions: Array<{
@@ -619,6 +630,9 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
             totalAmount,
             netAmount,
             discount: Number(globalDiscountAmount),
+            received_amount: totalAllReceived,
+            due_amount: dueAmount,
+            refund_amount: refundAmount,
             transactions: transactions,
           },
           listofeachtestdiscount: selectedTests.map(test => ({

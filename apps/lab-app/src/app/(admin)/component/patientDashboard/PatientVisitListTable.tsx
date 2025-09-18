@@ -1,6 +1,6 @@
 import { getAllPatientVisitsByDateRangeoflab } from '@/../services/patientServices';
 import { useLabs } from '@/context/LabContext';
-import { Patient, VisitType, BillingTransaction } from '@/types/patient/patient';
+import { Patient, VisitType } from '@/types/patient/patient';
 import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, getDateRange } from '@/utils/dateUtils';
 import { PlusIcon, SearchIcon, XIcon } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -419,18 +419,12 @@ const PatientVisitListTable: React.FC = () => {
       header: 'Payment Status',
       accessor: (row: Patient) => {
         const paymentStatus = row?.visit?.billing?.paymentStatus;
-
-        // Derive status from transactions to reflect overpayment/complete payment
-        const txns = (row?.visit?.billing?.transactions ?? []) as BillingTransaction[];
-        const totalReceived = txns.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.received_amount || 0), 0);
-        const totalRefund = txns.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.refund_amount || 0), 0);
-        const net = Number(row?.visit?.billing?.netAmount || 0);
-        const remainingDue = Math.max(0, net - (totalReceived - totalRefund));
-        const isPaid = net > 0 && remainingDue === 0;
+        const dueAmount = Number(row?.visit?.billing?.due_amount || 0);
+        const isPaid = dueAmount === 0;
 
         const badgeClass = isPaid
           ? 'bg-green-100 text-green-800'
-          : remainingDue > 0
+          : dueAmount > 0
             ? 'bg-amber-100 text-amber-800'
             : 'bg-gray-100 text-gray-800';
 
@@ -438,9 +432,9 @@ const PatientVisitListTable: React.FC = () => {
           <div className="flex flex-col">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
               {isPaid ? 'PAID' : (paymentStatus || 'DUE')}
-              {!isPaid && remainingDue > 0 && ` (₹${remainingDue.toFixed(2)})`}
+              {!isPaid && dueAmount > 0 && ` (₹${dueAmount.toFixed(2)})`}
             </span>
-            {!isPaid && (paymentStatus === 'DUE' || remainingDue > 0) && (
+            {!isPaid && (paymentStatus === 'DUE' || dueAmount > 0) && (
               <button
                 onClick={() => {
                   setPatientDetails(row);
@@ -735,7 +729,7 @@ const PatientVisitListTable: React.FC = () => {
         isOpen={editPatientDetailsModal}
         onClose={() => setEditPatientDetailsModal(false)}
         title="Edit Patient Details"
-        modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+        modalClassName="max-w-7xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
       >
         <EditPatientDetails
           setEditPatientDetailsModal={setEditPatientDetailsModal}

@@ -15,6 +15,7 @@ import { createRoot } from 'react-dom/client';
 import { FaFileInvoiceDollar, FaFilePdf, FaPrint, FaUser, FaCalendarAlt, FaHospital, FaSignature } from 'react-icons/fa';
 import Loader from '../common/Loader';
 import { MdDownloading } from "react-icons/md";
+import Image from 'next/image';
 
 const A4_WIDTH = 210; // mm
 const TESTS_PER_PAGE = 10;
@@ -120,12 +121,10 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
     const transactions: BillingTransaction[] = transaction ? [transaction] : (patient?.visit?.billing?.transactions || []);
     if (transactions.length === 0) return null;
 
-    // Compute footer totals once – remaining due must be based on netAmount minus total received plus refunds,
-    // not the sum of per-transaction remaining dues.
+    // Use API's due_amount instead of calculating on frontend
     const totalReceived = transactions.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.received_amount || 0), 0);
-    const totalRefund = transactions.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.refund_amount || 0), 0);
-    const netAmountValue = Number(patient?.visit?.billing?.netAmount || 0);
-    const remainingDue = Math.max(0, netAmountValue - totalReceived + totalRefund);
+    // const totalRefund = transactions.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.refund_amount || 0), 0);
+    const remainingDue = Number(patient?.visit?.billing?.due_amount || 0);
 
     return (
       <div className="mt-6 pt-4 border-t border-gray-200 print:mt-4 print:pt-2">
@@ -273,7 +272,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         <div className="flex justify-between items-start mb-6 border-b pb-4">
           <div className="flex items-center">
             <div>
-              <img src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
+              <Image src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-800">MEDICAL DIAGNOSTIC REPORT</h1>
@@ -403,18 +402,18 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         {pageNumber === totalPages && (() => {
           // For per-transaction pages, show summary based on that transaction.
           // Otherwise, show overall summary across all transactions.
-          const allTxns = patient?.visit?.billing?.transactions || [];
-          const netAmountVal = Number(patient?.visit?.billing?.netAmount || 0);
+          // const allTxns = patient?.visit?.billing?.transactions || [];
+          // const netAmountVal = Number(patient?.visit?.billing?.netAmount || 0);
           const summaryTxn = transaction ? transaction : undefined;
 
-          const totalReceived = (summaryTxn ? [summaryTxn] : allTxns)
-            .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.received_amount || 0), 0);
-          const totalRefund = (summaryTxn ? [summaryTxn] : allTxns)
-            .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.refund_amount || 0), 0);
+          // const totalReceived = (summaryTxn ? [summaryTxn] : allTxns)
+          //   .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.received_amount || 0), 0);
+          // const totalRefund = (summaryTxn ? [summaryTxn] : allTxns)
+          //   .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.refund_amount || 0), 0);
 
           const totalDue = summaryTxn
             ? Math.max(0, Number(summaryTxn.due_amount || 0))
-            : (patient?.visit?.billing?.paymentStatus === 'PAID' ? 0 : Math.max(0, netAmountVal - totalReceived + totalRefund));
+            : Number(patient?.visit?.billing?.due_amount || 0);
 
           return (
             <div className="border-t pt-2">
@@ -459,11 +458,9 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                           </span>
                         );
                       }
-                      const txns = allTxns;
-                      const totRec = txns.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.received_amount || 0), 0);
-                      const totRef = txns.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.refund_amount || 0), 0);
-                      const net = netAmountVal;
-                      const isPaid = totRec - totRef >= net && net > 0;
+                      // Use API's due_amount instead of calculating on frontend
+                      const dueAmount = Number(patient?.visit?.billing?.due_amount || 0);
+                      const isPaid = dueAmount === 0;
                       const label = isPaid ? 'PAID' : (patient?.visit?.billing?.paymentStatus || 'DUE');
                       return (
                         <span className={isPaid ? 'text-green-600' : 'text-red-600'}>
@@ -536,7 +533,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
             <p>Generated on: {new Date().toLocaleString()}</p>
           </div>
           <div className="mt-4 flex justify-center items-center">
-            <img src="/tiamed1.svg" alt="TiaMeds Logo" className="h-4 mr-2 opacity-80" />
+            <Image src="/tiamed1.svg" alt="TiaMeds Logo" className="h-4 mr-2 opacity-80" />
             <span className="text-xs font-medium text-gray-600">Powered by TiaMeds Technologies Pvt.Ltd</span>
           </div>
         </div>

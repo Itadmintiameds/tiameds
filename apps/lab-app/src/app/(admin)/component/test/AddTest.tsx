@@ -2,7 +2,6 @@
 import { addTest } from '@/../services/testService';
 import { useLabs } from '@/context/LabContext';
 import { testFormDataSchema } from '@/schema/testFormDataSchema';
-import { TestForm } from '@/types/test/testlist';
 import React, { useState } from 'react';
 import { FaClipboardList, FaPlusCircle, FaRupeeSign, FaTag } from 'react-icons/fa';
 import { toast } from 'react-toastify';
@@ -27,10 +26,10 @@ interface AddTestProps {
 
 const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [formData, setFormData] = useState<TestForm>({
+  const [formData, setFormData] = useState({
     category: '',
     name: '',
-    price: undefined, // Changed from 0 to undefined
+    price: undefined as string | undefined,
   });
   const { currentLab } = useLabs();
 
@@ -39,10 +38,10 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
     
     if (name === 'price') {
       // Only allow numbers with max 2 digits after decimal
-      if (value === '' || /^\d+(\.\d{1,2})?$/.test(value)) {
+      if (value === '' || /^\d+(\.\d{0,2})?$/.test(value)) {
         setFormData((prev) => ({
           ...prev,
-          [name]: value === '' ? undefined : Number(value)
+          [name]: value === '' ? undefined : value
         }));
       }
     } else if (name === 'category' || name === 'name') {
@@ -72,7 +71,7 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
       toast.error('Test name is required');
       return;
     }
-    if (formData.price === undefined || formData.price < 0) {
+    if (formData.price === undefined || Number(formData.price) < 0) {
       toast.error('Price must be a valid positive number');
       return;
     }
@@ -82,7 +81,7 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
       const testListData = {
         category: cleanedCategory,
         name: cleanedName,
-        price: formData.price || 0, // Ensure price is 0 if undefined when submitting
+        price: Number(formData.price) || 0, // Ensure price is 0 if undefined when submitting
         id: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -161,11 +160,29 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
               <FaRupeeSign className="absolute top-2.5 left-3 text-gray-400" />
               <input
                 id="price"
-                type="number"
+                type="text"
+                inputMode="decimal"
                 name="price"
-                value={formData.price || ''}
+                value={formData.price ?? ''}
                 onChange={handleInputChange}
-                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                onKeyDown={(e) => {
+                  if (!/[0-9.]|\b/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                  // Prevent multiple dots
+                  if (e.key === '.' && e.currentTarget.value.includes('.')) {
+                    e.preventDefault();
+                  }
+                }}
+                onBlur={(e) => {
+                  const val = e.target.value;
+                  if (val && !/^\d+(\.\d{1,2})?$/.test(val)) {
+                    e.target.value = '';
+                    setFormData((prev) => ({ ...prev, price: undefined }));
+                  }
+                }}
+                pattern="^\d+(\.\d{0,2})?$"
+                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
                 placeholder="Enter price"
               />
             </div>

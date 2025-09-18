@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Patient, PaymentMethod, PaymentStatus, BillingTransaction } from '@/types/patient/patient';
+import { Patient, PaymentMethod, PaymentStatus } from '@/types/patient/patient';
 import Button from '../common/Button';
 import { toast } from 'react-toastify';
 import {
@@ -79,12 +79,8 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
   const totalAmount = getSafeDecimal(billing?.totalAmount);
   const discountAmount = getSafeDecimal(billing?.discount);
   
-  // Calculate actual due amount from transactions
-  const txns = (billing?.transactions ?? []) as BillingTransaction[];
-  const totalReceived = txns.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.received_amount || 0), 0);
-  const totalRefund = txns.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.refund_amount || 0), 0);
-  const actualPaidAmount = getSafeDecimal(totalReceived - totalRefund);
-  const dueAmount = getSafeDecimal(Math.max(0, netAmount.sub(actualPaidAmount).toNumber()));
+  // Use API's due_amount instead of calculating on frontend
+  const dueAmount = getSafeDecimal(billing?.due_amount || 0);
   
   const { refund, due } = calculateRefundDueAmounts(paymentData.receivedAmount, dueAmount);
 
@@ -151,7 +147,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
 
   const constructPaymentPayload = () => {
     const newReceivedAmount = paymentData.receivedAmount;
-    const currentReceived = actualPaidAmount; // Use the calculated actual paid amount
+    const currentReceived = billing?.received_amount ? getSafeDecimal(billing.received_amount.toString()) : getSafeDecimal('0'); // Use the billing received amount
     const totalReceived = currentReceived.add(newReceivedAmount);
     const newDueAmount = dueAmount.sub(newReceivedAmount);
     const isFullyPaid = newDueAmount.lte(0);
@@ -343,7 +339,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Paid:</span>
-            <span className="text-green-600">₹{actualPaidAmount.toFixed(2)}</span>
+            <span className="text-green-600">₹{getSafeDecimal(billing?.received_amount || 0).toFixed(2)}</span>
           </div>
           <div className="flex justify-between border-t border-gray-100 pt-1.5">
             <span className="text-gray-700 font-medium">Due:</span>
