@@ -125,9 +125,40 @@ const CompletedTable = () => {
                 return hasAnyCompletedTest; // Show visits where at least one test is completed
             });
 
-            const sortedVisits = completedVisits.sort((a, b) =>
-                new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()
-            );
+            const sortedVisits = completedVisits.sort((a, b) => {
+                // First sort by the most recent test completion date
+                const aLatestCompletion = a.testResult?.reduce((latest, tr) => {
+                    if (tr.reportStatus === 'Completed' && tr.updatedAt) {
+                        const updatedAt = new Date(tr.updatedAt).getTime();
+                        return updatedAt > latest ? updatedAt : latest;
+                    }
+                    return latest;
+                }, 0) || 0;
+                
+                const bLatestCompletion = b.testResult?.reduce((latest, tr) => {
+                    if (tr.reportStatus === 'Completed' && tr.updatedAt) {
+                        const updatedAt = new Date(tr.updatedAt).getTime();
+                        return updatedAt > latest ? updatedAt : latest;
+                    }
+                    return latest;
+                }, 0) || 0;
+                
+                // If both have completion dates, sort by most recent completion
+                if (aLatestCompletion > 0 && bLatestCompletion > 0) {
+                    return bLatestCompletion - aLatestCompletion;
+                }
+                
+                // If only one has completion date, prioritize it
+                if (aLatestCompletion > 0 && bLatestCompletion === 0) {
+                    return -1;
+                }
+                if (bLatestCompletion > 0 && aLatestCompletion === 0) {
+                    return 1;
+                }
+                
+                // Fallback to visit date sorting
+                return new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime();
+            });
 
             setPatientList(sortedVisits);
             setFilteredPatients(sortedVisits);

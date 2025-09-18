@@ -149,4 +149,5 @@ export type BillingTransaction = {
   payment_date?: string;
   created_at?: string;
   createdBy?: string;
+  remarks?: string;
 };

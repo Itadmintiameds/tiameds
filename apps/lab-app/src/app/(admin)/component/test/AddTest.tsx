@@ -46,8 +46,9 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
         }));
       }
     } else if (name === 'category' || name === 'name') {
-      // Only allow letters and common punctuation for category and name (no spaces)
-      if (/^[a-zA-Z\-_&().]*$/.test(value)) {
+      // Allow letters, numbers, spaces, and hyphens only (no underscores, periods, or special chars)
+      // Allow spaces to be typed freely, will be cleaned up on submit
+      if (/^[a-zA-Z0-9\s\-]*$/.test(value)) {
         setFormData((prev) => ({
           ...prev,
           [name]: value.toUpperCase()
@@ -59,12 +60,15 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Additional validation before schema validation
-    if (!formData.category.trim()) {
+    // Clean up and validate input
+    const cleanedCategory = formData.category.trim().replace(/\s+/g, ' '); // Remove extra spaces
+    const cleanedName = formData.name.trim().replace(/\s+/g, ' '); // Remove extra spaces
+    
+    if (!cleanedCategory) {
       toast.error('Category is required');
       return;
     }
-    if (!formData.name.trim()) {
+    if (!cleanedName) {
       toast.error('Test name is required');
       return;
     }
@@ -76,11 +80,12 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
     try {
       testFormDataSchema.parse(formData);
       const testListData = {
-        ...formData,
+        category: cleanedCategory,
+        name: cleanedName,
+        price: formData.price || 0, // Ensure price is 0 if undefined when submitting
         id: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        price: formData.price || 0, // Ensure price is 0 if undefined when submitting
       };
       if (currentLab) {
         setIsLoading(true);

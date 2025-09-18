@@ -98,11 +98,10 @@ const TestReferancePoints = () => {
   const [formData, setFormData] = useState<TestReferancePoint>({} as TestReferancePoint);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newReferanceRecord, setNewReferanceRecord] = useState<TestReferancePoint>({
-    gender: "F",
     ageMin: 0,
   } as TestReferancePoint);
   const [existingModalOpen, setExistingModalOpen] = useState(false);
-  const [existingTestReferanceRecord, setExistingTestReferanceRecord] = useState<TestReferancePoint>({ gender: "F" } as TestReferancePoint);
+  const [existingTestReferanceRecord, setExistingTestReferanceRecord] = useState<TestReferancePoint>({} as TestReferancePoint);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const { currentLab } = useLabs();
@@ -382,7 +381,7 @@ const TestReferancePoints = () => {
       
       toast.success("Test reference range added successfully.", { autoClose: 2000 });
       setAddModalOpen(false);
-      setNewReferanceRecord({ gender: "F", ageMin: 0 } as TestReferancePoint);
+      setNewReferanceRecord({ ageMin: 0 } as TestReferancePoint);
     } catch (error) {
       toast.error((error as Error).message, { autoClose: 2000 });
     } finally {

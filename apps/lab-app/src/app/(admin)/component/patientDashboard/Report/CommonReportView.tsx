@@ -345,6 +345,9 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                             <div className="text-center">
                                                 <div className={`${isOutOfRange ? 'font-black text-black' : 'font-medium'}`}>
                                                     {param.enteredValue || 'N/A'}
+                                                    {param.enteredValue && param.unit && (
+                                                        <span className="text-gray-600 ml-1">{param.unit}</span>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -355,6 +358,9 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                             <div className="text-center">
                                                 <div className={`${isOutOfRange ? 'font-black text-black' : 'font-medium'}`}>
                                                     {param.enteredValue || 'N/A'}
+                                                    {param.enteredValue && param.unit && (
+                                                        <span className="text-gray-600 ml-1">{param.unit}</span>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -365,6 +371,9 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                         <div className="text-center">
                                             <span className={`${isOutOfRange ? 'font-black text-black' : 'font-medium'}`}>
                                                 {param.enteredValue || 'N/A'}
+                                                {param.enteredValue && param.unit && (
+                                                    <span className="text-gray-600 ml-1">{param.unit}</span>
+                                                )}
                                             </span>
                                         </div>
                                     );
@@ -455,6 +464,9 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                                  <td className="p-2 text-center text-xs border-l border-gray-300">
                                                      <div>
                                                          {param.referenceRange || 'N/A'}
+                                                         {param.referenceRange && param.unit && (
+                                                             <span className="text-gray-600 ml-1">{param.unit}</span>
+                                                         )}
                                                      </div>
                                                  </td>
                                              )}

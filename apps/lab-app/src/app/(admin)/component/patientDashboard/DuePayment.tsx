@@ -175,7 +175,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
         refund_amount: isFullyPaid ? Math.abs(newDueAmount.toNumber()) : null,
         due_amount: isFullyPaid ? 0 : newDueAmount.toNumber(),
         payment_date: new Date().toISOString().split('T')[0],
-        // remarks: paymentData.remarks || `Payment via ${paymentMethod}`,
+        remarks: paymentData.remarks || "",
 
       }
     };

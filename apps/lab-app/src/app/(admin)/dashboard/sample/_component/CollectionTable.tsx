@@ -114,11 +114,8 @@ const CollectionTable: React.FC = () => {
            return !allTestsCompleted; // Only show visits where not all tests are completed
          })
          .sort((a, b) => {
-           // First sort by visit date (latest first)
-           const dateComparison = new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime();
-           if (dateComparison !== 0) return dateComparison;
-           
-           // If dates are the same, sort by visit ID (highest first for latest)
+           // Sort by visit ID (highest first) to show most recently added samples at top
+           // This ensures newly added samples appear first regardless of visit date
            return b.visitId - a.visitId;
          });
 

@@ -144,6 +144,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                 <th className="p-1 font-medium text-left align-top">Due</th>
                 <th className="p-1 font-medium text-left align-top">Date/Time</th>
                 <th className="p-1 font-medium text-left align-top">Received by</th>
+                <th className="p-1 font-medium text-left align-top">Remarks</th>
               </tr>
             </thead>
             <tbody>
@@ -192,6 +193,9 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                       <td className="p-1 border-b border-gray-100 align-top">
                         {txn.createdBy || '-'}
                       </td>
+                      <td className="p-1 border-b border-gray-100 align-top">
+                        {txn.remarks || '-'}
+                      </td>
                     </tr>
                   );
                 })}
@@ -234,13 +238,14 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                   >
                     ₹{remainingDue.toFixed(2)}
                   </td>
-                  {/* Date/Time + Received by empty for alignment */}
+                  {/* Date/Time + Received by + Remarks empty for alignment */}
+                  <td className="p-1 align-top"></td>
                   <td className="p-1 align-top"></td>
                   <td className="p-1 align-top"></td>
                 </tr>
                 <tr className="bg-gray-50 font-medium ">
-                  <td colSpan={8} className="p-1 align-top text-right">Net Amount:</td>
-                  <td className="p-1 text-blue-600 font-bold align-top" colSpan={3}>
+                  <td colSpan={9} className="p-1 align-top text-right">Net Amount:</td>
+                  <td className="p-1 text-blue-600 font-bold align-top" colSpan={2}>
                     ₹{Number(patient?.visit?.billing?.netAmount || 0).toFixed(2)}
                   </td>
                 </tr>

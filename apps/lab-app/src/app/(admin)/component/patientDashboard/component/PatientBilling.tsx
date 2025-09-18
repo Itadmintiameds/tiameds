@@ -425,7 +425,7 @@ const PatientBilling = ({
       <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h2 className="text-sm font-medium text-gray-800 flex items-center">
           <FaMoneyBillWave className="mr-2 text-purple-500 text-sm" />
-          Billing Details
+          Billing Details 
         </h2>
       </div>
 
