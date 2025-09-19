@@ -138,7 +138,7 @@ export enum DiscountReason {
 export type BillingTransaction = {
   id?: number;
   billing_id?: number;
-  payment_method: PaymentMethod;
+  payment_method: PaymentMethod | 'REFUND';
   upi_id?: string | null;
   upi_amount?: number | null;
   card_amount?: number | null;

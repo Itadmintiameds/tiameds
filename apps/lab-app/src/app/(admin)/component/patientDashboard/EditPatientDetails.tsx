@@ -580,14 +580,31 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
       );
       const totalAllReceived = collectedAmount + receivedAmount;
       const calculatedDueAmount = Math.max(0, netAmount - totalAllReceived);
-      const calculatedRefundAmount = Math.max(0, totalAllReceived - netAmount);
+      
+      // Calculate NEW refund amount (not cumulative)
+      // Previous total refund from existing transactions
+      // const existingRefundAmount = existingTransactions.reduce(
+      //   (acc, transaction) => acc + (transaction.refund_amount || 0),
+      //   0
+      // );
+      
+      // Calculate total refund needed now
+      // const totalRefundNeeded = Math.max(0, totalAllReceived - netAmount);
+      
+      // Calculate refund based on the difference between what was paid and what's needed now
+      // If we're removing tests, the refund should be the difference in net amount
+      const originalNetAmount = Number(editPatientDetails?.visit?.billing?.netAmount || 0);
+      const refundDueToTestRemoval = Math.max(0, originalNetAmount - netAmount);
+      
+      // New refund amount for this transaction only
+      const newRefundAmount = refundDueToTestRemoval;
       
       const dueAmount = calculatedDueAmount;
-      const refundAmount = calculatedRefundAmount;
+      const refundAmount = newRefundAmount;
       const paymentDate = billing.paymentDate || new Date().toISOString().split('T')[0];
 
       const transactions: Array<{
-        payment_method: PaymentMethod;
+        payment_method: PaymentMethod | 'REFUND';
         received_amount: number;
         date: string;
         upi_id: string;
@@ -598,18 +615,25 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         due_amount: number;
         remarks: string;
       }> = [];
-      transactions.push({
-        payment_method: billing.paymentMethod || PaymentMethod.CASH,
-        received_amount: receivedAmount,
-        date: paymentDate,
-        upi_id: billing.upi_id || '',
-        card_amount: cardAmount,
-        cash_amount: cashAmount,
-        upi_amount: upiAmount,
-        refund_amount: refundAmount,
-        due_amount: dueAmount,
-        remarks: 'paid by ' + (billing.paymentMethod || PaymentMethod.CASH),
-      });
+      // Only create a transaction if there's a meaningful change (refund or payment)
+      if (refundAmount > 0 || receivedAmount > 0) {
+        // Determine payment method based on whether this is a refund or payment
+        const isRefundTransaction = refundAmount > 0 && receivedAmount === 0;
+        const transactionPaymentMethod = isRefundTransaction ? 'REFUND' : (billing.paymentMethod || PaymentMethod.CASH);
+        
+        transactions.push({
+          payment_method: transactionPaymentMethod,
+          received_amount: receivedAmount,
+          date: paymentDate,
+          upi_id: billing.upi_id || '',
+          card_amount: cardAmount,
+          cash_amount: cashAmount,
+          upi_amount: upiAmount,
+          refund_amount: refundAmount,
+          due_amount: dueAmount,
+          remarks: isRefundTransaction ? 'Refund for test cancellation - overpayment' : 'paid by ' + transactionPaymentMethod,
+        });
+      }
 
       const patientData = {
         ...editedPatient,
@@ -632,7 +656,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
             discount: Number(globalDiscountAmount),
             received_amount: totalAllReceived,
             due_amount: dueAmount,
-            refund_amount: refundAmount,
+            refund_amount: refundAmount, // Send only new refund amount
             transactions: transactions,
           },
           listofeachtestdiscount: selectedTests.map(test => ({
