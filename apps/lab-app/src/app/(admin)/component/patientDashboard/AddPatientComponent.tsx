@@ -582,6 +582,12 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         }
       }
 
+      // Validate UPI ID for UPI-related payment methods
+      if ((paymentMethod === PaymentMethod.UPI || paymentMethod === PaymentMethod.UPI_CASH) && !newPatient.visit?.billing?.upi_id?.trim()) {
+        toast.error("UPI ID is required for UPI payment methods");
+        return;
+      }
+
       if (missingFields.length > 0) {
         toast.error(`Please fill the required payment fields: ${missingFields.join(', ')}`);
         return;

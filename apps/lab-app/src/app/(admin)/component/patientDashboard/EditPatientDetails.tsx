@@ -541,6 +541,12 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         }
       }
 
+      // Validate UPI ID for UPI-related payment methods
+      if ((paymentMethod === PaymentMethod.UPI || paymentMethod === PaymentMethod.UPI_CASH) && !editedPatient.visit?.billing?.upi_id?.trim()) {
+        toast.error("UPI ID is required for UPI payment methods");
+        return;
+      }
+
       if (missingFields.length > 0) {
         toast.error(`Please fill the required payment fields: ${missingFields.join(', ')}`);
         return;
@@ -572,14 +578,24 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
       const upiAmount = Number(billing.upi_amount || 0);
       const receivedAmount = Number(billing.received_amount || 0);
       
-      // Calculate the correct due amount based on existing transactions and new payment
+      // Calculate the correct due amount based on existing transactions
       const existingTransactions = billing.transactions || [];
       const collectedAmount = existingTransactions.reduce(
-        (acc, transaction) => acc + (transaction.received_amount || 0),
+        (acc, transaction) => {
+          const received = transaction.received_amount || 0;
+          const refund = transaction.refund_amount || 0;
+          return acc + (received - refund); // Net collected amount (received - refund)
+        },
         0
       );
-      const totalAllReceived = collectedAmount + receivedAmount;
-      const calculatedDueAmount = Math.max(0, netAmount - totalAllReceived);
+      // In edit mode, collectedAmount already represents the net amount collected
+      const calculatedDueAmount = Math.max(0, netAmount - collectedAmount);
+      
+      // Debug logging
+      console.log('Debug - Edit Patient Due Calculation:');
+      console.log('netAmount:', netAmount);
+      console.log('collectedAmount:', collectedAmount);
+      console.log('calculatedDueAmount:', calculatedDueAmount);
       
       // Calculate NEW refund amount (not cumulative)
       // Previous total refund from existing transactions
@@ -589,7 +605,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
       // );
       
       // Calculate total refund needed now
-      // const totalRefundNeeded = Math.max(0, totalAllReceived - netAmount);
+      // const totalRefundNeeded = Math.max(0, totalNetCollected - netAmount);
       
       // Calculate refund based on the difference between what was paid and what's needed now
       // If we're removing tests, the refund should be the difference in net amount
@@ -615,8 +631,10 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         due_amount: number;
         remarks: string;
       }> = [];
-      // Only create a transaction if there's a meaningful change (refund or payment)
-      if (refundAmount > 0 || receivedAmount > 0) {
+      // Only create a transaction if there's a meaningful change (refund, payment, or net amount change)
+      const netAmountChanged = Math.abs(originalNetAmount - netAmount) > 0.01;
+      
+      if (refundAmount > 0 || receivedAmount > 0 || netAmountChanged) {
         // Determine payment method based on whether this is a refund or payment
         const isRefundTransaction = refundAmount > 0 && receivedAmount === 0;
         const transactionPaymentMethod = isRefundTransaction ? 'REFUND' : (billing.paymentMethod || PaymentMethod.CASH);
@@ -654,7 +672,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
             totalAmount,
             netAmount,
             discount: Number(globalDiscountAmount),
-            received_amount: totalAllReceived,
+            received_amount: collectedAmount,
             due_amount: dueAmount,
             refund_amount: refundAmount, // Send only new refund amount
             transactions: transactions,

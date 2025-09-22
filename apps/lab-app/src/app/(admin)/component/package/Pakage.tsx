@@ -167,10 +167,10 @@ const PackageCreation = () => {
         return;
       }
 
-      // Validate package name format - only alpha characters and spaces
-      const packageNameRegex = /^[a-zA-Z\s]+$/;
+      // Validate package name format - alphanumeric characters and spaces
+      const packageNameRegex = /^[a-zA-Z0-9\s]+$/;
       if (!packageNameRegex.test(packageData.packageName.trim())) {
-        toast.error('Package name can only contain letters and spaces.', {
+        toast.error('Package name can only contain letters, numbers, and spaces.', {
           className: 'bg-error text-white'
         });
         return;
@@ -287,13 +287,13 @@ const PackageCreation = () => {
               value={packageData.packageName}
               onChange={(e) => {
                 const value = e.target.value;
-                // Only allow letters and spaces
-                let filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
+                // Allow letters, numbers, and spaces
+                let filteredValue = value.replace(/[^a-zA-Z0-9\s]/g, '');
                 // Remove leading spaces
                 filteredValue = filteredValue.replace(/^\s+/, '');
                 setPackageData({ ...packageData, packageName: filteredValue });
               }}
-              placeholder="e.g., Complete Health Checkup"
+              placeholder="e.g., Complete Health Checkup 2024"
               className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
             />
           </div>

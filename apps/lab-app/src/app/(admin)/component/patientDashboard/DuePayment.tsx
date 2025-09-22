@@ -190,6 +190,12 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
       return;
     }
 
+    // Validate UPI ID for UPI-related payment methods
+    if ((paymentMethod === PaymentMethod.UPI || paymentMethod === PaymentMethod.UPI_CASH) && !paymentData.upiId.trim()) {
+      toast.error("UPI ID is required for UPI payment methods");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -364,7 +370,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
                   <th className="px-2 py-1 text-left font-medium text-gray-500 uppercase tracking-wider">ID</th>
                   <th className="px-2 py-1 text-left font-medium text-gray-500 uppercase tracking-wider">Created By</th>
                   <th className="px-2 py-1 text-left font-medium text-gray-500 uppercase tracking-wider">Billing ID</th>
-                  <th className="px-2 py-1 text-left font-medium text-gray-500 uppercase tracking-wider">Method / UPI</th>
+                  <th className="px-2 py-1 text-left font-medium text-gray-500 uppercase tracking-wider">Method</th>
                   <th className="px-2 py-1 text-right font-medium text-gray-500 uppercase tracking-wider">UPI Amt</th>
                   <th className="px-2 py-1 text-right font-medium text-gray-500 uppercase tracking-wider">Card Amt</th>
                   <th className="px-2 py-1 text-right font-medium text-gray-500 uppercase tracking-wider">Cash Amt</th>
@@ -608,12 +614,12 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
               <Button
                 text="Cancel"
                 onClick={onClose}
-                className="flex-1 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                className="flex-1 px-4 py-2 text-sm bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 justify-center transition-colors"
               />
               <Button
                 text={loading ? "Processing..." : "Confirm Payment"}
                 onClick={handlePayment}
-                className="flex-1 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300"
+                className="flex-1 px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 justify-center transition-colors"
                 disabled={loading || paymentData.receivedAmount.lte(0)}
               />
             </div>

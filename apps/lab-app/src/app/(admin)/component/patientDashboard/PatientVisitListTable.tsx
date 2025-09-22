@@ -418,23 +418,19 @@ const PatientVisitListTable: React.FC = () => {
     {
       header: 'Payment Status',
       accessor: (row: Patient) => {
-        const paymentStatus = row?.visit?.billing?.paymentStatus;
         const dueAmount = Number(row?.visit?.billing?.due_amount || 0);
         const isPaid = dueAmount === 0;
 
         const badgeClass = isPaid
           ? 'bg-green-100 text-green-800'
-          : dueAmount > 0
-            ? 'bg-amber-100 text-amber-800'
-            : 'bg-gray-100 text-gray-800';
+          : 'bg-amber-100 text-amber-800';
 
         return (
           <div className="flex flex-col">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
-              {isPaid ? 'PAID' : (paymentStatus || 'DUE')}
-              {!isPaid && dueAmount > 0 && ` (₹${dueAmount.toFixed(2)})`}
+              {isPaid ? 'PAID' : `DUE (₹${dueAmount.toFixed(2)})`}
             </span>
-            {!isPaid && (paymentStatus === 'DUE' || dueAmount > 0) && (
+            {!isPaid && dueAmount > 0 && (
               <button
                 onClick={() => {
                   setPatientDetails(row);

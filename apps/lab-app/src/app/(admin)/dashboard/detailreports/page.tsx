@@ -212,8 +212,15 @@ interface AmountReceivedItem {
   refund?: number;
 }
 import { FaMoneyBillWave, FaFileInvoice, FaCalendarDay, FaReceipt, FaArrowLeft } from 'react-icons/fa';
-import { DATE_FILTER_OPTIONS, DateFilterOption, getDateRange, formatDateForAPI } from '@/utils/dateUtils';
-import { VisitType, Patient } from '@/types/patient/patient';
+import { DateFilterOption, getDateRange, formatDateForAPI } from '@/utils/dateUtils';
+
+// Custom date filter options for detail reports (simplified)
+const DETAIL_REPORTS_DATE_FILTER_OPTIONS = [
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: 'custom', label: 'Select Date' },
+] as const;
+import { Patient } from '@/types/patient/patient';
 import { getDatewiseTransactionDetails } from '@/../services/patientServices';
 import { useLabs } from '@/context/LabContext';
 import Loader from '../../component/common/Loader';
@@ -446,12 +453,9 @@ const Page = () => {
   const [amountReceivedDateFilter, setAmountReceivedDateFilter] = useState<DateFilterOption>('today');
   const [amountReceivedCustomStartDate, setAmountReceivedCustomStartDate] = useState<Date | null>(null);
   const [amountReceivedCustomEndDate, setAmountReceivedCustomEndDate] = useState<Date | null>(null);
-  const [amountReceivedVisitTypeFilter, setAmountReceivedVisitTypeFilter] = useState<string>('');
-  
   const [billReportDateFilter, setBillReportDateFilter] = useState<DateFilterOption>('today');
   const [billReportCustomStartDate, setBillReportCustomStartDate] = useState<Date | null>(null);
   const [billReportCustomEndDate, setBillReportCustomEndDate] = useState<Date | null>(null);
-  const [billReportVisitTypeFilter, setBillReportVisitTypeFilter] = useState<string>('');
 
   const [dayClosingDateFilter, setDayClosingDateFilter] = useState<DateFilterOption>('today');
   const [dayClosingCustomStartDate, setDayClosingCustomStartDate] = useState<Date | null>(null);
@@ -462,9 +466,6 @@ const Page = () => {
   const [receiptsCustomEndDate, setReceiptsCustomEndDate] = useState<Date | null>(null);
   
   // Legacy states for backward compatibility (will be removed)
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [visitTypeFilter, setVisitTypeFilter] = useState<string>('');
   const [amountReceivedData, setAmountReceivedData] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -520,9 +521,6 @@ const Page = () => {
     }
   };
 
-  const getCurrentVisitTypeFilter = () => {
-    return activeTab === 'amount-received' ? amountReceivedVisitTypeFilter : billReportVisitTypeFilter;
-  };
 
   // Helper functions to set current filter values based on active tab
   const setCurrentDateFilter = (filter: DateFilterOption) => {
@@ -576,21 +574,11 @@ const Page = () => {
     }
   };
 
-  const setCurrentVisitTypeFilter = (filter: string) => {
-    if (activeTab === 'amount-received') {
-      setAmountReceivedVisitTypeFilter(filter);
-    } else {
-      setBillReportVisitTypeFilter(filter);
-    }
-  };
 
   // Handle CSV download
   const handleDownloadCSV = () => {
     if (activeTab === 'amount-received') {
-      // Filter data based on visit type if selected
-      const filteredData = getCurrentVisitTypeFilter() 
-        ? amountReceivedData.filter(patient => patient.visit.visitType === getCurrentVisitTypeFilter())
-        : amountReceivedData;
+      const filteredData = amountReceivedData;
       
       const convertedData = filteredData.map(convertPatientToApiResponse);
       const apiResponseData = convertedData.map(convertPatientDataToApiResponse);
@@ -942,9 +930,7 @@ const Page = () => {
   const handlePrint = () => {
     if (activeTab === 'amount-received') {
       // Filter data based on visit type if selected
-      const filteredData = visitTypeFilter 
-        ? amountReceivedData.filter(patient => patient.visit.visitType === visitTypeFilter)
-        : amountReceivedData;
+      const filteredData = amountReceivedData;
       
       const convertedData = filteredData.map(convertPatientToApiResponse);
       const apiResponseData = convertedData.map(convertPatientDataToApiResponse);
@@ -1157,9 +1143,7 @@ const Page = () => {
         }
         
         // Process data for amount-received tab
-        const filteredData = getCurrentVisitTypeFilter() 
-          ? amountReceivedData.filter(patient => patient.visit.visitType === getCurrentVisitTypeFilter())
-          : amountReceivedData;
+        const filteredData = amountReceivedData;
         
         const convertedData = filteredData.map(convertPatientToApiResponse);
         const apiResponseData = convertedData.map(convertPatientDataToApiResponse);
@@ -1244,9 +1228,7 @@ const Page = () => {
         }
         
         // Process data for bill-report tab
-        const billFilteredData = getCurrentVisitTypeFilter() 
-          ? billReportData.filter(patient => patient.visit.visitType === getCurrentVisitTypeFilter())
-          : billReportData;
+        const billFilteredData = billReportData;
         
         // const billConvertedData = billFilteredData.map(convertPatientToApiResponse);
         // const billApiResponseData = billConvertedData.map(convertPatientDataToApiResponse);
@@ -1329,7 +1311,7 @@ const Page = () => {
                   onChange={(e) => setCurrentDateFilter(e.target.value as DateFilterOption)}
                   className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                 >
-                  {DATE_FILTER_OPTIONS.map(option => (
+                  {DETAIL_REPORTS_DATE_FILTER_OPTIONS.map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -1337,52 +1319,32 @@ const Page = () => {
                 </select>
               </div>
 
-              {/* Custom Date Range */}
+              {/* Custom Date Selection */}
               {getCurrentDateFilter() === 'custom' && (
-                <>
-                  <div className="min-w-[150px]">
-                    <input
-                      type="date"
-                      value={getCurrentCustomStartDate() ? getCurrentCustomStartDate()!.toISOString().split('T')[0] : ''}
-                      onChange={(e) => setCurrentCustomStartDate(e.target.value ? new Date(e.target.value) : null)}
-                      className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                      placeholder="Start Date"
-                    />
-                  </div>
-                  <div className="min-w-[150px]">
-                    <input
-                      type="date"
-                      value={getCurrentCustomEndDate() ? getCurrentCustomEndDate()!.toISOString().split('T')[0] : ''}
-                      onChange={(e) => setCurrentCustomEndDate(e.target.value ? new Date(e.target.value) : null)}
-                      className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                      placeholder="End Date"
-                    />
-                  </div>
-                </>
+                <div className="min-w-[150px]">
+                  <input
+                    type="date"
+                    value={getCurrentCustomStartDate() ? getCurrentCustomStartDate()!.toISOString().split('T')[0] : ''}
+                    max={new Date().toISOString().split('T')[0]} // Prevent future date selection
+                    onChange={(e) => {
+                      const selectedDate = e.target.value ? new Date(e.target.value) : null;
+                      setCurrentCustomStartDate(selectedDate);
+                      setCurrentCustomEndDate(selectedDate); // Set both start and end to same date
+                    }}
+                    className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                    placeholder="Select Date"
+                  />
+                </div>
               )}
 
-              {/* Visit Type Filter */}
-              <div className="min-w-[150px]">
-                <select
-                  value={getCurrentVisitTypeFilter()}
-                  onChange={(e) => setCurrentVisitTypeFilter(e.target.value)}
-                  className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                >
-                  <option value="">All Types</option>
-                  {Object.values(VisitType).map((type) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
 
               {/* Clear Filter */}
-              {(getCurrentDateFilter() !== 'today' || getCurrentVisitTypeFilter()) && (
+              {getCurrentDateFilter() !== 'today' && (
                 <button
                   onClick={() => {
                     setCurrentDateFilter('today');
                     setCurrentCustomStartDate(null);
                     setCurrentCustomEndDate(null);
-                    setCurrentVisitTypeFilter('');
                   }}
                   className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:text-red-800 transition-colors duration-200 bg-white border border-gray-300 rounded-md shadow-sm"
                   title="Clear all filters"

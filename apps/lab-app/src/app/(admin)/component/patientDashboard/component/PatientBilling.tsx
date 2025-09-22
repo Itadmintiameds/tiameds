@@ -419,22 +419,27 @@ const PatientBilling = ({
 
   const totalReceived = getTotalReceivedAmount();
   
-  // Calculate collected amount from existing transactions
+  // Calculate collected amount from existing transactions (net amount after refunds)
   const existingTransactions = newPatient.visit?.billing?.transactions || [];
   const collectedAmount = existingTransactions.reduce(
-    (acc, transaction) => acc + (transaction.received_amount || 0),
+    (acc, transaction) => {
+      const received = transaction.received_amount || 0;
+      const refund = transaction.refund_amount || 0;
+      return acc + (received - refund); // Net collected amount (received - refund)
+    },
     0
   );
   
-  // Simple due calculation: Net Amount - Collected Amount - New Payment
-  const totalAllReceived = collectedAmount + totalReceived.toNumber();
-  const dueAmount = Math.max(0, netAmount.toNumber() - totalAllReceived);
-  const refundAmount = Math.max(0, totalAllReceived - netAmount.toNumber());
+  // Calculate total net collected amount (existing collected + new payment)
+  const totalNetCollected = collectedAmount + totalReceived.toNumber();
+  const dueAmount = Math.max(0, netAmount.toNumber() - totalNetCollected);
+  const refundAmount = Math.max(0, totalNetCollected - netAmount.toNumber());
   
   const { refund, due } = {
     refund: new Decimal(refundAmount),
     due: new Decimal(dueAmount)
   };
+
 
   return (
     <section className="bg-gray-50 rounded-lg border border-gray-200 shadow-xs overflow-hidden">
@@ -462,7 +467,7 @@ const PatientBilling = ({
                   step="0.01"
                   value={discountPercentage}
                   onChange={handleDiscountChange}
-                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
 
@@ -478,7 +483,7 @@ const PatientBilling = ({
                   step="0.01"
                   value={formatAmount(discount.toNumber())}
                   onChange={handleDiscountChange}
-                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
             </>
@@ -493,7 +498,7 @@ const PatientBilling = ({
               name="visit.billing.discountReason"
               value={newPatient.visit?.billing.discountReason ?? ''}
               onChange={handleChange}
-              className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             >
               {Object.values(DiscountReason).map((reason) => (
                 <option key={reason} value={reason}>
@@ -563,13 +568,13 @@ const PatientBilling = ({
               <FaCreditCard className="mr-1.5 text-purple-500 text-xs" />
               Method
             </label>
-            <select
-              name="visit.billing.paymentMethod"
-              value={newPatient.visit?.billing?.paymentMethod ?? ''}
-              onChange={handleChange}
-              className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
-              required
-            >
+             <select
+               name="visit.billing.paymentMethod"
+               value={newPatient.visit?.billing?.paymentMethod ?? ''}
+               onChange={handleChange}
+               className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+               required
+             >
               {Object.values(PaymentMethod).map((method) => (
                 <option key={method} value={method}>
                   {method}
@@ -589,7 +594,7 @@ const PatientBilling = ({
               name="visit.billing.paymentDate"
               value={newPatient.visit?.billing.paymentDate ?? ''}
               onChange={handleChange}
-              className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
         </div>
@@ -606,7 +611,7 @@ const PatientBilling = ({
                 name="visit.billing.upi_id"
                 value={newPatient.visit?.billing?.upi_id ?? ''}
                 onChange={handleUpiIdChange}
-                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 placeholder="Enter UPI ID"
                 required
               />
@@ -628,7 +633,7 @@ const PatientBilling = ({
                  value={newPatient.visit?.billing?.received_amount || '0'}
                  onInput={handleReceivedAmountInput}
                  onChange={() => {}} // Empty onChange to prevent React warnings
-                 className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                 className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                />
              </div>  
            )}
@@ -647,7 +652,7 @@ const PatientBilling = ({
                  value={newPatient.visit?.billing?.received_amount || '0'}
                  onInput={handleReceivedAmountInput}
                  onChange={() => {}} // Empty onChange to prevent React warnings
-                 className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                 className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                />
              </div>  
            )}
@@ -664,7 +669,7 @@ const PatientBilling = ({
                 step="0.01"
                 disabled
                 value={formatAmount(newPatient.visit?.billing?.cash_amount)}
-                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50"
+                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           )}
@@ -681,7 +686,7 @@ const PatientBilling = ({
                 step="0.01"
                 disabled
                 value={formatAmount(newPatient.visit?.billing?.card_amount)}
-                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50"
+                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           )}
@@ -698,7 +703,7 @@ const PatientBilling = ({
                 step="0.01"
                 disabled
                 value={formatAmount(newPatient.visit?.billing?.upi_amount)}
-                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50"
+                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           )}
@@ -717,7 +722,7 @@ const PatientBilling = ({
                   required
                   value={newPatient.visit?.billing?.upi_amount || ''}
                   onChange={handlePaymentFieldChange}
-                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
               <div className="flex flex-col">
@@ -732,7 +737,7 @@ const PatientBilling = ({
                   required
                   value={newPatient.visit?.billing?.cash_amount || ''}
                   onChange={handlePaymentFieldChange}
-                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
             </>
@@ -752,7 +757,7 @@ const PatientBilling = ({
                   required
                   value={newPatient.visit?.billing?.card_amount || ''}
                   onChange={handlePaymentFieldChange}
-                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
               <div className="flex flex-col">
@@ -767,7 +772,7 @@ const PatientBilling = ({
                   required
                   value={newPatient.visit?.billing?.cash_amount || ''}
                   onChange={handlePaymentFieldChange}
-                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
             </>
@@ -786,7 +791,7 @@ const PatientBilling = ({
                 step="0.01"
                 disabled
                 value={formatAmount(newPatient.visit?.billing?.received_amount)}
-                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50"
+                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           )}
@@ -807,7 +812,7 @@ const PatientBilling = ({
                 min="0"
                 disabled
                 value={formatAmount(refund.gt(0) ? refund.toString() : due.toString())}
-                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50"
+                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           )}

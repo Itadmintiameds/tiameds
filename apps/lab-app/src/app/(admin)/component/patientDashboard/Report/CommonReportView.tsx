@@ -80,21 +80,83 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
             printElement.style.left = '-9999px';
             document.body.appendChild(printElement);
 
-            const canvas = await html2canvas(printElement, {
-                logging: false,
-                useCORS: true,
-                allowTaint: true
-            });
+            // Get all test sections to implement smart page breaks
+            const testSections = printElement.querySelectorAll('[data-test-section]');
+            const headerSection = printElement.querySelector('[data-header-section]');
+            const footerSection = printElement.querySelector('[data-footer-section]');
+
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = A4_WIDTH - 20; // 190mm width
+            const pageHeight = 297 - 20; // A4 height minus margins (277mm)
+            const margin = 10;
+
+            let currentY = margin;
+            let isFirstPage = true;
+
+            // Add header only to first page
+            if (headerSection && isFirstPage) {
+                const headerCanvas = await html2canvas(headerSection as HTMLElement, {
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
+                });
+                const headerImgData = headerCanvas.toDataURL('image/png');
+                const headerHeight = (headerCanvas.height * pageWidth) / headerCanvas.width;
+                
+                pdf.addImage(headerImgData, 'PNG', margin, currentY, pageWidth, headerHeight);
+                currentY += headerHeight + 5; // Add some spacing
+            }
+
+            // Process each test section
+            for (let i = 0; i < testSections.length; i++) {
+                const testSection = testSections[i] as HTMLElement;
+                const testCanvas = await html2canvas(testSection, {
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
+                });
+                
+                const testImgData = testCanvas.toDataURL('image/png');
+                const testHeight = (testCanvas.height * pageWidth) / testCanvas.width;
+
+                // Check if test section fits on current page
+                if (currentY + testHeight > pageHeight) {
+                    // Create new page
+                    pdf.addPage();
+                    currentY = margin;
+                    isFirstPage = false;
+                }
+
+                // Add test section to current page
+                pdf.addImage(testImgData, 'PNG', margin, currentY, pageWidth, testHeight);
+                currentY += testHeight + 5; // Add spacing between tests
+            }
+
+            // Add footer to last page
+            if (footerSection) {
+                const footerCanvas = await html2canvas(footerSection as HTMLElement, {
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
+                });
+                const footerImgData = footerCanvas.toDataURL('image/png');
+                const footerHeight = (footerCanvas.height * pageWidth) / footerCanvas.width;
+                
+                // Check if footer fits on current page, if not create a new page
+                // Use larger margin to ensure footer text is not cut off
+                if (currentY + footerHeight > pageHeight - 20) { // Leave 20mm margin
+                    pdf.addPage();
+                    currentY = margin;
+                }
+                
+                // Position footer at the current Y position
+                pdf.addImage(footerImgData, 'PNG', margin, currentY, pageWidth, footerHeight);
+                
+                // Add extra space after footer to ensure nothing gets cut
+                currentY += footerHeight + 10;
+            }
 
             document.body.removeChild(printElement);
-
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-
-            const imgWidth = A4_WIDTH - 20;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-            pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
 
             const pdfBlob = pdf.output('blob');
             const pdfUrl = URL.createObjectURL(pdfBlob);
@@ -144,7 +206,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                         </svg>
-                        {loading ? 'Generating PDF...' : 'Print Report'}
+                        {loading ? 'Generating PDF...' : 'Print'}
                     </button>
                 </div>
             )}
@@ -180,60 +242,61 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                 {/* Only show report content if there are reports */}
                 {reports.length > 0 && (
                     <>
-                        {/* Header Section */}
-                        <div className="flex justify-between items-start mb-6 border-b pb-4">
-                            <div className="flex items-center">
-                                <div>
-                                    <img src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
+                        {/* Header Section - Includes both logo and patient info */}
+                        <div data-header-section className="mb-6">
+                            {/* Logo and Report Title */}
+                            <div className="flex justify-between items-start mb-6 border-b pb-4">
+                                <div className="flex items-center">
+                                    <div>
+                                        <img src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-xl font-bold text-gray-800">MEDICAL DIAGNOSTIC REPORT</h1>
+                                        <p className="text-sm text-gray-600">{currentLab?.name || 'DIAGNOSTIC LABORATORY'}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h1 className="text-xl font-bold text-gray-800">MEDICAL DIAGNOSTIC REPORT</h1>
-                                    <p className="text-sm text-gray-600">{currentLab?.name || 'DIAGNOSTIC LABORATORY'}</p>
+                                <div className="text-right bg-blue-50 p-3 rounded">
+                                    <p className="text-sm font-medium">Report No: <span className="font-bold">{patientData?.visitId || 'N/A'}</span></p>
                                 </div>
                             </div>
-                            <div className="text-right bg-blue-50 p-3 rounded">
-                                <p className="text-sm font-medium">Report No: <span className="font-bold">{patientData?.visitId || 'N/A'}</span></p>
-                                
 
-                            </div>
-                        </div>
+                            {/* Patient Information */}
+                            <div className="border border-gray-300 p-4">
+                                <div className="grid grid-cols-2 gap-6">
+                                    {/* Left Column - Patient Information */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center">
+                                            <span className="text-xs font-medium text-gray-700 w-24">NAME:</span>
+                                            <span className="text-xs font-bold text-gray-900">{patientData?.patientname || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <span className="text-xs font-medium text-gray-700 w-24">AGE/SEX:</span>
+                                            <span className="text-xs font-bold text-gray-900">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <span className="text-xs font-medium text-gray-700 w-24">REFERRED BY:</span>
+                                            <span className="text-xs font-bold text-gray-900">{displayDoctorName}</span>
+                                        </div>
+                                    </div>
 
-                        {/* Header */}
-                        <div className="border border-gray-300 p-4 mb-6">
-                            <div className="grid grid-cols-2 gap-6">
-                                {/* Left Column - Patient Information */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center">
-                                        <span className="text-xs font-medium text-gray-700 w-24">NAME:</span>
-                                        <span className="text-xs font-bold text-gray-900">{patientData?.patientname || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <span className="text-xs font-medium text-gray-700 w-24">AGE/SEX:</span>
-                                        <span className="text-xs font-bold text-gray-900">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <span className="text-xs font-medium text-gray-700 w-24">REFERRED BY:</span>
-                                        <span className="text-xs font-bold text-gray-900">{displayDoctorName}</span>
-                                    </div>
-                                </div>
-
-                                {/* Right Column - Report Information */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-end">
-                                        <span className="text-xs font-medium text-gray-700 w-28 text-right">DATE OF REPORT:</span>
-                                        <span className="text-xs font-bold text-gray-900 ml-2">{new Date().toLocaleDateString('en-GB')} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
-                                    </div>
-                                    <div className="flex items-center justify-end">
-                                        <span className="text-xs font-medium text-gray-700 w-28 text-right">LAB NO.:</span>
-                                        <span className="text-xs font-bold text-gray-900 ml-2">{currentLab?.id || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center justify-end">
-                                        <span className="text-xs font-medium text-gray-700 w-28 text-right">BILL NO.:</span>
-                                        <span className="text-xs font-bold text-gray-900 ml-2">{patientData?.visitId || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center justify-end">
-                                        <span className="text-xs font-medium text-gray-700 w-28 text-right">OPD/IPD:</span>
-                                        <span className="text-xs font-bold text-gray-900 ml-2">{patientData?.visitType || 'N/A'}</span>
+                                    {/* Right Column - Report Information */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-end">
+                                            <span className="text-xs font-medium text-gray-700 w-28 text-right">DATE OF REPORT:</span>
+                                            <span className="text-xs font-bold text-gray-900 ml-2">{new Date().toLocaleDateString('en-GB')} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                                        </div>
+                                        <div className="flex items-center justify-end">
+                                            <span className="text-xs font-medium text-gray-700 w-28 text-right">LAB NO.:</span>
+                                            <span className="text-xs font-bold text-gray-900 ml-2">{currentLab?.id || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-end">
+                                            <span className="text-xs font-medium text-gray-700 w-28 text-right">BILL NO.:</span>
+                                            <span className="text-xs font-bold text-gray-900 ml-2">{patientData?.visitId || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-end">
+                                            <span className="text-xs font-medium text-gray-700 w-28 text-right">OPD/IPD:</span>
+                                            <span className="text-xs font-bold text-gray-900 ml-2">{patientData?.visitType || 'N/A'}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -245,7 +308,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                 const isCBCTest = testName.toUpperCase().includes('CBC') || testName.toUpperCase().includes('COMPLETE BLOOD COUNT');
                                 
                                 return (
-                                <div key={testIndex} className="mb-8">
+                                <div key={testIndex} data-test-section className="mb-8">
                                     {/* Test Name Heading */}
                                     <div className="mb-2">
                                         <h3 className="text-xs font-bold text-left text-gray-800">{testName.toUpperCase()}</h3>
@@ -345,9 +408,6 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                             <div className="text-center">
                                                 <div className={`${isOutOfRange ? 'font-black text-black' : 'font-medium'}`}>
                                                     {param.enteredValue || 'N/A'}
-                                                    {param.enteredValue && param.unit && (
-                                                        <span className="text-gray-600 ml-1">{param.unit}</span>
-                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -358,9 +418,6 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                             <div className="text-center">
                                                 <div className={`${isOutOfRange ? 'font-black text-black' : 'font-medium'}`}>
                                                     {param.enteredValue || 'N/A'}
-                                                    {param.enteredValue && param.unit && (
-                                                        <span className="text-gray-600 ml-1">{param.unit}</span>
-                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -371,7 +428,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                         <div className="text-center">
                                             <span className={`${isOutOfRange ? 'font-black text-black' : 'font-medium'}`}>
                                                 {param.enteredValue || 'N/A'}
-                                                {param.enteredValue && param.unit && (
+                                                {param.enteredValue && param.unit && param.unit.trim() !== '' && (
                                                     <span className="text-gray-600 ml-1">{param.unit}</span>
                                                 )}
                                             </span>
@@ -464,7 +521,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                                  <td className="p-2 text-center text-xs border-l border-gray-300">
                                                      <div>
                                                          {param.referenceRange || 'N/A'}
-                                                         {param.referenceRange && param.unit && (
+                                                         {param.referenceRange && param.unit && param.unit.trim() !== '' && (
                                                              <span className="text-gray-600 ml-1">{param.unit}</span>
                                                          )}
                                                      </div>
@@ -488,7 +545,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                         </div>
 
                         {/* Footer */}
-                        <div className="mt-auto pt-6 border-t border-gray-200">
+                        <div data-footer-section className="mt-auto pt-6 border-t border-gray-200">
                             <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
                                 <div className="text-center">
                                     <p className="text-xs font-medium text-gray-700 mb-2">Lab Technician</p>
@@ -509,16 +566,16 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                 {/* <p className="text-xs text-gray-600">For queries: help@nextjen.com | +91 98765 43210 | www.nextjendl.com</p> */}
                                 <p className="text-xs font-medium text-blue-600 mt-2">Thank you for choosing {currentLab?.name || 'Our Lab'}</p>
                             </div>
-                        </div>
 
-                        {/* divider */}
-                        <div className="flex justify-between items-center mt-4">
-                            <div className="flex items-center">
-                                <img src="/tiamed1.svg" alt="Tiamed Logo" className="h-6 mr-2 opacity-80" />
-                                <span className="text-xs font-medium text-gray-600">Powered by Tiameds Technologies Pvt.Ltd</span>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-xs text-gray-500">Generated on: {new Date().toLocaleString()}</p>
+                            {/* Bottom divider with logo and generation info */}
+                            <div className="flex justify-between items-center mt-4">
+                                <div className="flex items-center">
+                                    <img src="/tiamed1.svg" alt="Tiamed Logo" className="h-6 mr-2 opacity-80" />
+                                    <span className="text-xs font-medium text-gray-600">Powered by Tiameds Technologies Pvt.Ltd</span>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs text-gray-500">Generated on: {new Date().toLocaleString()}</p>
+                                </div>
                             </div>
                         </div>
                     </>
