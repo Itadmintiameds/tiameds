@@ -26,6 +26,7 @@ interface PatientBillingProps {
   selectedPackages: Package[];
   setSelectedTests: React.Dispatch<React.SetStateAction<TestList[]>>;
   isGlobalDiscountHidden?: boolean;
+  onCollectedAmountChange?: (hasCollectedAmount: boolean) => void;
 }
 
 interface GetSafeDecimal {
@@ -68,6 +69,7 @@ const PatientBilling = ({
   selectedPackages,
   setSelectedTests,
   isGlobalDiscountHidden,
+  onCollectedAmountChange,
 }: PatientBillingProps) => {
   const totalAmount = getSafeDecimal(newPatient?.visit?.billing?.totalAmount);
   const discount = getSafeDecimal(newPatient?.visit?.billing?.discount);
@@ -83,6 +85,11 @@ const PatientBilling = ({
     : '0';
 
   const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Prevent discount changes if there's any collected amount
+    if (hasCollectedAmount) {
+      return;
+    }
+    
     const { name, value } = e.target;
     const total = totalAmount;
     let inputVal = getSafeDecimal(value);
@@ -461,8 +468,6 @@ const PatientBilling = ({
     });
   }, [paymentMethod, handleChange]);
 
-  const canEditDiscount = selectedPackages.length === 0 && !isGlobalDiscountHidden;
-  
   // Calculate the total received amount for display
   const getTotalReceivedAmount = (): Decimal => {
     switch (paymentMethod) {
@@ -495,6 +500,17 @@ const PatientBilling = ({
     },
     0
   );
+
+  // Disable discount editing if there's any collected amount (edit mode with existing payments)
+  const hasCollectedAmount = collectedAmount > 0;
+  const canEditDiscount = selectedPackages.length === 0 && !isGlobalDiscountHidden && !hasCollectedAmount;
+  
+  // Notify parent component about collected amount status
+  useEffect(() => {
+    if (onCollectedAmountChange) {
+      onCollectedAmountChange(hasCollectedAmount);
+    }
+  }, [hasCollectedAmount, onCollectedAmountChange]);
   
   // Calculate total net collected amount (existing collected + new payment)
   const totalNetCollected = collectedAmount + totalReceived.toNumber();
@@ -560,18 +576,26 @@ const PatientBilling = ({
               <FaPercent className="mr-1.5 text-purple-500 text-xs" />
               Discount Reason
             </label>
-            <select
-              name="visit.billing.discountReason"
-              value={newPatient.visit?.billing.discountReason ?? ''}
-              onChange={handleChange}
-              className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            >
-              {Object.values(DiscountReason).map((reason) => (
-                <option key={reason} value={reason}>
-                  {reason}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                name="visit.billing.discountReason"
+                value={newPatient.visit?.billing.discountReason ?? ''}
+                onChange={handleChange}
+                disabled={hasCollectedAmount}
+                className={`border rounded-md border-gray-300 px-3 py-2 pr-8 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none bg-white ${hasCollectedAmount ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              >
+                {Object.values(DiscountReason).map((reason) => (
+                  <option key={reason} value={reason}>
+                    {reason}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col min-w-[160px]">

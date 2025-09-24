@@ -15,6 +15,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import Button from '../common/Button';
 import Loader from '../common/Loader';
+import ConfirmationDialog from '../common/ConfirmationDialog';
 import PatientBilling from './component/PatientBilling';
 import PatientFrom from './component/PatientFrom';
 import PatientTestPackage from './component/PatientTestPackage';
@@ -41,6 +42,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   const [selectedTests, setSelectedTests] = useState<TestList[]>([]);
   const [selectedPackages, setSelectedPackages] = useState<PackageType[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState<boolean>(false);
   const [newPatient, setNewPatient] = useState<Patient>({
     firstName: '',
     lastName: '',
@@ -540,6 +542,19 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
 
 
 
+  const handleAddPatientClick = () => {
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmAdd = () => {
+    setShowConfirmDialog(false);
+    handleAddPatient();
+  };
+
+  const handleCancelAdd = () => {
+    setShowConfirmDialog(false);
+  };
+
   const handleAddPatient = async () => {
     try {
       setLoading(true);
@@ -812,11 +827,11 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         <Button
           text=''
           type="button"
-          onClick={handleAddPatient}
+          onClick={handleAddPatientClick}
           className="flex items-center px-2.5 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
         >
           <Plus className="h-3 w-3 mr-1.5" />
-          Patient
+          Add Patient
         </Button>
         <Button
           text=''
@@ -828,6 +843,17 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
           Clear
         </Button>
       </div>
+
+      <ConfirmationDialog
+        isOpen={showConfirmDialog}
+        onClose={handleCancelAdd}
+        onConfirm={handleConfirmAdd}
+        title="Confirm Add Patient"
+        message="Are you sure you want to add this new patient? Please review all the information before proceeding."
+        confirmText="Add Patient"
+        cancelText="Cancel"
+        isLoading={loading}
+      />
     </div>
   );
 };

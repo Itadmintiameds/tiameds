@@ -15,6 +15,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import Button from '../common/Button';
 import Loader from '../common/Loader';
+import ConfirmationDialog from '../common/ConfirmationDialog';
 import PatientBilling from './component/PatientBilling';
 import PatientTestPackage from './component/PatientTestPackage';
 import PatientVisit from './component/PatientVisit';
@@ -59,6 +60,8 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
   const [selectedPackages, setSelectedPackages] = useState<PackageType[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [isGlobalDiscountHidden, setIsGlobalDiscountHidden] = useState<boolean>(false);
+  const [hasCollectedAmount, setHasCollectedAmount] = useState<boolean>(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState<boolean>(false);
   const { currentLab, setPatientDetails, refreshDocterList } = useLabs();
   const { user: loginedUser } = useAuthStore();
   const [editedPatient, setEditedPatient] = useState<Patient>({
@@ -417,6 +420,11 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     field: 'percent' | 'amount',
     value: number
   ) => {
+    // Prevent test-level discount changes if there's any collected amount
+    if (hasCollectedAmount) {
+      return;
+    }
+    
     setSelectedTests(prev =>
       prev.map(test => {
         if (test.id !== testId) return test;
@@ -498,6 +506,19 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
       }));
     }
   }, []);
+
+  const handleUpdatePatientClick = () => {
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmUpdate = () => {
+    setShowConfirmDialog(false);
+    handleUpdatePatient();
+  };
+
+  const handleCancelUpdate = () => {
+    setShowConfirmDialog(false);
+  };
 
   const handleUpdatePatient = async () => {
     try {
@@ -755,13 +776,14 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         handleChange={handleDiscountChange}
         setSelectedTests={setSelectedTests}
         isGlobalDiscountHidden={isGlobalDiscountHidden}
+        onCollectedAmountChange={setHasCollectedAmount}
       />
 
       <div className="flex justify-end space-x-2 mt-3">
         <Button
           text=''
           type="button"
-          onClick={handleUpdatePatient}
+          onClick={handleUpdatePatientClick}
           className="flex items-center px-2.5 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
         >
           <Plus className="h-3 w-3 mr-1.5" />
@@ -777,6 +799,17 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
           Cancel
         </Button>
       </div>
+
+      <ConfirmationDialog
+        isOpen={showConfirmDialog}
+        onClose={handleCancelUpdate}
+        onConfirm={handleConfirmUpdate}
+        title="Update Patient Information"
+        message="Please review all the changes you've made. Once confirmed, the patient's information will be updated in the system."
+        confirmText="Update Patient"
+        cancelText="Review Changes"
+        isLoading={loading}
+      />
     </div>
   );
 };
