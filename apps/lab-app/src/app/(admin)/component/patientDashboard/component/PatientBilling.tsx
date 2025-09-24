@@ -45,8 +45,8 @@ const formatAmount = (value: string | number | undefined | null): string => {
   return num % 1 === 0 ? num.toString() : num.toFixed(2);
 };
 
-const calculatePaymentStatus = (received: Decimal, net: Decimal): PaymentStatus => {
-  return received.gte(net) ? PaymentStatus.PAID : PaymentStatus.DUE;
+const calculatePaymentStatus = (totalCollected: number, net: Decimal): PaymentStatus => {
+  return totalCollected >= net.toNumber() ? PaymentStatus.PAID : PaymentStatus.DUE;
 };
 
 const calculateRefundDueAmounts = (received: Decimal, net: Decimal) => {
@@ -184,7 +184,18 @@ const PatientBilling = ({
     const { refund, due } = calculateRefundDueAmounts(receivedAmount, netAmount);
     
     if (receivedAmount.gt(0) || newPatient.visit?.billing?.paymentStatus) {
-      const status = calculatePaymentStatus(receivedAmount, netAmount);
+      // Calculate total collected amount including existing transactions
+      const existingTransactions = newPatient.visit?.billing?.transactions || [];
+      const collectedAmount = existingTransactions.reduce(
+        (acc, transaction) => {
+          const received = transaction.received_amount || 0;
+          const refund = transaction.refund_amount || 0;
+          return acc + (received - refund); 
+        },
+        0
+      );
+      const totalNetCollected = collectedAmount + receivedAmount.toNumber();
+      const status = calculatePaymentStatus(totalNetCollected, netAmount);
       handleChange({ target: { name: 'visit.billing.paymentStatus', value: status } } as React.ChangeEvent<HTMLInputElement>);
     }
 
@@ -230,7 +241,18 @@ const PatientBilling = ({
       
       // Only calculate status if received amount is greater than 0 or if there's already a status set
       if (receivedAmount.gt(0) || newPatient.visit?.billing?.paymentStatus) {
-        const status = calculatePaymentStatus(receivedAmount, netAmount);
+        // Calculate total collected amount including existing transactions
+        const existingTransactions = newPatient.visit?.billing?.transactions || [];
+        const collectedAmount = existingTransactions.reduce(
+          (acc, transaction) => {
+            const received = transaction.received_amount || 0;
+            const refund = transaction.refund_amount || 0;
+            return acc + (received - refund); 
+          },
+          0
+        );
+        const totalNetCollected = collectedAmount + receivedAmount.toNumber();
+        const status = calculatePaymentStatus(totalNetCollected, netAmount);
         handleChange({ target: { name: 'visit.billing.paymentStatus', value: status } } as React.ChangeEvent<HTMLInputElement>);
       }
 
@@ -253,7 +275,18 @@ const PatientBilling = ({
       
       // Only calculate status if received amount is greater than 0 or if there's already a status set
       if (receivedAmount.gt(0) || newPatient.visit?.billing?.paymentStatus) {
-        const status = calculatePaymentStatus(receivedAmount, netAmount);
+        // Calculate total collected amount including existing transactions
+        const existingTransactions = newPatient.visit?.billing?.transactions || [];
+        const collectedAmount = existingTransactions.reduce(
+          (acc, transaction) => {
+            const received = transaction.received_amount || 0;
+            const refund = transaction.refund_amount || 0;
+            return acc + (received - refund); 
+          },
+          0
+        );
+        const totalNetCollected = collectedAmount + receivedAmount.toNumber();
+        const status = calculatePaymentStatus(totalNetCollected, netAmount);
         handleChange({ target: { name: 'visit.billing.paymentStatus', value: status } } as React.ChangeEvent<HTMLInputElement>);
       }
 
@@ -276,7 +309,18 @@ const PatientBilling = ({
       
       // Only calculate status if received amount is greater than 0 or if there's already a status set
       if (receivedAmount.gt(0) || newPatient.visit?.billing?.paymentStatus) {
-        const status = calculatePaymentStatus(receivedAmount, netAmount);
+        // Calculate total collected amount including existing transactions
+        const existingTransactions = newPatient.visit?.billing?.transactions || [];
+        const collectedAmount = existingTransactions.reduce(
+          (acc, transaction) => {
+            const received = transaction.received_amount || 0;
+            const refund = transaction.refund_amount || 0;
+            return acc + (received - refund); 
+          },
+          0
+        );
+        const totalNetCollected = collectedAmount + receivedAmount.toNumber();
+        const status = calculatePaymentStatus(totalNetCollected, netAmount);
         handleChange({ target: { name: 'visit.billing.paymentStatus', value: status } } as React.ChangeEvent<HTMLInputElement>);
       }
 
@@ -306,7 +350,18 @@ const PatientBilling = ({
       
       // Only calculate status if total received amount is greater than 0 or if there's already a status set
       if (totalReceived.gt(0) || newPatient.visit?.billing?.paymentStatus) {
-        const status = calculatePaymentStatus(totalReceived, netAmount);
+        // Calculate total collected amount including existing transactions
+        const existingTransactions = newPatient.visit?.billing?.transactions || [];
+        const collectedAmount = existingTransactions.reduce(
+          (acc, transaction) => {
+            const received = transaction.received_amount || 0;
+            const refund = transaction.refund_amount || 0;
+            return acc + (received - refund); 
+          },
+          0
+        );
+        const totalNetCollected = collectedAmount + totalReceived.toNumber();
+        const status = calculatePaymentStatus(totalNetCollected, netAmount);
         handleChange({ target: { name: 'visit.billing.paymentStatus', value: status } } as React.ChangeEvent<HTMLInputElement>);
       }
 
@@ -336,7 +391,18 @@ const PatientBilling = ({
       
       // Only calculate status if total received amount is greater than 0 or if there's already a status set
       if (totalReceived.gt(0) || newPatient.visit?.billing?.paymentStatus) {
-        const status = calculatePaymentStatus(totalReceived, netAmount);
+        // Calculate total collected amount including existing transactions
+        const existingTransactions = newPatient.visit?.billing?.transactions || [];
+        const collectedAmount = existingTransactions.reduce(
+          (acc, transaction) => {
+            const received = transaction.received_amount || 0;
+            const refund = transaction.refund_amount || 0;
+            return acc + (received - refund); 
+          },
+          0
+        );
+        const totalNetCollected = collectedAmount + totalReceived.toNumber();
+        const status = calculatePaymentStatus(totalNetCollected, netAmount);
         handleChange({ target: { name: 'visit.billing.paymentStatus', value: status } } as React.ChangeEvent<HTMLInputElement>);
       }
 
@@ -425,7 +491,7 @@ const PatientBilling = ({
     (acc, transaction) => {
       const received = transaction.received_amount || 0;
       const refund = transaction.refund_amount || 0;
-      return acc + (received - refund); // Net collected amount (received - refund)
+      return acc + (received - refund); 
     },
     0
   );
@@ -549,7 +615,7 @@ const PatientBilling = ({
             </label>
             <select
               name="visit.billing.paymentStatus"
-              value={newPatient.visit?.billing?.paymentStatus ?? PaymentStatus.DUE}
+              value={totalNetCollected >= netAmount.toNumber() ? PaymentStatus.PAID : PaymentStatus.DUE}
               onChange={handleChange}
               className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
               required
