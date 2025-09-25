@@ -279,11 +279,37 @@ export const uploadTestReferanceRangeCsv = async (labId: string, file: File): Pr
 }
   
 
-export const getTestReferanceRangeByTestName = async (labId: string, testName: string): Promise<TestReferancePoint> => {
-  // /api/v1/lab/test-reference/18/test?testName=CROSS MATCH WHOLE BLOOD/PACKED
+// export const getTestReferanceRangeByTestName = async (labId: string, testName: string): Promise<TestReferancePoint> => {
+//   // /api/v1/lab/test-reference/18/test?testName=CROSS MATCH WHOLE BLOOD/PACKED
+//   try {
+//     const response = await api.get<{ data: TestReferancePoint; message: string; status: string }>(`lab/test-reference/${labId}/test?testName=${testName}`);
+//     return response.data.data; // Extract the tests array from the response
+//   } catch (error: unknown) {
+//     let errorMessage = 'An error occurred while fetching tests referance range by test name.';
+
+//     if (error instanceof Error && (error as any).response?.data?.message) {
+//       errorMessage = (error as any).response.data.message;
+//     } else if (error instanceof Error) {
+//       errorMessage = error.message;
+//     }
+
+//     throw new Error(errorMessage);
+//   }
+// }
+
+export const getTestReferanceRangeByTestName = async (
+  labId: string,
+  testName: string
+): Promise<TestReferancePoint> => {
   try {
-    const response = await api.get<{ data: TestReferancePoint; message: string; status: string }>(`lab/test-reference/${labId}/test?testName=${testName}`);
-    return response.data.data; // Extract the tests array from the response
+    // Encode testName to handle spaces, & and other special characters
+    const encodedTestName = encodeURIComponent(testName);
+    
+    const response = await api.get<{ data: TestReferancePoint; message: string; status: string }>(
+      `lab/test-reference/${labId}/test?testName=${encodedTestName}`
+    );
+
+    return response.data.data;
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while fetching tests referance range by test name.';
 
@@ -296,6 +322,7 @@ export const getTestReferanceRangeByTestName = async (labId: string, testName: s
     throw new Error(errorMessage);
   }
 }
+
 
 
 // ======================================================== test referance range and test from master table =======================================================
