@@ -38,7 +38,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
   handlePackageSelection,
   removeTest,
   removePackage,
-  handleTestDiscountChange,
+  // handleTestDiscountChange,
 }) => {
   // State management
   const [showTestList, setShowTestList] = useState(true);
@@ -504,8 +504,8 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                         </div>
 
                         {/* Discount Fields and Remove Button */}
-                        {/* <div className="flex items-center gap-2">
-                          <div className="flex items-center">
+                        <div className="flex items-center gap-2">
+                          {/* <div className="flex items-center">
                             <span className="text-xs text-gray-500 mr-1">%:</span>
                             <input
                               type="number"
@@ -534,8 +534,8 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                                 }
                               }}
                             />
-                          </div>
-                          <div className="flex items-center">
+                          </div> */}
+                          {/* <div className="flex items-center">
                             <span className="text-xs text-gray-500 mr-1">₹:</span>
                             <input
                               type="number"
@@ -564,7 +564,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                                 }
                               }}
                             />
-                          </div>
+                          </div> */}
                           <button
                             onClick={() => removeTest(test.id.toString())}
                             className="text-red-500 hover:text-red-700 p-1 focus:outline-none focus:ring-1 focus:ring-red-500 rounded"
@@ -572,7 +572,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                           >
                             <FaTrashAlt className="text-sm" />
                           </button>
-                        </div> */}
+                        </div>
                       </div>
                     </div>
                   </div>
