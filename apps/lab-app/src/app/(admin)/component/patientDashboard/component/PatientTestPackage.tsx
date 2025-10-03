@@ -504,7 +504,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                         </div>
 
                         {/* Discount Fields and Remove Button */}
-                        <div className="flex items-center gap-2">
+                        {/* <div className="flex items-center gap-2">
                           <div className="flex items-center">
                             <span className="text-xs text-gray-500 mr-1">%:</span>
                             <input
@@ -572,7 +572,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                           >
                             <FaTrashAlt className="text-sm" />
                           </button>
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                   </div>
