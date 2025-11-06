@@ -141,40 +141,51 @@ export const TestLists = () => {
   const columns = [
     { 
       header: "Test ID", 
-      accessor: (test: TestList) => test.id,
-      className: "w-24 text-center"
+      accessor: (test: TestList) => (
+        <span className="text-sm font-medium text-gray-900">#{test.id}</span>
+      ),
+      className: "w-20 text-center"
     },
     { 
       header: "Test Name", 
-      accessor: (test: TestList) => test.name,
+      accessor: (test: TestList) => (
+        <span className="text-sm font-medium text-gray-900">{test.name}</span>
+      ),
       className: "min-w-[200px]"
     },
     { 
       header: "Category", 
-      accessor: (test: TestList) => test.category,
-      className: "min-w-[150px]"
+      accessor: (test: TestList) => (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+          {test.category}
+        </span>
+      ),
+      className: "min-w-[120px]"
     },
     { 
       header: "Price", 
       accessor: (test: TestList) => (
-        <span className="font-medium text-green-700">
+        <span className="text-sm font-semibold text-emerald-700">
           ₹{test.price.toFixed(2)}
         </span>
       ),
-      className: "w-32 text-right"
+      className: "w-24 text-right"
     },
     {
       header: "Actions",
       accessor: (test: TestList) => (
-        <div className="flex justify-center gap-4">
-          <MdModeEditOutline
+        <div className="flex justify-center gap-2">
+          <button
             onClick={() => {
               setEditPopup(true);
               setUpdateTest(test);
             }}
-            className="text-updatebutton text-xl cursor-pointer hover:text-updatehover" />
-          <FaTrash 
-            className="text-delete text-xl cursor-pointer hover:deletehover" 
+            className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-md transition-colors"
+            title="Edit test"
+          >
+            <MdModeEditOutline className="h-4 w-4" />
+          </button>
+          <button
             onClick={() => {
               if (currentLab) {
                 deleteTest(test.id.toString(), currentLab.id.toString())
@@ -186,37 +197,41 @@ export const TestLists = () => {
                     toast.error(err.message);
                   });
               }
-            }} 
-          />
+            }}
+            className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+            title="Delete test"
+          >
+            <FaTrash className="h-4 w-4" />
+          </button>
         </div>
       ),
-      className: "w-32 text-center"
+      className: "w-24 text-center"
     },
   ];
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <Loader type="progress" text="Loading tests Lists..." />
-        <p className="mt-4 text-sm text-gray-500"> Please wait while we fetch the test data.</p>
+      <div className="flex flex-col items-center justify-center h-48 bg-gray-50 rounded-lg">
+        <Loader type="progress" text="Loading tests..." />
+        <p className="mt-3 text-sm text-gray-600">Please wait while we fetch the test data.</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full bg-gray-50 p-6 rounded-xl">
+    <div className="w-full bg-gray-50 p-4 rounded-lg">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-800">Test List</h2>
-          <p className="text-gray-500">Browse and manage laboratory tests</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold text-gray-900">Test List</h2>
+          <p className="text-sm text-gray-600">Browse and manage laboratory tests</p>
         </div>
         
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <Button
             text=""
             onClick={() => setModalOpen(true)}
-            className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 transition-colors"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md flex items-center gap-2 transition-colors text-sm font-medium"
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Add Test</span>
@@ -224,63 +239,63 @@ export const TestLists = () => {
           <Button
             text=""
             onClick={handleDownloadExcel}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-md flex items-center gap-2 transition-colors text-sm font-medium"
           >
-            <FaFileExcel />
+            <FaFileExcel className="h-4 w-4" />
             <span className="hidden sm:inline">Excel</span>
           </Button>
           <Button
             text=""
             onClick={handleDownloadCsv}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md flex items-center gap-2 transition-colors text-sm font-medium"
           >
-            <FaDownload />
+            <FaDownload className="h-4 w-4" />
             <span className="hidden sm:inline">CSV</span>
           </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-gray-500 text-sm font-medium">Total Tests</h3>
-          <p className="text-2xl font-bold text-gray-800">{tests.length}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Total Tests</h3>
+          <p className="text-xl font-bold text-gray-900">{tests.length}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-gray-500 text-sm font-medium">Categories</h3>
-          <p className="text-2xl font-bold text-gray-800">{categories.length}</p>
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Categories</h3>
+          <p className="text-xl font-bold text-gray-900">{categories.length}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-gray-500 text-sm font-medium">Showing</h3>
-          <p className="text-2xl font-bold text-gray-800">
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Showing</h3>
+          <p className="text-xl font-bold text-gray-900">
             {filteredTests.length} {searchTerm ? "results" : "tests"}
           </p>
         </div>
       </div>
 
       {/* Filters Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {/* Search with filter */}
           <div className="relative col-span-1 md:col-span-2">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaSearch className="text-gray-400" />
+              <FaSearch className="text-gray-400 h-4 w-4" />
             </div>
             <div className="absolute inset-y-0 right-0 flex items-center">
               <button 
-                className="h-full px-3 flex items-center text-gray-500 hover:text-blue-600"
+                className="h-full px-3 flex items-center text-gray-500 hover:text-indigo-600 transition-colors"
                 onClick={() => setActiveFilter(prev => 
                   prev === 'all' ? 'name' : prev === 'name' ? 'category' : 'all'
                 )}
               >
-                <FaFilter className="mr-1 text-sm" />
-                <span className="text-xs capitalize">{activeFilter}</span>
+                <FaFilter className="mr-1 h-3 w-3" />
+                <span className="text-xs font-medium capitalize">{activeFilter}</span>
               </button>
             </div>
             <input
               type="text"
               placeholder={`Search by ${activeFilter === 'all' ? 'name or category' : activeFilter}...`}
-              className="pl-10 pr-24 py-2.5 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="pl-10 pr-20 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -296,7 +311,7 @@ export const TestLists = () => {
               setCategory(e.target.value);
               setCurrentPage(1);
             }}
-            className="border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
           >
             <option value="">All Categories</option>
             {categories.map((cat: string) => (
@@ -311,7 +326,7 @@ export const TestLists = () => {
               setSortOrder(e.target.value as 'low' | 'high');
               setCurrentPage(1);
             }}
-            className="border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
           >
             <option value="">Sort by Price</option>
             <option value="low">Low to High</option>
@@ -320,12 +335,12 @@ export const TestLists = () => {
         </div>
 
         {(searchTerm || category || sortOrder) && (
-          <div className="mt-3 flex justify-end">
+          <div className="mt-2 flex justify-end">
             <button
               onClick={clearFilters}
-              className="text-sm text-red-500 hover:text-red-700 flex items-center gap-1"
+              className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 font-medium transition-colors"
             >
-              <FaTimes className="text-xs" /> Clear all filters
+              <FaTimes className="h-3 w-3" /> Clear all filters
             </button>
           </div>
         )}
@@ -349,7 +364,7 @@ export const TestLists = () => {
         />
       </Modal>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           {paginatedTests.length > 0 ? (
             <>
               <TableComponent
@@ -357,7 +372,7 @@ export const TestLists = () => {
                 columns={columns}
               />
               
-              <div className="p-4 border-t border-gray-100">
+              <div className="p-3 border-t border-gray-200">
                 <Pagination 
                   currentPage={currentPage} 
                   totalPages={totalPages} 
@@ -366,20 +381,20 @@ export const TestLists = () => {
               </div>
             </>
           ) : (
-            <div className="p-8 text-center">
-              <div className="text-gray-400 mb-4">
-                <FaSearch className="mx-auto text-4xl" />
+            <div className="p-6 text-center">
+              <div className="text-gray-400 mb-3">
+                <FaSearch className="mx-auto text-3xl" />
               </div>
-              <h3 className="text-lg font-medium text-gray-700 mb-1">
+              <h3 className="text-base font-semibold text-gray-800 mb-1">
                 {searchTerm ? "No matching tests found" : "No test data available"}
               </h3>
-              <p className="text-gray-500">
+              <p className="text-sm text-gray-600">
                 {searchTerm ? "Try adjusting your search or filters" : "Please check back later or contact support"}
               </p>
               {searchTerm && (
                 <button
                   onClick={clearFilters}
-                  className="mt-4 text-blue-600 hover:text-blue-800 font-medium"
+                  className="mt-3 text-indigo-600 hover:text-indigo-800 font-medium text-sm transition-colors"
                 >
                   Clear search
                 </button>

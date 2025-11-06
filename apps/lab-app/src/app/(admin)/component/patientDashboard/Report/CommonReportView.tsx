@@ -9,6 +9,7 @@ import { TbInfoCircle, TbAlertTriangle } from "react-icons/tb";
 import { toast } from "react-toastify";
 import { Doctor } from '@/types/doctor/doctor';
 import { doctorGetById } from "../../../../../../services/doctorServices";
+import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
 
 interface Report {
     reportId: number;
@@ -18,6 +19,8 @@ interface Report {
     enteredValue: string;
     unit: string;
     description?: string;
+    reportJson?: string; // detailed report html/json string
+    referenceRanges?: string; // json array string with ranges
 }
 
 interface CommonReportViewProps {
@@ -76,94 +79,99 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
 
         try {
             const printElement = reportRef.current.cloneNode(true) as HTMLDivElement;
+            
+            // Set fixed dimensions for consistent PDF generation
             printElement.style.position = 'absolute';
             printElement.style.left = '-9999px';
+            printElement.style.top = '0';
+            printElement.style.width = '210mm';
+            printElement.style.backgroundColor = 'white';
+            printElement.style.fontSize = '12px';
+            printElement.style.lineHeight = '1.4';
+            printElement.style.padding = '0';
+            printElement.style.margin = '0';
+            printElement.style.fontFamily = 'Arial, sans-serif';
+            printElement.style.color = '#000000';
+            
+            // Ensure all content is visible and properly styled
+            const allElements = printElement.querySelectorAll('*');
+            allElements.forEach((el: any) => {
+                el.style.backgroundColor = el.style.backgroundColor || 'transparent';
+                el.style.color = el.style.color || '#000000';
+                el.style.boxSizing = 'border-box';
+                el.style.fontFamily = 'Arial, sans-serif';
+                el.style.fontSize = el.style.fontSize || '12px';
+                el.style.lineHeight = el.style.lineHeight || '1.4';
+                el.style.textRendering = 'optimizeLegibility';
+                el.style.webkitFontSmoothing = 'antialiased';
+                el.style.mozOsxFontSmoothing = 'grayscale';
+            });
+
+            // Ensure blue divider is visible
+            const blueDivider = printElement.querySelector('.h-1.w-full.bg-blue-600');
+            if (blueDivider) {
+                (blueDivider as HTMLElement).style.backgroundColor = '#2563eb';
+                (blueDivider as HTMLElement).style.height = '4px';
+                (blueDivider as HTMLElement).style.width = '100%';
+                (blueDivider as HTMLElement).style.display = 'block';
+            }
+
+            // Ensure text elements have consistent styling
+            const textElements = printElement.querySelectorAll('h1, h2, h3, p, span, div, td, th');
+            textElements.forEach((el: any) => {
+                el.style.fontFamily = 'Arial, sans-serif';
+                el.style.color = '#000000';
+                el.style.textRendering = 'optimizeLegibility';
+                el.style.webkitFontSmoothing = 'antialiased';
+                el.style.mozOsxFontSmoothing = 'grayscale';
+            });
+            
             document.body.appendChild(printElement);
 
-            // Get all test sections to implement smart page breaks
-            const testSections = printElement.querySelectorAll('[data-test-section]');
-            const headerSection = printElement.querySelector('[data-header-section]');
-            const footerSection = printElement.querySelector('[data-footer-section]');
-
             const pdf = new jsPDF('p', 'mm', 'a4');
-            const pageWidth = A4_WIDTH - 20; // 190mm width
-            const pageHeight = 297 - 20; // A4 height minus margins (277mm)
+            const pageWidth = 190; // A4 width minus margins
+            const pageHeight = 277; // A4 height minus margins
             const margin = 10;
+            const topMargin = 15; // Additional top margin for header
 
-            let currentY = margin;
-            let isFirstPage = true;
-
-            // Add header only to first page
-            if (headerSection && isFirstPage) {
-                const headerCanvas = await html2canvas(headerSection as HTMLElement, {
-                    logging: false,
+            // Generate canvas with consistent settings
+            const canvas = await html2canvas(printElement, {
                     useCORS: true,
-                    allowTaint: true
-                });
-                const headerImgData = headerCanvas.toDataURL('image/png');
-                const headerHeight = (headerCanvas.height * pageWidth) / headerCanvas.width;
-                
-                pdf.addImage(headerImgData, 'PNG', margin, currentY, pageWidth, headerHeight);
-                currentY += headerHeight + 5; // Add some spacing
-            }
+                allowTaint: true,
+                background: '#ffffff',
+                width: 794, // 210mm in pixels at 96 DPI
+                height: printElement.scrollHeight,
+                logging: false
+            });
 
-            // Process each test section
-            for (let i = 0; i < testSections.length; i++) {
-                const testSection = testSections[i] as HTMLElement;
-                const testCanvas = await html2canvas(testSection, {
-                    logging: false,
-                    useCORS: true,
-                    allowTaint: true
-                });
-                
-                const testImgData = testCanvas.toDataURL('image/png');
-                const testHeight = (testCanvas.height * pageWidth) / testCanvas.width;
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = pageWidth;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            
+            let heightLeft = imgHeight;
+            let position = 0;
 
-                // Check if test section fits on current page
-                if (currentY + testHeight > pageHeight) {
-                    // Create new page
+            // Add image to PDF with top margin
+            pdf.addImage(imgData, 'PNG', margin, topMargin, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+
+            // Add additional pages if content is longer than one page
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
                     pdf.addPage();
-                    currentY = margin;
-                    isFirstPage = false;
-                }
-
-                // Add test section to current page
-                pdf.addImage(testImgData, 'PNG', margin, currentY, pageWidth, testHeight);
-                currentY += testHeight + 5; // Add spacing between tests
-            }
-
-            // Add footer to last page
-            if (footerSection) {
-                const footerCanvas = await html2canvas(footerSection as HTMLElement, {
-                    logging: false,
-                    useCORS: true,
-                    allowTaint: true
-                });
-                const footerImgData = footerCanvas.toDataURL('image/png');
-                const footerHeight = (footerCanvas.height * pageWidth) / footerCanvas.width;
-                
-                // Check if footer fits on current page, if not create a new page
-                // Use larger margin to ensure footer text is not cut off
-                if (currentY + footerHeight > pageHeight - 20) { // Leave 20mm margin
-                    pdf.addPage();
-                    currentY = margin;
-                }
-                
-                // Position footer at the current Y position
-                pdf.addImage(footerImgData, 'PNG', margin, currentY, pageWidth, footerHeight);
-                
-                // Add extra space after footer to ensure nothing gets cut
-                currentY += footerHeight + 10;
+                pdf.addImage(imgData, 'PNG', margin, topMargin, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
             }
 
             document.body.removeChild(printElement);
 
+            // Save the PDF
             const pdfBlob = pdf.output('blob');
             const pdfUrl = URL.createObjectURL(pdfBlob);
             window.open(pdfUrl, '_blank');
 
         } catch (error) {
-            // Handle PDF generation error
+            console.error('PDF generation error:', error);
             toast.error("Failed to generate PDF");
         } finally {
             setLoading(false);
@@ -190,6 +198,93 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
     // Determine doctor name to display
     const displayDoctorName = doctorName || doctor?.name || 'N/A';
 
+    // Helpers for rendering detailed report and reference ranges
+    const buildDetailedReportHTML = (reportJson?: string, fallbackTitle?: string) => {
+        if (!reportJson) return '';
+        try {
+            const parsed = JSON.parse(reportJson);
+            if (parsed && parsed.title && Array.isArray(parsed.sections)) {
+                const sectionsHtml = parsed.sections
+                    .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+                    .map((s: any) => {
+                        // Ensure readable spacing before bold labels like "Limitations:" when missing spaces
+                        const cleanedContent = String(s.content || '')
+                          .replace(/([^\s>])<strong>/g, '$1 <strong>')
+                          .replace(/<ul>/g, '<ul class=\\"list-disc pl-5\\" >')
+                          .replace(/<ol>/g, '<ol class=\\"list-decimal pl-5\\" >')
+                          // strip background styles that cause gray fill in print
+                          .replace(/background(?:-color)?:[^;"']*;?/gi, '')
+                          .replace(/style=\\"\\s*\\"/gi, '');
+                        return `
+                        <div class=\"mb-3\">
+                            <h4 class=\"text-sm font-semibold text-gray-800\">${s.title || ''}</h4>
+                            <div>${cleanedContent}</div>
+                        </div>
+                        `;
+                    })
+                    .join('');
+                return `
+                    <div class=\"mb-6\">
+                        <h3 class=\"text-base font-bold text-gray-900\">${parsed.title || fallbackTitle || ''}</h3>
+                        ${parsed.description ? `<p class=\"text-sm text-gray-700 mb-2\">${parsed.description}</p>` : ''}
+                        ${sectionsHtml}
+                    </div>
+                `;
+            }
+            // Fallback to formatter if structure is not as expected
+            return `<div>${formatMedicalReportToHTML(reportJson) || ''}</div>`;
+        } catch {
+            return `<div>${formatMedicalReportToHTML(reportJson) || ''}</div>`;
+        }
+    };
+
+    const renderReferenceRanges = (rangesStr?: string) => {
+        if (!rangesStr) return null;
+        let ranges: any[] = [];
+        try {
+            const parsed = JSON.parse(rangesStr);
+            ranges = Array.isArray(parsed) ? parsed : [];
+        } catch {
+            ranges = [];
+        }
+        if (ranges.length === 0) return null;
+        const formatGender = (g: string) => {
+            const up = (g || '').toUpperCase();
+            if (up === 'M') return 'Male';
+            if (up === 'F') return 'Female';
+            if (up === 'MF') return 'Male/Female';
+            return g;
+        };
+        const formatAge = (r: any) => {
+            const min = `${r.AgeMin} ${r.AgeMinUnit}`;
+            const max = `${r.AgeMax} ${r.AgeMaxUnit}`;
+            return `${min} - ${max}`;
+        };
+        return (
+            <div className="mt-4">
+                <h4 className="text-xs font-bold text-black mb-2">Reference Ranges</h4>
+                <table className="w-full text-xs border border-gray-300">
+                    <thead>
+                        <tr className="bg-white">
+                            <th className="p-2 font-bold border border-gray-300 text-left">GENDER</th>
+                            <th className="p-2 font-bold border border-gray-300 text-left">AGE RANGE</th>
+                            <th className="p-2 font-bold border border-gray-300 text-left">REFERENCE RANGE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {ranges.map((r, i) => (
+                            <tr key={i} className="border-b border-gray-200">
+                                <td className="p-2 border-r border-gray-200">{formatGender(r.Gender)}</td>
+                                <td className="p-2 border-r border-gray-200">{formatAge(r)}</td>
+                                <td className="p-2">{r.ReferenceRange}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
     return (
         <div className="max-w-4xl mx-auto">
             {/* Print Button - conditionally rendered */}
@@ -214,10 +309,14 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
             {/* Report Container */}
             <div
                 ref={reportRef}
-                className="bg-white p-8 border border-gray-200 rounded-lg mb-6 shadow-sm"
+                className="bg-white p-8 mb-6"
                 style={{
                     width: '210mm',
                     minHeight: '297mm',
+                    maxWidth: '210mm',
+                    margin: '0 auto',
+                    boxSizing: 'border-box',
+                    paddingTop: '20px'
                 }}
             >
                 {/* Show message if no reports available */}
@@ -243,91 +342,113 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                 {reports.length > 0 && (
                     <>
                         {/* Header Section - Includes both logo and patient info */}
-                        <div data-header-section className="mb-6">
+                        <div data-header-section className="mb-6 bg-white pt-4">
                             {/* Logo and Report Title */}
-                            <div className="flex justify-between items-start mb-6 border-b pb-4">
+                            <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center">
                                     <div>
                                         <img src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
                                     </div>
                                     <div>
-                                        <h1 className="text-xl font-bold text-gray-800">MEDICAL DIAGNOSTIC REPORT</h1>
-                                        <p className="text-sm text-gray-600">{currentLab?.name || 'DIAGNOSTIC LABORATORY'}</p>
+                                        <h1 className="text-xl font-bold text-black">MEDICAL DIAGNOSTIC REPORT</h1>
+                                        <p className="text-sm text-gray-600">{(patientData as any)?.labName || currentLab?.name || 'DIAGNOSTIC LABORATORY'}</p>
                                     </div>
                                 </div>
-                                <div className="text-right bg-blue-50 p-3 rounded">
-                                    <p className="text-sm font-medium">Report No: <span className="font-bold">{patientData?.visitId || 'N/A'}</span></p>
-                                </div>
+                                <div className="text-right">
+                                    <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs">
+                                        {/* Left Column */}
+                                        <div className="space-y-1">
+                                            <div className="flex items-center">
+                                                <span className="font-medium text-black w-20 text-left">NAME:</span>
+                                                <span className="font-bold text-black ml-2">{patientData?.patientname || 'N/A'}</span>
                             </div>
-
-                            {/* Patient Information */}
-                            <div className="border border-gray-300 p-4">
-                                <div className="grid grid-cols-2 gap-6">
-                                    {/* Left Column - Patient Information */}
-                                    <div className="space-y-2">
                                         <div className="flex items-center">
-                                            <span className="text-xs font-medium text-gray-700 w-24">NAME:</span>
-                                            <span className="text-xs font-bold text-gray-900">{patientData?.patientname || 'N/A'}</span>
+                                                <span className="font-medium text-black w-20 text-left">REFERRED BY:</span>
+                                                <span className="font-bold text-black ml-2">{displayDoctorName}</span>
                                         </div>
                                         <div className="flex items-center">
-                                            <span className="text-xs font-medium text-gray-700 w-24">AGE/SEX:</span>
-                                            <span className="text-xs font-bold text-gray-900">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
+                                                <span className="font-medium text-black w-20 text-left">LAB NO:</span>
+                                                <span className="font-bold text-black ml-2">{currentLab?.id || 'N/A'}</span>
                                         </div>
                                         <div className="flex items-center">
-                                            <span className="text-xs font-medium text-gray-700 w-24">REFERRED BY:</span>
-                                            <span className="text-xs font-bold text-gray-900">{displayDoctorName}</span>
+                                                <span className="font-medium text-black w-20 text-left">OPD/IPD:</span>
+                                                <span className="font-bold text-black ml-2">{patientData?.visitType || 'N/A'}</span>
                                         </div>
                                     </div>
 
-                                    {/* Right Column - Report Information */}
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-end">
-                                            <span className="text-xs font-medium text-gray-700 w-28 text-right">DATE OF REPORT:</span>
-                                            <span className="text-xs font-bold text-gray-900 ml-2">{new Date().toLocaleDateString('en-GB')} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                                        {/* Right Column */}
+                                        <div className="space-y-1">
+                                            <div className="flex items-center">
+                                                <span className="font-medium text-black w-20 text-left">AGE/SEX:</span>
+                                                <span className="font-bold text-black ml-2">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
                                         </div>
-                                        <div className="flex items-center justify-end">
-                                            <span className="text-xs font-medium text-gray-700 w-28 text-right">LAB NO.:</span>
-                                            <span className="text-xs font-bold text-gray-900 ml-2">{currentLab?.id || 'N/A'}</span>
+                                            <div className="flex items-center">
+                                                <span className="font-medium text-black w-20 text-left">DATE OF REPORT:</span>
+                                                <span className="font-bold text-black ml-2">{new Date().toLocaleDateString('en-GB')} at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                                         </div>
-                                        <div className="flex items-center justify-end">
-                                            <span className="text-xs font-medium text-gray-700 w-28 text-right">BILL NO.:</span>
-                                            <span className="text-xs font-bold text-gray-900 ml-2">{patientData?.visitId || 'N/A'}</span>
-                                        </div>
-                                        <div className="flex items-center justify-end">
-                                            <span className="text-xs font-medium text-gray-700 w-28 text-right">OPD/IPD:</span>
-                                            <span className="text-xs font-bold text-gray-900 ml-2">{patientData?.visitType || 'N/A'}</span>
+                                            <div className="flex items-center">
+                                                <span className="font-medium text-black w-20 text-left">BILL NO:</span>
+                                                <span className="font-bold text-black ml-2">{patientData?.visitId || 'N/A'}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                            </div>
+                            {/* Blue separator bar */}
+                            <div className="h-1 w-full bg-blue-600 rounded mb-4" style={{ backgroundColor: '#2563eb', height: '4px', width: '100%' }}></div>
                         </div>
 
                         {/* Test Results Tables - Separate for each test */}
                         <div className="mb-6">
                             {Object.entries(groupedReports).map(([testName, testResults], testIndex) => {
                                 const isCBCTest = testName.toUpperCase().includes('CBC') || testName.toUpperCase().includes('COMPLETE BLOOD COUNT');
+                                const detailedEntry = testResults.find(r => (r.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
                                 
                                 return (
-                                <div key={testIndex} data-test-section className="mb-8">
-                                    {/* Test Name Heading */}
+                                <div key={testIndex} data-test-section data-detailed={!!detailedEntry} className="mb-8">
+                                    {/* Test Name Heading (hidden for detailed reports since title comes from JSON) */}
+                                    {!detailedEntry && (
                                     <div className="mb-2">
                                         <h3 className="text-xs font-bold text-left text-gray-800">{testName.toUpperCase()}</h3>
                                     </div>
+                                    )}
 
-                                        {/* CBC Differential Count Section removed as per requirement */}
+                                        {/* If DETAILED REPORT -> render reportJson content and optional reference ranges, skip table */}
+                                        {detailedEntry && (
+                                            <div className="w-full">
+                                                {/* Detailed Report Section */}
+                                                <div className="mb-4">
+                                                    <h3 className="text-xs font-bold text-black text-center mb-3">DETAILED REPORT</h3>
+                                                    <div className="p-4 bg-white">
+                                                        <div
+                                                            className="prose prose-sm max-w-none prose-headings:text-black prose-p:text-black prose-strong:text-black"
+                                                            style={{ background: '#ffffff' }}
+                                                            dangerouslySetInnerHTML={{ __html: buildDetailedReportHTML(detailedEntry.reportJson, testName) }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Reference Ranges Table */}
+                                                {renderReferenceRanges(detailedEntry.referenceRanges)}
+                                            </div>
+                                        )}
+
+                                        {/* If not detailed report, render the classic table */}
+                                        {!detailedEntry && (
+                                            <>
 
                                                                          {/* Test Results Table */}
-                                     <table className="w-full text-xs border border-gray-300">
+                                     <table className="w-full text-xs border border-blue-200">
                                          <thead>
-                                             <tr className="bg-gray-100">
-                                                 <th className={`p-2 font-bold border border-gray-300 text-xs ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-2/3 text-left' : 'text-left'}`}>TEST PARAMETER</th>
-                                                 <th className={`p-2 font-bold border border-gray-300 text-xs ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-1/3 text-center' : 'text-center'}`}>RESULT</th>
+                                             <tr className="bg-white">
+                                                 <th className={`p-2 font-bold border border-blue-200 text-xs ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-2/3 text-left' : 'text-left'}`}>TEST PARAMETER</th>
+                                                 <th className={`p-2 font-bold border border-blue-200 text-xs ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-1/3 text-center' : 'text-center'}`}>RESULT</th>
                                                 {/* Show DESCRIPTION column for tests with DROPDOWN WITH DESCRIPTION fields */}
                                                 {testResults.some(param => {
                                                     const fieldType = param.referenceDescription?.toUpperCase() || '';
                                                     return fieldType.includes('DROPDOWN WITH DESCRIPTION');
                                                 }) && (
-                                                    <th className="text-center p-2 font-bold border border-gray-300 text-xs">DESCRIPTION</th>
+                                                    <th className="text-center p-2 font-bold border border-blue-200 text-xs">DESCRIPTION</th>
                                                 )}
                                                                                                  {/* Conditionally show REFERENCE RANGE column - hide for radiology tests */}
                                                  {testResults.some(param => {
@@ -336,7 +457,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                                      if (fieldType === 'RADIOLOGY_TEST') return false;
                                                      return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
                                                  }) && (
-                                                     <th className="text-center p-2 font-bold border border-gray-300 text-xs">REFERENCE RANGE</th>
+                                                    <th className="text-center p-2 font-bold border border-blue-200 text-xs">REFERENCE RANGE</th>
                                                  )}
                                             </tr>
                                         </thead>
@@ -490,8 +611,8 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
 
                                                 return (
                                     <>
-                                        <tr key={`row-${idx}`} className="border-b border-gray-300">
-                                                                                         <td className={`p-2 border-r border-gray-300 font-medium text-xs ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-2/3' : ''}`}>
+                                        <tr key={`row-${idx}`} className="border-b border-blue-200">
+                                                                                         <td className={`p-2 border-r border-blue-200 font-medium text-xs ${testResults.some(p => p.referenceDescription?.toUpperCase() === 'RADIOLOGY_TEST') ? 'w-2/3' : ''}`}>
                                                              {hasNoDescription ? (
                                                                  <div className="flex items-center text-yellow-700">
                                                                      <TbAlertTriangle className="mr-1" />
@@ -508,7 +629,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                                 const fieldType = param.referenceDescription?.toUpperCase() || '';
                                                 return fieldType.includes('DROPDOWN WITH DESCRIPTION');
                                             }) && (
-                                                <td className="p-2 text-center text-xs border-l border-gray-300">
+                                                <td className="p-2 text-center text-xs border-l border-blue-200">
                                                     {isDropdownWithDescription ? (param.description || 'N/A') : 'N/A'}
                                                 </td>
                                             )}
@@ -518,11 +639,11 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                                  if (fieldType === 'RADIOLOGY_TEST') return false;
                                                  return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
                                              }) && (
-                                                 <td className="p-2 text-center text-xs border-l border-gray-300">
+                                                <td className="p-2 text-center text-xs border-l border-blue-200">
                                                      <div>
                                                          {param.referenceRange || 'N/A'}
                                                          {param.referenceRange && param.unit && param.unit.trim() !== '' && (
-                                                             <span className="text-gray-600 ml-1">{param.unit}</span>
+                                                            <span className="ml-1">{param.unit}</span>
                                                          )}
                                                      </div>
                                                  </td>
@@ -540,6 +661,8 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                             })}
                                         </tbody>
                                     </table>
+                                            </>
+                                        )}
                                 </div>
                             )})}
                         </div>

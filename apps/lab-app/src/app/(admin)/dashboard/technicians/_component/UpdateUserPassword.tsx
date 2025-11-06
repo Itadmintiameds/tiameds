@@ -128,11 +128,13 @@ const UpdateUserPassword = ({ member, setShowUpdatePassword }: UpdateUserPasswor
     };
 
     return (
-        <div className="max-w-md mx-auto p-6 ">
-            <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">Update Password</h2>
-            <p className="text-sm text-gray-600 mb-4">
-                Update the password for <span className="font-semibold">{member.firstName} {member.lastName}</span>.
-            </p>
+        <div className="max-w-md mx-auto p-4">
+            <div className="text-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">Update Password</h2>
+                <p className="text-sm text-gray-600">
+                    Update the password for <span className="font-medium text-gray-800">{member.firstName} {member.lastName}</span>.
+                </p>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 {/* New Password */}
@@ -147,20 +149,20 @@ const UpdateUserPassword = ({ member, setShowUpdatePassword }: UpdateUserPasswor
                             type={showPassword.new ? "text" : "password"}
                             value={formData.newPassword}
                             onChange={handleChangePassword}
-                            className={`w-full p-2 border ${errors.newPassword ? 'border-red-500' : 'border-gray-300'} rounded-lg pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                            className={`w-full p-2.5 border ${errors.newPassword ? 'border-red-500' : 'border-gray-300'} rounded-md pr-10 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
                             placeholder="Enter new password (min 8 characters)"
                         />
                         <button
                             type="button"
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
                             onClick={() => togglePasswordVisibility('new')}
                             aria-label={showPassword.new ? "Hide password" : "Show password"}
                         >
-                            {showPassword.new ? <FaEyeSlash /> : <FaEye />}
+                            {showPassword.new ? <FaEyeSlash className="h-4 w-4" /> : <FaEye className="h-4 w-4" />}
                         </button>
                     </div>
                     {errors.newPassword && (
-                        <p className="mt-1 text-sm text-red-600">{errors.newPassword}</p>
+                        <p className="mt-1 text-xs text-red-600">{errors.newPassword}</p>
                     )}
                 </div>
 
@@ -176,43 +178,43 @@ const UpdateUserPassword = ({ member, setShowUpdatePassword }: UpdateUserPasswor
                             type={showPassword.confirm ? "text" : "password"}
                             value={formData.confirmPassword}
                             onChange={handleChangePassword}
-                            className={`w-full p-2 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'} rounded-lg pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                            className={`w-full p-2.5 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'} rounded-md pr-10 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
                             placeholder="Confirm new password"
                         />
                         <button
                             type="button"
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
                             onClick={() => togglePasswordVisibility('confirm')}
                             aria-label={showPassword.confirm ? "Hide password" : "Show password"}
                         >
-                            {showPassword.confirm ? <FaEyeSlash /> : <FaEye />}
+                            {showPassword.confirm ? <FaEyeSlash className="h-4 w-4" /> : <FaEye className="h-4 w-4" />}
                         </button>
                     </div>
                     {errors.confirmPassword && (
-                        <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+                        <p className="mt-1 text-xs text-red-600">{errors.confirmPassword}</p>
                     )}
                 </div>
 
-                <div className="pt-4 flex space-x-4">
+                <div className="pt-3 flex gap-3">
                     <Button
                         text="Cancel"
                         onClick={() => setShowUpdatePassword(false)}
                         type="button"
-                        className="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg"
+                        className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md text-sm transition-colors"
                         disabled={loading}
                     />
                     <Button
                         text=""
                         type="submit"
                         onClick={()=>{}}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center justify-center"
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center text-sm transition-colors"
                         disabled={loading}
                     >
                         {loading ? (
                             <Loader />
                         ) : (
                             <>
-                                <FaLock className="mr-2" />
+                                <FaLock className="mr-2 h-4 w-4" />
                                 Update Password
                             </>
                         )}

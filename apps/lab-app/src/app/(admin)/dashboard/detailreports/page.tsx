@@ -217,7 +217,7 @@ import { DateFilterOption, getDateRange, formatDateForAPI } from '@/utils/dateUt
 // Custom date filter options for detail reports (simplified)
 const DETAIL_REPORTS_DATE_FILTER_OPTIONS = [
   { value: 'today', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
+  // { value: 'yesterday', label: 'Yesterday' },
   { value: 'custom', label: 'Select Date' },
 ] as const;
 import { Patient } from '@/types/patient/patient';
@@ -448,7 +448,7 @@ const Page = () => {
   const { currentLab } = useLabs();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('amount-received');
-  
+
   // Separate filter states for each tab
   const [amountReceivedDateFilter, setAmountReceivedDateFilter] = useState<DateFilterOption>('today');
   const [amountReceivedCustomStartDate, setAmountReceivedCustomStartDate] = useState<Date | null>(null);
@@ -460,16 +460,16 @@ const Page = () => {
   const [dayClosingDateFilter, setDayClosingDateFilter] = useState<DateFilterOption>('today');
   const [dayClosingCustomStartDate, setDayClosingCustomStartDate] = useState<Date | null>(null);
   const [dayClosingCustomEndDate, setDayClosingCustomEndDate] = useState<Date | null>(null);
-  
+
   const [receiptsDateFilter, setReceiptsDateFilter] = useState<DateFilterOption>('today');
   const [receiptsCustomStartDate, setReceiptsCustomStartDate] = useState<Date | null>(null);
   const [receiptsCustomEndDate, setReceiptsCustomEndDate] = useState<Date | null>(null);
-  
+
   // Legacy states for backward compatibility (will be removed)
   const [amountReceivedData, setAmountReceivedData] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Separate state for Bill Report tab
   const [billReportData, setBillReportData] = useState<Patient[]>([]);
   const [isBillReportLoading, setIsBillReportLoading] = useState(false);
@@ -579,11 +579,11 @@ const Page = () => {
   const handleDownloadCSV = () => {
     if (activeTab === 'amount-received') {
       const filteredData = amountReceivedData;
-      
+
       const convertedData = filteredData.map(convertPatientToApiResponse);
       const apiResponseData = convertedData.map(convertPatientDataToApiResponse);
       const transformedData = transformApiDataToTableFormat(apiResponseData);
-      
+
       if (transformedData.length === 0) {
         toast.warning('No data available to download');
         return;
@@ -592,14 +592,14 @@ const Page = () => {
       const csvData = filteredData.map(convertPatientToCsvData);
       const csvContent = convertToCSV(transformedData, csvData as Parameters<typeof convertToCSV>[1]);
       const filename = generateCSVFilename('amount-received');
-      
+
       downloadCSV(csvContent, filename);
       toast.success('CSV file downloaded successfully');
     } else if (activeTab === 'receipts') {
       // Generate CSV content for receipts
       const csvContent = generateReceiptsCSVContent();
       const filename = `receipts-summary-${new Date().toISOString().split('T')[0]}.csv`;
-      
+
       downloadCSV(csvContent, filename);
       toast.success('CSV file downloaded successfully');
     } else {
@@ -612,7 +612,7 @@ const Page = () => {
   const generateReceiptsPrintContent = () => {
     const currentDate = new Date().toLocaleDateString('en-GB');
     const currentLabName = currentLab?.name || "Lab Name";
-    
+
     return `
       <!DOCTYPE html>
       <html>
@@ -705,13 +705,13 @@ const Page = () => {
       'Value',
       'Mode of Payment',
       'Cash',
-      'Card', 
+      'Card',
       'Cheque',
       'IMPS',
       'Wallet',
       'Total'
     ];
-    
+
     const rows = [
       ['Total Sales', '450.0', '', '', '', '', '', '', ''],
       ['Total Discount', '0.0', '', '', '', '', '', '', ''],
@@ -738,11 +738,11 @@ const Page = () => {
       ['', '', 'Net Amount', '550.0', '0.0', '0.0', '0.0', '0.0', '550.0'],
       ['', '', 'Outsource Test Amount', '150.0', '0.0', '0.0', '0.0', '0.0', '150.0']
     ];
-    
+
     const csvContent = [headers, ...rows]
       .map(row => row.map(cell => `"${cell}"`).join(','))
       .join('\n');
-    
+
     return csvContent;
   };
 
@@ -931,11 +931,11 @@ const Page = () => {
     if (activeTab === 'amount-received') {
       // Filter data based on visit type if selected
       const filteredData = amountReceivedData;
-      
+
       const convertedData = filteredData.map(convertPatientToApiResponse);
       const apiResponseData = convertedData.map(convertPatientDataToApiResponse);
       const transformedData = transformApiDataToTableFormat(apiResponseData);
-      
+
       if (transformedData.length === 0) {
         toast.warning('No data available to print');
         return;
@@ -950,39 +950,39 @@ const Page = () => {
 
       // Generate print content
       const printContent = generatePrintContent(transformedData, filteredData);
-      
+
       printWindow.document.write(printContent);
       printWindow.document.close();
-      
+
       // Wait for content to load then print
       printWindow.onload = () => {
         printWindow.focus();
         printWindow.print();
         printWindow.close();
       };
-      
+
       toast.success('Print dialog opened');
     } else if (activeTab === 'receipts') {
       // Generate print content for receipts
       const printContent = generateReceiptsPrintContent();
-      
+
       // Create a new window for printing
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
         toast.error('Please allow popups to print');
         return;
       }
-      
+
       printWindow.document.write(printContent);
       printWindow.document.close();
-      
+
       // Wait for content to load then print
       printWindow.onload = () => {
         printWindow.focus();
         printWindow.print();
         printWindow.close();
       };
-      
+
       toast.success('Print dialog opened');
     } else {
       toast.info('Print is only available for "Amount Received by Me" and "Receipts" tabs');
@@ -992,12 +992,12 @@ const Page = () => {
   // Fetch amount received data
   const fetchAmountReceivedData = async () => {
     if (!currentLab?.id) return;
-    
+
     try {
       setIsLoading(true);
       setError(null);
       const { startDate, endDate } = getDateRange(amountReceivedDateFilter, amountReceivedCustomStartDate, amountReceivedCustomEndDate);
-      
+
       if (!startDate || !endDate) {
         toast.warning('Please select valid date range');
         return;
@@ -1014,7 +1014,7 @@ const Page = () => {
       );
 
 
-      
+
       // The new API returns data directly as an array, not wrapped in a data property
       const data = Array.isArray(response) ? response : response?.data || [];
       setAmountReceivedData(data);
@@ -1032,12 +1032,12 @@ const Page = () => {
   // Fetch bill report data
   const fetchBillReportData = async () => {
     if (!currentLab?.id) return;
-    
+
     try {
       setIsBillReportLoading(true);
       setBillReportError(null);
       const { startDate, endDate } = getDateRange(billReportDateFilter, billReportCustomStartDate, billReportCustomEndDate);
-      
+
       if (!startDate || !endDate) {
         toast.warning('Please select valid date range');
         return;
@@ -1057,7 +1057,7 @@ const Page = () => {
       const data = Array.isArray(response) ? response : response?.data || [];
       setBillReportData(data);
     } catch (error: unknown) {
-    
+
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch data';
       setBillReportError(errorMessage);
       toast.error(errorMessage);
@@ -1102,7 +1102,7 @@ const Page = () => {
   const renderTabContent = () => {
     // Get the current selected date for the active tab
     const { startDate, endDate } = getDateRange(getCurrentDateFilter(), getCurrentCustomStartDate(), getCurrentCustomEndDate());
-    
+
     // Only set selectedDate for single date selections, not ranges
     const isDateRange = startDate && endDate && startDate !== endDate;
     const selectedDate = !isDateRange && startDate ? formatDateForAPI(startDate) : undefined;
@@ -1119,7 +1119,7 @@ const Page = () => {
             </div>
           );
         }
-        
+
         if (error) {
           return (
             <div className="flex items-center justify-center h-64">
@@ -1130,7 +1130,7 @@ const Page = () => {
             </div>
           );
         }
-        
+
         if (!amountReceivedData || amountReceivedData.length === 0) {
           return (
             <div className="flex items-center justify-center h-64">
@@ -1141,18 +1141,18 @@ const Page = () => {
             </div>
           );
         }
-        
+
         // Process data for amount-received tab
         const filteredData = amountReceivedData;
-        
+
         const convertedData = filteredData.map(convertPatientToApiResponse);
         const apiResponseData = convertedData.map(convertPatientDataToApiResponse);
-      const transformedData = transformApiDataToTableFormat(apiResponseData);
-        
+        const transformedData = transformApiDataToTableFormat(apiResponseData);
+
         // Filter transformed data based on transaction payment dates
         const dateFilteredData = transformedData.filter(item => {
           if (!item.receiptDate) return false;
-          
+
           // Parse the date string (format: "2025-09-09")
           const itemDateStr = item.receiptDate;
           const today = new Date();
@@ -1160,7 +1160,7 @@ const Page = () => {
           const yesterday = new Date(today);
           yesterday.setDate(yesterday.getDate() - 1);
           const yesterdayStr = yesterday.toISOString().split('T')[0];
-          
+
           switch (getCurrentDateFilter()) {
             case 'today':
               return itemDateStr === todayStr;
@@ -1186,16 +1186,16 @@ const Page = () => {
               return true;
           }
         });
-        
-        return <AmountReceivedTable 
-          data={dateFilteredData} 
-          rawApiData={apiResponseData} 
+
+        return <AmountReceivedTable
+          data={dateFilteredData}
+          rawApiData={apiResponseData}
           showTitle={false}
           selectedDate={selectedDate}
           startDate={startDateStr}
           endDate={endDateStr}
         />;
-      
+
       case 'bill-report':
         if (isBillReportLoading) {
           return (
@@ -1204,7 +1204,7 @@ const Page = () => {
             </div>
           );
         }
-        
+
         if (billReportError) {
           return (
             <div className="flex items-center justify-center h-64">
@@ -1215,7 +1215,7 @@ const Page = () => {
             </div>
           );
         }
-        
+
         if (!billReportData || billReportData.length === 0) {
           return (
             <div className="flex items-center justify-center h-64">
@@ -1226,24 +1226,24 @@ const Page = () => {
             </div>
           );
         }
-        
+
         // Process data for bill-report tab
         const billFilteredData = billReportData;
-        
+
         // const billConvertedData = billFilteredData.map(convertPatientToApiResponse);
         // const billApiResponseData = billConvertedData.map(convertPatientDataToApiResponse);
         // const billTransformedData = transformApiDataToTableFormat(billApiResponseData);
-        
+
         const billConvertedApiData = billFilteredData.map(convertPatientToApiResponse);
-        
-        return <BillReport 
-          data={billConvertedApiData as PatientData[]} 
-          rawApiData={billConvertedApiData as PatientData[]} 
-          startDate={startDateStr} 
-          endDate={endDateStr} 
-          selectedDate={selectedDate} 
+
+        return <BillReport
+          data={billConvertedApiData as PatientData[]}
+          rawApiData={billConvertedApiData as PatientData[]}
+          startDate={startDateStr}
+          endDate={endDateStr}
+          selectedDate={selectedDate}
         />;
-      
+
       case 'day-closing':
         return (
           <DayClosingSummary
@@ -1253,7 +1253,7 @@ const Page = () => {
             endDate={endDateStr}
           />
         );
-      
+
       case 'receipts':
         return (
           <ReceiptsSummary
@@ -1261,55 +1261,69 @@ const Page = () => {
             endDate={endDateStr}
           />
         );
-      
+
       default:
         return null;
     }
   };
 
   return (
-    <div className="max-w-full mx-auto px-6 py-10">
-      {/* Custom Header with Tabs and Back Button */}
-      <div className="flex items-center justify-between mb-4">
-        {/* Tabs */}
-        <div className="flex space-x-6">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              className={`flex items-center px-4 py-2 rounded-lg text-xs transition-all duration-300 focus:outline-none ${activeTab === tab.id
-                ? 'bg-primary text-purple-700 scale-105 hover:bg-primarylight'
-                : 'bg-gray-200 text-gray-500'
-                }`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <span className="mr-2">{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-        
-        {/* Back Button */}
-        <button
-          onClick={() => router.push('/dashboard?tab=dashboard')}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-purple-700 font-semibold rounded-lg transition-all duration-300 hover:bg-primarylight hover:scale-105 focus:outline-none shadow-md hover:shadow-lg"
-        >
-          <FaArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Back to Analytics</span>
-        </button>
-      </div>
-
-      {/* Tab Content */}
-      <div className="w-full">
-          {/* Filter and Action Buttons Section */}
-          <div className="mb-4 flex justify-between items-center">
-            {/* Left side - Date Filter */}
+    //  <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="">
+      <div className="w-full max-w-9xl mx-auto p-4 sm:p-6">
+        {/* Compact Unified Header */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-4">
+          {/* Top Row - Title and Back Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
             <div className="flex items-center gap-3">
-              {/* Date Range Filter */}
-              <div className="min-w-[150px]">
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <FaFileInvoice className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Detail Reports</h1>
+                <p className="text-xs sm:text-sm text-gray-600">Comprehensive financial and transaction reports</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => router.push('/dashboard?tab=dashboard')}
+              className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 text-sm"
+            >
+              <FaArrowLeft className="w-4 h-4" />
+              <span className="font-medium hidden sm:inline">Back to Analytics</span>
+              <span className="font-medium sm:hidden">Back</span>
+            </button>
+          </div>
+
+          {/* Middle Row - Tabs */}
+          <div className="mb-3">
+            <div className="flex flex-wrap gap-2">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${activeTab === tab.id
+                    ? 'bg-indigo-600 text-white shadow-md transform scale-105'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+                    }`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  <span className="w-3 h-3 sm:w-4 sm:h-4">{tab.icon}</span>
+                  <span className="whitespace-nowrap">{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom Row - Filters and Actions */}
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 pt-3 border-t border-gray-200">
+            {/* Left side - Date Filter */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
+              <div className="min-w-[140px] sm:min-w-[180px]">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Date Range</label>
                 <select
                   value={getCurrentDateFilter()}
                   onChange={(e) => setCurrentDateFilter(e.target.value as DateFilterOption)}
-                  className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white shadow-sm"
                 >
                   {DETAIL_REPORTS_DATE_FILTER_OPTIONS.map(option => (
                     <option key={option.value} value={option.value}>
@@ -1321,68 +1335,80 @@ const Page = () => {
 
               {/* Custom Date Selection */}
               {getCurrentDateFilter() === 'custom' && (
-                <div className="min-w-[150px]">
+                <div className="min-w-[140px] sm:min-w-[180px]">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Select Date</label>
                   <input
                     type="date"
                     value={getCurrentCustomStartDate() ? getCurrentCustomStartDate()!.toISOString().split('T')[0] : ''}
-                    max={new Date().toISOString().split('T')[0]} // Prevent future date selection
+                    max={new Date().toISOString().split('T')[0]}
                     onChange={(e) => {
                       const selectedDate = e.target.value ? new Date(e.target.value) : null;
                       setCurrentCustomStartDate(selectedDate);
-                      setCurrentCustomEndDate(selectedDate); // Set both start and end to same date
+                      setCurrentCustomEndDate(selectedDate);
                     }}
-                    className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white shadow-sm"
                     placeholder="Select Date"
                   />
                 </div>
               )}
 
-
               {/* Clear Filter */}
               {getCurrentDateFilter() !== 'today' && (
-                <button
-                  onClick={() => {
-                    setCurrentDateFilter('today');
-                    setCurrentCustomStartDate(null);
-                    setCurrentCustomEndDate(null);
-                  }}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:text-red-800 transition-colors duration-200 bg-white border border-gray-300 rounded-md shadow-sm"
-                  title="Clear all filters"
-                >
-                  <span>Clear</span>
-                </button>
+                <div className="flex flex-col justify-end">
+                  <div className="h-5"></div> {/* Spacer to align with input fields */}
+                  <button
+                    onClick={() => {
+                      setCurrentDateFilter('today');
+                      setCurrentCustomStartDate(null);
+                      setCurrentCustomEndDate(null);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium text-red-600 hover:text-red-800 transition-colors bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 h-[38px]"
+                    title="Clear all filters"
+                  >
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span className="hidden sm:inline">Clear</span>
+                  </button>
+                </div>
               )}
             </div>
 
             {/* Right side - Action Buttons */}
             {activeTab !== 'bill-report' && (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handlePrint}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                Print
-              </button>
-              
-              
-              <button
-                onClick={handleDownloadCSV}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Download CSV
-              </button>
-            </div>
+              <div className="flex flex-col justify-end">
+                <div className="h-5"></div> {/* Spacer to align with input fields */}
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <button
+                    onClick={handlePrint}
+                    className="flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 h-[38px]"
+                  >
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    <span className="hidden sm:inline">Print</span>
+                  </button>
+
+                  <button
+                    onClick={handleDownloadCSV}
+                    className="flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 shadow-sm h-[38px]"
+                  >
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="hidden sm:inline">Download CSV</span>
+                    <span className="sm:hidden">CSV</span>
+                  </button>
+                </div>
+              </div>
             )}
           </div>
+        </div>
 
-          {/* Table Content */}
+        {/* Tab Content */}
+        <div className="w-full">
           {renderTabContent()}
+        </div>
       </div>
     </div>
   );

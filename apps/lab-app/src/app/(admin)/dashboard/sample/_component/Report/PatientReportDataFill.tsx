@@ -11,6 +11,9 @@ import { TbInfoCircle, TbReportMedical, TbArrowDownCircle, TbArrowUpCircle, TbSq
 import { toast } from 'react-toastify';
 import PatientBasicInfo from './PatientBasicInfo';
 import TestComponentFactory from './TestSpecificComponents/TestComponentFactory';
+import DetailedReportEditor from './DetailedReportEditor';
+import RichTextEditor from '@/components/ui/rich-text-editor';
+import { formatMedicalReportToHTML } from '@/utils/reportFormatter';
 
 export interface Patient {
   visitId: number;
@@ -37,6 +40,8 @@ interface ReportData {
   enteredValue: string;
   unit: string;
   description: string;
+  referenceRanges?: string; // raw reference ranges JSON/string from API point
+  reportJson?: string; // detailed report JSON (if any) for this test/point
 }
 
 interface ReportPayload {
@@ -278,6 +283,12 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
       const referenceData = referencePoints[test.name] || [];
 
       referenceData.forEach((point, index) => {
+        // Skip validation for detailed report fields which don't require user input
+        const descriptionUpper = (point.testDescription || '').toUpperCase();
+        if (descriptionUpper === 'DETAILED REPORT') {
+          return;
+        }
+
         if (!testInputs[index] || testInputs[index].trim() === '') {
           errors[`${test.name}-${index}`] = true;
           isValid = false;
@@ -374,7 +385,14 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
             description = testInputs[index] || "N/A";  // Save the actual description text here
             finalValue = testInputs[index] || "N/A";  // Also save it in enteredValue for consistency
             referenceRange = "N/A";
-          } else {
+          }
+           else if (point.testDescription === "DETAILED REPORT") {
+            unit = "N/A";
+            description = "Imaging test - Results provided separately";
+            finalValue = "Hard copy will be provided";
+            referenceRange = "N/A";
+          } 
+          else {
             unit = point.units || "N/A";
             description = "N/A";
             finalValue = testInputs[index] || "N/A";
@@ -391,7 +409,9 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
             enteredValue: finalValue,
             referenceAgeRange: `${point.ageMin ?? "N/A"} ${point.minAgeUnit ?? "YEARS"} - ${point.ageMax ?? "N/A"} ${point.maxAgeUnit ?? "YEARS"}`,
             unit: unit,
-            description: description
+            description: description,
+            referenceRanges: point.referenceRanges || undefined,
+            reportJson: point.reportJson || undefined
           });
         }
       });
@@ -435,6 +455,132 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Build JSON preview including detailed report JSON (if present)
+  const buildJsonPreview = () => {
+    const detailedReports = allTests
+      .map((test) => {
+        const detailedPoint = (referencePoints[test.name] || []).find(p => (p.testDescription || '').toUpperCase() === 'DETAILED REPORT');
+        if (!detailedPoint || !detailedPoint.reportJson) return null;
+        let parsed: unknown = detailedPoint.reportJson;
+        try {
+          parsed = JSON.parse(detailedPoint.reportJson);
+        } catch (_) {
+          // keep as raw string if not valid JSON
+        }
+        return {
+          testName: test.name,
+          report: parsed
+        };
+      })
+      .filter(Boolean);
+
+    const previewObject = {
+      testData: reportPreview.testData,
+      testResult: reportPreview.testResult,
+      detailedReports
+    };
+
+    return JSON.stringify(previewObject, null, 2);
+  };
+
+  // Build human-readable HTML preview combining detailed reports and entered values
+  const buildReadablePreviewHTML = () => {
+    let htmlParts: string[] = [];
+
+    // Detailed Reports section (if any)
+    const detailedReports = allTests
+      .map((test) => {
+        const detailedPoint = (referencePoints[test.name] || []).find(p => (p.testDescription || '').toUpperCase() === 'DETAILED REPORT');
+        if (!detailedPoint || !detailedPoint.reportJson) return null;
+
+        try {
+          const parsed = JSON.parse(detailedPoint.reportJson);
+          if (parsed && parsed.title && Array.isArray(parsed.sections)) {
+            const sectionsHtml = parsed.sections
+              .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+              .map((s: any) => `
+                <div class="mb-3">
+                  <h4 class="text-sm font-semibold text-gray-800">${s.title || ''}</h4>
+                  <div>${s.content || ''}</div>
+                </div>
+              `)
+              .join('');
+            return `
+              <div class="mb-6">
+                <h3 class="text-base font-bold text-gray-900">${parsed.title || test.name}</h3>
+                ${parsed.description ? `<p class="text-sm text-gray-700 mb-2">${parsed.description}</p>` : ''}
+                ${sectionsHtml}
+              </div>
+            `;
+          }
+
+          // Fallback: format raw content to HTML
+          const formatted = formatMedicalReportToHTML(detailedPoint.reportJson) || '';
+          return `
+            <div class="mb-6">
+              <h3 class="text-base font-bold text-gray-900">${test.name}</h3>
+              <div>${formatted}</div>
+            </div>
+          `;
+        } catch (_) {
+          const formatted = formatMedicalReportToHTML(detailedPoint.reportJson) || '';
+          return `
+            <div class="mb-6">
+              <h3 class="text-base font-bold text-gray-900">${test.name}</h3>
+              <div>${formatted}</div>
+            </div>
+          `;
+        }
+      })
+      .filter(Boolean) as string[];
+
+    if (detailedReports.length > 0) {
+      htmlParts.push(`<div class="mb-4"><h2 class="text-sm font-bold text-gray-900">Detailed Reports</h2></div>`);
+      htmlParts = htmlParts.concat(detailedReports);
+    }
+
+    // Entered Results section (non-detailed)
+    if (reportPreview.testData.length > 0) {
+      const items = reportPreview.testData
+        .filter(item => (item.referenceDescription || '').toUpperCase() !== 'RADIOLOGY_TEST')
+        .map(item => {
+          const label = (item.referenceDescription || 'Test Parameter');
+          const value = (() => {
+            const t = (item.referenceDescription || '').toUpperCase();
+            if (t === 'DESCRIPTION') return item.description || 'N/A';
+            if (t.includes('DROPDOWN')) return item.enteredValue || 'N/A';
+            return `${item.enteredValue} ${item.unit}`.trim();
+          })();
+          const ref = (() => {
+            const t = (item.referenceDescription || '').toUpperCase();
+            if (t.includes('DROPDOWN') || t === 'DESCRIPTION') return '';
+            return `${item.referenceRange || 'N/A'} ${item.unit || ''}`.trim();
+          })();
+          return `<li class="mb-1 text-sm text-gray-700">
+            <span class="font-medium text-gray-900">${item.testName.toUpperCase()}</span> - ${label}: 
+            <span class="text-gray-800">${value}</span>
+            ${ref ? `<span class="text-gray-500"> (Ref: ${ref})</span>` : ''}
+          </li>`;
+        })
+        .join('');
+
+      if (items) {
+        htmlParts.push(`
+          <div class="mt-4">
+            <h2 class="text-sm font-bold text-gray-900 mb-2">Entered Results</h2>
+            <ul class="list-disc pl-5">${items}</ul>
+          </div>
+        `);
+      }
+    }
+
+    if (htmlParts.length === 0) {
+      htmlParts.push('<p class="text-sm text-gray-600">No data available to preview.</p>');
+    }
+
+    return htmlParts.join('\n');
   };
 
   if (loading) {
@@ -491,18 +637,51 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
       </div>
 
       <div className="space-y-5 mt-6">
-        {allTests.map((test) => (
-          <TestComponentFactory
-            key={test.id}
-            test={test}
-            referencePoints={referencePoints[test.name] || []}
-            inputValues={inputValues}
-            onInputChange={handleInputChange}
-            getValueStatus={getValueStatus}
-            getStatusColor={getStatusColor}
-            getStatusIcon={getStatusIcon}
-          />
-        ))}
+        {allTests.map((test) => {
+          // Check if any reference point has DETAILED REPORT description
+          const hasDetailedReport = referencePoints[test.name]?.some(point => point.testDescription === "DETAILED REPORT");
+          
+          if (hasDetailedReport) {
+            // Find the reference point with DETAILED REPORT
+            const detailedReportPoint = referencePoints[test.name]?.find(point => point.testDescription === "DETAILED REPORT");
+            
+            if (detailedReportPoint) {
+              return (
+                <DetailedReportEditor
+                  key={test.id}
+                  point={detailedReportPoint}
+                  onReportJsonChange={(reportJson) => {
+                    // Update the reference point with new reportJson
+                    const updatedPoints = referencePoints[test.name]?.map(point => 
+                      point.id === detailedReportPoint.id 
+                        ? { ...point, reportJson }
+                        : point
+                    ) || [];
+                    
+                    setReferencePoints(prev => ({
+                      ...prev,
+                      [test.name]: updatedPoints
+                    }));
+                  }}
+                />
+              );
+            }
+          }
+          
+          // Default rendering for other test types
+          return (
+            <TestComponentFactory
+              key={test.id}
+              test={test}
+              referencePoints={referencePoints[test.name] || []}
+              inputValues={inputValues}
+              onInputChange={handleInputChange}
+              getValueStatus={getValueStatus}
+              getStatusColor={getStatusColor}
+              getStatusIcon={getStatusIcon}
+            />
+          );
+        })}
       </div>
 
       {/* Generate Report Button */}
@@ -582,148 +761,17 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
                 </div>
               )}
 
-              {reportPreview.testData.length > 0 ? (
                 <div className="mb-6">
                   <h4 className="font-medium mb-2">Report Preview:</h4>
-
-                  {/* Group tests by test name */}
-                  {(() => {
-                    const groupedByTest = reportPreview.testData.reduce((acc, item) => {
-                      if (!acc[item.testName]) {
-                        acc[item.testName] = [];
-                      }
-                      acc[item.testName].push(item);
-                      return acc;
-                    }, {} as Record<string, typeof reportPreview.testData>);
-
-                    return Object.entries(groupedByTest).map(([testName, testItems], testIndex) => (
-                      <div key={testIndex} className="mb-6">
-                        {/* Test Name Heading */}
-                        <div className="mb-2">
-                          <h5 className="text-sm font-bold text-left text-gray-800">{testName.toUpperCase()}</h5>
-                        </div>
-
-                        <div className="border rounded-lg overflow-hidden">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TEST PARAMETER</th>
-                                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">RESULT</th>
-                                {/* Show DESCRIPTION column for tests with DROPDOWN WITH DESCRIPTION fields */}
-                                {testItems.some(item => {
-                                  const fieldType = item.referenceDescription?.toUpperCase() || '';
-                                  return fieldType.includes('DROPDOWN WITH DESCRIPTION');
-                                }) && (
-                                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">DESCRIPTION</th>
-                                  )}
-                                {/* Conditionally show REFERENCE RANGE column - hide for radiology tests */}
-                                {testItems.some(item => {
-                                  const fieldType = item.referenceDescription?.toUpperCase() || '';
-                                  // Don't show REFERENCE RANGE for radiology tests
-                                  if (fieldType === 'RADIOLOGY_TEST') return false;
-                                  return !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
-                                }) && (
-                                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">REFERENCE RANGE</th>
-                                  )}
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {testItems.map((item, idx) => {
-                                const fieldType = item.referenceDescription?.toUpperCase() || '';
-                                const isDropdownWithDescription = fieldType.includes('DROPDOWN WITH DESCRIPTION');
-                                const hasReferenceRange = !fieldType.includes('DROPDOWN') && !fieldType.includes('DESCRIPTION');
-
-                                return (
-                                  <tr key={idx} className={!item.referenceDescription || item.referenceDescription === "No reference description available" ? "bg-yellow-50" : ""}>
-                                    <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                                      {(() => {
-                                        // For radiology tests, show the test name itself
-                                        if (fieldType === 'RADIOLOGY_TEST') {
-                                          return item.testName;
-                                        }
-
-                                        // For DESCRIPTION fields, show "Description"
-                                        if (fieldType === 'DESCRIPTION') {
-                                          return 'Description';
-                                        }
-
-                                        // For DROPDOWN fields, show meaningful test parameter names
-                                        if (fieldType.includes('DROPDOWN')) {
-                                          if (fieldType.includes('DROPDOWN WITH DESCRIPTION')) {
-                                            // Remove "DROPDOWN WITH DESCRIPTION-" prefix
-                                            const prefix = 'DROPDOWN WITH DESCRIPTION-';
-                                            if (fieldType.startsWith(prefix)) {
-                                              return fieldType.substring(prefix.length).replace(/-/g, ' ');
-                                            }
-                                          } else if (fieldType.startsWith('DROPDOWN-')) {
-                                            // Remove "DROPDOWN-" prefix to get actual test name
-                                            const prefix = 'DROPDOWN-';
-                                            return fieldType.substring(prefix.length).replace(/-/g, ' ');
-                                          }
-                                          return 'Test Parameter';
-                                        }
-
-                                        // For other fields, show as is
-                                        return item.referenceDescription || 'Test Parameter';
-                                      })()}
-                                    </td>
-                                    <td className="px-4 py-2 text-center text-sm text-gray-500">
-                                      {(() => {
-                                        // For radiology tests, show clean result
-                                        if (fieldType === 'RADIOLOGY_TEST') {
-                                          return 'Hard copy will be provided';
-                                        }
-
-                                        // For DESCRIPTION fields, show the description text
-                                        if (fieldType === 'DESCRIPTION') {
-                                          return item.description || 'N/A';
-                                        }
-
-                                        // For DROPDOWN fields, show only the entered value (no unit)
-                                        if (fieldType.includes('DROPDOWN')) {
-                                          return item.enteredValue || 'N/A';
-                                        }
-
-                                        // For other fields (numeric), show value with unit
-                                        return `${item.enteredValue} ${item.unit}`;
-                                      })()}
-                                    </td>
-                                    {/* Show DESCRIPTION column for DROPDOWN WITH DESCRIPTION fields */}
-                                    {isDropdownWithDescription && (
-                                      <td className="px-4 py-2 text-center text-sm text-gray-500">
-                                        {item.description !== "N/A" ? item.description : "-"}
-                                      </td>
-                                    )}
-                                    {/* Show REFERENCE RANGE column for numeric fields - hide for radiology tests */}
-                                    {hasReferenceRange && fieldType !== 'RADIOLOGY_TEST' && (
-                                      <td className="px-4 py-2 text-right text-sm text-gray-500">
-                                        {item?.referenceRange || 'N/A'} {item?.unit}
-                                      </td>
-                                    )}
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              ) : (
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center">
-                    <TbInfoCircle className="text-blue-500 mr-3" size={24} />
-                    <div>
-                      <h4 className="font-medium text-blue-800">No test values entered</h4>
-                      <p className="text-sm text-blue-700 mt-1">
-                        This report will be marked as completed without any test data.
-                        The results might be provided separately as hard copies at the reception.
-                      </p>
-                    </div>
+                <div className="border rounded-lg overflow-hidden bg-white">
+                  <div className="p-4">
+                    <div
+                      className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
+                      dangerouslySetInnerHTML={{ __html: buildReadablePreviewHTML() }}
+                    />
                   </div>
                 </div>
-              )}
+              </div>
 
               <div className="flex justify-end space-x-3">
                 <button

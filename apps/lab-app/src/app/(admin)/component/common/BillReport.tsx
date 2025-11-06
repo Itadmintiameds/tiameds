@@ -583,99 +583,176 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
   const doctorsCount = billData.doctors.reduce((sum, doctor) => sum + doctor.count, 0);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-gray-900">Bill Summary</h3>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200 shadow-sm">
-            <div className="text-sm text-blue-600 font-medium">Total</div>
-            <div className="text-2xl font-bold text-blue-900">₹{billData.total.toFixed(1)}</div>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {/* Modern Header */}
+      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-6 border-b border-gray-200">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-indigo-100 rounded-lg">
+            <FaFileInvoice className="w-6 h-6 text-indigo-600" />
           </div>
-          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200 shadow-sm">
-            <div className="text-sm text-yellow-600 font-medium">Total Discount</div>
-            <div className="text-2xl font-bold text-yellow-900">₹{billData.totalDiscount.toFixed(1)}</div>
-          </div>
-          <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200 shadow-sm">
-            <div className="text-sm text-green-600 font-medium">Net Amount</div>
-            <div className="text-2xl font-bold text-green-900">₹{billData.netAmount.toFixed(1)}</div>
-          </div>
-          <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200 shadow-sm">
-            <div className="text-sm text-red-600 font-medium">Refund Amount</div>
-            <div className="text-2xl font-bold text-red-900">₹{billData.refundAmount.toFixed(1)}</div>
-          </div>
-          <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200 shadow-sm">
-            <div className="text-sm text-gray-600 font-medium">Total Write off</div>
-            <div className="text-2xl font-bold text-gray-900">₹{billData.totalWriteOff.toFixed(1)}</div>
+          <div>
+            <h3 className="text-2xl font-bold text-gray-900">Bill Summary</h3>
+            <p className="text-sm text-gray-600">Comprehensive billing analysis and test breakdown</p>
           </div>
         </div>
       </div>
 
-      {/* Main Content - Single Column Layout */}
-      <div className="p-6">
-        {/* Lab Tests Section */}
-        <div>
-          <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <div className="w-1 h-6 bg-blue-500 rounded-full mr-3"></div>
-            Lab Tests
-          </h4>
-          <div className="border border-blue-200 rounded-lg shadow-sm">
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-3 border-b border-blue-200">
-              <div className="grid grid-cols-4 gap-4">
-                <div className="font-semibold text-blue-900">Category</div>
-                <div className="font-semibold text-blue-900">Test Name</div>
-                <div className="font-semibold text-blue-900 text-right">Amount</div>
-                <div className="font-semibold text-blue-900 text-right">Count</div>
+      {/* Modern Summary Cards */}
+      <div className="p-6 border-b border-gray-200">
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-blue-600 uppercase tracking-wide">Total</div>
+                <div className="text-2xl font-bold text-blue-900 mt-1">₹{billData.total.toFixed(1)}</div>
+              </div>
+              <div className="w-10 h-10 bg-blue-200 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
               </div>
             </div>
-            <div className="p-4">
-              <div className="space-y-2">
+          </div>
+          
+          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-yellow-600 uppercase tracking-wide">Discount</div>
+                <div className="text-2xl font-bold text-yellow-900 mt-1">₹{billData.totalDiscount.toFixed(1)}</div>
+              </div>
+              <div className="w-10 h-10 bg-yellow-200 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-green-600 uppercase tracking-wide">Net Amount</div>
+                <div className="text-2xl font-bold text-green-900 mt-1">₹{billData.netAmount.toFixed(1)}</div>
+              </div>
+              <div className="w-10 h-10 bg-green-200 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+        </div>
+      </div>
+
+          <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-red-600 uppercase tracking-wide">Refund</div>
+                <div className="text-2xl font-bold text-red-900 mt-1">₹{billData.refundAmount.toFixed(1)}</div>
+              </div>
+              <div className="w-10 h-10 bg-red-200 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m5 14v-5a2 2 0 00-2-2H6a2 2 0 00-2 2v5a2 2 0 002 2h12a2 2 0 002-2z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-gray-600 uppercase tracking-wide">Write Off</div>
+                <div className="text-2xl font-bold text-gray-900 mt-1">₹{billData.totalWriteOff.toFixed(1)}</div>
+          </div>
+              <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+          </div>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="p-6 space-y-8">
+        {/* Lab Tests Section */}
+        <div>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full"></div>
+            <h4 className="text-xl font-bold text-gray-900">Lab Tests Analysis</h4>
+          </div>
+          
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
+              <div className="grid grid-cols-4 gap-4">
+                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide">Category</div>
+                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide">Test Name</div>
+                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide text-right">Amount</div>
+                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide text-right">Count</div>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-4">
                 {billData.labTests.map((category, categoryIndex) => (
-                  <React.Fragment key={categoryIndex}>
+                  <div key={categoryIndex} className="space-y-2">
                     {category.tests.map((test, testIndex) => (
-                      <div key={`${categoryIndex}-${testIndex}`} className="grid grid-cols-4 gap-4 py-1">
+                      <div key={`${categoryIndex}-${testIndex}`} className="grid grid-cols-4 gap-4 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors duration-150">
                         <div className="text-sm text-gray-700 font-medium">
-                          {testIndex === 0 ? category.category : ''}
+                          {testIndex === 0 ? (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                              {category.category}
+                            </span>
+                          ) : ''}
                         </div>
-                        <div className="text-sm text-gray-700">
+                        <div className="text-sm text-gray-700 font-medium">
                           {test.name}
                         </div>
-                        <div className="text-sm text-gray-700 text-right">
-                          {test.amount.toFixed(1)}
+                        <div className="text-sm text-gray-700 text-right font-semibold">
+                          ₹{test.amount.toFixed(1)}
                         </div>
                         <div className="text-sm text-gray-700 text-right">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                           {test.count}
+                          </span>
                         </div>
                       </div>
                     ))}
+                    
                     {/* Category Total Row */}
-                    <div className="grid grid-cols-4 gap-4 py-3 font-medium text-blue-800 bg-gradient-to-r from-blue-50 to-blue-100 -mx-4 px-4 border-t border-blue-200 rounded-md shadow-sm">
-                      <div className="font-semibold text-blue-900">Total for {category.category}</div>
-                      <div>-</div>
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                      <div className="grid grid-cols-4 gap-4">
+                        <div className="font-bold text-blue-900 text-sm">Total for {category.category}</div>
+                        <div className="text-blue-900 text-sm">-</div>
                       <div className="text-right font-bold text-blue-900 text-lg">₹{category.total.amount.toFixed(1)}</div>
                       <div className="text-right font-bold text-blue-900">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-blue-200 text-blue-900">
                         {category.total.count}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    {/* Horizontal Separator Line - Only add if not the last category */}
+                    
+                    {/* Separator */}
                     {categoryIndex < billData.labTests.length - 1 && (
-                      <div className="border-t border-gray-300 my-3 -mx-4"></div>
+                      <div className="border-t border-gray-200 my-4"></div>
                     )}
-                  </React.Fragment>
+                  </div>
                 ))}
               </div>
-              <div className="border-t border-gray-200 mt-4 pt-4">
-                <div className="grid grid-cols-4 gap-4 font-semibold text-gray-900 bg-gradient-to-r from-blue-50 to-indigo-50 py-3 px-4 rounded-lg border border-blue-100">
-                  <div className="text-blue-900">Grand Total</div>
-                  <div>-</div>
-                  <div className="text-right text-blue-900 font-bold text-lg">₹{labTestsGrandTotal.toFixed(1)}</div>
-                  <div className="text-right text-blue-900 font-bold">{labTestsGrandCount}</div>
+              
+              {/* Grand Total */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-4 border border-indigo-200">
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="font-bold text-indigo-900 text-sm">Grand Total</div>
+                    <div className="text-indigo-900 text-sm">-</div>
+                    <div className="text-right text-indigo-900 font-bold text-xl">₹{labTestsGrandTotal.toFixed(1)}</div>
+                    <div className="text-right text-indigo-900 font-bold">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-indigo-200 text-indigo-900">
+                        {labTestsGrandCount}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -683,42 +760,54 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
         </div>
 
         {/* Doctors Section */}
-        <div className="mt-8">
-          <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <div className="w-1 h-6 bg-blue-500 rounded-full mr-3"></div>
-            Doctors
-          </h4>
-          <div className="border border-gray-200 rounded-lg shadow-sm bg-white">
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+        <div>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-full"></div>
+            <h4 className="text-xl font-bold text-gray-900">Doctors Analysis</h4>
+          </div>
+          
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-200">
               <div className="grid grid-cols-3 gap-4">
-                <div className="font-semibold text-gray-900">Name</div>
-                <div className="font-semibold text-gray-900 text-center">Count</div>
-                <div className="font-semibold text-gray-900 text-right">Amount</div>
+                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide">Doctor Name</div>
+                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide text-center">Test Count</div>
+                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide text-right">Total Amount</div>
               </div>
             </div>
-            <div className="p-4">
-              <div className="space-y-1">
+            
+            <div className="p-6">
+              <div className="space-y-2">
                 {billData.doctors.map((doctor, index) => (
-                  <div key={index} className={`grid grid-cols-3 gap-4 py-2 px-3 rounded-md hover:bg-gray-50 transition-colors duration-150 ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-25'
+                  <div key={index} className={`grid grid-cols-3 gap-4 py-4 px-4 rounded-lg hover:bg-gray-50 transition-colors duration-150 ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                   }`}>
-                    <div className="text-sm text-gray-800 font-medium">
+                    <div className="text-sm text-gray-800 font-semibold">
                       {doctor.name}
                     </div>
                     <div className="text-sm text-gray-700 text-center">
-                      {doctor.count}
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {doctor.count} tests
+                      </span>
                     </div>
-                    <div className="text-sm text-gray-800 text-right font-medium">
+                    <div className="text-sm text-gray-800 text-right font-bold">
                       ₹{doctor.amount.toFixed(1)}
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="border-t border-gray-200 mt-4 pt-4">
-                <div className="grid grid-cols-3 gap-4 font-bold text-gray-900 bg-gradient-to-r from-gray-100 to-gray-200 py-3 px-4 rounded-lg border border-gray-200">
-                  <div className="text-gray-900">Total</div>
-                  <div className="text-center text-gray-900 font-bold">{doctorsCount}</div>
-                  <div className="text-right text-gray-900 text-lg font-bold">₹{doctorsTotal.toFixed(1)}</div>
+              
+              {/* Doctors Total */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="font-bold text-green-900 text-sm">Total</div>
+                    <div className="text-center text-green-900 font-bold">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-green-200 text-green-900">
+                        {doctorsCount} tests
+                      </span>
+                    </div>
+                    <div className="text-right text-green-900 text-xl font-bold">₹{doctorsTotal.toFixed(1)}</div>
+                  </div>
                 </div>
               </div>
             </div>

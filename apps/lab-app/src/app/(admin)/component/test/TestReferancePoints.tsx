@@ -8,11 +8,10 @@ import {
 import { TestReferancePoint } from "@/types/test/testlist";
 import Loader from "../../component/common/Loader";
 import { useLabs } from "@/context/LabContext";
-import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaFilter, FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaFilter, FaChevronDown, FaChevronUp, FaChevronRight, FaChevronLeft } from "react-icons/fa";
 import Modal from "../common/Model";
 import TestEditReferance from "./TestEditReferance";
 import { toast } from "react-toastify";
-import TableComponent from "../common/TableComponent";
 import AddTestReferanceNew from "./AddTestReferanceNew";
 import Button from "../common/Button";
 import AddExistingTestReferance from "./AddExistingTestReferance";
@@ -106,6 +105,7 @@ const TestReferancePoints = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const { currentLab } = useLabs();
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
   const [activeFilter, setActiveFilter] = useState<"all" | "category" | "test" | "description">("all");
   const [activeTab, setActiveTab] = useState<"all" | "common" | "special">("all");
 
@@ -136,6 +136,23 @@ const TestReferancePoints = () => {
       ...prev,
       [category]: !prev[category]
     }));
+  };
+
+  const toggleRow = (id: number) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const toggleAllRows = (expand: boolean) => {
+    const newExpandedRows: Record<number, boolean> = {};
+    referencePoints.forEach(test => {
+      if (test.id) {
+        newExpandedRows[test.id] = expand;
+      }
+    });
+    setExpandedRows(newExpandedRows);
   };
 
   const { filteredGroupedData, totalCategories, stats } = useMemo(() => {
@@ -194,43 +211,6 @@ const TestReferancePoints = () => {
     };
   }, [referencePoints, searchTerm, currentPage, activeFilter, activeTab]);
 
-  const columns = [
-    {
-      header: "Description",
-      accessor: (test: TestReferancePoint) => test.testDescription || "N/A",
-      className: "min-w-[200px]"
-    },
-    {
-      header: "Gender",
-      accessor: (test: TestReferancePoint) => test.gender,
-      className: "text-center"
-    },
-    {
-      header: "Age Range",
-      accessor: (test: TestReferancePoint) => (
-        <>
-          {test.ageMin || "0"}{" "}
-          <span className="text-gray-500 text-xs px-2 font-semibold">
-            {test.minAgeUnit || "Years"}
-          </span>{" "}
-          - {test.ageMax || "∞"}{" "}
-          <span className="text-gray-500 text-xs px-2 font-semibold">
-            {test.maxAgeUnit || "Years"}
-          </span>
-        </>
-      ),
-      className: "text-center text-gray-600"
-    },
-    {
-      header: "Reference Range",
-      accessor: (test: TestReferancePoint) => (
-        <span className="font-medium">
-          {test.minReferenceRange} - {test.maxReferenceRange} {test.units && <span className="text-gray-500">{test.units}</span>}
-        </span>
-      ),
-      className: "min-w-[180px]"
-    },
-  ];
 
   const handleDownloadCsv = async () => {
     try {
@@ -428,14 +408,14 @@ const TestReferancePoints = () => {
   }
 
   return (
-    <div className="w-full bg-gray-50 p-6 rounded-xl">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <div className="w-full bg-gray-50 p-4 rounded-xl">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-800">Test Reference Ranges</h2>
-          <p className="text-gray-500">Manage laboratory test reference values</p>
+          <h2 className="text-xl font-bold text-blue-700">Test Reference Ranges</h2>
+          <p className="text-gray-600 text-sm">Manage laboratory test reference values</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <div className="relative flex-1">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <FaSearch className="text-gray-400" />
@@ -443,7 +423,7 @@ const TestReferancePoints = () => {
             <div className="absolute inset-y-0 right-0 flex items-center">
               <div className="relative">
                 <button
-                  className="h-full px-3 flex items-center text-gray-500 hover:text-blue-600"
+                  className="h-full px-2 flex items-center text-gray-500 hover:text-blue-600"
                   onClick={() => setActiveFilter(prev => prev === "all" ? "category" : prev === "category" ? "test" : prev === "test" ? "description" : "all")}
                 >
                   <FaFilter className="mr-1" />
@@ -454,7 +434,7 @@ const TestReferancePoints = () => {
             <input
               type="text"
               placeholder={`Search by ${activeFilter}...`}
-              className="pl-10 pr-24 py-2.5 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="pl-10 pr-20 py-2 w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent text-sm"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -467,21 +447,21 @@ const TestReferancePoints = () => {
             <Button
               text="Add New"
               onClick={() => setAddModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg flex items-center gap-1 text-sm"
             >
               <FaPlus />
             </Button>
             <Button
               text="Excel"
               onClick={handleDownloadExcel}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2"
+              className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg flex items-center gap-1 text-sm"
             >
               <FaFileExcel />
             </Button>
             <Button
               text="CSV"
               onClick={handleDownloadCsv}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2"
+              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg flex items-center gap-1 text-sm"
             >
               <FaDownload />
             </Button>
@@ -489,26 +469,26 @@ const TestReferancePoints = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-gray-500 text-sm font-medium">Total Tests Referance</h3>
-          <p className="text-2xl font-bold text-gray-800">{stats.totalTests}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-gray-600 text-sm font-medium mb-1">Total Tests Reference</h3>
+          <p className="text-xl font-bold text-blue-700">{stats.totalTests}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-gray-500 text-sm font-medium">Categories</h3>
-          <p className="text-2xl font-bold text-gray-800">{stats.totalCategories}</p>
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-gray-600 text-sm font-medium mb-1">Categories</h3>
+          <p className="text-xl font-bold text-blue-700">{stats.totalCategories}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-gray-500 text-sm font-medium">Showing Tests Referance</h3>
-          <p className="text-2xl font-bold text-gray-800">
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-gray-600 text-sm font-medium mb-1">Showing Tests Reference</h3>
+          <p className="text-xl font-bold text-blue-700">
             {stats.filteredTests} {searchTerm ? "results" : "tests"}
           </p>
         </div>
       </div>
 
-      <div className="flex border-b border-gray-200 mb-6">
+      <div className="flex border-b border-gray-200 mb-4">
         <button
-          className={`py-2 px-4 font-medium ${activeTab === "all" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+          className={`py-2 px-4 font-medium text-sm ${activeTab === "all" ? "text-blue-700 border-b-2 border-blue-700" : "text-gray-600 hover:text-gray-800"}`}
           onClick={() => setActiveTab("all")}
         >
           All Tests
@@ -518,62 +498,418 @@ const TestReferancePoints = () => {
       {Object.keys(filteredGroupedData).length > 0 ? (
         <>
           {Object.entries(filteredGroupedData).map(([category, tests]) => (
-            <div key={category} className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
+            <div key={category} className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 overflow-hidden">
               <button
                 onClick={() => toggleCategory(category)}
-                className="w-full flex justify-between items-center p-4 hover:bg-gray-50 transition-colors"
+                className="w-full flex justify-between items-center p-3 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center">
-                  <h3 className="text-lg font-semibold text-gray-800">{category}</h3>
-                  <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
+                  <h3 className="text-lg font-semibold text-blue-700">{category}</h3>
+                  <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
                     {Object.keys(tests).length} tests
                   </span>
                 </div>
                 {expandedCategories[category] ? (
-                  <FaChevronUp className="text-gray-400" />
+                  <FaChevronUp className="text-gray-500" />
                 ) : (
-                  <FaChevronDown className="text-gray-400" />
+                  <FaChevronDown className="text-gray-500" />
                 )}
               </button>
 
               {expandedCategories[category] && (
-                <div className="p-4">
+                <div className="p-3">
                   {Object.entries(tests).map(([testName, records]) => (
-                    <div key={testName} className="mb-6 last:mb-0">
-                      <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg mb-3">
-                        <h4 className="font-medium text-gray-700">{testName}</h4>
+                    <div key={testName} className="mb-4 last:mb-0">
+                      <div className="flex justify-between items-center bg-gray-50 p-2 rounded-lg mb-2">
+                        <h4 className="font-medium text-blue-700 text-sm">{testName}</h4>
+                        <div className="flex gap-1">
+                          <Button
+                            text="Expand All"
+                            onClick={() => toggleAllRows(true)}
+                            className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs"
+                          >
+                            <FaChevronDown className="mr-1" />
+                          </Button>
+                          <Button
+                            text="Collapse All"
+                            onClick={() => toggleAllRows(false)}
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
+                          >
+                            <FaChevronUp className="mr-1" />
+                          </Button>
                         <Button
                           text="Add Reference"
                           onClick={() => {
                             setExistingModalOpen(true);
                             setExistingTestReferanceRecord(prev => ({ ...prev, testName, category }));
                           }}
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm"
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs"
                         >
                           <FaPlus className="mr-1" />
                         </Button>
+                        </div>
                       </div>
 
-                      <TableComponent
-                        data={records}
-                        columns={columns}
-                        actions={(test) => (
-                          <div className="flex gap-3">
+                      {/* Table Header */}
+                      <div className="bg-gray-100 p-3 rounded-lg mb-2">
+                        <div className="grid grid-cols-12 gap-3 items-center font-medium text-gray-700 text-sm">
+                          <div className="col-span-2">Test Name</div>
+                          <div className="col-span-2">Description</div>
+                          <div className="col-span-1 text-center">Gender</div>
+                          <div className="col-span-2 text-center">Age Range</div>
+                          <div className="col-span-2">Reference Range</div>
+                          <div className="col-span-2">Report JSON</div>
+                          <div className="col-span-1 text-center">Actions</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        {records.map((test) => (
+                          <div key={test.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                            {/* Main Row */}
+                            <div className="p-3">
+                              <div className="grid grid-cols-12 gap-3 items-center">
+                                <div className="col-span-2">
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => test.id && toggleRow(test.id)}
+                                      className="p-1 hover:bg-gray-100 rounded"
+                                    >
+                                      {expandedRows[test.id || 0] ? (
+                                        <FaChevronDown className="text-gray-500" size={12} />
+                                      ) : (
+                                        <FaChevronRight className="text-gray-500" size={12} />
+                                      )}
+                                    </button>
+                                    <span className="font-medium text-gray-800 text-sm">{test.testName}</span>
+                                  </div>
+                                </div>
+                                <div className="col-span-2">
+                                  <span className="text-xs text-gray-600">{test.testDescription || "N/A"}</span>
+                                </div>
+                                <div className="col-span-1 text-center">
+                                  <span className="text-xs font-medium">{test.gender}</span>
+                                </div>
+                                <div className="col-span-2 text-center">
+                                  <span className="text-xs text-gray-600">
+                                    {test.ageMin || "0"} {test.minAgeUnit || "Years"} - {test.ageMax || "∞"} {test.maxAgeUnit || "Years"}
+                                  </span>
+                                </div>
+                                <div className="col-span-2">
+                                  <span className="text-xs font-medium">
+                                    {test.minReferenceRange} - {test.maxReferenceRange} {test.units && <span className="text-gray-500">{test.units}</span>}
+                                  </span>
+                                </div>
+                                <div className="col-span-2">
+                                  {test.reportJson ? (
+                                    <div className="text-xs text-gray-500">
+                                      {(() => {
+                                        try {
+                                          const parsed = JSON.parse(test.reportJson);
+                                          return parsed.testName || parsed.note || "Report Available";
+                                        } catch {
+                                          return "Invalid JSON";
+                                        }
+                                      })()}
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400 text-xs">N/A</span>
+                                  )}
+                                </div>
+                                <div className="col-span-1">
+                                  <div className="flex gap-1 justify-end">
                             <FaEdit
                               onClick={() => test?.id && handleEditRecord(test)}
                               className="text-blue-500 cursor-pointer hover:text-blue-700"
                               title="Edit"
-                              size={18}
+                                      size={14}
                             />
                             <FaTrash
                               onClick={() => test?.id && handleDelete(test.id)}
                               className="text-red-500 cursor-pointer hover:text-red-700"
                               title="Delete"
-                              size={18}
-                            />
+                                      size={14}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Expanded Row - Full Data View */}
+                            {expandedRows[test.id || 0] && (
+                              <div className="border-t border-gray-100 bg-gray-50 p-3">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                  {/* Report JSON Details */}
+                                  <div>
+                                    <h4 className="font-semibold text-blue-700 mb-2 flex items-center gap-2 text-sm">
+                                      <FaChevronDown className="text-blue-500" size={12} />
+                                      Medical Report Details
+                                    </h4>
+                                    {test.reportJson ? (
+                                      <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                        {(() => {
+                                          try {
+                                            const parsed = JSON.parse(test.reportJson);
+                                            return (
+                                              <div className="space-y-3">
+                                                {/* Test Name */}
+                                                {parsed.testName && (
+                                                  <div>
+                                                    <h5 className="font-semibold text-blue-700 text-xs mb-1">Test Name</h5>
+                                                    <p className="text-gray-700 bg-blue-50 p-2 rounded text-sm">{parsed.testName}</p>
+                                                  </div>
+                                                )}
+
+                                                {/* Note */}
+                                                {parsed.note && (
+                                                  <div>
+                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Note</h5>
+                                                    <p className="text-gray-700 bg-yellow-50 p-2 rounded italic">{parsed.note}</p>
+                                                  </div>
+                                                )}
+
+                                                {/* Impression */}
+                                                {parsed.impression && (
+                                                  <div>
+                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Impression</h5>
+                                                    <p className="text-gray-700 bg-green-50 p-2 rounded">{parsed.impression}</p>
+                                                  </div>
+                                                )}
+
+                                                {/* Interpretation */}
+                                                {parsed.interpretation && (
+                                                  <div>
+                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Interpretation</h5>
+                                                    <p className="text-gray-700 bg-green-50 p-2 rounded">{parsed.interpretation}</p>
+                                                  </div>
+                                                )}
+
+                                                {/* Limitations */}
+                                                {parsed.limitations && Array.isArray(parsed.limitations) && parsed.limitations.length > 0 && (
+                                                  <div>
+                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Limitations</h5>
+                                                    <ul className="list-disc list-inside space-y-1">
+                                                      {parsed.limitations.map((limitation: string, idx: number) => (
+                                                        <li key={idx} className="text-gray-700 text-sm bg-orange-50 p-2 rounded">{limitation}</li>
+                                                      ))}
+                                                    </ul>
+                                                  </div>
+                                                )}
+
+                                                {/* Organ Review */}
+                                                {parsed.organReview && Array.isArray(parsed.organReview) && parsed.organReview.length > 0 && (
+                                                  <div>
+                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Organ Review</h5>
+                                                    <ul className="list-disc list-inside space-y-1">
+                                                      {parsed.organReview.map((organ: string, idx: number) => (
+                                                        <li key={idx} className="text-gray-700 text-sm bg-blue-50 p-2 rounded">{organ}</li>
+                                                      ))}
+                                                    </ul>
+                                                  </div>
+                                                )}
+
+                                                {/* Observations */}
+                                                {parsed.observations && Array.isArray(parsed.observations) && parsed.observations.length > 0 && (
+                                                  <div>
+                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Observations</h5>
+                                                    <ul className="list-disc list-inside space-y-1">
+                                                      {parsed.observations.map((observation: string, idx: number) => (
+                                                        <li key={idx} className="text-gray-700 text-sm bg-purple-50 p-2 rounded">{observation}</li>
+                                                      ))}
+                                                    </ul>
+                                                  </div>
+                                                )}
+
+                                                {/* Fetal Parameters */}
+                                                {parsed.fetalParameters && (
+                                                  <div>
+                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Fetal Parameters</h5>
+                                                    <div className="space-y-3">
+                                                      {Object.entries(parsed.fetalParameters).map(([fetus, params]: [string, any]) => (
+                                                        <div key={fetus} className="bg-gray-50 p-3 rounded">
+                                                          <h6 className="font-medium text-gray-800 mb-2">{fetus}</h6>
+                                                          <div className="grid grid-cols-2 gap-2">
+                                                            {Object.entries(params).map(([key, value]: [string, any]) => (
+                                                              <div key={key} className="text-sm">
+                                                                <span className="font-medium text-gray-600">{key}:</span>
+                                                                <span className="ml-2 text-gray-800">{value}</span>
+                                                              </div>
+                                                            ))}
+                                                          </div>
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                )}
+
+                                                {/* Parameters (for lab tests) */}
+                                                {parsed.parameters && (
+                                                  <div>
+                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Test Parameters</h5>
+                                                    <div className="space-y-2">
+                                                      {Object.entries(parsed.parameters).map(([param, data]: [string, any]) => (
+                                                        <div key={param} className="bg-gray-50 p-3 rounded">
+                                                          <h6 className="font-medium text-gray-800 mb-1 capitalize">{param.replace(/_/g, ' ')}</h6>
+                                                          <div className="grid grid-cols-2 gap-2 text-sm">
+                                                            {Object.entries(data).map(([key, value]: [string, any]) => (
+                                                              <div key={key}>
+                                                                <span className="font-medium text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</span>
+                                                                <span className="ml-2 text-gray-800">{value}</span>
+                                                              </div>
+                                                            ))}
+                                                          </div>
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                )}
+
+                                                {/* Sections (for radiology reports) */}
+                                                {parsed.sections && (
+                                                  <div>
+                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Report Sections</h5>
+                                                    <div className="space-y-2">
+                                                      {Object.entries(parsed.sections).map(([section, description]: [string, any]) => (
+                                                        <div key={section} className="bg-gray-50 p-3 rounded">
+                                                          <h6 className="font-medium text-gray-800 mb-1">{section}</h6>
+                                                          <p className="text-gray-700 text-sm">{description}</p>
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                )}
+
+                                                {/* Calculation */}
+                                                {parsed.calculation && (
+                                                  <div>
+                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Calculation</h5>
+                                                    <p className="text-gray-700 bg-blue-50 p-2 rounded font-mono">{parsed.calculation}</p>
+                                                  </div>
+                                                )}
+
+                                                {/* Significance */}
+                                                {parsed.significance && (
+                                                  <div>
+                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Significance</h5>
+                                                    <p className="text-gray-700 bg-green-50 p-2 rounded">{parsed.significance}</p>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          } catch {
+                                            return (
+                                              <div className="text-gray-400 text-sm">
+                                                <p>Unable to parse report data</p>
+                                                <details className="mt-2">
+                                                  <summary className="cursor-pointer text-blue-600">View Raw Data</summary>
+                                                  <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-32">
+                                                    {test.reportJson}
+                                                  </pre>
+                                                </details>
+                                              </div>
+                                            );
+                                          }
+                                        })()}
+                                      </div>
+                                    ) : (
+                                      <div className="text-gray-400 text-sm">No report data available</div>
+                                    )}
+                                  </div>
+
+                                  {/* Reference Ranges Details */}
+                                  <div>
+                                    <h4 className="font-semibold text-blue-700 mb-2 flex items-center gap-2 text-sm">
+                                      <FaChevronDown className="text-green-500" size={12} />
+                                      Reference Ranges
+                                    </h4>
+                                    {test.referenceRanges ? (
+                                      <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                        {(() => {
+                                          try {
+                                            const parsed = JSON.parse(test.referenceRanges);
+                                            return (
+                                              <div className="space-y-2">
+                                                {Array.isArray(parsed) ? (
+                                                  parsed.map((range: any, idx: number) => (
+                                                    <div key={idx} className="bg-green-50 p-3 rounded-lg border border-green-200">
+                                                      <div className="flex justify-between items-start mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                          <span className="font-semibold text-green-800">
+                                                            {range.Gender === 'M' ? 'Male' : range.Gender === 'F' ? 'Female' : range.Gender}
+                                                          </span>
+                                                          <span className="text-green-600 text-sm">
+                                                            {range.AgeMin} - {range.AgeMax} {range.AgeMinUnit}
+                                                          </span>
+                                                        </div>
+                                                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">
+                                                          {range.ReferenceRange}
+                                                        </span>
+                                                      </div>
+                                                      <div className="text-sm text-gray-600">
+                                                        Age Range: {range.AgeMin} - {range.AgeMax} {range.AgeMinUnit}
+                                                        {range.AgeMaxUnit && range.AgeMaxUnit !== range.AgeMinUnit && ` - ${range.AgeMaxUnit}`}
+                                                      </div>
+                                                    </div>
+                                                  ))
+                                                ) : (
+                                                  <div className="text-gray-600 text-sm">
+                                                    <p>Reference Range: {parsed.ReferenceRange || 'N/A'}</p>
+                                                    {parsed.Gender && <p>Gender: {parsed.Gender}</p>}
+                                                    {parsed.AgeMin && parsed.AgeMax && (
+                                                      <p>Age: {parsed.AgeMin} - {parsed.AgeMax} {parsed.AgeMinUnit || 'Years'}</p>
+                                                    )}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          } catch {
+                                            return (
+                                              <div className="text-gray-400 text-sm">
+                                                <p>Unable to parse reference ranges data</p>
+                                                <details className="mt-2">
+                                                  <summary className="cursor-pointer text-green-600">View Raw Data</summary>
+                                                  <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-32">
+                                                    {test.referenceRanges}
+                                                  </pre>
+                                                </details>
+                                              </div>
+                                            );
+                                          }
+                                        })()}
+                                      </div>
+                                    ) : (
+                                      <div className="text-gray-400 text-sm">No reference ranges data available</div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Additional Test Information */}
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <h4 className="font-semibold text-blue-700 mb-2 text-sm">Additional Information</h4>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                    <div>
+                                      <span className="font-medium text-gray-600">Created By:</span>
+                                      <p className="text-gray-800">{test.createdBy || "N/A"}</p>
+                                    </div>
+                                    <div>
+                                      <span className="font-medium text-gray-600">Updated By:</span>
+                                      <p className="text-gray-800">{test.updatedBy || "N/A"}</p>
+                                    </div>
+                                    <div>
+                                      <span className="font-medium text-gray-600">Created At:</span>
+                                      <p className="text-gray-800">{test.createdAt ? new Date(test.createdAt).toLocaleString() : "N/A"}</p>
+                                    </div>
+                                    <div>
+                                      <span className="font-medium text-gray-600">Updated At:</span>
+                                      <p className="text-gray-800">{test.updatedAt ? new Date(test.updatedAt).toLocaleString() : "N/A"}</p>
+                                    </div>
+                                  </div>
+                                </div>
                           </div>
                         )}
-                      />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -581,7 +917,7 @@ const TestReferancePoints = () => {
             </div>
           ))}
 
-          <div className="mt-4">
+          <div className="mt-3">
             <Pagination
               currentPage={currentPage}
               totalPages={Math.ceil(totalCategories / ITEMS_PER_PAGE)}
@@ -590,18 +926,18 @@ const TestReferancePoints = () => {
           </div>
         </>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-          <FaSearch className="mx-auto text-4xl text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-700 mb-2">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
+          <FaSearch className="mx-auto text-3xl text-gray-400 mb-3" />
+          <h3 className="text-lg font-medium text-blue-700 mb-2">
             {searchTerm ? "No matching results found" : "No test reference data available"}
           </h3>
-          <p className="text-gray-500">
+          <p className="text-gray-600 text-sm">
             {searchTerm ? "Try adjusting your search query" : "Add test references to get started"}
           </p>
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
-              className="mt-4 text-blue-600 hover:text-blue-800 font-medium"
+              className="mt-3 text-blue-600 hover:text-blue-800 font-medium text-sm"
             >
               Clear search
             </button>
@@ -614,7 +950,7 @@ const TestReferancePoints = () => {
           isOpen={isEditModalOpen}
           title="Edit Reference Range"
           onClose={() => setEditModalOpen(false)}
-          modalClassName="max-w-2xl"
+          modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
         >
           <TestEditReferance
             editRecord={editRecord}
@@ -633,7 +969,7 @@ const TestReferancePoints = () => {
           isOpen={addModalOpen}
           title="Add New Reference Range"
           onClose={() => setAddModalOpen(false)}
-          modalClassName="max-w-3xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+          modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
         >
           <AddTestReferanceNew
             handleAddNewReferanceRecord={handleAddNewReferanceRecord}
@@ -649,7 +985,7 @@ const TestReferancePoints = () => {
           isOpen={existingModalOpen}
           title="Add Existing Test Reference"
           onClose={() => setExistingModalOpen(false)}
-          modalClassName="max-w-2xl"
+          modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
         >
           <AddExistingTestReferance
             handleAddExistingReferanceRecord={handleAddExistingReferanceRecord}

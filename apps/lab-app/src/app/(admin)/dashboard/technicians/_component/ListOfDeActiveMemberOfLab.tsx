@@ -113,30 +113,20 @@ const ListOfDeActiveMemberOfLab = () => {
     ];
 
     return (
-        <section className="bg-white rounded-lg shadow p-6">
-            <div className="mb-6 flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800">Lab Members</h2>
+        <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="mb-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <h2 className="text-lg font-semibold text-gray-900">Inactive Lab Members</h2>
                 {currentLab && (
-                    <span className="text-sm text-gray-500">
-                        Lab: <span className="font-medium">{currentLab.name}</span>
+                    <span className="text-sm text-gray-600">
+                        Lab: <span className="font-medium text-gray-800">{currentLab.name}</span>
                     </span>
                 )}
             </div>
-{/* 
-            {editPopup && updateMember && (
-                <Modal
-                    isOpen={editPopup}
-                    onClose={() => setEditPopup(false)}
-                    modalClassName="max-w-xl"
-                    title="Member Details"
-                >
-                    <EditMember updateMember={updateMember} />
-                </Modal>
-            )} */}
 
             {loading ? (
-                <div className="flex justify-center py-8">
-                    <Loader />
+                <div className="flex flex-col items-center justify-center py-8">
+                    <Loader type="progress" text="Loading members..." />
+                    <p className="mt-3 text-sm text-gray-600">Please wait while we fetch the data.</p>
                 </div>
             ) : members.length > 0 ? (
                 <>
@@ -147,32 +137,38 @@ const ListOfDeActiveMemberOfLab = () => {
                             className="min-w-full divide-y divide-gray-200"
                         />
                     </div>
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={handlePageChange}
-                    />
+                    {totalPages > 1 && (
+                        <div className="mt-4">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={handlePageChange}
+                            />
+                        </div>
+                    )}
                 </>
             ) : (
                 <div className="text-center py-8">
-                    <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        aria-hidden="true"
-                    >
-                        <path
-                            vectorEffect="non-scaling-stroke"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                    </svg>
-                    <h3 className="mt-2 text-lg font-medium text-gray-900">No members found</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                        There are currently no members assigned to this lab.
+                    <div className="text-gray-400 mb-3">
+                        <svg
+                            className="mx-auto h-10 w-10"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            aria-hidden="true"
+                        >
+                            <path
+                                vectorEffect="non-scaling-stroke"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                    </div>
+                    <h3 className="text-base font-semibold text-gray-800 mb-1">No inactive members found</h3>
+                    <p className="text-sm text-gray-600">
+                        There are currently no inactive members assigned to this lab.
                     </p>
                 </div>
             )}

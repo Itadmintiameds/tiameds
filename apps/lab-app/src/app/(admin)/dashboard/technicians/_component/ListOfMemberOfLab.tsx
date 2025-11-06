@@ -15,7 +15,7 @@ const ListOfMemberOfLab = () => {
     ];
 
     return (
-        <div className="">
+        <div className="w-full">
             <SubTabComponent
                 tabs={tabs}
                 selectedTab={selectedTab}

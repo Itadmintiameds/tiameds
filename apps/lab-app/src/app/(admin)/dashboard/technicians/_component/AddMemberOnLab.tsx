@@ -429,12 +429,12 @@ const AddMemberOnLab = () => {
             header: "User",
             accessor: (member: Member) => (
                 <div className="flex items-center">
-                    <div className="bg-blue-100 p-2 rounded-full mr-3">
-                        <RiShieldUserFill className="text-blue-600" />
+                    <div className="bg-indigo-100 p-1.5 rounded-full mr-3">
+                        <RiShieldUserFill className="text-indigo-600 h-4 w-4" />
                     </div>
                     <div>
-                        <p className="text-sm font-medium">{member.firstName} {member.lastName}</p>
-                        <p className="text-xs text-gray-500">{member.email}</p>
+                        <p className="text-sm font-medium text-gray-900">{member.firstName} {member.lastName}</p>
+                        <p className="text-xs text-gray-600">{member.email}</p>
                     </div>
                 </div>
             )
@@ -442,14 +442,17 @@ const AddMemberOnLab = () => {
         {
             header: "Username",
             accessor: (member: Member) => (
-                <span className="text-sm font-medium text-gray-700 -ml-4">{member.username}</span>
+                <span className="text-sm font-medium text-gray-700">{member.username}</span>
             )
         },
         {
-            header: "Active Status",
+            header: "Status",
             accessor: (member: Member) => (
-                <span className={`text-sm font-medium ${member.enabled ? "text-green-600 bg-green-100" : "text-red-600 bg-red-100"
-                    } px-2 py-1 rounded-full`}>
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    member.enabled 
+                        ? "text-emerald-700 bg-emerald-100" 
+                        : "text-red-700 bg-red-100"
+                }`}>
                     {member.enabled ? "Active" : "Inactive"}
                 </span>
             )
@@ -461,7 +464,7 @@ const AddMemberOnLab = () => {
                     {member.roles?.map(role => (
                         <span
                             key={role}
-                            className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800"
+                            className="px-2 py-1 text-xs rounded-full bg-indigo-100 text-indigo-800 font-medium"
                         >
                             {role}
                         </span>
@@ -472,69 +475,71 @@ const AddMemberOnLab = () => {
         {
             header: "Actions",
             accessor: (member: Member) => (
-                <>
-                    {isSuperAdmin && isAdmin && (
-                        <div className="flex space-x-2">
+                <div className="flex gap-1 justify-start">
                             {member.roles.includes('SUPERADMIN') ? (
+                        <>
                                 <button
                                     onClick={() =>
                                         toast.error("Cannot edit Super Admin member.",
                                             { autoClose: 3000, position: "top-center" }
                                         )}
-                                    className="p-1 text-blue-600 hover:text-blue-800"
-                                    title="Edit"
+                                className="p-1.5 text-gray-400 cursor-not-allowed rounded-md"
+                                title="Edit disabled for Super Admin"
+                                aria-disabled
                                 >
-                                    <FaEdit />
+                                <FaEdit className="h-4 w-4" />
                                 </button>
-                            ) : (
-                                <button
-                                    onClick={() => handleEdit(member)}
-                                    className="p-1 text-blue-600 hover:text-blue-800"
-                                    title="Edit"
-                                >
-                                    <FaEdit />
-                                </button>
-                            )}
-                            {member.roles.includes('SUPERADMIN') ? (
                                 <button
                                     onClick={() =>
                                         toast.error("Cannot update password for Super Admin member.",
                                             { autoClose: 3000, position: "top-center" }
                                         )}
-                                    className="p-1 text-red-600 hover:text-red-800"
-                                    title="Update Password"
+                                className="p-1.5 text-gray-400 cursor-not-allowed rounded-md"
+                                title="Password update disabled for Super Admin"
+                                aria-disabled
                                 >
-                                    <TbLockPassword />
+                                <TbLockPassword className="h-4 w-4" />
                                 </button>
-                            ) : (
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                onClick={() => handleEdit(member)}
+                                className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-md transition-colors"
+                                title="Edit"
+                            >
+                                <FaEdit className="h-4 w-4" />
+                            </button>
                                 <button
                                     onClick={() => handleUpdatePassword(member)}
-                                    className="p-1 text-red-600 hover:text-red-800"
+                                className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
                                     title="Update Password"
                                 >
-                                    <TbLockPassword />
+                                <TbLockPassword className="h-4 w-4" />
                                 </button>
+                        </>
                             )}
                         </div>
-                    )}
-                </>
             )
         }
     ];
 
     return (
         <>
-            <div className="p-6 bg-gray-50 min-h-screen">
+            <div className="w-full bg-gray-50 p-4 rounded-lg">
                 <div className="max-w-7xl mx-auto">
-                    <div className="flex justify-between items-center mb-6">
-                        <h1 className="text-2xl font-bold text-gray-800">Lab Member Management</h1>
-                        <div className="flex items-center space-x-4">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+                        <div>
+                            <h1 className="text-xl font-semibold text-gray-900">Lab Member Management</h1>
+                            <p className="text-sm text-gray-600">Add and manage lab members</p>
+                        </div>
+                        <div className="flex items-center">
                             <div className="relative">
-                                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                                 <input
                                     type="text"
                                     placeholder="Search members..."
-                                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm w-full sm:w-64"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
@@ -542,36 +547,36 @@ const AddMemberOnLab = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                         {/* Form Section */}
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                            <div className="flex items-center mb-6">
-                                <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                            <div className="flex items-center mb-4">
+                                <div className="p-2 bg-indigo-100 rounded-lg mr-3">
                                     {isEditing ? (
-                                        <FaEdit className="text-blue-600 text-xl" />
+                                        <FaEdit className="text-indigo-600 text-lg" />
                                     ) : (
-                                        <FiUserPlus className="text-blue-600 text-xl" />
+                                        <FiUserPlus className="text-indigo-600 text-lg" />
                                     )}
                                 </div>
-                                <h2 className="text-xl font-semibold text-gray-700">
+                                <h2 className="text-lg font-semibold text-gray-900">
                                     {isEditing ? "Edit Member" : "Add New Member"}
                                 </h2>
                             </div>
 
                             {loading && (
-                                <div className="flex flex-col items-center justify-center h-64">
+                                <div className="flex flex-col items-center justify-center h-48">
                                     <Loader type="progress" fullScreen={false} text="Loading members..." />
-                                    <p className="mt-4 text-sm text-gray-500">Please wait while we fetch the latest data.</p>
+                                    <p className="mt-3 text-sm text-gray-600">Please wait while we fetch the latest data.</p>
                                 </div>
                             )}
 
                             {!loading && (
-                                <form onSubmit={handleSubmit} className="space-y-4">
-                                    <div className="grid grid-cols-1 gap-4">
+                                <form onSubmit={handleSubmit} className="space-y-3">
+                                    <div className="grid grid-cols-1 gap-3">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Username*</label>
                                             <input
-                                                className={`w-full p-2 border ${errors.username && touched.username ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+                                                className={`w-full p-2.5 border ${errors.username && touched.username ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
                                                 type="text"
                                                 name="username"
                                                 placeholder="Enter username"
@@ -580,7 +585,7 @@ const AddMemberOnLab = () => {
                                                 onBlur={handleBlur}
                                             />
                                             {errors.username && touched.username && (
-                                                <p className="mt-1 text-sm text-red-600">{errors.username}</p>
+                                                <p className="mt-1 text-xs text-red-600">{errors.username}</p>
                                             )}
                                         </div>
 
@@ -588,7 +593,7 @@ const AddMemberOnLab = () => {
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Password*</label>
                                                 <input
-                                                    className={`w-full p-2 border ${errors.password && touched.password ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+                                                    className={`w-full p-2.5 border ${errors.password && touched.password ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
                                                     type="password"
                                                     name="password"
                                                     placeholder="Enter password"
@@ -597,16 +602,16 @@ const AddMemberOnLab = () => {
                                                     onBlur={handleBlur}
                                                 />
                                                 {errors.password && touched.password && (
-                                                    <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                                                    <p className="mt-1 text-xs text-red-600">{errors.password}</p>
                                                 )}
                                             </div>
                                         )}
 
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">First Name*</label>
                                                 <input
-                                                    className={`w-full p-2 border ${errors.firstName && touched.firstName ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+                                                    className={`w-full p-2.5 border ${errors.firstName && touched.firstName ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
                                                     type="text"
                                                     name="firstName"
                                                     placeholder="First name"
@@ -615,13 +620,13 @@ const AddMemberOnLab = () => {
                                                     onBlur={handleBlur}
                                                 />
                                                 {errors.firstName && touched.firstName && (
-                                                    <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
+                                                    <p className="mt-1 text-xs text-red-600">{errors.firstName}</p>
                                                 )}
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Last Name*</label>
                                                 <input
-                                                    className={`w-full p-2 border ${errors.lastName && touched.lastName ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+                                                    className={`w-full p-2.5 border ${errors.lastName && touched.lastName ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
                                                     type="text"
                                                     name="lastName"
                                                     placeholder="Last name"
@@ -630,7 +635,7 @@ const AddMemberOnLab = () => {
                                                     onBlur={handleBlur}
                                                 />
                                                 {errors.lastName && touched.lastName && (
-                                                    <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
+                                                    <p className="mt-1 text-xs text-red-600">{errors.lastName}</p>
                                                 )}
                                             </div>
                                         </div>
@@ -638,7 +643,7 @@ const AddMemberOnLab = () => {
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Email*</label>
                                             <input
-                                                className={`w-full p-2 border ${errors.email && touched.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+                                                className={`w-full p-2.5 border ${errors.email && touched.email ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
                                                 type="email"
                                                 name="email"
                                                 placeholder="user@example.com"
@@ -647,49 +652,15 @@ const AddMemberOnLab = () => {
                                                 onBlur={handleBlur}
                                             />
                                             {errors.email && touched.email && (
-                                                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                                                <p className="mt-1 text-xs text-red-600">{errors.email}</p>
                                             )}
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                {/* <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label> */}
-                                                {/* <input
-                                                    className={`w-full p-2 border ${errors.phone ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
-                                                    type="tel"
-                                                    name="phone"
-                                                    placeholder="Enter phone number"
-                                                    value={formData.phone}
-                                                    onChange={(event) => {
-                                                        // Only allow numeric input
-                                                        const numericValue = event.target.value.replace(/\D/g, '');
-                                                        const numericEvent = {
-                                                            ...event,
-                                                            target: {
-                                                                ...event.target,
-                                                                value: numericValue
-                                                            }
-                                                        };
-                                                        handleChange(numericEvent);
-                                                    }}
-                                                    inputMode="numeric"
-                                                    pattern="[0-9]*"
-                                                    maxLength={10}
-                                                    onKeyPress={(e) => {
-                                                        // Prevent non-numeric characters
-                                                        if (!/[0-9]/.test(e.key)) {
-                                                            e.preventDefault();
-                                                        }
-                                                    }}
-                                                />
-                                                {errors.phone && (
-                                                    <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-                                                )}
-                                            </div> */}
+                                        <div className="grid grid-cols-2 gap-3">
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                                                     <input
-                                                        className={`w-full p-2 border ${errors.phone && touched.phone ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+                                                    className={`w-full p-2.5 border ${errors.phone && touched.phone ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
                                                         type="tel"
                                                         name="phone"
                                                         placeholder="Enter phone number"
@@ -711,13 +682,13 @@ const AddMemberOnLab = () => {
                                                         maxLength={10}
                                                     />
                                                     {errors.phone && touched.phone && (
-                                                        <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+                                                    <p className="mt-1 text-xs text-red-600">{errors.phone}</p>
                                                     )}
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
                                                     <input
-                                                        className={`w-full p-2 border ${errors.city && touched.city ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+                                                    className={`w-full p-2.5 border ${errors.city && touched.city ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
                                                         type="text"
                                                         name="city"
                                                         placeholder="Enter city"
@@ -726,13 +697,13 @@ const AddMemberOnLab = () => {
                                                         onBlur={handleBlur}
                                                     />
                                                     {errors.city && touched.city && (
-                                                        <p className="mt-1 text-sm text-red-600">{errors.city}</p>
+                                                    <p className="mt-1 text-xs text-red-600">{errors.city}</p>
                                                     )}
                                                 </div>
                                             </div>
 
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">Roles*</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Roles*</label>
                                                 <Select
                                                     isMulti
                                                     isClearable={false}
@@ -741,16 +712,16 @@ const AddMemberOnLab = () => {
                                                     value={selectedRoles}
                                                     onChange={handleRoleChange}
                                                     placeholder="Select roles..."
-                                                    className={`react-select-container ${errors.roles && touched.roles ? 'border-red-500 rounded-lg' : ''}`}
+                                                className={`react-select-container ${errors.roles && touched.roles ? 'border-red-500 rounded-md' : ''}`}
                                                     classNamePrefix="react-select"
                                                     styles={{
                                                         control: (provided, state) => ({
                                                             ...provided,
-                                                            minHeight: '42px',
+                                                        minHeight: '40px',
                                                             padding: '2px 8px',
                                                             border: errors.roles && touched.roles ? '1px solid #ef4444' : '1px solid #d1d5db',
-                                                            borderRadius: '8px',
-                                                            boxShadow: state.isFocused ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
+                                                        borderRadius: '6px',
+                                                        boxShadow: state.isFocused ? '0 0 0 2px rgba(99, 102, 241, 0.1)' : 'none',
                                                             '&:hover': {
                                                                 border: errors.roles && touched.roles ? '1px solid #ef4444' : '1px solid #9ca3af'
                                                             }
@@ -758,43 +729,43 @@ const AddMemberOnLab = () => {
                                                         valueContainer: (provided) => ({
                                                             ...provided,
                                                             padding: '0',
-                                                            minHeight: '38px',
+                                                        minHeight: '36px',
                                                             flexWrap: 'wrap',
                                                             gap: '4px'
                                                         }),
                                                         multiValue: (provided) => ({
                                                             ...provided,
                                                             margin: '0',
-                                                            backgroundColor: '#e0f2fe',
-                                                            borderRadius: '6px',
+                                                        backgroundColor: '#e0e7ff',
+                                                        borderRadius: '4px',
                                                             display: 'flex',
                                                             alignItems: 'center',
-                                                            border: '1px solid #bae6fd',
+                                                        border: '1px solid #c7d2fe',
                                                             fontSize: '12px'
                                                         }),
                                                         multiValueLabel: (provided) => ({
                                                             ...provided,
-                                                            color: '#0369a1',
+                                                        color: '#4338ca',
                                                             fontSize: '12px',
-                                                            padding: '4px 8px',
+                                                        padding: '3px 6px',
                                                             fontWeight: '500',
                                                             lineHeight: '1.2'
                                                         }),
                                                         multiValueRemove: (provided) => ({
                                                             ...provided,
-                                                            color: '#0369a1',
+                                                        color: '#4338ca',
                                                             backgroundColor: 'transparent',
                                                             border: 'none',
-                                                            borderRadius: '0 6px 6px 0',
-                                                            padding: '4px 6px',
+                                                        borderRadius: '0 4px 4px 0',
+                                                        padding: '3px 4px',
                                                             cursor: 'pointer',
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
-                                                            fontSize: '14px',
+                                                        fontSize: '12px',
                                                             '&:hover': {
-                                                                backgroundColor: '#bae6fd',
-                                                                color: '#0369a1'
+                                                            backgroundColor: '#c7d2fe',
+                                                            color: '#4338ca'
                                                             }
                                                         }),
                                                         placeholder: (provided) => ({
@@ -811,20 +782,20 @@ const AddMemberOnLab = () => {
                                                         }),
                                                         option: (provided, state) => ({
                                                             ...provided,
-                                                            backgroundColor: state.isSelected ? '#e0f2fe' : state.isFocused ? '#f8fafc' : 'white',
-                                                            color: state.isSelected ? '#0369a1' : '#374151',
-                                                            padding: '10px 12px',
+                                                        backgroundColor: state.isSelected ? '#e0e7ff' : state.isFocused ? '#f8fafc' : 'white',
+                                                        color: state.isSelected ? '#4338ca' : '#374151',
+                                                        padding: '8px 12px',
                                                             cursor: 'pointer',
                                                             fontSize: '14px',
                                                             '&:hover': {
-                                                                backgroundColor: state.isSelected ? '#e0f2fe' : '#f8fafc'
+                                                            backgroundColor: state.isSelected ? '#e0e7ff' : '#f8fafc'
                                                             }
                                                         }),
                                                         menu: (provided) => ({
                                                             ...provided,
                                                             zIndex: 9999,
                                                             border: '1px solid #d1d5db',
-                                                            borderRadius: '8px',
+                                                        borderRadius: '6px',
                                                             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                                                             marginTop: '4px'
                                                         }),
@@ -847,7 +818,7 @@ const AddMemberOnLab = () => {
                                                     }}
                                                 />
                                                 {errors.roles && touched.roles && (
-                                                    <p className="mt-2 text-sm text-red-600">{errors.roles}</p>
+                                                <p className="mt-1 text-xs text-red-600">{errors.roles}</p>
                                                 )}
                                             </div>
                                             {isEditing && (
@@ -857,40 +828,28 @@ const AddMemberOnLab = () => {
                                                         name="enabled"
                                                         value={formData.enabled ? "true" : "false"}
                                                         onChange={(e) => setFormData({ ...formData, enabled: e.target.value === "true" })}
-                                                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                                    className="w-full p-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                                     >
                                                         <option value="true">Active</option>
                                                         <option value="false">Inactive</option>
                                                     </select>
                                                 </div>
                                             )}
-                                        </div>
 
-                                        <div className="flex space-x-3 pt-4">
-                                            {/* {isSuperAdmin && isAdmin && (
+                                        <div className="flex gap-3 pt-3">
                                             <Button
                                                 onClick={() => { }}
                                                 type="submit"
-                                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg"
+                                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-md text-sm transition-colors"
                                                 text={isEditing ? "Update Member" : "Add Member"}
                                                 disabled={loading}
                                             >
-                                                <FaUserPlus className="mr-2" />
-                                            </Button>
-                                        )} */}
-                                            <Button
-                                                onClick={() => { }}
-                                                type="submit"
-                                                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg"
-                                                text={isEditing ? "Update Member" : "Add Member"}
-                                                disabled={loading}
-                                            >
-                                                <FaUserPlus className="mr-2" />
+                                                <FaUserPlus className="mr-2 h-4 w-4" />
                                             </Button>
                                             {isEditing && (
                                                 <Button
                                                     type="button"
-                                                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg"
+                                                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2.5 px-4 rounded-md text-sm transition-colors"
                                                     text="Cancel"
                                                     onClick={handleCancel}
                                                     disabled={loading}
@@ -903,31 +862,31 @@ const AddMemberOnLab = () => {
                         </div>
 
                         {/* Members List Section */}
-                        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                            <div className="flex items-center justify-between mb-6">
+                        <div className="xl:col-span-2 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
                                 <div className="flex items-center">
-                                    <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                                        <FaUser className="text-blue-600 text-xl" />
+                                    <div className="p-2 bg-indigo-100 rounded-lg mr-3">
+                                        <FaUser className="text-indigo-600 text-lg" />
                                     </div>
-                                    <h2 className="text-xl font-semibold text-gray-700">Lab Members</h2>
+                                    <h2 className="text-lg font-semibold text-gray-900">Lab Members</h2>
                                 </div>
-                                <div className="text-sm text-gray-500">
+                                <div className="text-sm text-gray-600">
                                     {filteredMembers.length} {filteredMembers.length === 1 ? "member" : "members"} found
                                 </div>
                             </div>
 
                             {loading && members.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-64">
+                                <div className="flex flex-col items-center justify-center h-48">
                                     <Loader type="progress" fullScreen={false} text="Loading lab members..." />
-                                    <p className="mt-4 text-sm text-gray-500">Fetching the lab members, please wait...</p>
+                                    <p className="mt-3 text-sm text-gray-600">Fetching the lab members, please wait...</p>
                                 </div>
                             ) : filteredMembers.length === 0 ? (
-                                <div className="text-center py-10">
-                                    <div className="text-gray-400 mb-4">
-                                        <FaUser className="mx-auto text-4xl" />
+                                <div className="text-center py-8">
+                                    <div className="text-gray-400 mb-3">
+                                        <FaUser className="mx-auto text-3xl" />
                                     </div>
-                                    <h3 className="text-lg font-medium text-gray-700">No members found</h3>
-                                    <p className="text-gray-500 mt-1">
+                                    <h3 className="text-base font-semibold text-gray-800 mb-1">No members found</h3>
+                                    <p className="text-sm text-gray-600">
                                         {searchTerm ? "Try a different search term" : "Add your first member to get started"}
                                     </p>
                                 </div>
