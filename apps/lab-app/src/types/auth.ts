@@ -50,4 +50,25 @@ export interface RegisterResponse {
     data: null;
 }
 
+// OTP Flow Types
+export interface OtpLoginResponse {
+    status: string;
+    message: string;
+    data: {
+        email: string;
+        message: string;
+    };
+}
+
+export interface VerifyOtpRequest {
+    email: string;
+    otp: string;
+}
+
+export interface VerifyOtpResponse {
+    status: string;
+    message: string;
+    data: LoginResponseData;
+}
+
 

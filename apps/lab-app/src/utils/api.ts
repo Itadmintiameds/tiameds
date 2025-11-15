@@ -95,8 +95,15 @@ const processQueue = (error: any, token: string | null = null) => {
 // Add a request interceptor
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Exclude /public/login and /public/register from adding Authorization header
-    const excludedEndpoints = ['/public/login', '/public/register', '/auth/refresh'];
+    // Exclude public and auth endpoints from adding Authorization header
+    const excludedEndpoints = [
+      '/public/login', 
+      '/public/register', 
+      '/auth/refresh',
+      '/auth/login',
+      '/auth/verify-otp',
+      '/auth/send-otp'
+    ];
     const isExcluded = excludedEndpoints.some((endpoint) =>
       config.url?.includes(endpoint)
     );

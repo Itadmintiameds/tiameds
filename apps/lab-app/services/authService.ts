@@ -1,15 +1,25 @@
 import api from '@/utils/api';
-import { LoginRequest, LoginResponse ,ErrorResponse,RegisterResponse, LoginResponseData } from '@/types/auth';
+import { LoginRequest, LoginResponse ,ErrorResponse,RegisterResponse, LoginResponseData, OtpLoginResponse, VerifyOtpRequest, VerifyOtpResponse } from '@/types/auth';
 import {RegisterData } from '@/types/Register';     
 
 
 
-export const login = async (data: LoginRequest): Promise<LoginResponse> => {
+export const login = async (data: LoginRequest): Promise<OtpLoginResponse> => {
   try {
-    const response = await api.post<LoginResponse>('/auth/login', data);
+    const response = await api.post<OtpLoginResponse>('/auth/login', data);
     return response.data;
   } catch (error: any) {
     const message = error.response?.data?.message || 'An error occurred during login.';
+    throw new Error(message);
+  }
+};
+
+export const verifyOtp = async (data: VerifyOtpRequest): Promise<VerifyOtpResponse> => {
+  try {
+    const response = await api.post<VerifyOtpResponse>('/auth/verify-otp', data);
+    return response.data;
+  } catch (error: any) {
+    const message = error.response?.data?.message || 'An error occurred during OTP verification.';
     throw new Error(message);
   }
 };
