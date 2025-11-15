@@ -237,7 +237,13 @@ const Login = () => {
         </p>
 
         {step === 'credentials' ? (
-          <form onSubmit={handleCredentialsSubmit} className="mt-8 space-y-6">
+          <form 
+            onSubmit={handleCredentialsSubmit} 
+            method="POST"
+            action="#"
+            className="mt-8 space-y-6"
+            noValidate
+          >
             {blockedUntil && blockedUntil > Date.now() && (
               <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
                 <div className="flex items-start">
@@ -270,6 +276,7 @@ const Login = () => {
                   value={formData.username}
                   onChange={handleChange}
                   disabled={blockedUntil !== null && blockedUntil > Date.now()}
+                  autoComplete="username"
                   className="block w-full pl-10 rounded-md border border-gray-300 py-2 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                 />
                 {validationErrors.username && (
@@ -291,6 +298,7 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleChange}
                   disabled={blockedUntil !== null && blockedUntil > Date.now()}
+                  autoComplete="current-password"
                   className="block w-full pl-10 rounded-md border border-gray-300 py-2 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                 />
                 <button
@@ -317,7 +325,13 @@ const Login = () => {
             </div>
           </form>
         ) : (
-          <form onSubmit={handleOtpSubmit} className="mt-8 space-y-6">
+          <form 
+            onSubmit={handleOtpSubmit} 
+            method="POST"
+            action="#"
+            className="mt-8 space-y-6"
+            noValidate
+          >
             <div className="text-center space-y-2 mb-4">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full text-purple-600 mb-2 mx-auto">
                 <FaEnvelope className="text-2xl" />

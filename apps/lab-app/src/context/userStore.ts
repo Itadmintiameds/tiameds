@@ -31,15 +31,13 @@ const useAuthStore = create<AuthStore>()(
     login: (userData: LoginResponseData, token?: string | null) => {
       set({
         user: userData,
-        token: token ?? null,
+        token: token ?? null, // Keep for backwards compatibility, but not used for auth
         isAuthenticated: true,
         isLoading: false,
       });
 
-      // Preserve legacy cookie behavior when a token is provided
-      if (token && typeof window !== 'undefined') {
-        document.cookie = `token=${token}; path=/; secure; samesite=strict`;
-      }
+      // Note: Tokens are stored in HttpOnly cookies (accessToken, refreshToken)
+      // set by the backend. We don't manually set cookies here.
     },
 
     logout: () => {
@@ -50,6 +48,8 @@ const useAuthStore = create<AuthStore>()(
         isLoading: false,
       });
       
+      // Note: Backend logout endpoint will clear HttpOnly cookies (accessToken, refreshToken)
+      // via Set-Cookie headers. We only clear legacy token cookie if it exists.
       if (typeof window !== 'undefined') {
         document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       }

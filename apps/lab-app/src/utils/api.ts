@@ -2,50 +2,36 @@ import axios, {
   AxiosInstance,
   InternalAxiosRequestConfig,
   AxiosResponse,
-  AxiosHeaders,
 } from 'axios';
-import { LoginResponse } from '@/types/auth';
+import { VerifyOtpResponse } from '@/types/auth';
 
 // Function to handle logout and redirect
 const handleTokenExpiration = () => {
-  // Clear cookies
-  document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-  
-  // Redirect to login page
+  // Clear any legacy token cookies
   if (typeof window !== 'undefined') {
-    // Check if we're not already on the login page to avoid infinite redirects
+    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    
+    // Redirect to login page
     if (!window.location.pathname.includes('/user-login') && !window.location.pathname.includes('/register-user')) {
       window.location.href = '/user-login';
     }
   }
 };
 
-const setAuthCookie = (token: string | null) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  if (!token) {
-    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    return;
-  }
-
-  document.cookie = `token=${token}; path=/; secure; samesite=strict`;
-};
-
 const api: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   timeout: 10000,
-  withCredentials: true,
+  withCredentials: true, // Critical: This ensures cookies (accessToken, refreshToken) are sent with requests
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+// Separate axios instance for refresh calls to avoid infinite loops
 const refreshClient: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   timeout: 10000,
-  withCredentials: true,
+  withCredentials: true, // Ensures refreshToken cookie is sent
   headers: {
     'Content-Type': 'application/json',
   },
@@ -64,38 +50,23 @@ type FailedRequest = {
 let isRefreshing = false;
 const failedQueue: FailedRequest[] = [];
 
-function setAuthorizationHeader(
-  config: InternalAxiosRequestConfig | RetryAxiosRequestConfig,
-  token: string
-) {
-  const headers =
-    config.headers instanceof AxiosHeaders
-      ? config.headers
-      : AxiosHeaders.from(config.headers ?? {});
-  headers.set('Authorization', `Bearer ${token}`);
-  config.headers = headers;
-}
-
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: any) => {
   while (failedQueue.length > 0) {
     const { resolve, reject, config } = failedQueue.shift() as FailedRequest;
     if (error) {
       reject(error);
-      continue;
+    } else {
+      // Retry the queued request - new accessToken cookie will be sent automatically
+      resolve(api.request(config));
     }
-
-    if (token) {
-      setAuthorizationHeader(config, token);
-    }
-
-    resolve(api.request(config));
   }
 };
 
-// Add a request interceptor
+// Request interceptor - No need to manually add Authorization headers
+// The backend reads accessToken from HttpOnly cookies automatically
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Exclude public and auth endpoints from adding Authorization header
+    // Exclude public and auth endpoints - these don't need authentication
     const excludedEndpoints = [
       '/public/login', 
       '/public/register', 
@@ -108,74 +79,83 @@ api.interceptors.request.use(
       config.url?.includes(endpoint)
     );
 
-    if (!isExcluded) {
-      // Provide backwards compatibility if a legacy token cookie exists
-      const token = document.cookie
-        .split('; ')
-        .find((row) => row.startsWith('token='))?.split('=')[1];
-
-      if (token) {
-        setAuthorizationHeader(config, token);
-      }
-    }
+    // For all other endpoints, cookies (accessToken) will be sent automatically
+    // via withCredentials: true. The backend will read the accessToken cookie.
+    // No manual Authorization header needed since we're using HttpOnly cookies.
 
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Add a response interceptor
+// Response interceptor - Handles automatic token refresh
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
     const originalRequest = error.config as RetryAxiosRequestConfig;
 
+    // If there's no original request config, reject immediately
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
+
     const status = error.response?.status;
     const isAuthError = status === 401 || status === 403;
 
+    // Only attempt refresh for 401/403 errors and if we haven't already retried
     if (isAuthError && !originalRequest._retry) {
+      // If this is a refresh request that failed, we're truly logged out
       if (originalRequest.url?.includes('/auth/refresh')) {
         handleTokenExpiration();
         return Promise.reject(error);
       }
 
+      // If we're already refreshing, queue this request
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject, config: originalRequest });
         });
       }
 
+      // Mark this request as retried and start refresh process
       originalRequest._retry = true;
       isRefreshing = true;
 
       try {
-        const refreshResponse = await refreshClient.post<LoginResponse>('/auth/refresh');
-        const newToken = refreshResponse.data?.token ?? null;
-
-        if (newToken) {
-          setAuthCookie(newToken);
-        }
-
-        processQueue(null, newToken);
-
-        if (newToken) {
-          setAuthorizationHeader(originalRequest, newToken);
-        }
-
+        // Call refresh endpoint - refreshToken cookie is sent automatically via withCredentials
+        // Backend will set new accessToken and refreshToken cookies in the response
+        const refreshResponse = await refreshClient.post<VerifyOtpResponse>('/auth/refresh');
+        
+        // Refresh successful - new cookies are set automatically by the browser
+        // Process all queued requests with success
+        processQueue(null);
+        
+        // Retry the original request - new accessToken cookie will be sent automatically
         return api.request(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError);
-        handleTokenExpiration();
+      } catch (refreshError: any) {
+        // Refresh failed - check if it's because refreshToken is missing/expired
+        const refreshStatus = refreshError?.response?.status;
+        
+        // Only redirect to login if refresh actually failed (not network errors)
+        if (refreshStatus === 401 || refreshStatus === 403) {
+          // Refresh token is invalid/expired - clear queue and redirect to login
+          processQueue(refreshError);
+          handleTokenExpiration();
+        } else {
+          // Network or other error - don't redirect, just reject
+          // This allows the UI to handle the error appropriately
+          processQueue(refreshError);
+        }
+        
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
+    // For non-auth errors or already retried requests, reject normally
     return Promise.reject(error);
   }
 );
 
 export default api;
-
-

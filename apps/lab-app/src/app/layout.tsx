@@ -8,6 +8,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import { LabProvider } from '@/context/LabContext';
 import TokenExpirationHandler from '@/components/TokenExpirationHandler';
+import IdleLogoutHandler from '@/components/IdleLogoutHandler';
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -43,6 +44,7 @@ export default function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <TokenExpirationHandler />
+          <IdleLogoutHandler />
           {children}
           <ToastContainer />
         </body>

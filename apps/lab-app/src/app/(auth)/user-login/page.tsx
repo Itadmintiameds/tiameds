@@ -290,7 +290,13 @@ const LoginPage: React.FC = () => {
           </div>
 
           {step === 'credentials' ? (
-            <form onSubmit={handleCredentialsSubmit} className="space-y-5">
+            <form 
+              onSubmit={handleCredentialsSubmit} 
+              method="POST"
+              action="#"
+              className="space-y-5"
+              noValidate
+            >
               {blockedUntil && blockedUntil > Date.now() && (
                 <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
                   <div className="flex items-start">
@@ -322,6 +328,7 @@ const LoginPage: React.FC = () => {
                     value={formData.username}
                     onChange={handleChange}
                     disabled={blockedUntil !== null && blockedUntil > Date.now()}
+                    autoComplete="username"
                     className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                     placeholder="username"
                   />
@@ -343,6 +350,7 @@ const LoginPage: React.FC = () => {
                     value={formData.password}
                     onChange={handleChange}
                     disabled={blockedUntil !== null && blockedUntil > Date.now()}
+                    autoComplete="current-password"
                     className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                     placeholder="••••••••"
                   />
@@ -383,7 +391,13 @@ const LoginPage: React.FC = () => {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleOtpSubmit} className="space-y-5">
+            <form 
+              onSubmit={handleOtpSubmit} 
+              method="POST"
+              action="#"
+              className="space-y-5"
+              noValidate
+            >
               <div className="text-center space-y-2 mb-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full text-purple-600 mb-2">
                   <FaEnvelope className="text-2xl" />
