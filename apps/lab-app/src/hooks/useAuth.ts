@@ -16,7 +16,17 @@ const isTokenExpired = (token: string): boolean => {
 };
 
 export const useAuth = () => {
-  const { user, token, isAuthenticated, isLoading, login, logout, setLoading, updateUser } = useAuthStore();
+  const {
+    user,
+    token,
+    isAuthenticated,
+    isLoading,
+    login,
+    logout,
+    setLoading,
+    updateUser,
+    initializeToken,
+  } = useAuthStore();
   
   // Function to handle automatic logout on token expiration
   const handleTokenExpiration = useCallback(() => {
@@ -27,6 +37,11 @@ export const useAuth = () => {
       window.location.href = '/user-login';
     }
   }, [logout]);
+
+  // Initialize auth state on mount
+  useEffect(() => {
+    initializeToken();
+  }, [initializeToken]);
 
   // Check token expiration on mount and periodically
   useEffect(() => {

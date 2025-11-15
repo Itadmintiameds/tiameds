@@ -1,18 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { LoginResponseData } from '../types/auth';
-
-// Helper function to get cookie value
-const getCookie = (name: string): string | null => {
-  if (typeof window === 'undefined') return null;
-  
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) {
-    return parts.pop()?.split(';').shift() || null;
-  }
-  return null;
-};
+import { getCurrentUser } from '@/../services/authService';
 
 interface AuthState {
   user: LoginResponseData | null;
@@ -22,7 +10,7 @@ interface AuthState {
 }
 
 interface AuthActions {
-  login: (userData: LoginResponseData, token: string) => void;
+  login: (userData: LoginResponseData, token?: string | null) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
   updateUser: (userData: Partial<LoginResponseData>) => void;
@@ -32,83 +20,80 @@ interface AuthActions {
 type AuthStore = AuthState & AuthActions;
 
 const useAuthStore = create<AuthStore>()(
-  persist(
-    (set, get) => ({
-      // Initial state
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      isLoading: false,
+  (set, get) => ({
+    // Initial state
+    user: null,
+    token: null,
+    isAuthenticated: false,
+    isLoading: true,
 
-      // Actions
-      login: (userData: LoginResponseData, token: string) => {
+    // Actions
+    login: (userData: LoginResponseData, token?: string | null) => {
+      set({
+        user: userData,
+        token: token ?? null,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+
+      // Preserve legacy cookie behavior when a token is provided
+      if (token && typeof window !== 'undefined') {
+        document.cookie = `token=${token}; path=/; secure; samesite=strict`;
+      }
+    },
+
+    logout: () => {
+      set({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
+      
+      if (typeof window !== 'undefined') {
+        document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      }
+    },
+
+    setLoading: (loading: boolean) => {
+      set({ isLoading: loading });
+    },
+
+    updateUser: (userData: Partial<LoginResponseData>) => {
+      const currentUser = get().user;
+      if (currentUser) {
+        const updatedUser = { ...currentUser, ...userData };
         set({
-          user: userData,
-          token,
+          user: updatedUser
+        });
+      }
+    },
+
+    // Initialize user session using server-side cookies
+    initializeToken: async () => {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      set({ isLoading: true });
+
+      try {
+        const currentUser = await getCurrentUser();
+        set({
+          user: currentUser,
           isAuthenticated: true,
           isLoading: false,
         });
-        
-        // Store token in cookie only (not in localStorage or sessionStorage)
-        if (typeof window !== 'undefined') {
-          document.cookie = `token=${token}; path=/; secure; samesite=strict`;
-        }
-      },
-
-      logout: () => {
+      } catch (error) {
         set({
-          user: null,
           token: null,
+          user: null,
           isAuthenticated: false,
           isLoading: false,
         });
-        
-        // Clear token from cookie only
-        if (typeof window !== 'undefined') {
-          document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-          // Clear any other localStorage items
-          localStorage.removeItem("ally-supports-cache");
-          localStorage.removeItem("completedTestsDateFilter");
-          // Clear lab-related localStorage items (consolidated into userLabs)
-          localStorage.removeItem("userLabs");
-          // Clear the auth-storage entry completely
-          localStorage.removeItem("auth-storage");
-        }
-      },
-
-      setLoading: (loading: boolean) => {
-        set({ isLoading: loading });
-      },
-
-      updateUser: (userData: Partial<LoginResponseData>) => {
-        const currentUser = get().user;
-        if (currentUser) {
-          set({
-            user: { ...currentUser, ...userData }
-          });
-        }
-      },
-
-      // Initialize token from cookie on app load
-      initializeToken: () => {
-        if (typeof window !== 'undefined') {
-          const token = getCookie('token');
-          if (token) {
-            set({ token });
-          }
-        }
-      },
-    }),
-    {
-      name: 'auth-storage', // unique name for localStorage key
-      partialize: (state) => ({ 
-        user: state.user, 
-        isAuthenticated: state.isAuthenticated 
-        // Note: token is NOT persisted to localStorage for security
-        // It's stored in sessionStorage instead
-      }), // only persist these fields
-    }
-  )
+      }
+    },
+  })
 );
 
 export default useAuthStore;

@@ -66,26 +66,6 @@ const LabProvider = ({ children }: LabProviderProps) => {
     );
 };
 
-// Utility functions for lab storage management
-export const saveLabsToStorage = (labs: LabResponse[], currentLabIndex: number) => {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem('userLabs', JSON.stringify({
-            labs,
-            currentLabIndex
-        }));
-    }
-};
-
-export const getLabsFromStorage = () => {
-    if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('userLabs');
-        if (stored) {
-            return JSON.parse(stored);
-        }
-    }
-    return null;
-};
-
 export const useLabs = (): LabContextType => {
     const context = useContext(LabContext);
     if (!context) {

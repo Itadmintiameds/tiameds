@@ -1,26 +1,30 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+const hasSession = (req: NextRequest) => {
+  const accessToken = req.cookies.get('accessToken')?.value;
+  const legacyToken = req.cookies.get('token')?.value;
+  return Boolean(accessToken ?? legacyToken);
+};
+
 export function middleware(req: NextRequest) {
-  const token = req.cookies.get('token');
-
-
+  const userIsAuthenticated = hasSession(req);
   const { pathname } = req.nextUrl;
 
-  // If token exists and user tries to access '/' or '/login', redirect to '/dashboard'
-  if (token && (pathname === '/' || pathname.startsWith('/login'))) {
+  // Redirect authenticated users away from public auth pages
+  if (userIsAuthenticated && (pathname === '/' || pathname === '/user-login' || pathname.startsWith('/login'))) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
-  // If token is missing and user tries to access protected routes, redirect to '/login'
-  if (!token && (pathname.startsWith('/dashboard') || pathname.startsWith('/admin'))) {
+  // Redirect unauthenticated users attempting to hit protected routes
+  const isProtectedPath = pathname.startsWith('/dashboard') || pathname.startsWith('/admin');
+  if (!userIsAuthenticated && isProtectedPath) {
     return NextResponse.redirect(new URL('/user-login', req.url));
   }
 
-  // Allow the request to proceed normally
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/', '/user-login', '/dashboard/:path*', '/admin/:path*'], // Define protected & public routes
+  matcher: ['/', '/user-login', '/login', '/dashboard/:path*', '/admin/:path*'],
 };

@@ -64,7 +64,12 @@ const DashboardContent = () => {
   const pathname = usePathname();
   const tabParam = searchParams.get('tab');
   const [selectedTab, setSelectedTab] = useState<string>('patient');
+  const [hasMounted, setHasMounted] = useState(false);
   const { isAdmin, isSuperAdmin, isTechnician, isDeskRole } = useAuth();
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
 
   // Filter tabs based on user role
@@ -107,6 +112,29 @@ const DashboardContent = () => {
     if (isDeskRole) return <PatientDashboard />;
     return null;
   };
+
+  if (!hasMounted) {
+    return (
+      <div className="p-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="flex border-b border-gray-200 px-4">
+            {tabs.map((tab) => (
+              <div
+                key={tab.id}
+                className="relative px-4 py-3 flex items-center space-x-2 text-gray-300"
+              >
+                <span className="p-1.5 rounded-md bg-gray-100 animate-pulse h-8 w-8" />
+                <span className="h-4 w-32 bg-gray-100 animate-pulse rounded" />
+              </div>
+            ))}
+          </div>
+          <div className="py-8 px-6">
+            <div className="h-40 bg-gray-100 rounded-lg animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">

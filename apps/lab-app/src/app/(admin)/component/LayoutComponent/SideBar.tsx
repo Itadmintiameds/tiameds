@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Disclosure, DisclosureButton, DisclosurePanel } from "@headlessui/react";
 import clsx from "clsx";
 import Image from "next/image";
@@ -16,6 +16,29 @@ interface SideBarProps {
 const SideBar = ({ isOpen, setIsOpen }: SideBarProps) => {
   const pathname = usePathname();
   const navigation = getNavigation(pathname);
+  const [particles, setParticles] = useState<
+    Array<{
+      id: number;
+      size: number;
+      top: number;
+      left: number;
+      duration: number;
+      delay: number;
+    }>
+  >([]);
+
+  useEffect(() => {
+    setParticles(
+      Array.from({ length: 10 }, (_, index) => ({
+        id: index,
+        size: Math.random() * 6 + 2,
+        top: Math.random() * 100,
+        left: Math.random() * 100,
+        duration: Math.random() * 10 + 10,
+        delay: Math.random() * 5,
+      }))
+    );
+  }, []);
   
   return (
     <aside
@@ -29,17 +52,17 @@ const SideBar = ({ isOpen, setIsOpen }: SideBarProps) => {
       <div className="flex items-center justify-between px-4 py-5 border-b border-white/20 bg-[#E1C4F8] relative overflow-hidden">
         {/* Floating particles background */}
         <div className="absolute inset-0 opacity-10">
-          {[...Array(10)].map((_, i) => (
+          {particles.map((particle) => (
             <div
-              key={i}
+              key={particle.id}
               className="absolute rounded-full bg-white"
               style={{
-                width: `${Math.random() * 6 + 2}px`,
-                height: `${Math.random() * 6 + 2}px`,
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                animation: `float ${Math.random() * 10 + 10}s linear infinite`,
-                animationDelay: `${Math.random() * 5}s`
+                width: `${particle.size}px`,
+                height: `${particle.size}px`,
+                top: `${particle.top}%`,
+                left: `${particle.left}%`,
+                animation: `float ${particle.duration}s linear infinite`,
+                animationDelay: `${particle.delay}s`,
               }}
             />
           ))}

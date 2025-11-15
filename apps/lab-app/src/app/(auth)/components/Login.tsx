@@ -8,6 +8,7 @@ import { FaLock, FaUser } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { ZodError } from 'zod';
 import { login } from '../../../../services/authService';
+import useAuthStore from '@/context/userStore';
 
 const Login = () => {
   const [formData, setFormData] = useState<LoginData>({
@@ -18,6 +19,7 @@ const Login = () => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const { login: authLogin } = useAuthStore();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -43,14 +45,8 @@ const Login = () => {
     // API call
     try {
       const response = await login(formData);
-    
-      // Store token in cookies
-      // document.cookie = `token=${response.token}; path=/; Secure; HttpOnly`;  // Add Secure and HttpOnly for better security
 
-      document.cookie = `token=${response.token}; path=/;`;
-     
-
-      localStorage.setItem('user', JSON.stringify(response?.data)); // Store user in localStorage
+      authLogin(response.data, response.token ?? null);
       router.push('/dashboard');
       toast.success('Logged in successfully!', { autoClose: 1000 });
     

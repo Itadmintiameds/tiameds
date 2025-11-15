@@ -1,12 +1,12 @@
 import api from '@/utils/api';
-import { LoginRequest, LoginResponse ,ErrorResponse,RegisterResponse } from '@/types/auth';
+import { LoginRequest, LoginResponse ,ErrorResponse,RegisterResponse, LoginResponseData } from '@/types/auth';
 import {RegisterData } from '@/types/Register';     
 
 
 
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
   try {
-    const response = await api.post<LoginResponse>('/public/login', data);
+    const response = await api.post<LoginResponse>('/auth/login', data);
     return response.data;
   } catch (error: any) {
     const message = error.response?.data?.message || 'An error occurred during login.';
@@ -34,6 +34,16 @@ export const logout = async (): Promise<{ message: string }> => {
     throw new Error(message);
   }
 }
+
+export const getCurrentUser = async (): Promise<LoginResponseData> => {
+  try {
+    const response = await api.get<{ status: string; message: string; data: LoginResponseData }>('lab/admin/me');
+    return response.data.data;
+  } catch (error: any) {
+    const message = error.response?.data?.message || 'Failed to fetch current user.';
+    throw new Error(message);
+  }
+};
 
 
 

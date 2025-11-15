@@ -53,9 +53,9 @@ const LoginPage: React.FC = () => {
       // API call
       try {
         const response = await login(formData);
-   
+
         // Use Zustand store to handle login
-        authLogin(response.data, response.token);
+        authLogin(response.data, response.token ?? null);
         
         router.push('/dashboard');
         toast.success('Logged in successfully!', { autoClose: 1000 });

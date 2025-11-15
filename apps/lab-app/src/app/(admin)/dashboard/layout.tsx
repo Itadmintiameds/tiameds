@@ -1,10 +1,10 @@
 "use client";
 import { getUsersLab } from "@/../services/labServices";
-import { useLabs, saveLabsToStorage, getLabsFromStorage } from '@/context/LabContext';
+import { useLabs } from '@/context/LabContext';
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import useAuthStore from "../../../context/userStore";
+import { useAuth } from "@/hooks/useAuth";
 import SideBar from "../component/LayoutComponent/SideBar";
 import TopNav from "../component/LayoutComponent/TopNav";
 
@@ -14,7 +14,8 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const [isOpen, setIsOpen] = useState(true);
-  const { user } = useAuthStore();
+  const [isHydrated, setIsHydrated] = useState(false);
+  const { user } = useAuth();
   const { labs, setLabs, currentLab, setCurrentLab, refreshlab } = useLabs();
   const router = useRouter();
 
@@ -38,36 +39,35 @@ const Layout = ({ children }: LayoutProps) => {
   }, []);
 
   useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
     const fetchLabs = async () => {
       try {
-        // Check local storage first
-        const storedData = getLabsFromStorage();
-
-        if (storedData && storedData.labs && storedData.currentLabIndex !== undefined) {
-          setLabs(storedData.labs);
-          setCurrentLab(storedData.labs[storedData.currentLabIndex]);
-        }
-
-        // Always fetch fresh data but don't wait for it
         const data = await getUsersLab();
         setLabs(data);
 
-        if (data.length > 0) {
-          // Only set new lab if there wasn't one stored
-          if (!storedData) {
-            setCurrentLab(data[0]);
-            saveLabsToStorage(data, 0);
-          } else {
-            // Update labs array but keep current index if it exists
-            const currentIndex = storedData.currentLabIndex !== undefined ? storedData.currentLabIndex : 0;
-            saveLabsToStorage(data, currentIndex < data.length ? currentIndex : 0);
+        setCurrentLab((previousLab) => {
+          if (data.length === 0) {
+            return null;
           }
-        }
+
+          if (!previousLab) {
+            return data[0];
+          }
+
+          const matchingLab = data.find((lab) => lab.id === previousLab.id);
+          return matchingLab ?? data[0];
+        });
       } catch (error) {
         toast.error("Failed to fetch labs", { position: "top-right", autoClose: 2000 });
       }
     };
+
     fetchLabs();
+
+    
   }, [setLabs, setCurrentLab, refreshlab]);
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -77,8 +77,6 @@ const Layout = ({ children }: LayoutProps) => {
       const selectedLab = labs[selectedLabIndex];
       alert("Are you sure you want to switch to " + selectedLab.name);
       setCurrentLab(selectedLab);
-      // Update localStorage with new current lab index
-      saveLabsToStorage(labs, selectedLabIndex);
       toast.success(`Switched to ${selectedLab.name}`, { position: "top-right", autoClose: 2000 });
     }
   };
@@ -92,7 +90,7 @@ const Layout = ({ children }: LayoutProps) => {
 
       <main className={`flex-1 ml-20 transition-all duration-400 ${isOpen ? "ml-64" : "ml-20"} overflow-hidden`}> {/* Added overflow-hidden */}
         {/* Top Navigation Bar */}
-        {user && (
+        {isHydrated && user && (
           <TopNav
             user={user}
             labs={labs}
