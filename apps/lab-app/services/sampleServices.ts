@@ -8,19 +8,20 @@ interface ApiResponse<T> {
     status: string;
 }
 
-// Fetch all samples
-export const getSamples = async (): Promise<SampleList[]> => {
+// Fetch all samples for a lab
+export const getSamples = async (labId: number): Promise<SampleList[]> => {
     try {
-        const response = await api.get<ApiResponse<SampleList[]>>('/lab/sample-list');
+        const response = await api.get<ApiResponse<SampleList[]>>(`/lab/${labId}/sample-list`);
         return response.data.data;
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'An error occurred while fetching samples.');
     }
 };
 
-export const createSample = async (sampleData: Partial<SampleList>): Promise<SampleList> => {
+// Create a new sample for a lab
+export const createSample = async (labId: number, sampleData: Partial<SampleList>): Promise<SampleList> => {
     try {
-        const response = await api.post<ApiResponse<SampleList>>('/lab/sample', sampleData);
+        const response = await api.post<ApiResponse<SampleList>>(`/lab/${labId}/sample`, sampleData);
         return response.data.data;
     } catch (error: unknown) {
         if (error instanceof Error) {
@@ -35,21 +36,20 @@ export const createSample = async (sampleData: Partial<SampleList>): Promise<Sam
     }
 };
 
-
-// Update an existing sample
-export const updateSample = async (sampleId: number, sampleData: Partial<SampleList>): Promise<SampleList> => {
+// Update an existing sample for a lab
+export const updateSample = async (labId: number, sampleId: number, sampleData: Partial<SampleList>): Promise<SampleList> => {
     try {
-        const response = await api.put<ApiResponse<SampleList>>(`/lab/sample/${sampleId}`, sampleData);
+        const response = await api.put<ApiResponse<SampleList>>(`/lab/${labId}/sample/${sampleId}`, sampleData);
         return response.data.data;
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'An error occurred while updating the sample.');
     }
 };
 
-// Delete a sample
-export const deleteSample = async (sampleId: number): Promise<void> => {
+// Delete a sample from a lab
+export const deleteSample = async (labId: number, sampleId: number): Promise<void> => {
     try {
-        await api.delete<ApiResponse<null>>(`/lab/sample/${sampleId}`);
+        await api.delete<ApiResponse<null>>(`/lab/${labId}/sample/${sampleId}`);
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'An error occurred while deleting the sample.');
     }

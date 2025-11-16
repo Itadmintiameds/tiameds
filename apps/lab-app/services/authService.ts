@@ -1,5 +1,5 @@
 import api from '@/utils/api';
-import { LoginRequest, LoginResponse ,ErrorResponse,RegisterResponse, LoginResponseData, OtpLoginResponse, VerifyOtpRequest, VerifyOtpResponse } from '@/types/auth';
+import { LoginRequest, LoginResponse ,ErrorResponse,RegisterResponse, LoginResponseData, OtpLoginResponse, VerifyOtpRequest, VerifyOtpResponse, ForgotPasswordRequest, ForgotPasswordResponse, ResetPasswordRequest, ResetPasswordResponse } from '@/types/auth';
 import {RegisterData } from '@/types/Register';     
 
 
@@ -51,6 +51,26 @@ export const getCurrentUser = async (): Promise<LoginResponseData> => {
     return response.data.data;
   } catch (error: any) {
     const message = error.response?.data?.message || 'Failed to fetch current user.';
+    throw new Error(message);
+  }
+};
+
+export const forgotPassword = async (data: ForgotPasswordRequest): Promise<ForgotPasswordResponse> => {
+  try {
+    const response = await api.post<ForgotPasswordResponse>('/auth/forgot-password', data);
+    return response.data;
+  } catch (error: any) {
+    const message = error.response?.data?.message || 'An error occurred while requesting password reset.';
+    throw new Error(message);
+  }
+};
+
+export const resetPassword = async (data: ResetPasswordRequest): Promise<ResetPasswordResponse> => {
+  try {
+    const response = await api.post<ResetPasswordResponse>('/auth/reset-password', data);
+    return response.data;
+  } catch (error: any) {
+    const message = error.response?.data?.message || 'An error occurred while resetting password.';
     throw new Error(message);
   }
 };

@@ -71,4 +71,32 @@ export interface VerifyOtpResponse {
     data: LoginResponseData;
 }
 
+// Forgot Password Types
+export interface ForgotPasswordRequest {
+    email: string;
+}
+
+export interface ForgotPasswordResponse {
+    status: string;
+    message: string;
+    data: {
+        message: string;
+    } | null;
+}
+
+// Reset Password Types
+export interface ResetPasswordRequest {
+    token: string;
+    newPassword: string;
+    confirmPassword: string;
+}
+
+export interface ResetPasswordResponse {
+    status: string;
+    message: string;
+    data: {
+        message: string;
+    } | null;
+}
+
 

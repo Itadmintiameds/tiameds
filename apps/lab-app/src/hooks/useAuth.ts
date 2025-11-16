@@ -32,9 +32,17 @@ export const useAuth = () => {
   const handleTokenExpiration = useCallback(() => {
     logout();
     
-    // Redirect to login page if not already there
-    if (typeof window !== 'undefined' && !window.location.pathname.includes('/user-login')) {
-      window.location.href = '/user-login';
+    // Redirect to login page if not already on public auth pages
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname;
+      if (
+        !currentPath.includes('/user-login') && 
+        !currentPath.includes('/register-user') &&
+        !currentPath.includes('/forgot-password') &&
+        !currentPath.includes('/reset-password')
+      ) {
+        window.location.href = '/user-login';
+      }
     }
   }, [logout]);
 

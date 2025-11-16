@@ -11,8 +11,14 @@ const handleTokenExpiration = () => {
   if (typeof window !== 'undefined') {
     document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     
-    // Redirect to login page
-    if (!window.location.pathname.includes('/user-login') && !window.location.pathname.includes('/register-user')) {
+    // Redirect to login page (but not from public auth pages)
+    const currentPath = window.location.pathname;
+    if (
+      !currentPath.includes('/user-login') && 
+      !currentPath.includes('/register-user') &&
+      !currentPath.includes('/forgot-password') &&
+      !currentPath.includes('/reset-password')
+    ) {
       window.location.href = '/user-login';
     }
   }
@@ -73,7 +79,9 @@ api.interceptors.request.use(
       '/auth/refresh',
       '/auth/login',
       '/auth/verify-otp',
-      '/auth/send-otp'
+      '/auth/send-otp',
+      '/auth/forgot-password',
+      '/auth/reset-password'
     ];
     const isExcluded = excludedEndpoints.some((endpoint) =>
       config.url?.includes(endpoint)

@@ -56,10 +56,15 @@ export const useIdleLogout = (
     // Prevent multiple logout calls
     if (isLoggingOutRef.current) return;
     
-    // Don't logout if already on login/register pages
+    // Don't logout if already on login/register/password reset pages
     if (typeof window !== 'undefined') {
       const currentPath = window.location.pathname;
-      if (currentPath.includes('/user-login') || currentPath.includes('/register-user')) {
+      if (
+        currentPath.includes('/user-login') || 
+        currentPath.includes('/register-user') ||
+        currentPath.includes('/forgot-password') ||
+        currentPath.includes('/reset-password')
+      ) {
         return;
       }
     }
@@ -89,7 +94,12 @@ export const useIdleLogout = (
       // Redirect to login page
       if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname;
-        if (!currentPath.includes('/user-login') && !currentPath.includes('/register-user')) {
+        if (
+          !currentPath.includes('/user-login') && 
+          !currentPath.includes('/register-user') &&
+          !currentPath.includes('/forgot-password') &&
+          !currentPath.includes('/reset-password')
+        ) {
           router.push('/user-login');
         }
       }
@@ -100,7 +110,12 @@ export const useIdleLogout = (
       logoutStore();
       if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname;
-        if (!currentPath.includes('/user-login') && !currentPath.includes('/register-user')) {
+        if (
+          !currentPath.includes('/user-login') && 
+          !currentPath.includes('/register-user') &&
+          !currentPath.includes('/forgot-password') &&
+          !currentPath.includes('/reset-password')
+        ) {
           router.push('/user-login');
         }
       }
@@ -113,10 +128,15 @@ export const useIdleLogout = (
   const resetIdleTimer = useCallback(() => {
     if (!enabled || !isAuthenticated || isLoggingOutRef.current) return;
 
-    // Don't track activity on login/register pages
+    // Don't track activity on login/register/password reset pages
     if (typeof window !== 'undefined') {
       const currentPath = window.location.pathname;
-      if (currentPath.includes('/user-login') || currentPath.includes('/register-user')) {
+      if (
+        currentPath.includes('/user-login') || 
+        currentPath.includes('/register-user') ||
+        currentPath.includes('/forgot-password') ||
+        currentPath.includes('/reset-password')
+      ) {
         return;
       }
     }
