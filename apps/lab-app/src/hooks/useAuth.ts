@@ -37,7 +37,7 @@ export const useAuth = () => {
       const currentPath = window.location.pathname;
       if (
         !currentPath.includes('/user-login') && 
-        !currentPath.includes('/register-user') &&
+        !currentPath.includes('/onboarding') &&
         !currentPath.includes('/forgot-password') &&
         !currentPath.includes('/reset-password')
       ) {

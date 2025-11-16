@@ -15,6 +15,11 @@ export function middleware(req: NextRequest) {
   const userIsAuthenticated = hasSession(req);
   const { pathname } = req.nextUrl;
 
+  // Allow onboarding and verification routes for everyone
+  if (pathname.startsWith('/onboarding') || pathname.startsWith('/verify-email')) {
+    return NextResponse.next();
+  }
+
   // Redirect authenticated users away from public auth pages
   if (userIsAuthenticated && (pathname === '/' || pathname === '/user-login' || pathname.startsWith('/login'))) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
@@ -31,5 +36,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/user-login', '/login', '/dashboard/:path*', '/admin/:path*'],
+  matcher: ['/', '/user-login', '/login', '/dashboard/:path*', '/admin/:path*', '/onboarding/:path*', '/verify-email/:path*'],
 };

@@ -15,9 +15,11 @@ const handleTokenExpiration = () => {
     const currentPath = window.location.pathname;
     if (
       !currentPath.includes('/user-login') && 
-      !currentPath.includes('/register-user') &&
+      !currentPath.includes('/onboarding') &&
       !currentPath.includes('/forgot-password') &&
-      !currentPath.includes('/reset-password')
+      !currentPath.includes('/reset-password') &&
+      !currentPath.includes('/onboarding') &&
+      !currentPath.includes('/verify-email')
     ) {
       window.location.href = '/user-login';
     }
@@ -76,6 +78,7 @@ api.interceptors.request.use(
     const excludedEndpoints = [
       '/public/login', 
       '/public/register', 
+      '/public/onboarding',
       '/auth/refresh',
       '/auth/login',
       '/auth/verify-otp',
