@@ -206,6 +206,40 @@ CREATE INDEX idx_verification_token_created ON verification_tokens(created_at);
 }
 ```
 
+#### Mandatory Lab Fields
+The `labs` table marks the following columns as `NOT NULL`. The onboarding form **must** supply values for each of these fields or the transaction will fail with a `DataIntegrityViolationException`:
+
+| DTO field (`lab.*`)        | Database column              | Notes |
+|---------------------------|------------------------------|-------|
+| `name`                    | `name`                       | Required |
+| `address`                 | `address`                    | Required |
+| `city`                    | `city`                       | Required |
+| `state`                   | `state`                      | Required |
+| `description`             | `description`                | Required |
+| `licenseNumber`           | `license_number`             | Required |
+| `labType`                 | `lab_type`                   | Required |
+| `labZip`                  | `lab_zip`                    | Required |
+| `labCountry`              | `lab_country`                | Required |
+| `labPhone`                | `lab_phone`                  | Required |
+| `labEmail`                | `lab_email`                  | Required |
+| `directorName`            | `director_name`              | Required |
+| `directorEmail`           | `director_email`             | Required |
+| `directorPhone`           | `director_phone`             | Required |
+| `certificationBody`       | `certification_body`         | Required |
+| `labCertificate`          | `lab_certificate`            | Required |
+| `directorGovtId`          | `director_govt_id`           | Required |
+| `labBusinessRegistration` | `lab_business_registration`  | Required |
+| `labLicense`              | `lab_license`                | Required |
+| `taxId`                   | `tax_id`                     | Required |
+| `labAccreditation`        | `lab_accreditation`          | Required |
+| `dataPrivacyAgreement`    | `data_privacy_agreement`     | Required (boolean) |
+
+`labLogo` is the only optional onboarding field; it maps to `lab_logo` which is nullable in the entity.
+
+If your onboarding UX cannot capture some of these values yet, either:  
+1. Mark them as optional in the database (set `nullable = true` and update the schema), **or**  
+2. Provide sensible defaults/placeholder values before persisting the `Lab`.
+
 **Response (Success - 201):**
 ```json
 {

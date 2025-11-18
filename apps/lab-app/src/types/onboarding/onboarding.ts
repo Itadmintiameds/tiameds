@@ -37,6 +37,13 @@ export interface LabDetails {
   directorName: string;
   directorEmail: string;
   directorPhone: string;
+  certificationBody: string;
+  labCertificate: string;
+  directorGovtId: string;
+  labBusinessRegistration: string;
+  labLicense: string;
+  taxId: string;
+  labAccreditation: string;
   dataPrivacyAgreement: boolean;
 }
 

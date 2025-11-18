@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import {
   FaUser, FaLock, FaPhone, FaMapMarkerAlt, FaBuilding,
   FaEnvelope, FaUserTie, FaCheckCircle, FaArrowRight, FaArrowLeft,
-  FaSpinner, FaFlask, FaShieldAlt, FaTimes
+  FaSpinner, FaFlask, FaShieldAlt, FaTimes, FaClipboardCheck
 } from 'react-icons/fa';
 import { completeOnboarding } from '@/../services/onboardingService';
 import { OnboardingRequestDTO } from '@/types/onboarding/onboarding';
@@ -19,7 +19,6 @@ const OnboardingContent = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
-  const [step3Validated, setStep3Validated] = useState(false);
 
   const [formData, setFormData] = useState<OnboardingRequestDTO>({
     token: '',
@@ -49,6 +48,13 @@ const OnboardingContent = () => {
       directorName: '',
       directorEmail: '',
       directorPhone: '',
+      certificationBody: '',
+      labCertificate: '',
+      directorGovtId: '',
+      labBusinessRegistration: '',
+      labLicense: '',
+      taxId: '',
+      labAccreditation: '',
       dataPrivacyAgreement: false,
     },
   });
@@ -71,63 +77,431 @@ const OnboardingContent = () => {
     }
   }, [searchParams, router]);
 
-  // Automatically validate step 3 when reached
-  useEffect(() => {
-    if (currentStep === 3 && !step3Validated) {
-      validateStep(3);
-      setStep3Validated(true);
+  // Validation helper functions
+  const validatePhone = (phone: string): string | null => {
+    if (!phone.trim()) return 'Phone number is required';
+    // Remove spaces, dashes, and plus signs for validation
+    const cleaned = phone.replace(/[\s\-+]/g, '');
+    if (!/^\d+$/.test(cleaned)) return 'Phone number must contain only digits';
+    if (cleaned.length !== 10) return 'Phone number must be exactly 10 digits';
+    return null;
+  };
+
+  const validateZip = (zip: string): string | null => {
+    if (!zip.trim()) return 'ZIP code is required';
+    if (!/^\d+$/.test(zip)) return 'ZIP code must contain only numbers';
+    if (zip.length > 6) return 'ZIP code must not exceed 6 digits';
+    if (zip.length < 4) return 'ZIP code must be at least 4 digits';
+    return null;
+  };
+
+  const validateEmail = (email: string): string | null => {
+    if (!email.trim()) return 'Email is required';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return 'Please enter a valid email address';
+    return null;
+  };
+
+  const validateUsername = (username: string): string | null => {
+    if (!username.trim()) return 'Username is required';
+    if (username.length < 3) return 'Username must be at least 3 characters';
+    if (username.length > 30) return 'Username must not exceed 30 characters';
+    if (!/^[a-zA-Z0-9]+$/.test(username)) {
+      return 'Username can only contain letters and numbers (no spaces or special characters)';
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep]);
+    return null;
+  };
 
-  const validateStep = (step: number): boolean => {
-    const newErrors: Record<string, string> = {};
+  const validatePassword = (password: string): string | null => {
+    if (!password) return 'Password is required';
+    if (password.length < 8) return 'Password must be at least 8 characters';
+    if (password.length > 50) return 'Password must not exceed 50 characters';
+    if (!/(?=.*[a-z])/.test(password)) return 'Password must contain at least one lowercase letter';
+    if (!/(?=.*[A-Z])/.test(password)) return 'Password must contain at least one uppercase letter';
+    if (!/(?=.*\d)/.test(password)) return 'Password must contain at least one number';
+    return null;
+  };
 
+  const validateName = (name: string, fieldName: string): string | null => {
+    if (!name.trim()) return `${fieldName} is required`;
+    if (name.length < 2) return `${fieldName} must be at least 2 characters`;
+    if (name.length > 50) return `${fieldName} must not exceed 50 characters`;
+    if (!/^[a-zA-Z\s'-]+$/.test(name)) return `${fieldName} can only contain alphabetic characters, spaces, hyphens, and apostrophes (no numbers)`;
+    return null;
+  };
+
+  const validateLicenseNumber = (license: string): string | null => {
+    if (!license.trim()) return 'License number is required';
+    if (license.length < 5) return 'License number must be at least 5 characters';
+    if (license.length > 20) return 'License number must not exceed 20 characters';
+    if (!/^[a-zA-Z]+$/.test(license)) return 'License number can only contain alphabetic characters (letters only, no numbers or special characters)';
+    return null;
+  };
+
+  const validateAlphaNumericField = (
+    value: string,
+    fieldName: string,
+    minLength = 3,
+    maxLength = 50
+  ): string | null => {
+    if (!value.trim()) return `${fieldName} is required`;
+    if (value.length < minLength) return `${fieldName} must be at least ${minLength} characters`;
+    if (value.length > maxLength) return `${fieldName} must not exceed ${maxLength} characters`;
+    if (!/^[a-zA-Z0-9-]+$/.test(value)) {
+      return `${fieldName} can only contain alphabetic characters, numbers, or hyphens`;
+    }
+    return null;
+  };
+
+  const validateNumericField = (
+    value: string,
+    fieldName: string,
+    minLength = 4,
+    maxLength = 15
+  ): string | null => {
+    if (!value.trim()) return `${fieldName} is required`;
+    if (!/^\d+$/.test(value)) return `${fieldName} must contain only digits`;
+    if (value.length < minLength) return `${fieldName} must be at least ${minLength} digits`;
+    if (value.length > maxLength) return `${fieldName} must not exceed ${maxLength} digits`;
+    return null;
+  };
+
+  // Get field names for a specific step (used for clearing errors)
+  const getStepFields = (step: number): string[] => {
     if (step === 1) {
-      if (!formData.username.trim()) newErrors.username = 'Username is required';
-      if (!formData.password || formData.password.length < 8) {
-        newErrors.password = 'Password must be at least 8 characters';
-      }
-      if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-      if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-      if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
+      return ['username', 'password', 'firstName', 'lastName', 'phone'];
     }
-
     if (step === 2) {
-      if (!formData.address.trim()) newErrors.address = 'Address is required';
-      if (!formData.city.trim()) newErrors.city = 'City is required';
-      if (!formData.state.trim()) newErrors.state = 'State is required';
-      if (!formData.zip.trim()) newErrors.zip = 'ZIP code is required';
-      if (!formData.country.trim()) newErrors.country = 'Country is required';
+      return ['address', 'city', 'state', 'zip', 'country'];
+    }
+    if (step === 3) {
+      return [
+        'lab.name',
+        'lab.address',
+        'lab.city',
+        'lab.state',
+        'lab.licenseNumber',
+        'lab.labType',
+        'lab.labZip',
+        'lab.labCountry',
+        'lab.labPhone',
+        'lab.labEmail',
+        'lab.directorName',
+        'lab.directorEmail',
+        'lab.directorPhone',
+        'lab.certificationBody',
+        'lab.labCertificate',
+        'lab.directorGovtId',
+        'lab.labBusinessRegistration',
+        'lab.labLicense',
+        'lab.taxId',
+        'lab.labAccreditation',
+        'lab.dataPrivacyAgreement',
+      ];
+    }
+    return [];
+  };
+
+  // Clear errors for a specific step
+  const clearStepErrors = (step: number) => {
+    const stepFields = getStepFields(step);
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      stepFields.forEach(field => {
+        delete newErrors[field];
+      });
+      return newErrors;
+    });
+  };
+
+  // Validate a specific step and set errors only for that step
+  const validateStep = (step: number): boolean => {
+    const newErrors: Record<string, string> = { ...errors }; // Keep existing errors from other steps
+
+    // Clear errors for the step being validated
+    const stepFields = getStepFields(step);
+    stepFields.forEach(field => {
+      delete newErrors[field];
+    });
+
+    // Validate step 1 fields
+    if (step === 1) {
+      const usernameError = validateUsername(formData.username);
+      if (usernameError) newErrors.username = usernameError;
+
+      const passwordError = validatePassword(formData.password);
+      if (passwordError) newErrors.password = passwordError;
+
+      const firstNameError = validateName(formData.firstName, 'First name');
+      if (firstNameError) newErrors.firstName = firstNameError;
+
+      const lastNameError = validateName(formData.lastName, 'Last name');
+      if (lastNameError) newErrors.lastName = lastNameError;
+
+      const phoneError = validatePhone(formData.phone);
+      if (phoneError) newErrors.phone = phoneError;
     }
 
+    // Validate step 2 fields
+    if (step === 2) {
+      if (!formData.address.trim()) {
+        newErrors.address = 'Address is required';
+      } else if (formData.address.length < 5) {
+        newErrors.address = 'Address must be at least 5 characters';
+      } else if (formData.address.length > 200) {
+        newErrors.address = 'Address must not exceed 200 characters';
+      }
+
+      const cityError = validateName(formData.city, 'City');
+      if (cityError) newErrors.city = cityError;
+
+      const stateError = validateName(formData.state, 'State');
+      if (stateError) newErrors.state = stateError;
+
+      const zipError = validateZip(formData.zip);
+      if (zipError) newErrors.zip = zipError;
+
+      if (!formData.country.trim()) {
+        newErrors.country = 'Country is required';
+      } else if (formData.country.length < 2) {
+        newErrors.country = 'Country must be at least 2 characters';
+      } else if (formData.country.length > 50) {
+        newErrors.country = 'Country must not exceed 50 characters';
+      } else if (!/^[a-zA-Z\s'-]+$/.test(formData.country)) {
+        newErrors.country = 'Country can only contain alphabetic characters, spaces, hyphens, and apostrophes (no numbers)';
+      }
+    }
+
+    // Validate step 3 fields
     if (step === 3) {
-      if (!formData.lab.name.trim()) newErrors['lab.name'] = 'Lab name is required';
-      if (!formData.lab.address.trim()) newErrors['lab.address'] = 'Lab address is required';
-      if (!formData.lab.city.trim()) newErrors['lab.city'] = 'Lab city is required';
-      if (!formData.lab.state.trim()) newErrors['lab.state'] = 'Lab state is required';
-      if (!formData.lab.licenseNumber.trim()) newErrors['lab.licenseNumber'] = 'License number is required';
-      if (!formData.lab.labType.trim()) newErrors['lab.labType'] = 'Lab type is required';
-      if (!formData.lab.labZip.trim()) newErrors['lab.labZip'] = 'Lab ZIP code is required';
-      if (!formData.lab.labCountry.trim()) newErrors['lab.labCountry'] = 'Lab country is required';
-      if (!formData.lab.labPhone.trim()) newErrors['lab.labPhone'] = 'Lab phone is required';
-      if (!formData.lab.labEmail.trim()) newErrors['lab.labEmail'] = 'Lab email is required';
-      if (!formData.lab.directorName.trim()) newErrors['lab.directorName'] = 'Director name is required';
-      if (!formData.lab.directorEmail.trim()) newErrors['lab.directorEmail'] = 'Director email is required';
-      if (!formData.lab.directorPhone.trim()) newErrors['lab.directorPhone'] = 'Director phone is required';
+      // Lab name
+      if (!formData.lab.name.trim()) {
+        newErrors['lab.name'] = 'Lab name is required';
+      } else if (formData.lab.name.length < 3) {
+        newErrors['lab.name'] = 'Lab name must be at least 3 characters';
+      } else if (formData.lab.name.length > 100) {
+        newErrors['lab.name'] = 'Lab name must not exceed 100 characters';
+      } else if (!/^[a-zA-Z\s'-]+$/.test(formData.lab.name)) {
+        newErrors['lab.name'] = 'Lab name can only contain alphabetic characters, spaces, hyphens, and apostrophes (no numbers)';
+      }
+
+      // Lab address
+      if (!formData.lab.address.trim()) {
+        newErrors['lab.address'] = 'Lab address is required';
+      } else if (formData.lab.address.length < 5) {
+        newErrors['lab.address'] = 'Lab address must be at least 5 characters';
+      } else if (formData.lab.address.length > 200) {
+        newErrors['lab.address'] = 'Lab address must not exceed 200 characters';
+      }
+
+      // Lab city
+      const labCityError = validateName(formData.lab.city, 'Lab city');
+      if (labCityError) newErrors['lab.city'] = labCityError;
+
+      // Lab state
+      const labStateError = validateName(formData.lab.state, 'Lab state');
+      if (labStateError) newErrors['lab.state'] = labStateError;
+
+      // Lab ZIP
+      const labZipError = validateZip(formData.lab.labZip);
+      if (labZipError) newErrors['lab.labZip'] = labZipError;
+
+      // Lab country
+      if (!formData.lab.labCountry.trim()) {
+        newErrors['lab.labCountry'] = 'Lab country is required';
+      } else if (formData.lab.labCountry.length < 2) {
+        newErrors['lab.labCountry'] = 'Lab country must be at least 2 characters';
+      } else if (formData.lab.labCountry.length > 50) {
+        newErrors['lab.labCountry'] = 'Lab country must not exceed 50 characters';
+      } else if (!/^[a-zA-Z\s'-]+$/.test(formData.lab.labCountry)) {
+        newErrors['lab.labCountry'] = 'Lab country can only contain alphabetic characters, spaces, hyphens, and apostrophes (no numbers)';
+      }
+
+      // License number
+      const licenseError = validateLicenseNumber(formData.lab.licenseNumber);
+      if (licenseError) newErrors['lab.licenseNumber'] = licenseError;
+
+      // Lab type
+      if (!formData.lab.labType.trim()) {
+        newErrors['lab.labType'] = 'Lab type is required';
+      }
+
+      // Certification body
+      const certificationBodyError = validateName(formData.lab.certificationBody, 'Certification body');
+      if (certificationBodyError) newErrors['lab.certificationBody'] = certificationBodyError;
+
+      // Lab certificate
+      const labCertificateError = validateAlphaNumericField(formData.lab.labCertificate, 'Lab certificate ID', 3, 50);
+      if (labCertificateError) newErrors['lab.labCertificate'] = labCertificateError;
+
+      // Lab license ID
+      const labLicenseIdError = validateAlphaNumericField(formData.lab.labLicense, 'Lab license ID', 3, 50);
+      if (labLicenseIdError) newErrors['lab.labLicense'] = labLicenseIdError;
+
+      // Lab accreditation
+      const labAccreditationError = validateName(formData.lab.labAccreditation, 'Lab accreditation');
+      if (labAccreditationError) newErrors['lab.labAccreditation'] = labAccreditationError;
+
+      // Business registration
+      const businessRegistrationError = validateAlphaNumericField(formData.lab.labBusinessRegistration, 'Business registration ID', 3, 50);
+      if (businessRegistrationError) newErrors['lab.labBusinessRegistration'] = businessRegistrationError;
+
+      // Tax ID
+      const taxIdError = validateNumericField(formData.lab.taxId, 'Tax ID', 9, 15);
+      if (taxIdError) newErrors['lab.taxId'] = taxIdError;
+
+      // Director Govt ID
+      const directorGovtIdError = validateAlphaNumericField(formData.lab.directorGovtId, 'Director government ID', 5, 50);
+      if (directorGovtIdError) newErrors['lab.directorGovtId'] = directorGovtIdError;
+
+      // Lab phone
+      const labPhoneError = validatePhone(formData.lab.labPhone);
+      if (labPhoneError) newErrors['lab.labPhone'] = labPhoneError;
+
+      // Lab email
+      const labEmailError = validateEmail(formData.lab.labEmail);
+      if (labEmailError) newErrors['lab.labEmail'] = labEmailError;
+
+      // Director name
+      const directorNameError = validateName(formData.lab.directorName, 'Director name');
+      if (directorNameError) newErrors['lab.directorName'] = directorNameError;
+
+      // Director email
+      const directorEmailError = validateEmail(formData.lab.directorEmail);
+      if (directorEmailError) newErrors['lab.directorEmail'] = directorEmailError;
+
+      // Director phone
+      const directorPhoneError = validatePhone(formData.lab.directorPhone);
+      if (directorPhoneError) newErrors['lab.directorPhone'] = directorPhoneError;
+
+      // Data privacy agreement
       if (!formData.lab.dataPrivacyAgreement) {
         newErrors['lab.dataPrivacyAgreement'] = 'You must agree to the data privacy terms';
       }
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    // Check if there are any errors for the current step
+    const hasStepErrors = stepFields.some(field => newErrors[field]);
+    return !hasStepErrors;
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
 
+    // Handle phone number input - only allow digits, max 10 digits
+    if (name === 'phone' || name === 'lab.labPhone' || name === 'lab.directorPhone') {
+      // Remove all non-digit characters
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
+      if (name.startsWith('lab.')) {
+        const field = name.replace('lab.', '') as keyof typeof formData.lab;
+        setFormData(prev => ({
+          ...prev,
+          lab: {
+            ...prev.lab,
+            [field]: digitsOnly,
+          },
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [name]: digitsOnly,
+        }));
+      }
+    }
+    // Handle ZIP code input - only allow digits, max 6 digits
+    else if (name === 'zip' || name === 'lab.labZip') {
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 6);
+      if (name.startsWith('lab.')) {
+        const field = name.replace('lab.', '') as keyof typeof formData.lab;
+        setFormData(prev => ({
+          ...prev,
+          lab: {
+            ...prev.lab,
+            [field]: digitsOnly,
+          },
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [name]: digitsOnly,
+        }));
+      }
+    }
+    // Handle license number - alphabetic only, max 20 characters
+    else if (name === 'lab.licenseNumber') {
+      const alphabeticOnly = value.replace(/[^a-zA-Z]/g, '').slice(0, 20);
+      const field = name.replace('lab.', '') as keyof typeof formData.lab;
+      setFormData(prev => ({
+        ...prev,
+        lab: {
+          ...prev.lab,
+          [field]: alphabeticOnly,
+        },
+      }));
+    }
+    // Handle alphanumeric compliance fields with hyphen support
+    else if (
+      name === 'lab.labCertificate' ||
+      name === 'lab.directorGovtId' ||
+      name === 'lab.labBusinessRegistration' ||
+      name === 'lab.labLicense'
+    ) {
+      const alphanumericValue = value.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 50);
+      const field = name.replace('lab.', '') as keyof typeof formData.lab;
+      setFormData(prev => ({
+        ...prev,
+        lab: {
+          ...prev.lab,
+          [field]: alphanumericValue,
+        },
+      }));
+    }
+    // Handle tax ID - digits only up to 15
+    else if (name === 'lab.taxId') {
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 15);
+      const field = name.replace('lab.', '') as keyof typeof formData.lab;
+      setFormData(prev => ({
+        ...prev,
+        lab: {
+          ...prev.lab,
+          [field]: digitsOnly,
+        },
+      }));
+    }
+    // Handle username - alphabetic only, max 30 characters
+    else if (name === 'username') {
+      const usernameValue = value.replace(/[^a-zA-Z]/g, '').slice(0, 30);
+      setFormData(prev => ({
+        ...prev,
+        [name]: usernameValue,
+      }));
+    }
+    // Handle name fields - alphabetic only (firstName, lastName, city, state, country, lab.name, lab.city, lab.state, lab.labCountry, lab.directorName)
+    else if (name === 'firstName' || name === 'lastName' || name === 'city' || name === 'state' || name === 'country' ||
+             name === 'lab.name' || name === 'lab.city' || name === 'lab.state' || name === 'lab.labCountry' || name === 'lab.directorName' ||
+             name === 'lab.certificationBody' || name === 'lab.labAccreditation') {
+      // Allow letters, spaces, hyphens, and apostrophes only (no numbers)
+      const alphabeticValue = value.replace(/[^a-zA-Z\s'-]/g, '');
+      if (name.startsWith('lab.')) {
+        const field = name.replace('lab.', '') as keyof typeof formData.lab;
+        setFormData(prev => ({
+          ...prev,
+          lab: {
+            ...prev.lab,
+            [field]: alphabeticValue,
+          },
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [name]: alphabeticValue,
+        }));
+      }
+    }
+    // Handle other fields normally
+    else {
     if (name.startsWith('lab.')) {
       const field = name.replace('lab.', '') as keyof typeof formData.lab;
       setFormData(prev => ({
@@ -142,6 +516,7 @@ const OnboardingContent = () => {
         ...prev,
         [name]: type === 'checkbox' ? checked : value,
       }));
+      }
     }
     
     // Clear error for this field
@@ -154,29 +529,54 @@ const OnboardingContent = () => {
     }
   };
 
-  const nextStep = () => {
+  // Navigate to next step - validates current step first
+  const nextStep = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    // Prevent any form submission
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    // Validate current step before proceeding
     if (validateStep(currentStep)) {
-      const nextStepNum = Math.min(currentStep + 1, 3);
-      setCurrentStep(nextStepNum);
-      
-      // Automatically validate step 3 when reached
-      if (nextStepNum === 3 && !step3Validated) {
-        // Trigger validation on all step 3 fields
-        validateStep(3);
-        setStep3Validated(true);
+      const nextStepNum = Math.min(currentStep + 1, 4);
+      // Clear errors for the step we're navigating to
+      if (nextStepNum < 4) {
+        clearStepErrors(nextStepNum);
       }
+      setCurrentStep(nextStepNum);
     }
   };
 
+  // Navigate to previous step - no validation, just clear errors for that step
   const prevStep = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    const prevStepNum = Math.max(currentStep - 1, 1);
+    // Clear errors for the step we're navigating to
+    clearStepErrors(prevStepNum);
+    setCurrentStep(prevStepNum);
   };
 
+  // Final submission - validates all steps and submits
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     
-    if (!validateStep(3)) {
+    // Only allow submission on step 4 (Review)
+    if (currentStep !== 4) {
+      return;
+    }
+    
+    // Validate all steps before submitting
+    const step1Valid = validateStep(1);
+    const step2Valid = validateStep(2);
+    const step3Valid = validateStep(3);
+    
+    if (!step1Valid || !step2Valid || !step3Valid) {
       toast.error('Please fix all errors before submitting', { autoClose: 3000 });
+      // Navigate to the first step with errors
+      if (!step1Valid) setCurrentStep(1);
+      else if (!step2Valid) setCurrentStep(2);
+      else if (!step3Valid) setCurrentStep(3);
       return;
     }
 
@@ -206,6 +606,7 @@ const OnboardingContent = () => {
     { number: 1, title: 'Personal Info', icon: FaUser },
     { number: 2, title: 'Address', icon: FaMapMarkerAlt },
     { number: 3, title: 'Lab Details', icon: FaFlask },
+    { number: 4, title: 'Review', icon: FaClipboardCheck },
   ];
 
   return (
@@ -281,10 +682,11 @@ const OnboardingContent = () => {
                       name="username"
                       value={formData.username}
                       onChange={handleChange}
+                      maxLength={30}
                       className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                         errors.username ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      placeholder="johndoe"
+                      placeholder="johndoe (3-30 characters)"
                     />
                     {errors.username && <p className="mt-1 text-sm text-red-600">{errors.username}</p>}
                   </div>
@@ -332,10 +734,11 @@ const OnboardingContent = () => {
                         name="phone"
                         value={formData.phone}
                         onChange={handleChange}
+                        maxLength={10}
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                           errors.phone ? 'border-red-500' : 'border-gray-300'
                         }`}
-                        placeholder="+1234567890"
+                        placeholder="Enter 10 digit phone number"
                       />
                       <FaPhone className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     </div>
@@ -351,9 +754,11 @@ const OnboardingContent = () => {
                       name="firstName"
                       value={formData.firstName}
                       onChange={handleChange}
+                      maxLength={50}
                       className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                         errors.firstName ? 'border-red-500' : 'border-gray-300'
                       }`}
+                      placeholder="Enter first name"
                     />
                     {errors.firstName && <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>}
                   </div>
@@ -367,9 +772,11 @@ const OnboardingContent = () => {
                       name="lastName"
                       value={formData.lastName}
                       onChange={handleChange}
+                      maxLength={50}
                       className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                         errors.lastName ? 'border-red-500' : 'border-gray-300'
                       }`}
+                      placeholder="Enter last name"
                     />
                     {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
                   </div>
@@ -395,6 +802,7 @@ const OnboardingContent = () => {
                       name="address"
                       value={formData.address}
                       onChange={handleChange}
+                      maxLength={200}
                       className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                         errors.address ? 'border-red-500' : 'border-gray-300'
                       }`}
@@ -413,9 +821,11 @@ const OnboardingContent = () => {
                         name="city"
                         value={formData.city}
                         onChange={handleChange}
+                        maxLength={50}
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                           errors.city ? 'border-red-500' : 'border-gray-300'
                         }`}
+                        placeholder="Enter city"
                       />
                       {errors.city && <p className="mt-1 text-sm text-red-600">{errors.city}</p>}
                     </div>
@@ -429,9 +839,11 @@ const OnboardingContent = () => {
                         name="state"
                         value={formData.state}
                         onChange={handleChange}
+                        maxLength={50}
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                           errors.state ? 'border-red-500' : 'border-gray-300'
                         }`}
+                        placeholder="Enter state"
                       />
                       {errors.state && <p className="mt-1 text-sm text-red-600">{errors.state}</p>}
                     </div>
@@ -445,9 +857,11 @@ const OnboardingContent = () => {
                         name="zip"
                         value={formData.zip}
                         onChange={handleChange}
+                        maxLength={6}
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                           errors.zip ? 'border-red-500' : 'border-gray-300'
                         }`}
+                        placeholder="Enter ZIP code (4-6 digits)"
                       />
                       {errors.zip && <p className="mt-1 text-sm text-red-600">{errors.zip}</p>}
                     </div>
@@ -461,9 +875,11 @@ const OnboardingContent = () => {
                         name="country"
                         value={formData.country}
                         onChange={handleChange}
+                        maxLength={50}
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                           errors.country ? 'border-red-500' : 'border-gray-300'
                         }`}
+                        placeholder="Enter country"
                       />
                       {errors.country && <p className="mt-1 text-sm text-red-600">{errors.country}</p>}
                     </div>
@@ -490,6 +906,7 @@ const OnboardingContent = () => {
                       name="lab.name"
                       value={formData.lab.name}
                       onChange={handleChange}
+                      maxLength={100}
                       className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                         errors['lab.name'] ? 'border-red-500' : 'border-gray-300'
                       }`}
@@ -507,9 +924,11 @@ const OnboardingContent = () => {
                       name="lab.address"
                       value={formData.lab.address}
                       onChange={handleChange}
+                      maxLength={200}
                       className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                         errors['lab.address'] ? 'border-red-500' : 'border-gray-300'
                       }`}
+                      placeholder="Enter lab address"
                     />
                     {errors['lab.address'] && <p className="mt-1 text-sm text-red-600">{errors['lab.address']}</p>}
                   </div>
@@ -524,9 +943,11 @@ const OnboardingContent = () => {
                         name="lab.city"
                         value={formData.lab.city}
                         onChange={handleChange}
+                        maxLength={50}
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                           errors['lab.city'] ? 'border-red-500' : 'border-gray-300'
                         }`}
+                        placeholder="Enter lab city"
                       />
                       {errors['lab.city'] && <p className="mt-1 text-sm text-red-600">{errors['lab.city']}</p>}
                     </div>
@@ -540,9 +961,11 @@ const OnboardingContent = () => {
                         name="lab.state"
                         value={formData.lab.state}
                         onChange={handleChange}
+                        maxLength={50}
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                           errors['lab.state'] ? 'border-red-500' : 'border-gray-300'
                         }`}
+                        placeholder="Enter lab state"
                       />
                       {errors['lab.state'] && <p className="mt-1 text-sm text-red-600">{errors['lab.state']}</p>}
                     </div>
@@ -556,9 +979,11 @@ const OnboardingContent = () => {
                         name="lab.labZip"
                         value={formData.lab.labZip}
                         onChange={handleChange}
+                        maxLength={6}
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                           errors['lab.labZip'] ? 'border-red-500' : 'border-gray-300'
                         }`}
+                        placeholder="Enter ZIP code (4-6 digits)"
                       />
                       {errors['lab.labZip'] && <p className="mt-1 text-sm text-red-600">{errors['lab.labZip']}</p>}
                     </div>
@@ -572,9 +997,11 @@ const OnboardingContent = () => {
                         name="lab.labCountry"
                         value={formData.lab.labCountry}
                         onChange={handleChange}
+                        maxLength={50}
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                           errors['lab.labCountry'] ? 'border-red-500' : 'border-gray-300'
                         }`}
+                        placeholder="Enter lab country"
                       />
                       {errors['lab.labCountry'] && <p className="mt-1 text-sm text-red-600">{errors['lab.labCountry']}</p>}
                     </div>
@@ -590,9 +1017,11 @@ const OnboardingContent = () => {
                         name="lab.licenseNumber"
                         value={formData.lab.licenseNumber}
                         onChange={handleChange}
+                        maxLength={20}
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                           errors['lab.licenseNumber'] ? 'border-red-500' : 'border-gray-300'
                         }`}
+                        placeholder="Enter license number"
                       />
                       {errors['lab.licenseNumber'] && <p className="mt-1 text-sm text-red-600">{errors['lab.licenseNumber']}</p>}
                     </div>
@@ -623,6 +1052,134 @@ const OnboardingContent = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Certification Body <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="lab.certificationBody"
+                        value={formData.lab.certificationBody}
+                        onChange={handleChange}
+                        maxLength={100}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                          errors['lab.certificationBody'] ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="e.g., CAP, CLIA"
+                      />
+                      {errors['lab.certificationBody'] && <p className="mt-1 text-sm text-red-600">{errors['lab.certificationBody']}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Lab Certificate ID <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="lab.labCertificate"
+                        value={formData.lab.labCertificate}
+                        onChange={handleChange}
+                        maxLength={50}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                          errors['lab.labCertificate'] ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter certificate ID"
+                      />
+                      {errors['lab.labCertificate'] && <p className="mt-1 text-sm text-red-600">{errors['lab.labCertificate']}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Lab License ID <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="lab.labLicense"
+                        value={formData.lab.labLicense}
+                        onChange={handleChange}
+                        maxLength={50}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                          errors['lab.labLicense'] ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter lab license"
+                      />
+                      {errors['lab.labLicense'] && <p className="mt-1 text-sm text-red-600">{errors['lab.labLicense']}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Lab Accreditation <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="lab.labAccreditation"
+                        value={formData.lab.labAccreditation}
+                        onChange={handleChange}
+                        maxLength={100}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                          errors['lab.labAccreditation'] ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="e.g., ISO 15189"
+                      />
+                      {errors['lab.labAccreditation'] && <p className="mt-1 text-sm text-red-600">{errors['lab.labAccreditation']}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Business Registration <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="lab.labBusinessRegistration"
+                        value={formData.lab.labBusinessRegistration}
+                        onChange={handleChange}
+                        maxLength={50}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                          errors['lab.labBusinessRegistration'] ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter registration ID"
+                      />
+                      {errors['lab.labBusinessRegistration'] && <p className="mt-1 text-sm text-red-600">{errors['lab.labBusinessRegistration']}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tax ID <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="lab.taxId"
+                        value={formData.lab.taxId}
+                        onChange={handleChange}
+                        maxLength={15}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                          errors['lab.taxId'] ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter tax ID"
+                      />
+                      {errors['lab.taxId'] && <p className="mt-1 text-sm text-red-600">{errors['lab.taxId']}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Director Government ID <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="lab.directorGovtId"
+                        value={formData.lab.directorGovtId}
+                        onChange={handleChange}
+                        maxLength={50}
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                          errors['lab.directorGovtId'] ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter government ID"
+                      />
+                      {errors['lab.directorGovtId'] && <p className="mt-1 text-sm text-red-600">{errors['lab.directorGovtId']}</p>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         Lab Phone <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -630,9 +1187,11 @@ const OnboardingContent = () => {
                         name="lab.labPhone"
                         value={formData.lab.labPhone}
                         onChange={handleChange}
+                        maxLength={10}
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                           errors['lab.labPhone'] ? 'border-red-500' : 'border-gray-300'
                         }`}
+                        placeholder="Enter 10 digit phone number"
                       />
                       {errors['lab.labPhone'] && <p className="mt-1 text-sm text-red-600">{errors['lab.labPhone']}</p>}
                     </div>
@@ -649,6 +1208,7 @@ const OnboardingContent = () => {
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                           errors['lab.labEmail'] ? 'border-red-500' : 'border-gray-300'
                         }`}
+                        placeholder="Enter lab email"
                       />
                       {errors['lab.labEmail'] && <p className="mt-1 text-sm text-red-600">{errors['lab.labEmail']}</p>}
                     </div>
@@ -684,6 +1244,7 @@ const OnboardingContent = () => {
                           name="lab.directorName"
                           value={formData.lab.directorName}
                           onChange={handleChange}
+                          maxLength={50}
                           className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                             errors['lab.directorName'] ? 'border-red-500' : 'border-gray-300'
                           }`}
@@ -704,6 +1265,7 @@ const OnboardingContent = () => {
                           className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                             errors['lab.directorEmail'] ? 'border-red-500' : 'border-gray-300'
                           }`}
+                        placeholder="director@lab.com"
                         />
                         {errors['lab.directorEmail'] && <p className="mt-1 text-sm text-red-600">{errors['lab.directorEmail']}</p>}
                       </div>
@@ -717,9 +1279,11 @@ const OnboardingContent = () => {
                           name="lab.directorPhone"
                           value={formData.lab.directorPhone}
                           onChange={handleChange}
+                          maxLength={10}
                           className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                             errors['lab.directorPhone'] ? 'border-red-500' : 'border-gray-300'
                           }`}
+                          placeholder="Enter 10 digit phone number"
                         />
                         {errors['lab.directorPhone'] && <p className="mt-1 text-sm text-red-600">{errors['lab.directorPhone']}</p>}
                       </div>
@@ -759,6 +1323,216 @@ const OnboardingContent = () => {
               </div>
             )}
 
+            {/* Step 4: Review */}
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                  <FaClipboardCheck className="text-primary" />
+                  Review Your Information
+                </h2>
+                <p className="text-gray-600 mb-6">Please review all your information before submitting. You can go back to edit any section if needed.</p>
+                
+                <div className="space-y-6">
+                  {/* Personal Information Section */}
+                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <FaUser className="text-primary" />
+                      Personal Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Username</p>
+                        <p className="text-base font-medium text-gray-800">{formData.username || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Email</p>
+                        <p className="text-base font-medium text-gray-800">{formData.email || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">First Name</p>
+                        <p className="text-base font-medium text-gray-800">{formData.firstName || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Last Name</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lastName || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Phone</p>
+                        <p className="text-base font-medium text-gray-800">{formData.phone || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Password</p>
+                        <p className="text-base font-medium text-gray-800">••••••••</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Address Information Section */}
+                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <FaMapMarkerAlt className="text-primary" />
+                      Address Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <p className="text-sm text-gray-600 mb-1">Address</p>
+                        <p className="text-base font-medium text-gray-800">{formData.address || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">City</p>
+                        <p className="text-base font-medium text-gray-800">{formData.city || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">State</p>
+                        <p className="text-base font-medium text-gray-800">{formData.state || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">ZIP Code</p>
+                        <p className="text-base font-medium text-gray-800">{formData.zip || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Country</p>
+                        <p className="text-base font-medium text-gray-800">{formData.country || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lab Information Section */}
+                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <FaBuilding className="text-primary" />
+                      Lab Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <p className="text-sm text-gray-600 mb-1">Lab Name</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.name || 'N/A'}</p>
+                      </div>
+                      <div className="md:col-span-2">
+                        <p className="text-sm text-gray-600 mb-1">Lab Address</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.address || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Lab City</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.city || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Lab State</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.state || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Lab ZIP</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.labZip || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Lab Country</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.labCountry || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">License Number</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.licenseNumber || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Lab Type</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.labType || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Lab Phone</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.labPhone || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Lab Email</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.labEmail || 'N/A'}</p>
+                      </div>
+                      {formData.lab.description && (
+                        <div className="md:col-span-2">
+                          <p className="text-sm text-gray-600 mb-1">Description</p>
+                          <p className="text-base font-medium text-gray-800">{formData.lab.description}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Compliance Information Section */}
+                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <FaShieldAlt className="text-primary" />
+                      Regulatory & Compliance
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Certification Body</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.certificationBody || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Lab Certificate ID</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.labCertificate || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Lab License ID</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.labLicense || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Lab Accreditation</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.labAccreditation || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Business Registration</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.labBusinessRegistration || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Tax ID</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.taxId || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Director Government ID</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.directorGovtId || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lab Director Information Section */}
+                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <FaUserTie className="text-primary" />
+                      Lab Director Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Director Name</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.directorName || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Director Email</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.directorEmail || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Director Phone</p>
+                        <p className="text-base font-medium text-gray-800">{formData.lab.directorPhone || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Data Privacy Agreement */}
+                  <div className="bg-primary/5 rounded-lg p-6 border border-primary/20">
+                    <div className="flex items-start gap-3">
+                      <FaShieldAlt className="text-primary mt-1" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-800 mb-1">Data Privacy Agreement</p>
+                        <p className="text-sm text-gray-600">
+                          {formData.lab.dataPrivacyAgreement ? (
+                            <span className="text-green-600 font-medium">✓ Agreed to data privacy terms and conditions</span>
+                          ) : (
+                            <span className="text-red-600 font-medium">✗ Not agreed</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Navigation Buttons */}
             <div className="mt-8 flex justify-between">
               <button
@@ -768,16 +1542,25 @@ const OnboardingContent = () => {
                 className="flex items-center gap-2 px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <FaArrowLeft />
-                Previous
+                {currentStep === 4 ? 'Back to Edit' : 'Previous'}
               </button>
 
               {currentStep < 3 ? (
                 <button
                   type="button"
-                  onClick={nextStep}
+                  onClick={(e) => nextStep(e)}
                   className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primarylight text-white rounded-lg transition-all shadow-md hover:shadow-lg"
                 >
                   Next
+                  <FaArrowRight />
+                </button>
+              ) : currentStep === 3 ? (
+                <button
+                  type="button"
+                  onClick={(e) => nextStep(e)}
+                  className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primarylight text-white rounded-lg transition-all shadow-md hover:shadow-lg"
+                >
+                  Review
                   <FaArrowRight />
                 </button>
               ) : (
