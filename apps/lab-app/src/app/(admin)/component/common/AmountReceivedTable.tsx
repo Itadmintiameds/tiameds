@@ -3,8 +3,6 @@
 import React, { useMemo } from 'react';
 import { formatAmount, formatDate } from '@/utils/csvUtils';
 
-
-
 interface AmountReceivedData {
   id: string;
   slNo: number;
