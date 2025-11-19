@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { getSamples, updateVisitSample } from '../../../../../../services/sampleServices';
 import { Plus, X, Edit, Save, Trash2 } from 'lucide-react';
+import { useLabs } from '@/context/LabContext';
 
 interface Sample {
     id: string;
@@ -15,6 +16,7 @@ interface UpdateSampleProps {
 }
 
 const UpdateSample = ({ visitId, sampleNames, onClose }: UpdateSampleProps) => {
+    const { currentLab } = useLabs();
     const [allSamples, setAllSamples] = useState<Sample[]>([]);
     const [editableSampleNames, setEditableSampleNames] = useState<string[]>([]);
     const [selectedSample, setSelectedSample] = useState<string>("");
@@ -28,18 +30,23 @@ const UpdateSample = ({ visitId, sampleNames, onClose }: UpdateSampleProps) => {
 
     useEffect(() => {
         const fetchSamples = async () => {
+            if (!currentLab?.id) {
+                setAllSamples([]);
+                return;
+            }
             try {
-                const data: Sample[] = (await getSamples()).map(sample => ({
+                const data = await getSamples(currentLab.id);
+                const normalized: Sample[] = data.map(sample => ({
                     ...sample,
                     id: sample.id.toString(),
                 }));
-                setAllSamples(data);
+                setAllSamples(normalized);
             } catch (error) {
-                // Handle samples fetch error
+                setAllSamples([]);
             }
         };
         fetchSamples();
-    }, []);
+    }, [currentLab?.id]);
 
     const handleUpdateVisitSample = async () => {
         try {

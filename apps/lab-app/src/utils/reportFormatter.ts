@@ -16,7 +16,7 @@ interface ReportData {
   organReview?: string[];
   observations?: string[];
   fetalParameters?: FetalParameters;
-  [key: string]: any; // Allow for additional fields
+  [key: string]: unknown; // Allow for additional fields
 }
 
 export function formatMedicalReport(reportJson: string): string {
@@ -87,20 +87,21 @@ export function formatMedicalReport(reportJson: string): string {
     ];
 
     commonFields.forEach(field => {
-      if (data[field]) {
+      const fieldValue = data[field];
+      if (fieldValue !== undefined && fieldValue !== null && fieldValue !== '') {
         const fieldName = field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1');
         formattedReport += `**${fieldName}:**\n`;
         
-        if (Array.isArray(data[field])) {
-          data[field].forEach((item: any) => {
-            formattedReport += `• ${item}\n`;
+        if (Array.isArray(fieldValue)) {
+          fieldValue.forEach((item) => {
+            formattedReport += `• ${String(item)}\n`;
           });
-        } else if (typeof data[field] === 'object') {
-          Object.entries(data[field]).forEach(([key, value]) => {
-            formattedReport += `${key}: ${value}\n`;
+        } else if (typeof fieldValue === 'object') {
+          Object.entries(fieldValue as Record<string, unknown>).forEach(([key, value]) => {
+            formattedReport += `${key}: ${String(value)}\n`;
           });
         } else {
-          formattedReport += `${data[field]}\n`;
+          formattedReport += `${String(fieldValue)}\n`;
         }
         formattedReport += '\n';
       }
@@ -109,20 +110,20 @@ export function formatMedicalReport(reportJson: string): string {
     // Handle any remaining fields that weren't processed
     Object.entries(data).forEach(([key, value]) => {
       if (!['note', 'testName', 'impression', 'limitations', 'organReview', 'observations', 'fetalParameters', ...commonFields].includes(key)) {
-        if (value && value !== '') {
+        if (value !== undefined && value !== null && value !== '') {
           const fieldName = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
           formattedReport += `**${fieldName}:**\n`;
           
           if (Array.isArray(value)) {
-            value.forEach((item: any) => {
-              formattedReport += `• ${item}\n`;
+            value.forEach((item) => {
+              formattedReport += `• ${String(item)}\n`;
             });
           } else if (typeof value === 'object') {
-            Object.entries(value).forEach(([subKey, subValue]) => {
-              formattedReport += `${subKey}: ${subValue}\n`;
+            Object.entries(value as Record<string, unknown>).forEach(([subKey, subValue]) => {
+              formattedReport += `${subKey}: ${String(subValue)}\n`;
             });
           } else {
-            formattedReport += `${value}\n`;
+            formattedReport += `${String(value)}\n`;
           }
           formattedReport += '\n';
         }
@@ -143,10 +144,9 @@ export function formatMedicalReport(reportJson: string): string {
 export function formatMedicalReportToHTML(reportJson: string): string {
   const formattedText = formatMedicalReport(reportJson);
   
-  return formattedText
+  let html = formattedText
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold text
     .replace(/• (.*?)(?=\n|$)/g, '<li>$1</li>') // Bullet points
-    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>') // Wrap consecutive list items in ul
     .replace(/\n\n/g, '</p><p>') // Paragraph breaks
     .replace(/^(.*)$/m, '<p>$1</p>') // Wrap in paragraphs
     .replace(/<p><\/p>/g, '') // Remove empty paragraphs
@@ -154,4 +154,8 @@ export function formatMedicalReportToHTML(reportJson: string): string {
     .replace(/<\/ul><\/p>/g, '</ul>') // Fix ul inside p
     .replace(/<p><li>/g, '<li>') // Fix li inside p
     .replace(/<\/li><\/p>/g, '</li>'); // Fix li inside p
+
+  html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+
+  return html;
 }

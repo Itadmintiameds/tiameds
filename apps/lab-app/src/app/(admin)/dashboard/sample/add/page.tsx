@@ -665,16 +665,16 @@ const Page = () => {
                 text=""
                 onClick={() => handleOpenModal(item)}
                 className="text-edit border border-edit hover:bg-edit hover:text-white transition-all duration-200"
-                title="Edit sample"
               >
+                <span className="sr-only">Edit sample</span>
                 <IoMdCreate size={18} />
               </Button>
               <Button
                 text=""
                 onClick={() => handleDelete(item.id)}
                 className="text-deletebutton hover:text-white border border-red-500 hover:bg-red-600 transition-all duration-200"
-                title="Delete sample"
               >
+                <span className="sr-only">Delete sample</span>
                 <IoMdTrash size={18} />
               </Button>
             </div>

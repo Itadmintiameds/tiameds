@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { toast } from 'react-toastify';
 import { FaCheckCircle, FaTimesCircle, FaSpinner, FaArrowRight } from 'react-icons/fa';
 import { verifyEmailToken } from '@/../services/onboardingService';
 import Link from 'next/link';
@@ -41,9 +40,10 @@ const VerifyEmailContent = () => {
           setStatus('error');
           setErrorMessage(response.message || 'Invalid verification token');
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         setStatus('error');
-        setErrorMessage(error.message || 'Failed to verify email');
+        const message = error instanceof Error ? error.message : 'Failed to verify email';
+        setErrorMessage(message);
       }
     };
 

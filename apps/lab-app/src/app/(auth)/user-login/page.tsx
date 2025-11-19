@@ -212,7 +212,7 @@ const LoginPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await login(formData);
+      await login(formData);
       setOtpTimer(300);
       setOtp('');
       toast.success('New OTP sent to your registered email', { autoClose: 2000 });
@@ -404,7 +404,7 @@ const LoginPage: React.FC = () => {
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">Enter OTP</h3>
                 <p className="text-sm text-gray-600">
-                  We've sent a 4-digit OTP to <span className="font-medium text-purple-600">{userEmail}</span>
+                  We&apos;ve sent a 4-digit OTP to <span className="font-medium text-purple-600">{userEmail}</span>
                 </p>
                 {otpTimer > 0 && (
                   <p className="text-xs text-gray-500">

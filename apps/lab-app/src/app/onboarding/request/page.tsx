@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { FaEnvelope, FaArrowRight, FaCheckCircle, FaSpinner } from 'react-icons/fa';
 import { requestVerificationEmail, resendVerificationEmail } from '@/../services/onboardingService';
@@ -14,7 +13,6 @@ const RequestVerificationPage = () => {
   const [validationError, setValidationError] = useState('');
   const [blockedUntil, setBlockedUntil] = useState<number | null>(null);
   const [blockMessage, setBlockMessage] = useState('');
-  const router = useRouter();
 
   // Check for rate limit block
   useEffect(() => {
@@ -79,11 +77,12 @@ const RequestVerificationPage = () => {
           position: 'top-center',
         });
       }
-    } catch (error: any) {
-      const errorMessage = error.message || 'Failed to send verification email';
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send verification email';
+      const axiosError = error as { response?: { status?: number } };
       
       // Handle rate limiting (429)
-      if (error.response?.status === 429) {
+      if (axiosError.response?.status === 429) {
         const message = errorMessage;
         const waitTimeMatch = message.match(/after (\d+) minutes?/i);
         if (waitTimeMatch) {
@@ -117,10 +116,11 @@ const RequestVerificationPage = () => {
           position: 'top-center',
         });
       }
-    } catch (error: any) {
-      const errorMessage = error.message || 'Failed to resend verification email';
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to resend verification email';
+      const axiosError = error as { response?: { status?: number } };
       
-      if (error.response?.status === 429) {
+      if (axiosError.response?.status === 429) {
         const message = errorMessage;
         const waitTimeMatch = message.match(/after (\d+) minutes?/i);
         if (waitTimeMatch) {
@@ -150,7 +150,7 @@ const RequestVerificationPage = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-3">Check Your Email!</h2>
           <p className="text-gray-600 mb-2">
-            We've sent a verification link to <strong>{email}</strong>
+            We&apos;ve sent a verification link to <strong>{email}</strong>
           </p>
           <p className="text-sm text-gray-500 mb-6">
             Click the link in the email to continue with your lab registration. The link will expire in 15 minutes.

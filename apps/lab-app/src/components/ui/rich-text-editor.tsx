@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import type { ReactQuillProps } from 'react-quill';
 
 // Dynamically import ReactQuill to avoid SSR issues
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
@@ -39,6 +40,12 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       ['clean']
     ],
   }), []);
+
+  const handleEditorBlur: ReactQuillProps['onBlur'] = () => {
+    if (onBlur) {
+      onBlur();
+    }
+  };
 
   const formats = [
     'header', 'font', 'size',
@@ -81,7 +88,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         theme="snow"
         value={cleanValue}
         onChange={onChange}
-        onBlur={onBlur as any}
+        onBlur={onBlur ? handleEditorBlur : undefined}
         modules={modules}
         formats={formats}
         placeholder={placeholder}

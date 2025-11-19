@@ -7,7 +7,6 @@ import {
 import { FiLoader } from 'react-icons/fi'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import { toast } from 'react-toastify'
 import { forgotPassword } from '../../../services/authService'
 import { AxiosError } from 'axios'
@@ -19,7 +18,6 @@ const ForgotPasswordPage: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [blockedUntil, setBlockedUntil] = useState<number | null>(null)
   const [blockMessage, setBlockMessage] = useState<string>('')
-  const router = useRouter()
 
   // Check for existing block on mount
   useEffect(() => {
@@ -199,7 +197,7 @@ const ForgotPasswordPage: React.FC = () => {
                       If an account exists with <span className="font-semibold">{email}</span>, a password reset link has been sent to your email address.
                     </p>
                     <p className="mt-2 text-sm text-green-700">
-                      The link will expire in 15 minutes. If you don't see the email, please check your spam folder.
+                      The link will expire in 15 minutes. If you don&apos;t see the email, please check your spam folder.
                     </p>
                   </div>
                 </div>
@@ -280,7 +278,7 @@ const ForgotPasswordPage: React.FC = () => {
                   <div>
                     <p className="font-medium text-blue-800">Security Notice</p>
                     <p className="mt-1 text-sm text-blue-700">
-                      For security reasons, we'll send a password reset link only if an account exists with this email address.
+                      For security reasons, we&apos;ll send a password reset link only if an account exists with this email address.
                     </p>
                   </div>
                 </div>

@@ -135,9 +135,6 @@ const AddMemberOnLab = () => {
         fetchMembers();
     }, [currentLab, refreshMembers]);
 
-    const isSuperAdmin = members.some(member => member?.roles?.includes('SUPERADMIN'));
-    const isAdmin = members.some(member => member?.roles?.includes('ADMIN'));
-
     // Validate individual field
     const validateField = (name: string, value: unknown): string => {
         // Handle roles as array, others as string

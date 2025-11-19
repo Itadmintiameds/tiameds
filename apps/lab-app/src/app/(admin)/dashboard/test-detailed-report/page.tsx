@@ -1,14 +1,8 @@
 'use client';
 
 import React from 'react';
-import DetailedReportEditor from '../sample/_component/Report/DetailedReportEditor';
-import { TestReferancePoint } from '@/types/test/testlist';
 
 const TestDetailedReportPage = () => {
- 
-  const handleReportJsonChange = (reportJson: string) => {
-    console.log('Report JSON changed:', reportJson);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -19,11 +13,6 @@ const TestDetailedReportPage = () => {
             This page demonstrates the DetailedReportEditor component with sample API data.
           </p>
         </div>
-        
-        {/* <DetailedReportEditor 
-          point={sampleData} 
-          onReportJsonChange={handleReportJsonChange}
-        /> */}
       </div>
     </div>
   );

@@ -7,8 +7,6 @@ import {
   TbShare, 
   TbClock, 
   TbUser, 
-  TbCalendar,
-  TbId,
   TbStethoscope,
   TbFileText,
   TbAlertCircle,
@@ -362,11 +360,11 @@ const ModernReportPage: React.FC<ModernReportPageProps> = ({
             </div>
           </div>
 
-          {/* Doctor's Remarks */}
+          {/* Doctor&apos;s Remarks */}
           <div className="px-8 py-6 bg-gray-50 border-t border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <TbStethoscope className="w-5 h-5 mr-2 text-blue-600" />
-              Doctor's Remarks
+              Doctor&apos;s Remarks
             </h3>
             
             <div className="bg-white rounded-lg p-6 shadow-sm">

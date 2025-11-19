@@ -69,13 +69,6 @@ const AddTestReferanceNew = ({
         }
     }, [currentLab]);
 
-
-    useEffect(() => {
-        if (newReferanceRecord.referenceRanges) {
-            loadRangesFromJson();
-        }
-    }, [newReferanceRecord.referenceRanges]);
-
     const categories = Array.from(new Set(tests.map(test => test.category)));
     const filteredTests = tests.filter(test => {
         const matchesSearch = test.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -145,22 +138,58 @@ const AddTestReferanceNew = ({
   // Reference ranges state
   const [rangesTab, setRangesTab] = useState<"structured" | "raw">("structured");
 
-  const [rangesRows, setRangesRows] = useState<Array<{
-      Gender: string;
-      AgeMin: number | string;
-      AgeMinUnit: string;
-      AgeMax: number | string;
-      AgeMaxUnit: string;
+  type AgeUnit = "YEARS" | "MONTHS" | "WEEKS" | "DAYS";
+  type GenderOption = "M" | "F" | "MF";
+
+  interface RangeRow {
+      Gender: GenderOption;
+      AgeMin: number | "";
+      AgeMinUnit: AgeUnit;
+      AgeMax: number | "";
+      AgeMaxUnit: AgeUnit;
       ReferenceRange: string;
-  }>>([
-      { Gender: "MF", AgeMin: 0, AgeMinUnit: "YEARS", AgeMax: "", AgeMaxUnit: "YEARS", ReferenceRange: "" }
-  ]);
+  }
+
+  const DEFAULT_RANGE_ROW = (): RangeRow => ({
+      Gender: "MF",
+      AgeMin: 0,
+      AgeMinUnit: "YEARS",
+      AgeMax: "",
+      AgeMaxUnit: "YEARS",
+      ReferenceRange: "",
+  });
+
+  const normalizeRangeValue = (value: unknown): number | "" => {
+      if (value === "" || value === null || value === undefined) return "";
+      const numeric = Number(value);
+      return Number.isNaN(numeric) ? "" : numeric;
+  };
+
+  const isAgeUnit = (unit: unknown): unit is AgeUnit =>
+      unit === "YEARS" || unit === "MONTHS" || unit === "WEEKS" || unit === "DAYS";
+
+  const isGenderOption = (gender: unknown): gender is GenderOption =>
+      gender === "M" || gender === "F" || gender === "MF";
+
+  const normalizeRangeRow = (row: Partial<RangeRow>): RangeRow => ({
+      Gender: isGenderOption(row.Gender) ? row.Gender : "MF",
+      AgeMin: normalizeRangeValue(row.AgeMin),
+      AgeMinUnit: isAgeUnit(row.AgeMinUnit) ? row.AgeMinUnit : "YEARS",
+      AgeMax: normalizeRangeValue(row.AgeMax),
+      AgeMaxUnit: isAgeUnit(row.AgeMaxUnit) ? row.AgeMaxUnit : "YEARS",
+      ReferenceRange: row.ReferenceRange ?? "",
+  });
+
+  const [rangesRows, setRangesRows] = useState<RangeRow[]>([DEFAULT_RANGE_ROW()]);
 
 
   // Helpers: Reference ranges builder
-  const addRangeRow = () => setRangesRows(prev => [...prev, { Gender: "MF", AgeMin: 0, AgeMinUnit: "YEARS", AgeMax: "", AgeMaxUnit: "YEARS", ReferenceRange: "" }]);
+  const addRangeRow = () => setRangesRows(prev => [...prev, DEFAULT_RANGE_ROW()]);
   const removeRangeRow = (idx: number) => setRangesRows(prev => prev.filter((_, i) => i !== idx));
-  const updateRangeRow = (idx: number, field: string, value: string) => setRangesRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  const updateRangeRow = <K extends keyof RangeRow>(idx: number, field: K, value: RangeRow[K]) =>
+      setRangesRows(prev =>
+          prev.map((r, i) => (i === idx ? ({ ...r, [field]: value } as RangeRow) : r))
+      );
 
   const applyRangesToJson = () => {
       const rows = rangesRows.filter(r => r.ReferenceRange);
@@ -171,11 +200,24 @@ const AddTestReferanceNew = ({
       if (!newReferanceRecord.referenceRanges) return;
       try {
           const parsed = JSON.parse(newReferanceRecord.referenceRanges as string);
-          if (Array.isArray(parsed)) setRangesRows(parsed);
+          if (Array.isArray(parsed)) {
+              const normalized = parsed.map((row: unknown) =>
+                  normalizeRangeRow(
+                      typeof row === "object" && row !== null ? (row as Partial<RangeRow>) : {}
+                  )
+              );
+              setRangesRows(normalized.length ? normalized : [DEFAULT_RANGE_ROW()]);
+          }
       } catch {}
-    }, [newReferanceRecord.referenceRanges]);
+  }, [newReferanceRecord.referenceRanges]);
 
-    if (isLoading) {
+  useEffect(() => {
+      if (newReferanceRecord.referenceRanges) {
+          loadRangesFromJson();
+      }
+  }, [newReferanceRecord.referenceRanges, loadRangesFromJson]);
+
+  if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center h-64">
                 <Loader type="progress" fullScreen={false} text="Loading tests..." />
@@ -482,14 +524,35 @@ Mild fatty liver. Rest of the abdominal organs appear within normal limits."
                                     </div>
                                     {rangesRows.map((row, idx) => (
                                         <div key={idx} className="grid grid-cols-12 gap-2 mb-2 items-center">
-                                            <select className="col-span-1 border border-gray-300 rounded p-2 text-xs" value={row.Gender} onChange={(e) => updateRangeRow(idx, 'Gender', e.target.value)}>
+                                            <select
+                                                className="col-span-1 border border-gray-300 rounded p-2 text-xs"
+                                                value={row.Gender}
+                                                onChange={(e) => updateRangeRow(idx, "Gender", e.target.value as GenderOption)}
+                                            >
                                                 <option value="M">Male</option>
                                                 <option value="F">Female</option>
                                                 <option value="MF">Both</option>
                                             </select>
                                             <div className="col-span-2 grid grid-cols-2 gap-2">
-                                                <input className="border border-gray-300 rounded p-2 text-xs" type="number" min={0} value={row.AgeMin as any} onChange={(e) => updateRangeRow(idx, 'AgeMin', e.target.value)} placeholder="0" />
-                                                <select className="border border-gray-300 rounded p-2 text-xs" value={row.AgeMinUnit} onChange={(e) => updateRangeRow(idx, 'AgeMinUnit', e.target.value)}>
+                                                <input
+                                                    className="border border-gray-300 rounded p-2 text-xs"
+                                                    type="number"
+                                                    min={0}
+                                                    value={row.AgeMin === "" ? "" : row.AgeMin}
+                                                    onChange={(e) =>
+                                                        updateRangeRow(
+                                                            idx,
+                                                            "AgeMin",
+                                                            e.target.value === "" ? "" : Number(e.target.value)
+                                                        )
+                                                    }
+                                                    placeholder="0"
+                                                />
+                                                <select
+                                                    className="border border-gray-300 rounded p-2 text-xs"
+                                                    value={row.AgeMinUnit}
+                                                    onChange={(e) => updateRangeRow(idx, "AgeMinUnit", e.target.value as AgeUnit)}
+                                                >
                                                     <option value="YEARS">YEARS</option>
                                                     <option value="MONTHS">MONTHS</option>
                                                     <option value="WEEKS">WEEKS</option>
@@ -497,8 +560,25 @@ Mild fatty liver. Rest of the abdominal organs appear within normal limits."
                                                 </select>
                                             </div>
                                             <div className="col-span-2 grid grid-cols-2 gap-2">
-                                                <input className="border border-gray-300 rounded p-2 text-xs" type="number" min={0} value={row.AgeMax as any} onChange={(e) => updateRangeRow(idx, 'AgeMax', e.target.value)} placeholder="" />
-                                                <select className="border border-gray-300 rounded p-2 text-xs" value={row.AgeMaxUnit} onChange={(e) => updateRangeRow(idx, 'AgeMaxUnit', e.target.value)}>
+                                                <input
+                                                    className="border border-gray-300 rounded p-2 text-xs"
+                                                    type="number"
+                                                    min={0}
+                                                    value={row.AgeMax === "" ? "" : row.AgeMax}
+                                                    onChange={(e) =>
+                                                        updateRangeRow(
+                                                            idx,
+                                                            "AgeMax",
+                                                            e.target.value === "" ? "" : Number(e.target.value)
+                                                        )
+                                                    }
+                                                    placeholder=""
+                                                />
+                                                <select
+                                                    className="border border-gray-300 rounded p-2 text-xs"
+                                                    value={row.AgeMaxUnit}
+                                                    onChange={(e) => updateRangeRow(idx, "AgeMaxUnit", e.target.value as AgeUnit)}
+                                                >
                                                     <option value="YEARS">YEARS</option>
                                                     <option value="MONTHS">MONTHS</option>
                                                     <option value="WEEKS">WEEKS</option>

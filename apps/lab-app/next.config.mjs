@@ -1,10 +1,16 @@
+// Allow HTTP and WebSocket in development, HTTPS only in production
+const isDevelopment = process.env.NODE_ENV === 'development';
+const connectSrc = isDevelopment
+  ? "'self' http: ws: wss: https:"
+  : "'self' https:";
+
 const ContentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:;
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob:;
   font-src 'self' data:;
-  connect-src 'self' https:;
+  connect-src ${connectSrc};
   media-src 'self';
   frame-ancestors 'self';
   object-src 'none';

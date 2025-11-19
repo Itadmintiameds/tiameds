@@ -12,7 +12,6 @@ import { toast } from 'react-toastify';
 import PatientBasicInfo from './PatientBasicInfo';
 import TestComponentFactory from './TestSpecificComponents/TestComponentFactory';
 import DetailedReportEditor from './DetailedReportEditor';
-import RichTextEditor from '@/components/ui/rich-text-editor';
 import { formatMedicalReportToHTML } from '@/utils/reportFormatter';
 
 export interface Patient {
@@ -51,6 +50,31 @@ interface ReportPayload {
     isFilled: boolean;
   };
 }
+
+interface StructuredReportSection {
+  title?: string;
+  content?: string;
+  order?: number;
+}
+
+interface StructuredReport {
+  title?: string;
+  description?: string;
+  sections?: StructuredReportSection[];
+  note?: string;
+  impression?: string;
+  interpretation?: string;
+  limitations?: unknown;
+  organReview?: unknown;
+  observations?: unknown;
+  fetalParameters?: Record<string, unknown>;
+  parameters?: Record<string, unknown>;
+  calculation?: string;
+  significance?: string;
+}
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 interface PatientReportDataFillProps {
   selectedPatient: Patient;
@@ -113,7 +137,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     }
   };
 
-  const filterReferenceData = (referenceData: Record<string, TestReferancePoint[]>) => {
+  const filterReferenceData = useCallback((referenceData: Record<string, TestReferancePoint[]>) => {
     const filteredData: Record<string, TestReferancePoint[]> = {};
 
     Object.keys(referenceData).forEach((testName) => {
@@ -185,7 +209,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     });
 
     return filteredData;
-  };
+  }, [selectedPatient.dateOfBirth, selectedPatient.gender]);
 
   const fetchReferenceData = useCallback(async () => {
     if (!selectedTest || !currentLab) return;
@@ -215,7 +239,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [selectedTest, currentLab, selectedPatient.gender]);
+  }, [selectedTest, currentLab, filterReferenceData]);
 
   useEffect(() => {
     if (selectedTest) {
@@ -457,34 +481,6 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     }
   };
 
-  // Build JSON preview including detailed report JSON (if present)
-  const buildJsonPreview = () => {
-    const detailedReports = allTests
-      .map((test) => {
-        const detailedPoint = (referencePoints[test.name] || []).find(p => (p.testDescription || '').toUpperCase() === 'DETAILED REPORT');
-        if (!detailedPoint || !detailedPoint.reportJson) return null;
-        let parsed: unknown = detailedPoint.reportJson;
-        try {
-          parsed = JSON.parse(detailedPoint.reportJson);
-        } catch (_) {
-          // keep as raw string if not valid JSON
-        }
-        return {
-          testName: test.name,
-          report: parsed
-        };
-      })
-      .filter(Boolean);
-
-    const previewObject = {
-      testData: reportPreview.testData,
-      testResult: reportPreview.testResult,
-      detailedReports
-    };
-
-    return JSON.stringify(previewObject, null, 2);
-  };
-
   // Build human-readable HTML preview combining detailed reports and entered values
   const buildReadablePreviewHTML = () => {
     let htmlParts: string[] = [];
@@ -496,14 +492,22 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
         if (!detailedPoint || !detailedPoint.reportJson) return null;
 
         try {
-          const parsed = JSON.parse(detailedPoint.reportJson);
-          if (parsed && parsed.title && Array.isArray(parsed.sections)) {
-            const sectionsHtml = parsed.sections
-              .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
-              .map((s: any) => `
+          const parsed = JSON.parse(detailedPoint.reportJson) as StructuredReport;
+          const parsedSections: (StructuredReportSection & { title?: string; content?: string })[] = Array.isArray(parsed.sections)
+            ? parsed.sections
+            : isPlainObject(parsed.sections)
+              ? Object.entries(parsed.sections as Record<string, unknown>).map(([title, content]) => ({
+                  title,
+                  content: String(content ?? ''),
+                }))
+              : [];
+          if (parsed && parsed.title && parsedSections.length > 0) {
+            const sectionsHtml = [...parsedSections]
+              .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+              .map((section) => `
                 <div class="mb-3">
-                  <h4 class="text-sm font-semibold text-gray-800">${s.title || ''}</h4>
-                  <div>${s.content || ''}</div>
+                  <h4 class="text-sm font-semibold text-gray-800">${section.title || ''}</h4>
+                  <div>${section.content || ''}</div>
                 </div>
               `)
               .join('');

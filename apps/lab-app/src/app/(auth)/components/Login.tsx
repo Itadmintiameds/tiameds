@@ -202,7 +202,7 @@ const Login = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await login(formData);
+      await login(formData);
       setOtpTimer(300);
       setOtp('');
       toast.success('New OTP sent to your registered email', { autoClose: 2000 });
@@ -338,7 +338,7 @@ const Login = () => {
               </div>
               <h3 className="text-lg font-semibold text-purple-800">Enter OTP</h3>
               <p className="text-sm text-purple-700">
-                We've sent a 4-digit OTP to <span className="font-medium">{userEmail}</span>
+                We&apos;ve sent a 4-digit OTP to <span className="font-medium">{userEmail}</span>
               </p>
               {otpTimer > 0 && (
                 <p className="text-xs text-gray-500">
@@ -401,7 +401,7 @@ const Login = () => {
         )}
 
         <p className="mt-6 text-center text-sm text-purple-800">
-          Forgot your password?{' '}
+          Forgot your password?&nbsp;
           <Link href="#" className="font-medium text-purple-800 hover:text-indigo-500">
             Reset here
           </Link>

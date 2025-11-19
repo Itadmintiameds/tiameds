@@ -36,7 +36,7 @@ interface TestEditReferanceProps {
 }
 
 const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChange, formData, setFormData }: TestEditReferanceProps) => {
-    if (!editRecord) return null;
+    const hasEditRecord = Boolean(editRecord);
 
     // Custom handler for age fields to prevent negative values and values > 100
     const handleAgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -222,14 +222,6 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
         setEditingSection(null);
     };
 
-    const updateSection = (sectionId: string, field: keyof ReportSection, value: string | number) => {
-        const updatedSections = reportData.sections.map(section =>
-            section.id === sectionId ? { ...section, [field]: value } : section
-        );
-        const updatedData = { ...reportData, sections: updatedSections };
-        handleReportDataChange(updatedData);
-    };
-
     const removeSection = (sectionId: string) => {
         const updatedSections = reportData.sections
             .filter(section => section.id !== sectionId)
@@ -254,33 +246,73 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
         handleReportDataChange(updatedData);
     };
 
-    type KeyValue = { key: string; value: string };
-    type ParameterRow = { key: string; unit?: string; value?: string; normal_range?: string };
-
     // Structured report editor replaces the old JSON editor
 
-    const [rangesRows, setRangesRows] = useState<Array<{
-        Gender: string;
-        AgeMin: number | string;
-        AgeMinUnit: string;
-        AgeMax: number | string;
-        AgeMaxUnit: string;
+    type AgeUnit = "YEARS" | "MONTHS" | "WEEKS" | "DAYS";
+    type GenderOption = "M" | "F" | "MF";
+
+    interface RangeRow {
+        Gender: GenderOption;
+        AgeMin: number | "";
+        AgeMinUnit: AgeUnit;
+        AgeMax: number | "";
+        AgeMaxUnit: AgeUnit;
         ReferenceRange: string;
-    }>>([
-        { Gender: formData.gender || "MF", AgeMin: formData.ageMin ?? 0, AgeMinUnit: formData.minAgeUnit || "YEARS", AgeMax: formData.ageMax ?? "", AgeMaxUnit: formData.maxAgeUnit || "YEARS", ReferenceRange: formData.minReferenceRange !== undefined && formData.maxReferenceRange !== undefined ? `${formData.minReferenceRange} - ${formData.maxReferenceRange} ${formData.units || ''}`.trim() : "" }
+    }
+
+    const normalizeRangeValue = (value: unknown): number | "" => {
+        if (value === "" || value === null || value === undefined) return "";
+        const numeric = Number(value);
+        return Number.isNaN(numeric) ? "" : numeric;
+    };
+
+    const isAgeUnit = (unit: unknown): unit is AgeUnit =>
+        unit === "YEARS" || unit === "MONTHS" || unit === "WEEKS" || unit === "DAYS";
+
+    const isGenderOption = (gender: unknown): gender is GenderOption =>
+        gender === "M" || gender === "F" || gender === "MF";
+
+    const normalizeRangeRow = useCallback((row: Partial<RangeRow>): RangeRow => ({
+        Gender: isGenderOption(row.Gender) ? row.Gender : "MF",
+        AgeMin: normalizeRangeValue(row.AgeMin),
+        AgeMinUnit: isAgeUnit(row.AgeMinUnit) ? row.AgeMinUnit : "YEARS",
+        AgeMax: normalizeRangeValue(row.AgeMax),
+        AgeMaxUnit: isAgeUnit(row.AgeMaxUnit) ? row.AgeMaxUnit : "YEARS",
+        ReferenceRange: row.ReferenceRange ?? "",
+    }), []);
+
+    const getInitialRangeRow = useCallback((): RangeRow => normalizeRangeRow({
+        Gender: formData.gender as GenderOption | undefined,
+        AgeMin: formData.ageMin ?? 0,
+        AgeMinUnit: (formData.minAgeUnit as AgeUnit | undefined),
+        AgeMax: formData.ageMax ?? "",
+        AgeMaxUnit: (formData.maxAgeUnit as AgeUnit | undefined),
+        ReferenceRange:
+            formData.minReferenceRange !== undefined && formData.maxReferenceRange !== undefined
+                ? `${formData.minReferenceRange} - ${formData.maxReferenceRange} ${formData.units || ''}`.trim()
+                : "",
+    }), [
+        normalizeRangeRow,
+        formData.gender,
+        formData.ageMin,
+        formData.ageMax,
+        formData.minAgeUnit,
+        formData.maxAgeUnit,
+        formData.minReferenceRange,
+        formData.maxReferenceRange,
+        formData.units,
     ]);
 
-    useEffect(() => {
-        if (formData.referenceRanges) {
-            loadRangesFromJson();
-        }
-    }, [formData.referenceRanges]);
+    const [rangesRows, setRangesRows] = useState<RangeRow[]>([getInitialRangeRow()]);
 
     // Removed structured report helpers; single editor directly updates reportJson
 
-    const addRangeRow = () => setRangesRows(prev => [...prev, { Gender: formData.gender || "MF", AgeMin: formData.ageMin ?? 0, AgeMinUnit: formData.minAgeUnit || "YEARS", AgeMax: formData.ageMax ?? "", AgeMaxUnit: formData.maxAgeUnit || "YEARS", ReferenceRange: "" }]);
+    const addRangeRow = () => setRangesRows(prev => [...prev, getInitialRangeRow()]);
     const removeRangeRow = (idx: number) => setRangesRows(prev => prev.filter((_, i) => i !== idx));
-    const updateRangeRow = (idx: number, field: string, value: string) => setRangesRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+    const updateRangeRow = <K extends keyof RangeRow>(idx: number, field: K, value: RangeRow[K]) =>
+        setRangesRows(prev =>
+            prev.map((r, i) => (i === idx ? ({ ...r, [field]: value } as RangeRow) : r))
+        );
 
     const applyRangesToJson = () => {
         const rows = rangesRows.filter(r => r.ReferenceRange);
@@ -291,9 +323,26 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
         if (!formData.referenceRanges) return;
         try {
             const parsed = JSON.parse(formData.referenceRanges as string);
-            if (Array.isArray(parsed)) setRangesRows(parsed);
+            if (Array.isArray(parsed)) {
+                const normalized = parsed.map((row: unknown) =>
+                    normalizeRangeRow(
+                        typeof row === "object" && row !== null ? (row as Partial<RangeRow>) : {}
+                    )
+                );
+                setRangesRows(normalized.length ? normalized : [getInitialRangeRow()]);
+            }
         } catch {}
-    }, [formData.referenceRanges]);
+    }, [formData.referenceRanges, getInitialRangeRow, normalizeRangeRow]);
+
+    useEffect(() => {
+        if (formData.referenceRanges) {
+            loadRangesFromJson();
+        }
+    }, [formData.referenceRanges, loadRangesFromJson]);
+
+    if (!hasEditRecord) {
+        return null;
+    }
     
     return (
         <div className="p-4 bg-white rounded-lg">
@@ -517,7 +566,7 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                             <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                             </svg>
-                                            <p className="text-sm">No sections added yet. Click "Add Section" to get started.</p>
+                                            <p className="text-sm">No sections added yet. Click &quot;Add Section&quot; to get started.</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-4">
@@ -677,14 +726,29 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                     </div>
                                     {rangesRows.map((row, idx) => (
                                         <div key={idx} className="grid grid-cols-12 gap-2 mb-2 items-center">
-                                            <select className="col-span-1 border border-gray-300 rounded p-2 text-xs" value={row.Gender} onChange={(e) => updateRangeRow(idx, 'Gender', e.target.value)}>
+                                            <select
+                                                className="col-span-1 border border-gray-300 rounded p-2 text-xs"
+                                                value={row.Gender}
+                                                onChange={(e) => updateRangeRow(idx, "Gender", e.target.value as GenderOption)}
+                                            >
                                                 <option value="M">Male</option>
                                                 <option value="F">Female</option>
                                                 <option value="MF">Both</option>
                                             </select>
                                             <div className="col-span-2 grid grid-cols-2 gap-2">
-                                                <input className="border border-gray-300 rounded p-2 text-xs" type="number" min={0} value={row.AgeMin as any} onChange={(e) => updateRangeRow(idx, 'AgeMin', e.target.value)} placeholder="0" />
-                                                <select className="border border-gray-300 rounded p-2 text-xs" value={row.AgeMinUnit} onChange={(e) => updateRangeRow(idx, 'AgeMinUnit', e.target.value)}>
+                                                <input
+                                                    className="border border-gray-300 rounded p-2 text-xs"
+                                                    type="number"
+                                                    min={0}
+                                                    value={row.AgeMin === "" ? "" : row.AgeMin}
+                                                    onChange={(e) => updateRangeRow(idx, "AgeMin", e.target.value === "" ? "" : Number(e.target.value))}
+                                                    placeholder="0"
+                                                />
+                                                <select
+                                                    className="border border-gray-300 rounded p-2 text-xs"
+                                                    value={row.AgeMinUnit}
+                                                    onChange={(e) => updateRangeRow(idx, "AgeMinUnit", e.target.value as AgeUnit)}
+                                                >
                                                     <option value="YEARS">YEARS</option>
                                                     <option value="MONTHS">MONTHS</option>
                                                     <option value="WEEKS">WEEKS</option>
@@ -692,15 +756,31 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                                 </select>
                                             </div>
                                             <div className="col-span-2 grid grid-cols-2 gap-2">
-                                                <input className="border border-gray-300 rounded p-2 text-xs" type="number" min={0} value={row.AgeMax as any} onChange={(e) => updateRangeRow(idx, 'AgeMax', e.target.value)} placeholder="" />
-                                                <select className="border border-gray-300 rounded p-2 text-xs" value={row.AgeMaxUnit} onChange={(e) => updateRangeRow(idx, 'AgeMaxUnit', e.target.value)}>
+                                                <input
+                                                    className="border border-gray-300 rounded p-2 text-xs"
+                                                    type="number"
+                                                    min={0}
+                                                    value={row.AgeMax === "" ? "" : row.AgeMax}
+                                                    onChange={(e) => updateRangeRow(idx, "AgeMax", e.target.value === "" ? "" : Number(e.target.value))}
+                                                    placeholder=""
+                                                />
+                                                <select
+                                                    className="border border-gray-300 rounded p-2 text-xs"
+                                                    value={row.AgeMaxUnit}
+                                                    onChange={(e) => updateRangeRow(idx, "AgeMaxUnit", e.target.value as AgeUnit)}
+                                                >
                                                     <option value="YEARS">YEARS</option>
                                                     <option value="MONTHS">MONTHS</option>
                                                     <option value="WEEKS">WEEKS</option>
                                                     <option value="DAYS">DAYS</option>
                                                 </select>
                                             </div>
-                                            <input className="col-span-6 border border-gray-300 rounded p-2 text-xs" placeholder="e.g., 12.0 - 16.0 g/dL / 4.5 - 11.0 x 10³/μL" value={row.ReferenceRange} onChange={(e) => updateRangeRow(idx, 'ReferenceRange', e.target.value)} />
+                                            <input
+                                                className="col-span-6 border border-gray-300 rounded p-2 text-xs"
+                                                placeholder="e.g., 12.0 - 16.0 g/dL / 4.5 - 11.0 x 10³/μL"
+                                                value={row.ReferenceRange}
+                                                onChange={(e) => updateRangeRow(idx, "ReferenceRange", e.target.value)}
+                                            />
                                             <button type="button" className="col-span-1 text-xs text-red-600" onClick={() => removeRangeRow(idx)}>Remove</button>
                                         </div>
                                     ))}

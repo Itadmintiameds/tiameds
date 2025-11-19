@@ -52,8 +52,6 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
     }
   });
   const [referenceRanges, setReferenceRanges] = useState<ReferenceRange[]>([]);
-  const [isValidJson, setIsValidJson] = useState<boolean>(true);
-  const [jsonError, setJsonError] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingSection, setEditingSection] = useState<ReportSection | null>(null);
   const [isNewSection, setIsNewSection] = useState<boolean>(false);
@@ -87,11 +85,7 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
             }
           });
         }
-        setIsValidJson(true);
-        setJsonError('');
       } catch (error) {
-        setIsValidJson(false);
-        setJsonError('Invalid JSON format');
         // Initialize with default structure
         setReportData({
           title: point.testName || 'Test Report',
@@ -133,19 +127,6 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
     setReportData(updatedData);
     const jsonString = JSON.stringify(updatedData, null, 2);
     onReportJsonChange?.(jsonString);
-  };
-
-  const handleBasicInfoChange = (field: keyof ReportData, value: string) => {
-    const updatedData = { ...reportData, [field]: value };
-    handleReportDataChange(updatedData);
-  };
-
-  const handleMetadataChange = (field: keyof NonNullable<ReportData['metadata']>, value: string) => {
-    const updatedData = {
-      ...reportData,
-      metadata: { ...reportData.metadata, [field]: value }
-    };
-    handleReportDataChange(updatedData);
   };
 
   const addSection = (template?: 'introduction' | 'results' | 'conclusion' | 'custom') => {
@@ -192,12 +173,6 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
     setEditingSection(newSection);
     setIsNewSection(true);
     setEditingSectionId(newSection.id);
-  };
-
-  const editSection = (section: ReportSection) => {
-    setEditingSection(section);
-    setIsNewSection(false);
-    setIsModalOpen(true);
   };
 
   const handleSectionSave = (section: ReportSection) => {
@@ -256,14 +231,6 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
     setEditingSection(null);
   };
 
-  const updateSection = (sectionId: string, field: keyof ReportSection, value: string | number) => {
-    const updatedSections = reportData.sections.map(section =>
-      section.id === sectionId ? { ...section, [field]: value } : section
-    );
-    const updatedData = { ...reportData, sections: updatedSections };
-    handleReportDataChange(updatedData);
-  };
-
   const removeSection = (sectionId: string) => {
     const updatedSections = reportData.sections
       .filter(section => section.id !== sectionId)
@@ -286,11 +253,6 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
     const updatedSections = sections.map((section, index) => ({ ...section, order: index + 1 }));
     const updatedData = { ...reportData, sections: updatedSections };
     handleReportDataChange(updatedData);
-  };
-
-  const formatJson = () => {
-    const jsonString = JSON.stringify(reportData, null, 2);
-    onReportJsonChange?.(jsonString);
   };
 
   const formatGender = (gender: string) => {
@@ -390,7 +352,7 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
                     <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                    <p className="text-sm">No sections added yet. Click "Add Section" to get started.</p>
+                    <p className="text-sm">No sections added yet. Click &quot;Add Section&quot; to get started.</p>
                 </div>
               ) : (
                   <div className="space-y-4">

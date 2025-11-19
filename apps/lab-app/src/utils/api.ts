@@ -51,14 +51,14 @@ interface RetryAxiosRequestConfig extends InternalAxiosRequestConfig {
 
 type FailedRequest = {
   resolve: (value?: unknown) => void;
-  reject: (reason?: any) => void;
+  reject: (reason?: unknown) => void;
   config: RetryAxiosRequestConfig;
 };
 
 let isRefreshing = false;
 const failedQueue: FailedRequest[] = [];
 
-const processQueue = (error: any) => {
+const processQueue = (error: unknown) => {
   while (failedQueue.length > 0) {
     const { resolve, reject, config } = failedQueue.shift() as FailedRequest;
     if (error) {
@@ -74,22 +74,6 @@ const processQueue = (error: any) => {
 // The backend reads accessToken from HttpOnly cookies automatically
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Exclude public and auth endpoints - these don't need authentication
-    const excludedEndpoints = [
-      '/public/login', 
-      '/public/register', 
-      '/public/onboarding',
-      '/auth/refresh',
-      '/auth/login',
-      '/auth/verify-otp',
-      '/auth/send-otp',
-      '/auth/forgot-password',
-      '/auth/reset-password'
-    ];
-    const isExcluded = excludedEndpoints.some((endpoint) =>
-      config.url?.includes(endpoint)
-    );
-
     // For all other endpoints, cookies (accessToken) will be sent automatically
     // via withCredentials: true. The backend will read the accessToken cookie.
     // No manual Authorization header needed since we're using HttpOnly cookies.
@@ -135,7 +119,7 @@ api.interceptors.response.use(
       try {
         // Call refresh endpoint - refreshToken cookie is sent automatically via withCredentials
         // Backend will set new accessToken and refreshToken cookies in the response
-        const refreshResponse = await refreshClient.post<VerifyOtpResponse>('/auth/refresh');
+        await refreshClient.post<VerifyOtpResponse>('/auth/refresh');
         
         // Refresh successful - new cookies are set automatically by the browser
         // Process all queued requests with success
@@ -143,9 +127,13 @@ api.interceptors.response.use(
         
         // Retry the original request - new accessToken cookie will be sent automatically
         return api.request(originalRequest);
-      } catch (refreshError: any) {
+      } catch (refreshError: unknown) {
         // Refresh failed - check if it's because refreshToken is missing/expired
-        const refreshStatus = refreshError?.response?.status;
+        let refreshStatus: number | undefined;
+        if (typeof refreshError === 'object' && refreshError !== null) {
+          const apiError = refreshError as { response?: { status?: number } };
+          refreshStatus = apiError.response?.status;
+        }
         
         // Only redirect to login if refresh actually failed (not network errors)
         if (refreshStatus === 401 || refreshStatus === 403) {

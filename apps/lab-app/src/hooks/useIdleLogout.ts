@@ -78,10 +78,16 @@ export const useIdleLogout = (
       try {
         await logoutApi();
         console.log('Idle logout: Backend logout API called successfully');
-      } catch (error: any) {
+      } catch (error: unknown) {
         // If API call fails, still proceed with client-side cleanup
         // This can happen if the session is already expired or network error
-        const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
+        let errorMessage = 'Unknown error';
+        if (typeof error === 'object' && error !== null) {
+          const apiError = error as { response?: { data?: { message?: string } }; message?: string };
+          errorMessage = apiError.response?.data?.message || apiError.message || errorMessage;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
         console.warn('Idle logout: Backend logout API call failed, proceeding with client-side cleanup:', errorMessage);
       }
 

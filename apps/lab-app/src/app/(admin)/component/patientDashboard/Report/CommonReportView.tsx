@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import Image from "next/image";
 import { useLabs } from "@/context/LabContext";
 import { PatientData } from "@/types/sample/sample";
 import {  formatAgeForDisplay } from "@/utils/ageUtils";
@@ -23,14 +24,35 @@ interface Report {
     referenceRanges?: string; // json array string with ranges
 }
 
+interface DetailedReportSection {
+    order?: number;
+    title?: string;
+    content?: string;
+}
+
+interface DetailedReport {
+    title?: string;
+    description?: string;
+    sections?: DetailedReportSection[];
+}
+
+interface ReferenceRangeEntry {
+    Gender: string;
+    AgeMin: string;
+    AgeMinUnit: string;
+    AgeMax: string;
+    AgeMaxUnit: string;
+    ReferenceRange: string;
+}
+
+type PatientDataWithLab = PatientData & { labName?: string };
+
 interface CommonReportViewProps {
     visitId: number;
     patientData: PatientData;
     doctorName?: string;
     hidePrintButton?: boolean;
 }
-
-const A4_WIDTH = 210; // mm
 
 const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = false }: CommonReportViewProps) => {
     const { currentLab } = useLabs();
@@ -94,8 +116,8 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
             printElement.style.color = '#000000';
             
             // Ensure all content is visible and properly styled
-            const allElements = printElement.querySelectorAll('*');
-            allElements.forEach((el: any) => {
+            const allElements = printElement.querySelectorAll<HTMLElement>('*');
+            allElements.forEach((el) => {
                 el.style.backgroundColor = el.style.backgroundColor || 'transparent';
                 el.style.color = el.style.color || '#000000';
                 el.style.boxSizing = 'border-box';
@@ -103,8 +125,8 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                 el.style.fontSize = el.style.fontSize || '12px';
                 el.style.lineHeight = el.style.lineHeight || '1.4';
                 el.style.textRendering = 'optimizeLegibility';
-                el.style.webkitFontSmoothing = 'antialiased';
-                el.style.mozOsxFontSmoothing = 'grayscale';
+                el.style.setProperty('-webkit-font-smoothing', 'antialiased');
+                el.style.setProperty('moz-osx-font-smoothing', 'grayscale');
             });
 
             // Ensure blue divider is visible
@@ -117,13 +139,13 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
             }
 
             // Ensure text elements have consistent styling
-            const textElements = printElement.querySelectorAll('h1, h2, h3, p, span, div, td, th');
-            textElements.forEach((el: any) => {
+            const textElements = printElement.querySelectorAll<HTMLElement>('h1, h2, h3, p, span, div, td, th');
+            textElements.forEach((el) => {
                 el.style.fontFamily = 'Arial, sans-serif';
                 el.style.color = '#000000';
                 el.style.textRendering = 'optimizeLegibility';
-                el.style.webkitFontSmoothing = 'antialiased';
-                el.style.mozOsxFontSmoothing = 'grayscale';
+                el.style.setProperty('-webkit-font-smoothing', 'antialiased');
+                el.style.setProperty('moz-osx-font-smoothing', 'grayscale');
             });
             
             document.body.appendChild(printElement);
@@ -149,7 +171,6 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
             
             let heightLeft = imgHeight;
-            let position = 0;
 
             // Add image to PDF with top margin
             pdf.addImage(imgData, 'PNG', margin, topMargin, imgWidth, imgHeight);
@@ -157,8 +178,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
 
             // Add additional pages if content is longer than one page
             while (heightLeft >= 0) {
-                position = heightLeft - imgHeight;
-                    pdf.addPage();
+                pdf.addPage();
                 pdf.addImage(imgData, 'PNG', margin, topMargin, imgWidth, imgHeight);
                 heightLeft -= pageHeight;
             }
@@ -197,18 +217,19 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
 
     // Determine doctor name to display
     const displayDoctorName = doctorName || doctor?.name || 'N/A';
+    const patientLabName = (patientData as PatientDataWithLab).labName;
 
     // Helpers for rendering detailed report and reference ranges
     const buildDetailedReportHTML = (reportJson?: string, fallbackTitle?: string) => {
         if (!reportJson) return '';
         try {
-            const parsed = JSON.parse(reportJson);
+            const parsed = JSON.parse(reportJson) as DetailedReport;
             if (parsed && parsed.title && Array.isArray(parsed.sections)) {
                 const sectionsHtml = parsed.sections
-                    .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
-                    .map((s: any) => {
+                    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                    .map((section) => {
                         // Ensure readable spacing before bold labels like "Limitations:" when missing spaces
-                        const cleanedContent = String(s.content || '')
+                        const cleanedContent = String(section.content ?? '')
                           .replace(/([^\s>])<strong>/g, '$1 <strong>')
                           .replace(/<ul>/g, '<ul class=\\"list-disc pl-5\\" >')
                           .replace(/<ol>/g, '<ol class=\\"list-decimal pl-5\\" >')
@@ -217,7 +238,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                           .replace(/style=\\"\\s*\\"/gi, '');
                         return `
                         <div class=\"mb-3\">
-                            <h4 class=\"text-sm font-semibold text-gray-800\">${s.title || ''}</h4>
+                            <h4 class=\"text-sm font-semibold text-gray-800\">${section.title || ''}</h4>
                             <div>${cleanedContent}</div>
                         </div>
                         `;
@@ -240,9 +261,9 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
 
     const renderReferenceRanges = (rangesStr?: string) => {
         if (!rangesStr) return null;
-        let ranges: any[] = [];
+        let ranges: ReferenceRangeEntry[] = [];
         try {
-            const parsed = JSON.parse(rangesStr);
+            const parsed = JSON.parse(rangesStr) as ReferenceRangeEntry[];
             ranges = Array.isArray(parsed) ? parsed : [];
         } catch {
             ranges = [];
@@ -255,7 +276,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
             if (up === 'MF') return 'Male/Female';
             return g;
         };
-        const formatAge = (r: any) => {
+        const formatAge = (r: ReferenceRangeEntry) => {
             const min = `${r.AgeMin} ${r.AgeMinUnit}`;
             const max = `${r.AgeMax} ${r.AgeMaxUnit}`;
             return `${min} - ${max}`;
@@ -347,11 +368,17 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center">
                                     <div>
-                                        <img src="/tiamed1.svg" alt="Lab Logo" className="h-14 mr-4" />
+                                        <Image
+                                            src="/tiamed1.svg"
+                                            alt="Lab Logo"
+                                            width={56}
+                                            height={56}
+                                            className="h-14 w-14 mr-4"
+                                        />
                                     </div>
                                     <div>
                                         <h1 className="text-xl font-bold text-black">MEDICAL DIAGNOSTIC REPORT</h1>
-                                        <p className="text-sm text-gray-600">{(patientData as any)?.labName || currentLab?.name || 'DIAGNOSTIC LABORATORY'}</p>
+                                        <p className="text-sm text-gray-600">{patientLabName || currentLab?.name || 'DIAGNOSTIC LABORATORY'}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -693,7 +720,13 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                             {/* Bottom divider with logo and generation info */}
                             <div className="flex justify-between items-center mt-4">
                                 <div className="flex items-center">
-                                    <img src="/tiamed1.svg" alt="Tiamed Logo" className="h-6 mr-2 opacity-80" />
+                                    <Image
+                                        src="/tiamed1.svg"
+                                        alt="Tiamed Logo"
+                                        width={60}
+                                        height={24}
+                                        className="h-6 w-auto mr-2 opacity-80"
+                                    />
                                     <span className="text-xs font-medium text-gray-600">Powered by Tiameds Technologies Pvt.Ltd</span>
                                 </div>
                                 <div className="text-right">

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-toastify';
 import {
   FaUser, FaLock, FaPhone, FaMapMarkerAlt, FaBuilding,
-  FaEnvelope, FaUserTie, FaCheckCircle, FaArrowRight, FaArrowLeft,
+  FaUserTie, FaCheckCircle, FaArrowRight, FaArrowLeft,
   FaSpinner, FaFlask, FaShieldAlt, FaTimes, FaClipboardCheck
 } from 'react-icons/fa';
 import { completeOnboarding } from '@/../services/onboardingService';
@@ -592,8 +592,9 @@ const OnboardingContent = () => {
           router.push('/user-login');
         }, 2000);
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to complete onboarding. Please try again.', {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to complete onboarding. Please try again.';
+      toast.error(message, {
         autoClose: 5000,
         position: 'top-center',
       });
@@ -1625,7 +1626,7 @@ const OnboardingContent = () => {
                   <section>
                     <h3 className="text-xl font-semibold text-gray-800 mb-3">1. Introduction</h3>
                     <p className="text-gray-700 leading-relaxed mb-4">
-                      This Data Privacy Agreement ("Agreement") governs the collection, use, storage, and protection 
+                      This Data Privacy Agreement (&quot;Agreement&quot;) governs the collection, use, storage, and protection 
                       of personal and health information within the Hospital Information Management System (HIMS) 
                       provided by TiaMeds. By using this system, you agree to comply with all applicable data 
                       protection laws and regulations, including but not limited to HIPAA, GDPR, and local 

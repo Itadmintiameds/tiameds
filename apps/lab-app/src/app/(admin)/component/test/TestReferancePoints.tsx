@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   getTestReferanceRange,
   updateTestReferanceRange,
@@ -8,7 +8,7 @@ import {
 import { TestReferancePoint } from "@/types/test/testlist";
 import Loader from "../../component/common/Loader";
 import { useLabs } from "@/context/LabContext";
-import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaFilter, FaChevronDown, FaChevronUp, FaChevronRight, FaChevronLeft } from "react-icons/fa";
+import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaFilter, FaChevronDown, FaChevronUp, FaChevronRight } from "react-icons/fa";
 import Modal from "../common/Model";
 import TestEditReferance from "./TestEditReferance";
 import { toast } from "react-toastify";
@@ -21,6 +21,8 @@ import { saveAs } from "file-saver";
 import { fetchTestReferenceRangeCsv } from '@/../services/testService';
 import Papa from 'papaparse';
 import { z } from "zod";
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export const TestReferancePointSchema = z.object({
   id: z.number().optional(),
@@ -89,6 +91,36 @@ export const TestReferancePointSchema = z.object({
 
 const ITEMS_PER_PAGE = 5;
 
+type ReferenceRangeItem = {
+  Gender?: string;
+  AgeMin?: string | number;
+  AgeMax?: string | number;
+  AgeMinUnit?: string;
+  AgeMaxUnit?: string;
+  ReferenceRange?: string;
+};
+
+interface ParsedReportSection {
+  title?: string;
+  content?: string;
+  order?: number;
+}
+
+interface ParsedReport {
+  testName?: string;
+  note?: string;
+  impression?: string;
+  interpretation?: string;
+  limitations?: unknown[];
+  organReview?: unknown[];
+  observations?: unknown[];
+  fetalParameters?: Record<string, Record<string, unknown>>;
+  parameters?: Record<string, Record<string, unknown>>;
+  sections?: ParsedReportSection[] | Record<string, unknown>;
+  calculation?: string;
+  significance?: string;
+}
+
 const TestReferancePoints = () => {
   const [referencePoints, setReferencePoints] = useState<TestReferancePoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +141,7 @@ const TestReferancePoints = () => {
   const [activeFilter, setActiveFilter] = useState<"all" | "category" | "test" | "description">("all");
   const [activeTab, setActiveTab] = useState<"all" | "common" | "special">("all");
 
-  const fetchReferencePoints = async () => {
+  const fetchReferencePoints = useCallback(async () => {
     if (currentLab?.id) {
       setLoading(true);
       try {
@@ -125,11 +157,11 @@ const TestReferancePoints = () => {
         setLoading(false);
       }
     }
-  };
+  }, [currentLab?.id]);
 
   useEffect(() => {
     fetchReferencePoints();
-  }, [currentLab]);
+  }, [fetchReferencePoints]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
@@ -186,12 +218,13 @@ const TestReferancePoints = () => {
       filteredCategories: new Set(filtered.map(t => t?.category)).size
     };
 
-    const grouped = filtered.reduce((acc, test) => {
-      if (!acc[test?.category]) acc[test?.category] = {};
-      if (!acc[test?.category][test.testName]) acc[test.category][test.testName] = [];
-      acc[test?.category][test?.testName].push(test);
+    const grouped = filtered.reduce<Record<string, Record<string, TestReferancePoint[]>>>((acc, test) => {
+      const category = test?.category ?? "Uncategorized";
+      if (!acc[category]) acc[category] = {};
+      if (!acc[category][test.testName]) acc[category][test.testName] = [];
+      acc[category][test.testName].push(test);
       return acc;
-    }, {} as Record<string, Record<string, TestReferancePoint[]>>);
+    }, {});
 
     const categories = Object.keys(grouped);
     const paginatedCategories = categories.slice(
@@ -647,169 +680,165 @@ const TestReferancePoints = () => {
                                     </h4>
                                     {test.reportJson ? (
                                       <div className="bg-white p-3 rounded-lg border border-gray-200">
-                                        {(() => {
-                                          try {
-                                            const parsed = JSON.parse(test.reportJson);
-                                            return (
-                                              <div className="space-y-3">
-                                                {/* Test Name */}
-                                                {parsed.testName && (
-                                                  <div>
-                                                    <h5 className="font-semibold text-blue-700 text-xs mb-1">Test Name</h5>
-                                                    <p className="text-gray-700 bg-blue-50 p-2 rounded text-sm">{parsed.testName}</p>
-                                                  </div>
-                                                )}
-
-                                                {/* Note */}
-                                                {parsed.note && (
-                                                  <div>
-                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Note</h5>
-                                                    <p className="text-gray-700 bg-yellow-50 p-2 rounded italic">{parsed.note}</p>
-                                                  </div>
-                                                )}
-
-                                                {/* Impression */}
-                                                {parsed.impression && (
-                                                  <div>
-                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Impression</h5>
-                                                    <p className="text-gray-700 bg-green-50 p-2 rounded">{parsed.impression}</p>
-                                                  </div>
-                                                )}
-
-                                                {/* Interpretation */}
-                                                {parsed.interpretation && (
-                                                  <div>
-                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Interpretation</h5>
-                                                    <p className="text-gray-700 bg-green-50 p-2 rounded">{parsed.interpretation}</p>
-                                                  </div>
-                                                )}
-
-                                                {/* Limitations */}
-                                                {parsed.limitations && Array.isArray(parsed.limitations) && parsed.limitations.length > 0 && (
-                                                  <div>
-                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Limitations</h5>
-                                                    <ul className="list-disc list-inside space-y-1">
-                                                      {parsed.limitations.map((limitation: string, idx: number) => (
-                                                        <li key={idx} className="text-gray-700 text-sm bg-orange-50 p-2 rounded">{limitation}</li>
-                                                      ))}
-                                                    </ul>
-                                                  </div>
-                                                )}
-
-                                                {/* Organ Review */}
-                                                {parsed.organReview && Array.isArray(parsed.organReview) && parsed.organReview.length > 0 && (
-                                                  <div>
-                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Organ Review</h5>
-                                                    <ul className="list-disc list-inside space-y-1">
-                                                      {parsed.organReview.map((organ: string, idx: number) => (
-                                                        <li key={idx} className="text-gray-700 text-sm bg-blue-50 p-2 rounded">{organ}</li>
-                                                      ))}
-                                                    </ul>
-                                                  </div>
-                                                )}
-
-                                                {/* Observations */}
-                                                {parsed.observations && Array.isArray(parsed.observations) && parsed.observations.length > 0 && (
-                                                  <div>
-                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Observations</h5>
-                                                    <ul className="list-disc list-inside space-y-1">
-                                                      {parsed.observations.map((observation: string, idx: number) => (
-                                                        <li key={idx} className="text-gray-700 text-sm bg-purple-50 p-2 rounded">{observation}</li>
-                                                      ))}
-                                                    </ul>
-                                                  </div>
-                                                )}
-
-                                                {/* Fetal Parameters */}
-                                                {parsed.fetalParameters && (
-                                                  <div>
-                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Fetal Parameters</h5>
-                                                    <div className="space-y-3">
-                                                      {Object.entries(parsed.fetalParameters).map(([fetus, params]: [string, any]) => (
+                                    {(() => {
+                                        try {
+                                          const parsed = JSON.parse(test.reportJson) as ParsedReport;
+                                          return (
+                                            <div className="space-y-3">
+                                              {parsed.testName ? (
+                                                <div>
+                                                  <h5 className="font-semibold text-blue-700 text-xs mb-1">Test Name</h5>
+                                                  <p className="text-gray-700 bg-blue-50 p-2 rounded text-sm">{String(parsed.testName)}</p>
+                                                </div>
+                                              ) : null}
+                                              {parsed.note ? (
+                                                <div>
+                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Note</h5>
+                                                  <p className="text-gray-700 bg-yellow-50 p-2 rounded italic">{String(parsed.note)}</p>
+                                                </div>
+                                              ) : null}
+                                              {parsed.impression ? (
+                                                <div>
+                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Impression</h5>
+                                                  <p className="text-gray-700 bg-green-50 p-2 rounded">{String(parsed.impression)}</p>
+                                                </div>
+                                              ) : null}
+                                              {parsed.interpretation ? (
+                                                <div>
+                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Interpretation</h5>
+                                                  <p className="text-gray-700 bg-green-50 p-2 rounded">{String(parsed.interpretation)}</p>
+                                                </div>
+                                              ) : null}
+                                              {Array.isArray(parsed.limitations) && parsed.limitations.length > 0 ? (
+                                                <div>
+                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Limitations</h5>
+                                                  <ul className="list-disc list-inside space-y-1">
+                                                    {parsed.limitations.map((limitation: unknown, idx: number) => (
+                                                      <li key={idx} className="text-gray-700 text-sm bg-orange-50 p-2 rounded">
+                                                        {String(limitation)}
+                                                      </li>
+                                                    ))}
+                                                  </ul>
+                                                </div>
+                                              ) : null}
+                                              {Array.isArray(parsed.organReview) && parsed.organReview.length > 0 ? (
+                                                <div>
+                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Organ Review</h5>
+                                                  <ul className="list-disc list-inside space-y-1">
+                                                    {parsed.organReview.map((organ: unknown, idx: number) => (
+                                                      <li key={idx} className="text-gray-700 text-sm bg-blue-50 p-2 rounded">
+                                                        {String(organ)}
+                                                      </li>
+                                                    ))}
+                                                  </ul>
+                                                </div>
+                                              ) : null}
+                                              {Array.isArray(parsed.observations) && parsed.observations.length > 0 ? (
+                                                <div>
+                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Observations</h5>
+                                                  <ul className="list-disc list-inside space-y-1">
+                                                    {parsed.observations.map((observation: unknown, idx: number) => (
+                                                      <li key={idx} className="text-gray-700 text-sm bg-purple-50 p-2 rounded">
+                                                        {String(observation)}
+                                                      </li>
+                                                    ))}
+                                                  </ul>
+                                                </div>
+                                              ) : null}
+                                              {parsed.fetalParameters && isPlainObject(parsed.fetalParameters) ? (
+                                                <div>
+                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Fetal Parameters</h5>
+                                                  <div className="space-y-3">
+                                                    {Object.entries(parsed.fetalParameters).map(([fetus, params]) =>
+                                                      isPlainObject(params) ? (
                                                         <div key={fetus} className="bg-gray-50 p-3 rounded">
                                                           <h6 className="font-medium text-gray-800 mb-2">{fetus}</h6>
                                                           <div className="grid grid-cols-2 gap-2">
-                                                            {Object.entries(params).map(([key, value]: [string, any]) => (
+                                                            {Object.entries(params).map(([key, value]) => (
                                                               <div key={key} className="text-sm">
                                                                 <span className="font-medium text-gray-600">{key}:</span>
-                                                                <span className="ml-2 text-gray-800">{value}</span>
+                                                                <span className="ml-2 text-gray-800">{String(value)}</span>
                                                               </div>
                                                             ))}
                                                           </div>
                                                         </div>
-                                                      ))}
-                                                    </div>
+                                                      ) : null
+                                                    )}
                                                   </div>
-                                                )}
-
-                                                {/* Parameters (for lab tests) */}
-                                                {parsed.parameters && (
-                                                  <div>
-                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Test Parameters</h5>
-                                                    <div className="space-y-2">
-                                                      {Object.entries(parsed.parameters).map(([param, data]: [string, any]) => (
+                                                </div>
+                                              ) : null}
+                                              {parsed.parameters && isPlainObject(parsed.parameters) ? (
+                                                <div>
+                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Test Parameters</h5>
+                                                  <div className="space-y-2">
+                                                    {Object.entries(parsed.parameters).map(([param, data]) =>
+                                                      isPlainObject(data) ? (
                                                         <div key={param} className="bg-gray-50 p-3 rounded">
                                                           <h6 className="font-medium text-gray-800 mb-1 capitalize">{param.replace(/_/g, ' ')}</h6>
                                                           <div className="grid grid-cols-2 gap-2 text-sm">
-                                                            {Object.entries(data).map(([key, value]: [string, any]) => (
+                                                            {Object.entries(data).map(([key, value]) => (
                                                               <div key={key}>
                                                                 <span className="font-medium text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</span>
-                                                                <span className="ml-2 text-gray-800">{value}</span>
+                                                                <span className="ml-2 text-gray-800">{String(value)}</span>
                                                               </div>
                                                             ))}
                                                           </div>
                                                         </div>
-                                                      ))}
-                                                    </div>
+                                                      ) : null
+                                                    )}
                                                   </div>
-                                                )}
-
-                                                {/* Sections (for radiology reports) */}
-                                                {parsed.sections && (
-                                                  <div>
-                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Report Sections</h5>
-                                                    <div className="space-y-2">
-                                                      {Object.entries(parsed.sections).map(([section, description]: [string, any]) => (
-                                                        <div key={section} className="bg-gray-50 p-3 rounded">
-                                                          <h6 className="font-medium text-gray-800 mb-1">{section}</h6>
-                                                          <p className="text-gray-700 text-sm">{description}</p>
-                                                        </div>
-                                                      ))}
-                                                    </div>
+                                                </div>
+                                              ) : null}
+                                              {parsed.sections ? (
+                                                <div>
+                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Report Sections</h5>
+                                                  <div className="space-y-2">
+                                                    {Array.isArray(parsed.sections)
+                                                      ? parsed.sections.map((section, idx) => (
+                                                          <div key={section.title ?? idx} className="bg-gray-50 p-3 rounded">
+                                                            <h6 className="text-gray-800 mb-1">{section.title || `Section ${idx + 1}`}</h6>
+                                                            <p className="text-gray-700 text-sm">{section.content || 'N/A'}</p>
+                                                          </div>
+                                                        ))
+                                                      : isPlainObject(parsed.sections)
+                                                        ? Object.entries(parsed.sections as Record<string, unknown>).map(([sectionTitle, description]) => (
+                                                            <div key={sectionTitle} className="bg-gray-50 p-3 rounded">
+                                                              <h6 className="font-medium text-gray-800 mb-1">{sectionTitle}</h6>
+                                                              <p className="text-gray-700 text-sm">{String(description)}</p>
+                                                            </div>
+                                                          ))
+                                                        : null}
                                                   </div>
-                                                )}
-
-                                                {/* Calculation */}
-                                                {parsed.calculation && (
-                                                  <div>
-                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Calculation</h5>
-                                                    <p className="text-gray-700 bg-blue-50 p-2 rounded font-mono">{parsed.calculation}</p>
-                                                  </div>
-                                                )}
-
-                                                {/* Significance */}
-                                                {parsed.significance && (
-                                                  <div>
-                                                    <h5 className="font-semibold text-gray-800 text-sm mb-2">Significance</h5>
-                                                    <p className="text-gray-700 bg-green-50 p-2 rounded">{parsed.significance}</p>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            );
-                                          } catch {
-                                            return (
-                                              <div className="text-gray-400 text-sm">
-                                                <p>Unable to parse report data</p>
-                                                <details className="mt-2">
-                                                  <summary className="cursor-pointer text-blue-600">View Raw Data</summary>
-                                                  <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-32">
-                                                    {test.reportJson}
-                                                  </pre>
-                                                </details>
-                                              </div>
-                                            );
-                                          }
-                                        })()}
+                                                </div>
+                                              ) : null}
+                                              {parsed.calculation ? (
+                                                <div>
+                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Calculation</h5>
+                                                  <p className="text-gray-700 bg-blue-50 p-2 rounded font-mono">{String(parsed.calculation)}</p>
+                                                </div>
+                                              ) : null}
+                                              {parsed.significance ? (
+                                                <div>
+                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Significance</h5>
+                                                  <p className="text-gray-700 bg-green-50 p-2 rounded">{String(parsed.significance)}</p>
+                                                </div>
+                                              ) : null}
+                                            </div>
+                                          );
+                                        } catch {
+                                          return (
+                                            <div className="text-gray-400 text-sm">
+                                              <p>Unable to parse report data</p>
+                                              <details className="mt-2">
+                                                <summary className="cursor-pointer text-blue-600">View Raw Data</summary>
+                                                <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-32">
+                                                  {test.reportJson}
+                                                </pre>
+                                              </details>
+                                            </div>
+                                          );
+                                        }
+                                      })()}
                                       </div>
                                     ) : (
                                       <div className="text-gray-400 text-sm">No report data available</div>
@@ -830,7 +859,7 @@ const TestReferancePoints = () => {
                                             return (
                                               <div className="space-y-2">
                                                 {Array.isArray(parsed) ? (
-                                                  parsed.map((range: any, idx: number) => (
+                                                  (parsed as ReferenceRangeItem[]).map((range, idx) => (
                                                     <div key={idx} className="bg-green-50 p-3 rounded-lg border border-green-200">
                                                       <div className="flex justify-between items-start mb-2">
                                                         <div className="flex items-center gap-2">

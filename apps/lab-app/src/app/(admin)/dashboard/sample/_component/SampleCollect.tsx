@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { FaPlusCircle, FaTrashAlt, FaTimes } from "react-icons/fa";
 import { TbTestPipe2Filled } from "react-icons/tb";
 import { getSamples } from "../../../../../../services/sampleServices";
+import { useLabs } from "@/context/LabContext";
 
 interface Sample {
     id: string;
@@ -28,6 +29,7 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
     loading,
     onClose,
 }) => {
+    const { currentLab } = useLabs();
     const handleCancel = () => {
         // Clear any selected samples when canceling
         setSamples([]);
@@ -42,19 +44,24 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
 
     useEffect(() => {
         const fetchSamples = async () => {
+            if (!currentLab?.id) {
+                setAllSamples([]);
+                return;
+            }
             try {
-                const data: Sample[] = (await getSamples()).map(sample => ({
+                const data = await getSamples(currentLab.id);
+                const normalized: Sample[] = data.map(sample => ({
                     ...sample,
                     id: sample.id.toString(),
                 }));
-                setAllSamples(data);
+                setAllSamples(normalized);
             } catch (error) {
-                // Handle samples fetch error
+                setAllSamples([]);
             }
         };
 
         fetchSamples();
-    }, []);
+    }, [currentLab?.id]);
 
     const handleAddSample = () => {
         if (selectedSample && !samples.includes(selectedSample)) {
