@@ -8,7 +8,6 @@ import {
 import { FiLoader } from 'react-icons/fi'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import { toast } from 'react-toastify'
 import { login, verifyOtp } from '../../../../services/authService'
 import { loginDataSchema } from '@/schema/loginDataSchema'
@@ -31,8 +30,6 @@ const LoginPage: React.FC = () => {
   const [otpTimer, setOtpTimer] = useState(0)
   const [blockedUntil, setBlockedUntil] = useState<number | null>(null)
   const [blockMessage, setBlockMessage] = useState<string>('')
-  const router = useRouter()
-  
   const { login: authLogin } = useAuthStore();
 
   // Check for existing block on mount
@@ -178,11 +175,20 @@ const LoginPage: React.FC = () => {
       const response = await verifyOtp({ email: userEmail, otp });
       console.log('verifyOtp response:', response);
       
-      // Use Zustand store to handle login (tokens are in cookies)
+      // Update auth state (tokens are set as HttpOnly cookies by backend)
       authLogin(response.data);
       
-      router.push('/dashboard');
-      toast.success('Logged in successfully!', { autoClose: 1000 });
+      // Use window.location.href for full page reload to ensure cookies are available to middleware
+      // This is the standard pattern for authentication redirects as it ensures:
+      // 1. Set-Cookie headers are fully processed by the browser
+      // 2. Middleware runs on a fresh request with cookies available
+      // 3. No client-side navigation timing issues
+      toast.success('Logged in successfully! Redirecting...', { autoClose: 1000 });
+      
+      // Use requestAnimationFrame to ensure response processing completes before redirect
+      requestAnimationFrame(() => {
+        window.location.href = '/dashboard';
+      });
     } catch (err: unknown) {
       console.error('OTP verification error:', err);
       if (err instanceof AxiosError) {
