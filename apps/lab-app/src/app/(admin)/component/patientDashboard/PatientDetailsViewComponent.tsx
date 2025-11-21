@@ -30,7 +30,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [printMode, setPrintMode] = useState<'all' | 'per-transaction' | 'no-transaction'>('all');
+  const [printMode, setPrintMode] = useState<'all' | 'per-transaction' | 'no-transaction'>('no-transaction');
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -272,11 +272,11 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         <div className="flex justify-between items-start mb-6 border-b pb-4">
             <div className="flex items-center">
               <div>
-                <Image src="/tiamed1.svg" alt="Lab Logo" width={56} height={56} className="h-14 mr-4" />
+                <Image src="/CUREPLUS HOSPITALS.png" alt="Lab Logo" width={56} height={56} className="h-14 mr-4" />
               </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-800">MEDICAL DIAGNOSTIC REPORT</h1>
-              <p className="text-sm text-gray-600">{currentLab?.name || 'DIAGNOSTIC LABORATORY'}</p>
+              <h1 className="text-xl font-bold text-gray-800">{currentLab?.name}</h1>
+              <p className="text-xs text-gray-600">{currentLab?.address}</p>
             </div>
           </div>
           <div className="text-right bg-blue-50 p-3 rounded">

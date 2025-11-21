@@ -64,7 +64,16 @@ const OnboardingContent = () => {
     const email = searchParams.get('email');
     
     if (token && email) {
-      setFormData(prev => ({ ...prev, token, email }));
+      const lowerEmail = email.toLowerCase();
+      setFormData(prev => ({ 
+        ...prev, 
+        token, 
+        email: lowerEmail,
+        lab: {
+          ...prev.lab,
+          directorEmail: lowerEmail,
+        },
+      }));
     } else if (!token && !email) {
       // No token/email - redirect to request page
       router.push('/onboarding/request');
@@ -327,7 +336,7 @@ const OnboardingContent = () => {
       }
 
       // Certification body
-      const certificationBodyError = validateName(formData.lab.certificationBody, 'Certification body');
+      const certificationBodyError = validateAlphaNumericField(formData.lab.certificationBody, 'Certification body', 3, 50);
       if (certificationBodyError) newErrors['lab.certificationBody'] = certificationBodyError;
 
       // Lab certificate
@@ -339,7 +348,7 @@ const OnboardingContent = () => {
       if (labLicenseIdError) newErrors['lab.labLicense'] = labLicenseIdError;
 
       // Lab accreditation
-      const labAccreditationError = validateName(formData.lab.labAccreditation, 'Lab accreditation');
+      const labAccreditationError = validateAlphaNumericField(formData.lab.labAccreditation, 'Lab accreditation', 3, 50);
       if (labAccreditationError) newErrors['lab.labAccreditation'] = labAccreditationError;
 
       // Business registration
@@ -390,11 +399,30 @@ const OnboardingContent = () => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
 
+    // Helper function to convert to uppercase (except username, password, and email fields)
+    const toUpperCaseIfNeeded = (fieldName: string, val: string): string => {
+      if (fieldName === 'username' || fieldName === 'password' || 
+          fieldName === 'email' || fieldName === 'lab.labEmail' || fieldName === 'lab.directorEmail') {
+        return val;
+      }
+      return val.toUpperCase();
+    };
+
     // Handle phone number input - only allow digits, max 10 digits
     if (name === 'phone' || name === 'lab.labPhone' || name === 'lab.directorPhone') {
       // Remove all non-digit characters
       const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
-      if (name.startsWith('lab.')) {
+      if (name === 'phone') {
+        // When user phone changes, copy to director phone
+        setFormData(prev => ({
+          ...prev,
+          [name]: digitsOnly,
+          lab: {
+            ...prev.lab,
+            directorPhone: digitsOnly,
+          },
+        }));
+      } else if (name.startsWith('lab.')) {
         const field = name.replace('lab.', '') as keyof typeof formData.lab;
         setFormData(prev => ({
           ...prev,
@@ -426,12 +454,19 @@ const OnboardingContent = () => {
         setFormData(prev => ({
           ...prev,
           [name]: digitsOnly,
+          // Copy user address fields to lab address when user address changes
+          ...(name === 'zip' && {
+            lab: {
+              ...prev.lab,
+              labZip: digitsOnly,
+            },
+          }),
         }));
       }
     }
-    // Handle license number - alphabetic only, max 20 characters
+    // Handle license number - alphabetic only, max 20 characters, uppercase
     else if (name === 'lab.licenseNumber') {
-      const alphabeticOnly = value.replace(/[^a-zA-Z]/g, '').slice(0, 20);
+      const alphabeticOnly = value.replace(/[^a-zA-Z]/g, '').slice(0, 20).toUpperCase();
       const field = name.replace('lab.', '') as keyof typeof formData.lab;
       setFormData(prev => ({
         ...prev,
@@ -441,14 +476,16 @@ const OnboardingContent = () => {
         },
       }));
     }
-    // Handle alphanumeric compliance fields with hyphen support
+    // Handle alphanumeric compliance fields with hyphen support (certificationBody, labCertificate, directorGovtId, labBusinessRegistration, labLicense, labAccreditation)
     else if (
+      name === 'lab.certificationBody' ||
       name === 'lab.labCertificate' ||
       name === 'lab.directorGovtId' ||
       name === 'lab.labBusinessRegistration' ||
-      name === 'lab.labLicense'
+      name === 'lab.labLicense' ||
+      name === 'lab.labAccreditation'
     ) {
-      const alphanumericValue = value.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 50);
+      const alphanumericValue = value.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 50).toUpperCase();
       const field = name.replace('lab.', '') as keyof typeof formData.lab;
       setFormData(prev => ({
         ...prev,
@@ -470,52 +507,128 @@ const OnboardingContent = () => {
         },
       }));
     }
-    // Handle username - alphabetic only, max 30 characters
+    // Handle username - alphanumeric only, max 30 characters (no uppercase)
     else if (name === 'username') {
-      const usernameValue = value.replace(/[^a-zA-Z]/g, '').slice(0, 30);
+      const usernameValue = value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 30);
       setFormData(prev => ({
         ...prev,
         [name]: usernameValue,
       }));
     }
-    // Handle name fields - alphabetic only (firstName, lastName, city, state, country, lab.name, lab.city, lab.state, lab.labCountry, lab.directorName)
-    else if (name === 'firstName' || name === 'lastName' || name === 'city' || name === 'state' || name === 'country' ||
-             name === 'lab.name' || name === 'lab.city' || name === 'lab.state' || name === 'lab.labCountry' || name === 'lab.directorName' ||
-             name === 'lab.certificationBody' || name === 'lab.labAccreditation') {
-      // Allow letters, spaces, hyphens, and apostrophes only (no numbers)
-      const alphabeticValue = value.replace(/[^a-zA-Z\s'-]/g, '');
+    // Handle password - no uppercase conversion
+    else if (name === 'password') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+    // Handle email fields - keep in lowercase
+    else if (name === 'email' || name === 'lab.labEmail' || name === 'lab.directorEmail') {
+      const lowerValue = value.toLowerCase();
+      if (name === 'email') {
+        // When user email changes, copy to director email
+        setFormData(prev => ({
+          ...prev,
+          [name]: lowerValue,
+          lab: {
+            ...prev.lab,
+            directorEmail: lowerValue,
+          },
+        }));
+      } else if (name.startsWith('lab.')) {
+        const field = name.replace('lab.', '') as keyof typeof formData.lab;
+        setFormData(prev => ({
+          ...prev,
+          lab: {
+            ...prev.lab,
+            [field]: lowerValue,
+          },
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          [name]: lowerValue,
+        }));
+      }
+    }
+    // Handle user address fields - copy to lab address and convert to uppercase
+    else if (name === 'address' || name === 'city' || name === 'state' || name === 'country') {
+      const upperValue = value.toUpperCase();
+      setFormData(prev => {
+        const updated = {
+          ...prev,
+          [name]: upperValue,
+        };
+        // Copy user address to lab address
+        if (name === 'address') {
+          updated.lab = { ...prev.lab, address: upperValue };
+        } else if (name === 'city') {
+          updated.lab = { ...prev.lab, city: upperValue };
+        } else if (name === 'state') {
+          updated.lab = { ...prev.lab, state: upperValue };
+        } else if (name === 'country') {
+          updated.lab = { ...prev.lab, labCountry: upperValue };
+        }
+        return updated;
+      });
+    }
+    // Handle firstName and lastName - auto-generate directorName
+    else if (name === 'firstName' || name === 'lastName') {
+      // Allow letters, spaces, hyphens, and apostrophes only (no numbers), convert to uppercase
+      const alphabeticValue = value.replace(/[^a-zA-Z\s'-]/g, '').toUpperCase();
+      setFormData(prev => {
+        let updatedFirstName = prev.firstName;
+        let updatedLastName = prev.lastName;
+        
+        if (name === 'firstName') {
+          updatedFirstName = alphabeticValue;
+        } else {
+          updatedLastName = alphabeticValue;
+        }
+        
+        // Auto-generate directorName from firstName + lastName
+        const directorName = `${updatedFirstName} ${updatedLastName}`.trim();
+        
+        return {
+          ...prev,
+          [name]: alphabeticValue,
+          lab: {
+            ...prev.lab,
+            directorName: directorName,
+          },
+        };
+      });
+    }
+    // Handle other name fields - alphabetic only (lab.name, lab.city, lab.state, lab.labCountry)
+    else if (name === 'lab.name' || name === 'lab.city' || name === 'lab.state' || name === 'lab.labCountry') {
+      // Allow letters, spaces, hyphens, and apostrophes only (no numbers), convert to uppercase
+      const alphabeticValue = value.replace(/[^a-zA-Z\s'-]/g, '').toUpperCase();
+      const field = name.replace('lab.', '') as keyof typeof formData.lab;
+      setFormData(prev => ({
+        ...prev,
+        lab: {
+          ...prev.lab,
+          [field]: alphabeticValue,
+        },
+      }));
+    }
+    // Handle other fields - convert to uppercase (except username and password)
+    else {
+      const processedValue = type === 'checkbox' ? checked : toUpperCaseIfNeeded(name, value);
       if (name.startsWith('lab.')) {
         const field = name.replace('lab.', '') as keyof typeof formData.lab;
         setFormData(prev => ({
           ...prev,
           lab: {
             ...prev.lab,
-            [field]: alphabeticValue,
+            [field]: processedValue,
           },
         }));
       } else {
         setFormData(prev => ({
           ...prev,
-          [name]: alphabeticValue,
+          [name]: processedValue,
         }));
-      }
-    }
-    // Handle other fields normally
-    else {
-    if (name.startsWith('lab.')) {
-      const field = name.replace('lab.', '') as keyof typeof formData.lab;
-      setFormData(prev => ({
-        ...prev,
-        lab: {
-          ...prev.lab,
-          [field]: type === 'checkbox' ? checked : value,
-        },
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value,
-      }));
       }
     }
     
@@ -684,10 +797,11 @@ const OnboardingContent = () => {
                       value={formData.username}
                       onChange={handleChange}
                       maxLength={30}
+                      pattern="[a-zA-Z0-9]+"
                       className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                         errors.username ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      placeholder="johndoe (3-30 characters)"
+                      placeholder="johndoe (3-30 characters, alphanumeric only)"
                     />
                     {errors.username && <p className="mt-1 text-sm text-red-600">{errors.username}</p>}
                   </div>
@@ -1239,14 +1353,16 @@ const OnboardingContent = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Director Name <span className="text-red-500">*</span>
+                          <span className="text-xs text-gray-500 ml-2">(First Name + Last Name)</span>
                         </label>
                         <input
                           type="text"
                           name="lab.directorName"
                           value={formData.lab.directorName}
                           onChange={handleChange}
+                          readOnly
                           maxLength={50}
-                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-gray-50 cursor-not-allowed ${
                             errors['lab.directorName'] ? 'border-red-500' : 'border-gray-300'
                           }`}
                           placeholder="Dr. John Doe"
@@ -1257,13 +1373,15 @@ const OnboardingContent = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Director Email <span className="text-red-500">*</span>
+                          <span className="text-xs text-gray-500 ml-2">(Same as user email)</span>
                         </label>
                         <input
                           type="email"
                           name="lab.directorEmail"
                           value={formData.lab.directorEmail}
                           onChange={handleChange}
-                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                          readOnly
+                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-gray-50 cursor-not-allowed ${
                             errors['lab.directorEmail'] ? 'border-red-500' : 'border-gray-300'
                           }`}
                         placeholder="director@lab.com"
@@ -1274,14 +1392,16 @@ const OnboardingContent = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Director Phone <span className="text-red-500">*</span>
+                          <span className="text-xs text-gray-500 ml-2">(Same as user phone)</span>
                         </label>
                         <input
                           type="tel"
                           name="lab.directorPhone"
                           value={formData.lab.directorPhone}
                           onChange={handleChange}
+                          readOnly
                           maxLength={10}
-                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-gray-50 cursor-not-allowed ${
                             errors['lab.directorPhone'] ? 'border-red-500' : 'border-gray-300'
                           }`}
                           placeholder="Enter 10 digit phone number"

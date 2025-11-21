@@ -369,7 +369,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                 <div className="flex items-center">
                                     <div>
                                         <Image
-                                            src="/tiamed1.svg"
+                                            src="/CUREPLUS HOSPITALS.png"
                                             alt="Lab Logo"
                                             width={56}
                                             height={56}
@@ -377,8 +377,8 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                         />
                                     </div>
                                     <div>
-                                        <h1 className="text-xl font-bold text-black">MEDICAL DIAGNOSTIC REPORT</h1>
-                                        <p className="text-sm text-gray-600">{patientLabName || currentLab?.name || 'DIAGNOSTIC LABORATORY'}</p>
+                                        <h1 className="text-xl font-bold text-black">{currentLab?.name}</h1>
+                                        <p className="text-xs text-gray-600">{currentLab?.address }</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
