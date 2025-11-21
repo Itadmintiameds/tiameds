@@ -191,7 +191,10 @@ const GenericTestComponent: React.FC<GenericTestComponentProps> = ({
           </div>
         );
 
-      case 'DROPDOWN':
+      case 'DROPDOWN': {
+        const isBloodGroupField = (point.testName || '').toUpperCase().includes('BLOOD GROUP');
+        const bloodGroupOptions = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
         return (
           <select
             className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300"
@@ -200,10 +203,21 @@ const GenericTestComponent: React.FC<GenericTestComponentProps> = ({
             required
           >
             <option value="">Select option</option>
-            <option value="YES">YES</option>
-            <option value="NO">NO</option>
+            {isBloodGroupField ? (
+              bloodGroupOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))
+            ) : (
+              <>
+                <option value="YES">YES</option>
+                <option value="NO">NO</option>
+              </>
+            )}
           </select>
         );
+      }
 
       default:
         return (
@@ -226,9 +240,32 @@ const GenericTestComponent: React.FC<GenericTestComponentProps> = ({
     }
   };
 
+  const renderedSpecialFields = new Set<string>();
+  const singleInstanceDescriptions = new Set([
+    'DESCRIPTION',
+    'DROPDOWN',
+    'DROPDOWN-POSITIVE/NEGATIVE',
+    'DROPDOWN-PRESENT/ABSENT',
+    'DROPDOWN-REACTIVE/NONREACTIVE',
+    'DROPDOWN-COMPATIBLE/INCOMPATIBLE',
+    'DROPDOWN-PERCENTAGE',
+    'DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE',
+    'DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT'
+  ]);
+
   return (
     <>
       {referencePoints.map((point, index) => {
+        const normalizedDescription = (point.testDescription || '').trim().toUpperCase();
+        const specialKey = `${testName}-${normalizedDescription}`;
+
+        if (singleInstanceDescriptions.has(normalizedDescription)) {
+          if (renderedSpecialFields.has(specialKey)) {
+            return null;
+          }
+          renderedSpecialFields.add(specialKey);
+        }
+
         const currentValue = inputValues[testName]?.[index] || '';
         const status = getValueStatus(currentValue, point.minReferenceRange, point.maxReferenceRange);
 
