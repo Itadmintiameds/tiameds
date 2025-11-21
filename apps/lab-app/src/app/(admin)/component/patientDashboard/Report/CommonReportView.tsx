@@ -45,7 +45,7 @@ interface ReferenceRangeEntry {
     ReferenceRange: string;
 }
 
-type PatientDataWithLab = PatientData & { labName?: string };
+// type PatientDataWithLab = PatientData & { labName?: string };
 
 interface CommonReportViewProps {
     visitId: number;
@@ -217,7 +217,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
 
     // Determine doctor name to display
     const displayDoctorName = doctorName || doctor?.name || 'N/A';
-    const patientLabName = (patientData as PatientDataWithLab).labName;
+    // const patientLabName = (patientData as PatientDataWithLab).labName;
 
     // Helpers for rendering detailed report and reference ranges
     const buildDetailedReportHTML = (reportJson?: string, fallbackTitle?: string) => {
