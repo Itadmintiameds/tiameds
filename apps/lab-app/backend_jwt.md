@@ -2,6 +2,9 @@
 
 This document summarizes how JSON Web Tokens (JWT) are issued, validated, and revoked in the Lab Automation platform after the RS256-based refresh-token overhaul.
 
+
+
+
 ## Token Issuance
 - **Entry point**: `AuthController.login` (`src/main/java/tiameds/com/tiameds/controller/auth/AuthController.java`) authenticates credentials, assembles the login response, and requests both an access token and a refresh token from `JwtUtil`.
 - **Claims**:
