@@ -2,9 +2,10 @@
 "use client"
 import React, { useState, useEffect } from 'react'
 import { 
-  FaArrowLeft, FaSignInAlt, FaUserPlus, FaFlask, 
+  FaArrowLeft, FaSignInAlt,FaFlask, 
   FaMicroscope, FaLock, FaUser, FaEye, FaEyeSlash, FaEnvelope
 } from 'react-icons/fa'
+// import {FaUserPlus} 'react-icons/fa'
 import { FiLoader } from 'react-icons/fi'
 import Link from 'next/link'
 import Image from 'next/image'
