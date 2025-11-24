@@ -400,7 +400,7 @@ const PatientVisitListTable: React.FC = () => {
                 className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
                 title="View report"
               >
-                View Report
+                View Report ....
               </button>
             </div>
           );
