@@ -951,5 +951,4 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
     );
 };
 
-
 export default CommonReportView;
