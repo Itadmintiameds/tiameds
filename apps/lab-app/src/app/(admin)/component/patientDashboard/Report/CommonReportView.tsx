@@ -391,12 +391,12 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                             {/* Logo and Report Title */}
                                             <div className="flex justify-between items-start mb-4">
                                                 <div className="flex flex-col gap-y-1">
-                                                <Image src="/CUREPLUS HOSPITALS (1).png" 
-                                                alt="Lab Logo" width={90} height={56}
-                                                 className="h-14 w-14 mr-4" priority loading="eager" 
-                                                 unoptimized crossOrigin="anonymous" data-print-logo="true"
-                                                 quality={100}
-                                                  />
+                                                    <Image src="/CUREPLUS HOSPITALS (1).png"
+                                                        alt="Lab Logo" width={90} height={56}
+                                                        className="h-14 w-14 mr-4" priority loading="eager"
+                                                        unoptimized crossOrigin="anonymous" data-print-logo="true"
+                                                        quality={100}
+                                                    />
 
                                                     <h1 className="text-xl font-bold text-black">{currentLab?.name}</h1>
                                                     <p className="text-xs text-gray-600">{currentLab?.address}</p>

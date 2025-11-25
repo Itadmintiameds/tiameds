@@ -270,10 +270,15 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
       >
         {/* Header Section */}
         <div className="flex justify-between items-start mb-6 border-b pb-4">
-            <div className="flex items-center">
-              <div>
-                <Image src="/CUREPLUS HOSPITALS.png" alt="Lab Logo" width={56} height={56} className="h-14 mr-4" />
-              </div>
+          <div className="flex flex-col ">
+            <div >
+              <Image src="/CUREPLUS HOSPITALS (1).png"
+                alt="Lab Logo" width={90} height={56}
+                className="h-14 w-14 mr-4" priority loading="eager"
+                unoptimized crossOrigin="anonymous" data-print-logo="true"
+                quality={100}
+              />
+            </div>
             <div>
               <h1 className="text-xl font-bold text-gray-800">{currentLab?.name}</h1>
               <p className="text-xs text-gray-600">{currentLab?.address}</p>
@@ -532,10 +537,10 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
             </div>
             <p>Generated on: {new Date().toLocaleString()}</p>
           </div>
-            <div className="mt-4 flex justify-center items-center">
-              <Image src="/tiamed1.svg" alt="TiaMeds Logo" width={16} height={16} className="h-4 mr-2 opacity-80" />
-              <span className="text-xs font-medium text-gray-600">Powered by TiaMeds Technologies Pvt.Ltd</span>
-            </div>
+          <div className="mt-4 flex justify-center items-center">
+            <Image src="/tiamed1.svg" alt="TiaMeds Logo" width={16} height={16} className="h-4 mr-2 opacity-80" />
+            <span className="text-xs font-medium text-gray-600">Powered by TiaMeds Technologies Pvt.Ltd</span>
+          </div>
         </div>
       </div>
     );
