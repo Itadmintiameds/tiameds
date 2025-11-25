@@ -293,7 +293,6 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
           </div>
         </div>
         
-
         {/* Patient Info Section */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="space-y-2">
