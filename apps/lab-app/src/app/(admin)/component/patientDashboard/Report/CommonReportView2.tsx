@@ -140,7 +140,7 @@ interface TestRow {
     description?: string;
 }
 
-interface ConsolidatedReport {
+export interface ConsolidatedReport {
     reportId: number;
     visitId: number;
     testName: string;
@@ -160,7 +160,6 @@ interface ConsolidatedReport {
 }
 
 interface CommonReportView2Props {
-    visitId: number;
     patientData: PatientData;
     doctorName?: string;
     hidePrintButton?: boolean;
@@ -168,7 +167,6 @@ interface CommonReportView2Props {
 }
 
 const CommonReportView2 = ({
-    visitId,
     patientData,
     doctorName,
     hidePrintButton = false,

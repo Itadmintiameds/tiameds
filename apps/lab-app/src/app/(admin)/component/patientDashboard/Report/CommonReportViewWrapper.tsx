@@ -4,6 +4,7 @@ import { getReportData } from "../../../../../../services/reportServices";
 import { PatientData } from "@/types/sample/sample";
 import CommonReportView from "./CommonReportView";
 import CommonReportView2 from "./CommonReportView2";
+import type { ConsolidatedReport } from "./CommonReportView2";
 import { TbInfoCircle } from "react-icons/tb";
 
 interface CommonReportViewWrapperProps {
@@ -26,7 +27,7 @@ const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
     const { currentLab } = useLabs();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>();
-    const [reports, setReports] = useState<any[] | null>(null);
+    const [reports, setReports] = useState<ConsolidatedReport[] | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -36,7 +37,7 @@ const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
             try {
                 const response = await getReportData(currentLab.id.toString(), visitId.toString());
                 if (Array.isArray(response)) {
-                    setReports(response);
+                    setReports(response as unknown as ConsolidatedReport[]);
                 } else {
                     setReports(null);
                 }
