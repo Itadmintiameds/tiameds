@@ -1,0 +1,704 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { TbInfoCircle } from "react-icons/tb";
+import { toast } from "react-toastify";
+import { useLabs } from "@/context/LabContext";
+import { formatAgeForDisplay } from "@/utils/ageUtils";
+import type { PatientData } from "@/types/sample/sample";
+
+type Html2CanvasBaseOptions = NonNullable<Parameters<typeof html2canvas>[1]>;
+type Html2CanvasEnhancedOptions = Html2CanvasBaseOptions & {
+    scale?: number;
+    windowWidth?: number;
+    windowHeight?: number;
+};
+
+const DEFAULT_FONT_FAMILY = '"Inter", "Helvetica Neue", Arial, sans-serif';
+const BASE_TEXT_COLOR = "#0f172a";
+
+const normalizeFieldKey = (value?: string) =>
+    (value || "")
+        .toUpperCase()
+        .replace(/–/g, "-")
+        .replace(/\s+/g, "")
+        .trim();
+
+const EXCLUDED_FIELD_TYPES = new Set(
+    [
+        "DROPDOWN",
+        "DESCRIPTION",
+        "DROPDOWN-COMPATIBLE/INCOMPATIBLE",
+        "DROPDOWN-POSITIVE/NEGATIVE",
+        "DROPDOWN-PRESENT/ABSENT",
+        "DROPDOWN-REACTIVE/NONREACTIVE",
+        "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE",
+        "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT",
+    ].map((value) => normalizeFieldKey(value))
+);
+
+const QUALITATIVE_DESCRIPTION_FIELD_TYPES = new Set(
+    [
+        "DESCRIPTION",
+        "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE",
+        "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT",
+    ].map((value) => normalizeFieldKey(value))
+);
+
+const doesRowMatchFieldType = (
+    row: { referenceDescription?: string; testParameter?: string } | undefined,
+    fieldTypes: Set<string>
+) => {
+    const targets = [
+        normalizeFieldKey(row?.referenceDescription),
+        normalizeFieldKey(row?.testParameter),
+    ].filter(Boolean) as string[];
+
+    return targets.some((value) => fieldTypes.has(value));
+};
+
+const isExcludedQualitativeRow = (row?: { referenceDescription?: string; testParameter?: string }) =>
+    doesRowMatchFieldType(row, EXCLUDED_FIELD_TYPES);
+
+const shouldShowQualitativeDescriptionRow = (row?: { referenceDescription?: string; testParameter?: string }) =>
+    doesRowMatchFieldType(row, QUALITATIVE_DESCRIPTION_FIELD_TYPES);
+
+const normalizeCBCKey = (value?: string) => (value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+type CBCStructureEntry =
+    | { type: "row"; label: string }
+    | { type: "header"; label: string };
+
+const CBC_STRUCTURE: CBCStructureEntry[] = [
+    { type: "row", label: "HAEMOGLOBIN" },
+    { type: "row", label: "TOTAL COUNT/ W.B.C" },
+    { type: "header", label: "DIFFERENTIAL COUNT" },
+    { type: "row", label: "NEUTROPHILS" },
+    { type: "row", label: "LYMPHOCYTES" },
+    { type: "row", label: "EOSINOPHILS" },
+    { type: "row", label: "MONOCYTES" },
+    { type: "row", label: "BASOPHILS" },
+    { type: "row", label: "PLATELET COUNT" },
+    { type: "row", label: "R.B.C" },
+    { type: "row", label: "P.C.V" },
+    { type: "row", label: "M.C.V" },
+    { type: "row", label: "M.C.H" },
+    { type: "row", label: "M.C.H.C" },
+];
+
+const DIFFERENTIAL_KEYS = new Set(
+    ["NEUTROPHILS", "LYMPHOCYTES", "EOSINOPHILS", "MONOCYTES", "BASOPHILS"].map(normalizeCBCKey)
+);
+
+type RenderRowEntry = { type: "row"; row: TestRow } | { type: "header"; key: string };
+
+const buildOrderedCBCRows = (rows: TestRow[]): RenderRowEntry[] => {
+    const usedRows = new Set<TestRow>();
+    const orderedEntries: RenderRowEntry[] = [];
+    const hasDifferentialRows = rows.some((row) =>
+        DIFFERENTIAL_KEYS.has(normalizeCBCKey(row.testParameter || row.referenceDescription))
+    );
+
+    CBC_STRUCTURE.forEach((entry) => {
+        if (entry.type === "header") {
+            if (entry.label === "DIFFERENTIAL COUNT" && hasDifferentialRows) {
+                orderedEntries.push({ type: "header", key: entry.label });
+            }
+            return;
+        }
+
+        const normalizedLabel = normalizeCBCKey(entry.label);
+        const matchedRow = rows.find(
+            (row) =>
+                !usedRows.has(row) &&
+                normalizeCBCKey(row.testParameter || row.referenceDescription) === normalizedLabel
+        );
+
+        if (matchedRow) {
+            usedRows.add(matchedRow);
+            orderedEntries.push({ type: "row", row: matchedRow });
+        }
+    });
+
+    rows.forEach((row) => {
+        if (!usedRows.has(row)) {
+            orderedEntries.push({ type: "row", row });
+        }
+    });
+
+    return orderedEntries;
+};
+
+interface TestRow {
+    testParameter: string;
+    normalRange?: string;
+    enteredValue?: string;
+    unit?: string;
+    referenceAgeRange?: string;
+    referenceDescription?: string;
+    description?: string;
+}
+
+interface ConsolidatedReport {
+    reportId: number;
+    visitId: number;
+    testName: string;
+    testCategory?: string;
+    testRows: TestRow[];
+    reportJson?: string | null;
+    referenceRanges?: string | null;
+    createdDateTime?: string;
+    referenceDescription?: string;
+    referenceRange?: string;
+    referenceAgeRange?: string;
+    enteredValue?: string;
+    unit?: string;
+    reportCode?: string;
+    patientCode?: string;
+    visitCode?: string;
+}
+
+interface CommonReportView2Props {
+    visitId: number;
+    patientData: PatientData;
+    doctorName?: string;
+    hidePrintButton?: boolean;
+    reportsData: ConsolidatedReport[];
+}
+
+const CommonReportView2 = ({
+    visitId,
+    patientData,
+    doctorName,
+    hidePrintButton = false,
+    reportsData,
+}: CommonReportView2Props) => {
+    const { currentLab } = useLabs();
+    const reportRef = useRef<HTMLDivElement>(null);
+    const [printing, setPrinting] = useState(false);
+    const [selectedReports, setSelectedReports] = useState<Record<number, boolean>>({});
+
+    useEffect(() => {
+        if (!Array.isArray(reportsData)) {
+            setSelectedReports({});
+            return;
+        }
+        // Debug: Log report codes to verify data
+        reportsData.forEach((report) => {
+            console.log(`Report ${report.reportId} (${report.testName}):`, {
+                reportCode: report.reportCode,
+                patientCode: report.patientCode,
+                visitCode: report.visitCode,
+            });
+        });
+        setSelectedReports((prev) => {
+            const next: Record<number, boolean> = {};
+            reportsData.forEach((report) => {
+                next[report.reportId] = prev[report.reportId] ?? true;
+            });
+            return next;
+        });
+    }, [reportsData]);
+
+    const selectedReportIds = useMemo(
+        () => Object.entries(selectedReports).filter(([, value]) => value).map(([key]) => Number(key)),
+        [selectedReports]
+    );
+
+    const totalReports = reportsData.length;
+    const selectedCount = selectedReportIds.length;
+    const isAllSelected = totalReports > 0 && selectedCount === totalReports;
+
+    const handleToggleReport = (reportId: number, checked: boolean) => {
+        setSelectedReports((prev) => ({
+            ...prev,
+            [reportId]: checked,
+        }));
+    };
+
+    const handleToggleAll = (checked: boolean) => {
+        setSelectedReports(
+            reportsData.reduce<Record<number, boolean>>((acc, report) => {
+                acc[report.reportId] = checked;
+                return acc;
+            }, {})
+        );
+    };
+
+    const printReports = async () => {
+        if (!reportRef.current || selectedReportIds.length === 0) {
+            toast.error("Select at least one report to print");
+            return;
+        }
+
+        setPrinting(true);
+        try {
+            const pdf = new jsPDF({
+                orientation: "p",
+                unit: "mm",
+                format: "a4",
+                compress: true,
+            });
+            const pageWidth = 190;
+            const margin = 10;
+            const topMargin = 15;
+            const selectedSet = new Set(selectedReportIds);
+            const sections = Array.from(reportRef.current.querySelectorAll("[data-report-id]")).filter((section) =>
+                selectedSet.has(Number(section.getAttribute("data-report-id")))
+            );
+
+            if (sections.length === 0) {
+                toast.error("Selected reports are unavailable for printing");
+                return;
+            }
+
+            const renderScale = Math.max(2, Math.min((window.devicePixelRatio || 1) * 1.5, 3));
+            const tempContainer = document.createElement("div");
+            tempContainer.style.position = "absolute";
+            tempContainer.style.left = "-9999px";
+            tempContainer.style.top = "0";
+            tempContainer.style.width = "210mm";
+            tempContainer.style.padding = "0";
+            tempContainer.style.margin = "0";
+            tempContainer.style.backgroundColor = "#ffffff";
+            tempContainer.style.fontFamily = DEFAULT_FONT_FAMILY;
+            tempContainer.style.color = BASE_TEXT_COLOR;
+            document.body.appendChild(tempContainer);
+
+            for (let index = 0; index < sections.length; index++) {
+                const sectionClone = sections[index].cloneNode(true) as HTMLElement;
+                sectionClone.style.width = "210mm";
+                sectionClone.style.minHeight = "297mm";
+                sectionClone.style.maxWidth = "210mm";
+                sectionClone.style.margin = "0 auto";
+                sectionClone.style.boxSizing = "border-box";
+                sectionClone.style.backgroundColor = "#ffffff";
+                sectionClone.style.fontFamily = DEFAULT_FONT_FAMILY;
+                sectionClone.style.color = BASE_TEXT_COLOR;
+
+                tempContainer.appendChild(sectionClone);
+
+                const canvasOptions: Html2CanvasEnhancedOptions = {
+                    useCORS: true,
+                    allowTaint: true,
+                    background: "#ffffff",
+                    scale: renderScale,
+                    windowWidth: sectionClone.scrollWidth,
+                    windowHeight: sectionClone.scrollHeight,
+                    logging: false,
+                };
+
+                const canvas = await html2canvas(sectionClone, canvasOptions);
+                const context = canvas.getContext("2d");
+                if (context) {
+                    context.imageSmoothingEnabled = true;
+                    (context as CanvasRenderingContext2D & { imageSmoothingQuality?: "low" | "medium" | "high" }).imageSmoothingQuality =
+                        "high";
+                }
+
+                const imgData = canvas.toDataURL("image/jpeg", 1);
+                const imgWidth = pageWidth;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                if (index > 0) {
+                    pdf.addPage();
+                }
+                pdf.addImage(imgData, "JPEG", margin, topMargin, imgWidth, imgHeight, undefined, "FAST");
+                tempContainer.removeChild(sectionClone);
+            }
+
+            document.body.removeChild(tempContainer);
+            const pdfBlob = pdf.output("blob");
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            window.open(pdfUrl, "_blank");
+        } catch (error) {
+            console.error("PDF generation error:", error);
+            toast.error("Failed to generate PDF");
+        } finally {
+            setPrinting(false);
+        }
+    };
+
+    if (!Array.isArray(reportsData) || reportsData.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+                <TbInfoCircle className="mb-4 text-5xl text-blue-500" />
+                <h3 className="mb-2 text-xl font-bold text-gray-700">No Test Results Available</h3>
+                <p className="max-w-md text-gray-600">
+                    The report data for this visit is not available. Please check with the lab staff for more information.
+                </p>
+            </div>
+        );
+    }
+
+    const displayDoctorName = doctorName || "N/A";
+
+    return (
+        <div className="max-w-4xl mx-auto text-slate-900 font-sans" style={{ fontFamily: DEFAULT_FONT_FAMILY }}>
+            {!hidePrintButton && (
+                <div className="print:hidden mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-sm font-medium text-slate-900">{totalReports} tests found</p>
+                        <p className="text-xs text-slate-600">{selectedCount} selected</p>
+                    </div>
+                    <button
+                        onClick={printReports}
+                        disabled={printing || selectedCount === 0}
+                        className="inline-flex items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {printing ? (
+                            <>
+                                <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 105 7.75l-1.5-.87A6 6 0 114 12z"></path>
+                                </svg>
+                                Generating...
+                            </>
+                        ) : (
+                            <>
+                                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
+                                Print Selected
+                            </>
+                        )}
+                    </button>
+                </div>
+            )}
+
+            {totalReports > 0 && (
+                <div className="print:hidden mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-sm font-semibold text-slate-900">Select reports to print</p>
+                            <p className="text-xs text-slate-600">
+                                {selectedCount} of {totalReports} selected
+                            </p>
+                        </div>
+                        <label className="inline-flex items-center text-xs font-medium text-slate-700 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                checked={isAllSelected}
+                                onChange={(e) => handleToggleAll(e.target.checked)}
+                            />
+                            Select all
+                        </label>
+                    </div>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        {reportsData.map((report) => (
+                            <label
+                                key={report.reportId}
+                                className={`flex items-center rounded-lg border px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${selectedReports[report.reportId]
+                                    ? "border-blue-200 bg-white text-slate-900 shadow-sm"
+                                    : "border-slate-200 text-slate-500"
+                                    }`}
+                            >
+                                <input
+                                    type="checkbox"
+                                    className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                    checked={!!selectedReports[report.reportId]}
+                                    onChange={(e) => handleToggleReport(report.reportId, e.target.checked)}
+                                />
+                                <span className="truncate">{report.testName}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div
+                ref={reportRef}
+                className="bg-white p-8"
+                style={{
+                    width: "210mm",
+                    margin: "0 auto",
+                    boxSizing: "border-box",
+                }}
+            >
+                {reportsData.map((report) => {
+                    const rows =
+                        report.testRows && report.testRows.length > 0
+                            ? report.testRows
+                            : [
+                                {
+                                    testParameter: report.referenceDescription || report.testName,
+                                    normalRange: report.referenceRange || "N/A",
+                                    enteredValue: report.enteredValue || "N/A",
+                                    unit: report.unit || "N/A",
+                                    referenceAgeRange: report.referenceAgeRange || "N/A",
+                                    referenceDescription: report.referenceDescription,
+                                    description: report.referenceDescription,
+                                },
+                            ];
+                    const qualitativeRows = rows.filter((row) => isExcludedQualitativeRow(row));
+                    const quantitativeRows = rows.filter((row) => !isExcludedQualitativeRow(row));
+                    const isCBCTest = (report.testName || "").toUpperCase().includes("CBC");
+
+                    const shouldHideResultTable = rows.length > 0 && isExcludedQualitativeRow(rows[0]);
+
+                    const renderedRows: JSX.Element[] = [];
+                    const quantitativeRowEntries: RenderRowEntry[] = isCBCTest
+                        ? buildOrderedCBCRows(quantitativeRows)
+                        : quantitativeRows.map((row) => ({ type: "row", row }));
+
+                    const formatResultContent = (row: TestRow) => {
+                        const value = row.enteredValue || "N/A";
+                        if (!isCBCTest) {
+                            return value;
+                        }
+                        return (
+                            <span className="font-semibold text-gray-900">
+                                {value}
+                                {row.enteredValue && row.unit && row.unit.trim() !== "" && (
+                                    <span className="ml-1 text-[11px] font-medium uppercase text-gray-500">{row.unit}</span>
+                                )}
+                            </span>
+                        );
+                    };
+
+                    const formatReferenceContent = (row: TestRow) => {
+                        const rangeValue = row.normalRange || "N/A";
+                        if (!isCBCTest) {
+                            return rangeValue;
+                        }
+                        return (
+                            <span className="text-gray-800">
+                                {rangeValue}
+                                {row.normalRange && row.unit && row.unit.trim() !== "" && (
+                                    <span className="ml-1 text-[11px] font-medium uppercase text-gray-500">{row.unit}</span>
+                                )}
+                            </span>
+                        );
+                    };
+
+                    if (!shouldHideResultTable) {
+                        if (quantitativeRows.length === 0) {
+                            renderedRows.push(
+                                <tr key={`no-quant-${report.reportId}`} className="border-t border-blue-100">
+                                    <td colSpan={3} className="p-4 text-center text-gray-500">
+                                        {qualitativeRows.length > 0
+                                            ? "Qualitative results for this report are listed below."
+                                            : "No quantitative results available."}
+                                    </td>
+                                </tr>
+                            );
+                        } else {
+                            quantitativeRowEntries.forEach((entry, idx) => {
+                                if (entry.type === "header") {
+                                    renderedRows.push(
+                                        <tr
+                                            key={`cbc-header-${report.reportId}-${entry.key}-${idx}`}
+                                            className="bg-blue-50 text-left text-xs font-bold text-blue-800 border-t border-b border-blue-200"
+                                        >
+                                            <td className="p-2" colSpan={3}>
+                                                {entry.key}
+                                            </td>
+                                        </tr>
+                                    );
+                                    return;
+                                }
+
+                                const row = entry.row;
+                                const parameterLabel = isCBCTest ? (row.testParameter || "").toUpperCase() : row.testParameter;
+
+                                renderedRows.push(
+                                    <tr key={`${report.reportId}-${idx}`} className="border-t border-blue-100">
+                                        <td className="p-2 font-medium text-gray-800">
+                                            {parameterLabel}
+                                        </td>
+                                        <td className="p-2 text-center font-semibold text-gray-800">
+                                            {formatResultContent(row)}
+                                        </td>
+                                        <td className="p-2 text-gray-700">{formatReferenceContent(row)}</td>
+                                    </tr>
+                                );
+                            });
+                        }
+                    }
+
+                return (
+                        <section key={report.reportId} data-report-id={report.reportId} className="mb-10 page-break">
+                            <div className="flex flex-col min-h-[297mm]">
+                            <div className="mb-6 bg-white pt-4">
+                                <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between mb-4">
+                                    <div className="flex flex-col gap-y-1">
+                                        <Image src="/CUREPLUS HOSPITALS (1).png"
+                                            alt="Lab Logo" width={90} height={56}
+                                            className="h-14 w-14 mr-4" priority loading="eager"
+                                            unoptimized crossOrigin="anonymous" data-print-logo="true"
+                                            quality={100}
+                                        />
+
+                                        <h1 className="text-xl font-bold text-black">{currentLab?.name}</h1>
+                                        <p className="text-xs text-gray-600">{currentLab?.address}</p>
+                                    </div>
+                                    <div className="w-full sm:w-auto">
+                                        <div className="grid grid-cols-1 gap-4 text-xs sm:grid-cols-2 sm:gap-x-10 sm:gap-y-2">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <span className="font-medium text-black">NAME:</span>
+                                                    <span className="font-bold text-black text-right">{patientData?.patientname || 'N/A'}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <span className="font-medium text-black">REFERRED BY:</span>
+                                                    <span className="font-bold text-black text-right">{displayDoctorName}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <span className="font-medium text-black">LAB NO:</span>
+                                                    <span className="font-bold text-black text-right">{currentLab?.id || 'N/A'}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <span className="font-medium text-black">OPD/IPD:</span>
+                                                    <span className="font-bold text-black text-right">{patientData?.visitType || 'N/A'}</span>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <span className="font-medium text-black">AGE/SEX:</span>
+                                                    <span className="font-bold text-black text-right">
+                                                        {formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}
+                                                    </span>
+                                                </div>
+                                                <div className="whitespace-nowrap">
+                                                    <span className="font-semibold text-gray-900">Report Code:</span>{" "}
+                                                    <span className="font-medium text-gray-700">{report.reportCode || "N/A"}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <span className="font-medium text-black">DATE OF REPORT:</span>
+                                                    <span className="font-bold text-black text-right">
+                                                        {new Date(report.createdDateTime || Date.now()).toLocaleDateString('en-GB')} at{" "}
+                                                        {new Date(report.createdDateTime || Date.now()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                    </span>
+                                                </div>
+                                                <div className="whitespace-nowrap">
+                                                    <span className="font-semibold text-gray-900">Report Code:</span>{" "}
+                                                    <span className="font-medium text-gray-700">{report.reportCode || "N/A"}</span>
+                                                </div>
+                                                <div className="whitespace-nowrap">
+                                                    <span className="font-semibold text-gray-900">Visit Code:</span>{" "}
+                                                    <span className="font-medium text-gray-700">{report.visitCode || "N/A"}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            
+
+                                <div className="mt-2 mb-2 h-1 w-full rounded bg-blue-600" />
+                            </div>
+                            <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-800">{report.testName}</h3>
+                            {!shouldHideResultTable && (
+                                <div className="overflow-hidden rounded-lg border border-blue-200">
+                                    <table className="w-full text-xs border-collapse">
+                                        <thead className="bg-blue-50">
+                                            <tr>
+                                                <th className="p-2 text-left font-semibold text-black">TEST PARAMETER</th>
+                                                <th className="p-2 text-center font-semibold text-black">RESULT</th>
+                                                <th className="p-2 text-left font-semibold text-black">REFERENCE RANGE</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>{renderedRows}</tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                        {qualitativeRows.length > 0 && (
+                                <div className="mt-4">
+                                    <h4 className="text-xs font-bold text-black mb-2">Qualitative Results</h4>
+                                    <p className="text-xs text-gray-600 mb-2">
+                                        The following tests are reported as final qualitative outcomes. Please refer to the treating
+                                        physician for clinical correlation.
+                                    </p>
+                                    <div className="space-y-3">
+                                        {qualitativeRows.map((row, idx) => {
+                                            const resultValue = row.enteredValue || "N/A";
+                                            const normalizedResult = resultValue.toString().trim().toLowerCase();
+                                            const normalizedDescription = (row.description || "").toString().trim().toLowerCase();
+                                            const showDescription =
+                                                shouldShowQualitativeDescriptionRow(row) &&
+                                                !!row.description &&
+                                                normalizedDescription !== normalizedResult;
+
+                                            return (
+                                                <div key={`qual-result-${report.reportId}-${idx}`} className="text-xs">
+                                                    <p className="text-gray-800 font-semibold">{resultValue}</p>
+                                                    {showDescription && (
+                                                        <p className="text-gray-600 mt-1">{row.description}</p>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                            </div>
+                            )}
+                        <h4 className="text-xs font-bold text-black mt-4 mb-1 text-left">Disclaimer</h4>
+                        <p className="text-xs text-gray-600 italic text-left">
+                            *This laboratory report is intended for clinical correlation only. Results should be interpreted by a qualified medical professional. Laboratory values may vary based on methodology and biological variance. The diagnostic center is not responsible for misinterpretation or misuse of results.*
+                        </p>
+
+                        <div data-footer-section className="mt-8 pt-6  border-gray-200" style={{ marginTop: "auto" }}>
+                                <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
+                                    <div className="text-center">
+                                        <p className="text-xs font-medium text-gray-700 mb-2">Lab Technician</p>
+                                        <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+                                            <span className="text-xs text-gray-500">Signature/Stamp</span>
+                                        </div>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-xs font-medium text-gray-700 mb-2">Authorized Pathologist</p>
+                                        <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+                                            <span className="text-xs text-gray-500">Dr. Signature/Stamp</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 text-center">
+                                    <p className="text-xs text-gray-600 mb-1">
+                                        This is an electronically generated report. No physical signature required.
+                                    </p>
+                                    <p className="text-xs font-medium text-blue-600 mt-2">
+                                        Thank you for choosing {currentLab?.name || "Our Lab"}
+                                    </p>
+                                </div>
+
+                                <div className="flex justify-between items-center mt-4">
+                                    <div className="flex items-center">
+                                        <Image
+                                            src="/tiamed1.svg"
+                                            alt="Tiamed Logo"
+                                            width={60}
+                                            height={24}
+                                            className="h-6 w-auto mr-2 opacity-80"
+                                            unoptimized
+                                            crossOrigin="anonymous"
+                                        />
+                                        <span className="text-xs font-medium text-gray-600">
+                                            Powered by Tiameds Technologies Pvt.Ltd
+                                        </span>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs text-gray-500">Generated on:  {new Date(report.createdDateTime || Date.now()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                                    </div>
+                                </div>
+                        </div>
+                        </div>
+                        </section>
+                    );
+                })}
+            </div>
+            <style jsx global>{`
+                @media print {
+                    .page-break {
+                        page-break-after: always;
+                    }
+                }
+            `}</style>
+        </div>
+    );
+};
+
+export default CommonReportView2;
+

@@ -1,4 +1,4 @@
-import CommonReportView from "./CommonReportView";
+import CommonReportViewWrapper from "./CommonReportViewWrapper";
 import { PatientData } from "@/types/sample/sample";
 
 interface ReportViewProps {
@@ -8,7 +8,7 @@ interface ReportViewProps {
 
 const ReportView = ({ viewReportDetailsbyId, viewPatient }: ReportViewProps) => {
     return (
-        <CommonReportView
+        <CommonReportViewWrapper
             visitId={viewReportDetailsbyId}
             patientData={viewPatient}
         />

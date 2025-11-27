@@ -1,4 +1,4 @@
-import CommonReportView from "../../../../component/patientDashboard/Report/CommonReportView";
+import CommonReportViewWrapper from "../../../../component/patientDashboard/Report/CommonReportViewWrapper";
 import { PatientData } from "@/types/sample/sample";
 
 interface ViewReportProps {
@@ -18,7 +18,7 @@ const ViewReport = ({ viewPatient, hidePrintButton = false }: ViewReportProps) =
     }
 
     return (
-        <CommonReportView
+        <CommonReportViewWrapper
             visitId={viewPatient.visitId}
             patientData={viewPatient}
             doctorName={viewPatient.doctorName}
