@@ -10,6 +10,7 @@ interface ConfirmationDialogProps {
   confirmText?: string;
   cancelText?: string;
   isLoading?: boolean;
+  children?: React.ReactNode;
 }
 
 const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
@@ -20,13 +21,14 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  isLoading = false
+  isLoading = false,
+  children
 }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Header with gradient background */}
         <div 
           className="px-6 py-4 border-b border-gray-200 relative overflow-hidden"
@@ -60,7 +62,12 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
               </div>
             </div>
             <div className="flex-1">
-              <p className="text-gray-700 leading-relaxed">{message}</p>
+              <p className="text-gray-700 leading-relaxed mb-4">{message}</p>
+              {children && (
+                <div className="mt-4 border-t border-gray-200 pt-4">
+                  {children}
+                </div>
+              )}
             </div>
           </div>
           

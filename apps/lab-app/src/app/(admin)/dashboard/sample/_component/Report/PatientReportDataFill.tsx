@@ -6,13 +6,13 @@ import { useLabs } from '@/context/LabContext';
 import { TestList, TestReferancePoint } from '@/types/test/testlist';
 import { calculateAgeObject } from '@/utils/ageUtils';
 import React, { useCallback, useEffect, useState } from 'react';
-import FocusTrap from 'focus-trap-react';
 import { TbInfoCircle, TbReportMedical, TbArrowDownCircle, TbArrowUpCircle, TbSquareRoundedCheck } from "react-icons/tb";
 import { toast } from 'react-toastify';
 import PatientBasicInfo from './PatientBasicInfo';
 import TestComponentFactory from './TestSpecificComponents/TestComponentFactory';
 import DetailedReportEditor from './DetailedReportEditor';
 import { formatMedicalReportToHTML } from '@/utils/reportFormatter';
+import ConfirmationDialog from '@/app/(admin)/component/common/ConfirmationDialog';
 
 export interface Patient {
   visitId: number;
@@ -547,9 +547,21 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
 
     // Entered Results section (non-detailed)
     if (reportPreview.testData.length > 0) {
-      const items = reportPreview.testData
+      // Group items by test name
+      const groupedByTest = reportPreview.testData
         .filter(item => (item.referenceDescription || '').toUpperCase() !== 'RADIOLOGY_TEST')
-        .map(item => {
+        .reduce((acc, item) => {
+          const testName = item.testName.toUpperCase();
+          if (!acc[testName]) {
+            acc[testName] = [];
+          }
+          acc[testName].push(item);
+          return acc;
+        }, {} as Record<string, typeof reportPreview.testData>);
+
+      // Build HTML for each test group
+      const testGroups = Object.entries(groupedByTest).map(([testName, items]) => {
+        const parameters = items.map(item => {
           const label = (item.referenceDescription || 'Test Parameter');
           const value = (() => {
             const t = (item.referenceDescription || '').toUpperCase();
@@ -562,19 +574,25 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
             if (t.includes('DROPDOWN') || t === 'DESCRIPTION') return '';
             return `${item.referenceRange || 'N/A'} ${item.unit || ''}`.trim();
           })();
-          return `<li class="mb-1 text-sm text-gray-700">
-            <span class="font-medium text-gray-900">${item.testName.toUpperCase()}</span> - ${label}: 
-            <span class="text-gray-800">${value}</span>
+          return `<li class="mb-1 text-sm text-gray-700 ml-4">
+            <span class="text-gray-800">${label}: ${value}</span>
             ${ref ? `<span class="text-gray-500"> (Ref: ${ref})</span>` : ''}
           </li>`;
-        })
-        .join('');
+        }).join('');
 
-      if (items) {
+        return `
+          <div class="mb-4">
+            <h3 class="text-sm font-bold text-gray-900 mb-2">${testName}</h3>
+            <ul class="list-disc pl-5">${parameters}</ul>
+          </div>
+        `;
+      }).join('');
+
+      if (testGroups) {
         htmlParts.push(`
           <div class="mt-4">
-            <h2 class="text-sm font-bold text-gray-900 mb-2">Entered Results</h2>
-            <ul class="list-disc pl-5">${items}</ul>
+            <h2 class="text-sm font-bold text-gray-900 mb-3">Entered Results</h2>
+            ${testGroups}
           </div>
         `);
       }
@@ -699,128 +717,105 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
         </button>
       </div>
 
-      {/* Confirmation Modal with FocusTrap */}
-      {showConfirmation && (
-        <FocusTrap>
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4"
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowConfirmation(false);
-              }
-            }}
-          >
-            <div 
-              className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="modal-title"
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowConfirmation(false);
-                }
-              }}
-            >
-            <div className="p-6">
-              <h3 id="modal-title" className="text-xl font-bold mb-4 flex items-center">
-                <TbInfoCircle className="text-blue-500 mr-2" size={24} />
-                {hasMissingDescriptions ? "Important Note About Test References" : "Confirm Report Submission"}
-              </h3>
-
-              {hasMissingDescriptions ? (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <TbInfoCircle className="h-5 w-5 text-yellow-400" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-yellow-700 font-medium mb-2">
-                        Note about tests without reference descriptions:
-                      </p>
-                      <ul className="list-disc pl-5 space-y-1 text-sm text-yellow-700">
-                        <li>Some tests ({reportPreview.testData.filter(item => !item.referenceDescription || item.referenceDescription === "No reference description available").length}) don&lsquo;t have digital references available</li>
-                        <li>These tests might be machine-generated or have hard copy references</li>
-                        <li>The results will be provided separately at the reception</li>
-                        <li>Please inform the patient to collect all results from the reception desk</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <TbInfoCircle className="h-5 w-5 text-green-400" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-green-700">
-                        All test references have complete descriptions. Please review the data before submitting.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-                <div className="mb-6">
-                  <h4 className="font-medium mb-2">Report Preview:</h4>
-                <div className="border rounded-lg overflow-hidden bg-white">
-                  <div className="p-4">
-                    <div
-                      className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
-                      dangerouslySetInnerHTML={{ __html: buildReadablePreviewHTML() }}
-                    />
-                  </div>
-                </div>
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={submitReport}
+        title={hasMissingDescriptions ? "Important Note About Test References" : "Confirm Report Submission"}
+        message={hasMissingDescriptions 
+          ? "Some tests don't have digital references available. Please review the details below before submitting."
+          : "All test references have complete descriptions. Please review the data before submitting."}
+        confirmText="Confirm Submission"
+        cancelText="Cancel"
+        isLoading={isSubmitting}
+      >
+        <div className="space-y-4 text-sm">
+          {/* Patient Information */}
+          <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+            <h4 className="font-semibold text-blue-800 mb-2">Patient Information</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="font-medium text-gray-600">Name:</span>
+                <span className="ml-2 text-gray-900">{selectedPatient.patientname || 'N/A'}</span>
               </div>
+              <div>
+                <span className="font-medium text-gray-600">Phone:</span>
+                <span className="ml-2 text-gray-900">{selectedPatient.contactNumber || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Email:</span>
+                <span className="ml-2 text-gray-900">{selectedPatient.email || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Gender:</span>
+                <span className="ml-2 text-gray-900 capitalize">{selectedPatient.gender || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Date of Birth:</span>
+                <span className="ml-2 text-gray-900">{selectedPatient.dateOfBirth ? new Date(selectedPatient.dateOfBirth).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Visit Date:</span>
+                <span className="ml-2 text-gray-900">{selectedPatient.visitDate ? new Date(selectedPatient.visitDate).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Visit Status:</span>
+                <span className="ml-2 text-gray-900 capitalize">{selectedPatient.visitStatus?.toLowerCase().replace('_', ' ') || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Visit ID:</span>
+                <span className="ml-2 text-gray-900">{selectedPatient.visitId || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
 
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowConfirmation(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setShowConfirmation(false);
-                    }
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={submitReport}
-                  disabled={isSubmitting}
-                  className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${isSubmitting
-                      ? 'bg-blue-400 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ') && !isSubmitting) {
-                      e.preventDefault();
-                      submitReport();
-                    }
-                  }}
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Submitting...
-                    </div>
-                  ) : (
-                    'Confirm Submission'
-                  )}
-                </button>
+          {/* Test Information */}
+          <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+            <h4 className="font-semibold text-purple-800 mb-2">Test Information</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="font-medium text-gray-600">Test Name:</span>
+                <span className="ml-2 text-gray-900">{selectedTest.name || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Category:</span>
+                <span className="ml-2 text-gray-900">{selectedTest.category || 'N/A'}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="font-medium text-gray-600">Total Test Points:</span>
+                <span className="ml-2 text-gray-900">{reportPreview.testData.length}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Missing Descriptions Warning */}
+          {hasMissingDescriptions && (
+            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
+              <h4 className="font-semibold text-yellow-800 mb-2">Important Note</h4>
+              <ul className="list-disc pl-5 space-y-1 text-xs text-yellow-700">
+                <li>Some tests ({reportPreview.testData.filter(item => !item.referenceDescription || item.referenceDescription === "No reference description available").length}) don&lsquo;t have digital references available</li>
+                <li>These tests might be machine-generated or have hard copy references</li>
+                <li>The results will be provided separately at the reception</li>
+                <li>Please inform the patient to collect all results from the reception desk</li>
+              </ul>
+            </div>
+          )}
+
+          {/* Report Preview */}
+          <div className="bg-white p-3 rounded-lg border border-gray-200">
+            <h4 className="font-semibold text-gray-800 mb-2">Report Preview</h4>
+            <div className="border rounded-lg overflow-hidden bg-white">
+              <div className="p-4">
+                <div
+                  className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
+                  dangerouslySetInnerHTML={{ __html: buildReadablePreviewHTML() }}
+                />
               </div>
             </div>
           </div>
         </div>
-        </FocusTrap>
-      )}
+      </ConfirmationDialog>
     </div>
   );
 };

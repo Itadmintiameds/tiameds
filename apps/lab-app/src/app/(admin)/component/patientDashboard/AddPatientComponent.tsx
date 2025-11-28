@@ -849,11 +849,149 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         onClose={handleCancelAdd}
         onConfirm={handleConfirmAdd}
         title="Confirm Add Patient"
-        message="Are you sure you want to add this new patient? Please review all the information before proceeding."
+        message="Please review all the information before proceeding."
         confirmText="Add Patient"
         cancelText="Cancel"
         isLoading={loading}
-      />
+      >
+        <div className="space-y-4 text-sm">
+          {/* Patient Information */}
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <h4 className="font-semibold text-blue-900 mb-2">Patient Information</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="font-medium text-gray-600">Name:</span>
+                <span className="ml-2 text-gray-900">{newPatient.firstName} {newPatient.lastName || ''}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Phone:</span>
+                <span className="ml-2 text-gray-900">{newPatient.phone || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Email:</span>
+                <span className="ml-2 text-gray-900">{newPatient.email || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Gender:</span>
+                <span className="ml-2 text-gray-900 capitalize">{newPatient.gender || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Age:</span>
+                <span className="ml-2 text-gray-900">{newPatient.age || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Date of Birth:</span>
+                <span className="ml-2 text-gray-900">{newPatient.dateOfBirth ? new Date(newPatient.dateOfBirth).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">City:</span>
+                <span className="ml-2 text-gray-900">{newPatient.city || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Address:</span>
+                <span className="ml-2 text-gray-900">{newPatient.address || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Visit Information */}
+          <div className="bg-purple-50 p-3 rounded-lg">
+            <h4 className="font-semibold text-purple-900 mb-2">Visit Information</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="font-medium text-gray-600">Visit Date:</span>
+                <span className="ml-2 text-gray-900">{newPatient.visit?.visitDate ? new Date(newPatient.visit.visitDate).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Visit Type:</span>
+                <span className="ml-2 text-gray-900">{newPatient.visit?.visitType?.replace('_', ' ') || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Doctor:</span>
+                <span className="ml-2 text-gray-900">
+                  {newPatient.visit?.doctorId ? doctors.find(d => d.id === Number(newPatient.visit.doctorId))?.name || 'N/A' : 'N/A'}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Visit Status:</span>
+                <span className="ml-2 text-gray-900 capitalize">{newPatient.visit?.visitStatus?.toLowerCase().replace('_', ' ') || 'N/A'}</span>
+              </div>
+              {newPatient.visit?.visitDescription && (
+                <div className="col-span-2">
+                  <span className="font-medium text-gray-600">Description:</span>
+                  <span className="ml-2 text-gray-900">{newPatient.visit.visitDescription}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Selected Tests */}
+          {selectedTests.length > 0 && (
+            <div className="bg-green-50 p-3 rounded-lg">
+              <h4 className="font-semibold text-green-900 mb-2">Selected Tests ({selectedTests.length})</h4>
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {selectedTests.map((test) => (
+                  <div key={test.id} className="flex justify-between items-center text-xs">
+                    <span className="text-gray-700">{test.name}</span>
+                    <span className="text-gray-900 font-medium">
+                      ₹{test.discountedPrice || test.price}
+                      {(test.discountAmount || test.discountPercent) && (
+                        <span className="text-green-600 ml-1">
+                          (Disc: ₹{test.discountAmount || (test.price * (test.discountPercent || 0) / 100).toFixed(2)})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Selected Packages */}
+          {selectedPackages.length > 0 && (
+            <div className="bg-orange-50 p-3 rounded-lg">
+              <h4 className="font-semibold text-orange-900 mb-2">Selected Packages ({selectedPackages.length})</h4>
+              <div className="space-y-1">
+                {selectedPackages.map((pkg) => (
+                  <div key={pkg.id} className="flex justify-between items-center text-xs">
+                    <span className="text-gray-700">{pkg.packageName}</span>
+                    <span className="text-gray-900 font-medium">₹{pkg.price}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Billing Information */}
+          <div className="bg-yellow-50 p-3 rounded-lg">
+            <h4 className="font-semibold text-yellow-900 mb-2">Billing Information</h4>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="font-medium text-gray-600">Total Amount:</span>
+                <span className="text-gray-900 font-semibold">₹{newPatient.visit?.billing?.totalAmount?.toFixed(2) || '0.00'}</span>
+              </div>
+              {newPatient.visit?.billing?.discount && Number(newPatient.visit.billing.discount) > 0 && (
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-600">Global Discount:</span>
+                  <span className="text-red-600 font-semibold">-₹{Number(newPatient.visit.billing.discount).toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-yellow-200 pt-1 mt-1">
+                <span className="font-bold text-gray-900">Net Amount:</span>
+                <span className="text-gray-900 font-bold text-base">₹{newPatient.visit?.billing?.netAmount?.toFixed(2) || '0.00'}</span>
+              </div>
+              <div className="flex justify-between mt-2">
+                <span className="font-medium text-gray-600">Payment Method:</span>
+                <span className="text-gray-900 capitalize">{newPatient.visit?.billing?.paymentMethod?.replace('_', ' ') || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium text-gray-600">Payment Status:</span>
+                <span className="text-gray-900 capitalize">{newPatient.visit?.billing?.paymentStatus?.toLowerCase() || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ConfirmationDialog>
     </div>
   );
 };
