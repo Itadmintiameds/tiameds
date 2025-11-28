@@ -783,14 +783,11 @@ function extractPrefixAndName(fullName: string): [Prefix | '', string] {
   for (const prefix of prefixValues) {
     if (fullName.startsWith(prefix)) {
       const name = fullName.substring(prefix.length).trim();
-      // Only return the first part of the name (before any space)
-      const firstName = name.split(/\s+/)[0] || '';
-      return [prefix, firstName];
+      return [prefix, name];
     }
   }
-  // If no prefix, return the first part of the name
-  const firstName = fullName.split(/\s+/)[0] || '';
-  return ['', firstName];
+
+  return ['', fullName.trim()];
 }
 
 function getGenderFromPrefix(prefix: Prefix | ''): Gender {

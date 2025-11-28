@@ -468,7 +468,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
     setNewPatient({
       ...newPatient,
       firstName: selectedPatient.firstName,
-      lastName: '',
+      lastName: selectedPatient.lastName || '',
       email: '',
       phone: selectedPatient.phone,
       address: '',

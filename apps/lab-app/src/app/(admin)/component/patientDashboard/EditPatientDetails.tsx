@@ -272,6 +272,10 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     if ('target' in event && Array.isArray(event.target.value)) {
 
       const { name, value } = event.target;
+      if (!name) {
+        console.warn('handleChange called without a name for multi-select input', event);
+        return;
+      }
       setEditedPatient(prev => {
         const newState = { ...prev };
         const keys = name.split('.');
@@ -288,6 +292,10 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
     } else {
       const e = event as React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>;
       const { name, value, type } = e.target;
+      if (!name) {
+        console.warn('handleChange called without a name', e);
+        return;
+      }
       const isCheckbox = type === 'checkbox';
       const val = isCheckbox ? (e.target as HTMLInputElement).checked : value;
 
@@ -738,8 +746,16 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
           newPatient={editedPatient}
           handleChange={handleChange}
           isEditMode={true}
-          searchTerm={''}
-          handleSearchChange={() => { }}
+          searchTerm={editedPatient.phone}
+          handleSearchChange={(e) => {
+            const value = e.target.value.replace(/\D/g, '');
+            handleChange({
+              target: {
+                name: 'phone',
+                value,
+              },
+            } as unknown as React.ChangeEvent<HTMLInputElement>);
+          }}
           filteredPatients={[]}
           handlePatientSelect={() => { }}
         />

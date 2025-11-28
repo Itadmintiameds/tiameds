@@ -272,7 +272,7 @@ const PatientVisitListTable: React.FC = () => {
 
   const columns = [
     {
-      header: 'ID',
+      header: 'visit ID',
       accessor: (row: Patient) => (
         <span className="font-mono text-sm text-gray-700">
           {row?.visit?.visitId}

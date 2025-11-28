@@ -10,7 +10,8 @@ import { calculateAge } from '@/utils/ageUtils';
 import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, formatDisplayDate, getDateRange } from '@/utils/dateUtils';
 import html2canvas from 'html2canvas';
 import { CalendarDays, Edit, PlusIcon, Download } from 'lucide-react';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import Barcode from 'react-barcode';
 import { MdCancelPresentation } from 'react-icons/md';
 import { toast } from 'react-toastify';
@@ -71,7 +72,6 @@ const CollectionTable: React.FC = () => {
   const itemsPerPage = 8;
   const [updatedPopUp, setUpdatedPopUp] = useState(false);
   const [updateSample, setUpdateSample] = useState<UpdateSample | null>(null);
-  const barcodeRef = useRef<HTMLDivElement>(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [selectedTest, setSelectedTest] = useState<TestList | null>(null);
@@ -183,13 +183,50 @@ const CollectionTable: React.FC = () => {
   };
 
   const handleDownloadBarcode = async (row: Patient) => {
-    if (barcodeRef.current) {
-      const canvas = await html2canvas(barcodeRef.current);
-      const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
-      link.download = `barcode-${row.visitId}.png`;
-      link.click();
-    }
+    const age = row.dateOfBirth ? calculateAge(row.dateOfBirth) : 'N/A';
+    const barcodeValue = 
+      "Patient ID: " + row.visitId +
+      " Name: " + row.patientname +
+      " Age: " + age +
+      " Gender: " + (row.gender || '');
+
+    // Create a temporary container for the barcode
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '0';
+    document.body.appendChild(tempContainer);
+
+    // Create a temporary div to render the barcode
+    const barcodeDiv = document.createElement('div');
+    tempContainer.appendChild(barcodeDiv);
+
+    // Render the barcode using React
+    const root = createRoot(barcodeDiv);
+    root.render(
+      React.createElement(Barcode, {
+        value: barcodeValue,
+        format: "CODE128",
+        width: 0.5,
+        height: 40,
+        displayValue: true,
+        fontSize: 10
+      })
+    );
+
+    // Wait for the barcode to render
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Capture the barcode as canvas
+    const canvas = await html2canvas(barcodeDiv);
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = `barcode-${row.visitId}.png`;
+    link.click();
+
+    // Clean up
+    root.unmount();
+    document.body.removeChild(tempContainer);
   };
 
   // Toggle row expansion
@@ -597,27 +634,8 @@ const CollectionTable: React.FC = () => {
     {
       header: 'Barcode',
       accessor: (row: Patient) => {
-        const age = row.dateOfBirth ? calculateAge(row.dateOfBirth) : 'N/A';
-        // const dobFormatted = row.dateOfBirth ? formatDisplayDate(row.dateOfBirth) : 'N/A';
-
         return (
           <div className="flex items-center justify-center">
-            <div ref={barcodeRef} style={{ position: 'absolute', left: '-9999px' }}>
-              {/* Hidden barcode for download functionality */}
-              <Barcode
-                value={
-                  "Patient ID: " + row.visitId +
-                  " Name: " + row.patientname +
-                  " Age: " + age +
-                  " Gender: " + (row.gender || '')
-                }
-                format="CODE128"
-                width={.5}
-                height={40}
-                displayValue={true}
-                fontSize={10}
-              />
-            </div>
             <button
               onClick={() => handleDownloadBarcode(row)}
               className="flex items-center gap-1 text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 transition-colors"
