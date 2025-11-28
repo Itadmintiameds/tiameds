@@ -8,7 +8,7 @@ import {
 import { TestReferancePoint } from "@/types/test/testlist";
 import Loader from "../../component/common/Loader";
 import { useLabs } from "@/context/LabContext";
-import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaFilter, FaChevronDown, FaChevronUp, FaChevronRight } from "react-icons/fa";
+import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaFilter, FaChevronDown, FaChevronUp, FaChevronRight, FaVial, FaTimes } from "react-icons/fa";
 import Modal from "../common/Model";
 import TestEditReferance from "./TestEditReferance";
 import { toast } from "react-toastify";
@@ -433,18 +433,18 @@ const TestReferancePoints = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <Loader type="progress" text="Loading test reference ranges..." />
-        <p className="mt-4 text-sm text-gray-500">Please wait while we fetch the data.</p>
+      <div className="flex flex-col items-center justify-center p-6">
+        <Loader type="progress" fullScreen={false} text="Loading test reference ranges..." />
+        <p className="mt-4 text-sm text-gray-600">Please wait while we fetch the data.</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full bg-gray-50 p-4 rounded-xl">
+    <div className="w-full bg-gray-50 p-6 rounded-xl shadow-lg">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
         <div>
-          <h2 className="text-xl font-bold text-blue-700">Test Reference Ranges</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Test Reference Ranges</h2>
           <p className="text-gray-600 text-sm">Manage laboratory test reference values</p>
         </div>
 
@@ -467,7 +467,7 @@ const TestReferancePoints = () => {
             <input
               type="text"
               placeholder={`Search by ${activeFilter}...`}
-              className="pl-10 pr-20 py-2 w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="pl-10 pr-20 py-2 w-full bg-white border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -477,61 +477,72 @@ const TestReferancePoints = () => {
           </div>
 
           <div className="flex gap-2">
-            <Button
-              text="Add New"
+            <button
               onClick={() => setAddModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg flex items-center gap-1 text-sm"
+              className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center gap-2"
+              style={{
+                background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+              }}
             >
-              <FaPlus />
-            </Button>
-            <Button
-              text="Excel"
+              <FaPlus className="h-4 w-4" />
+              Add New
+            </button>
+            <button
               onClick={handleDownloadExcel}
-              className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg flex items-center gap-1 text-sm"
+              className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all duration-200 flex items-center gap-2"
             >
-              <FaFileExcel />
-            </Button>
-            <Button
-              text="CSV"
+              <FaFileExcel className="h-4 w-4" />
+              Excel
+            </button>
+            <button
               onClick={handleDownloadCsv}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg flex items-center gap-1 text-sm"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all duration-200 flex items-center gap-2"
             >
-              <FaDownload />
-            </Button>
+              <FaDownload className="h-4 w-4" />
+              CSV
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-gray-600 text-sm font-medium mb-1">Total Tests Reference</h3>
-          <p className="text-xl font-bold text-blue-700">{stats.totalTests}</p>
-        </div>
-        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-gray-600 text-sm font-medium mb-1">Categories</h3>
-          <p className="text-xl font-bold text-blue-700">{stats.totalCategories}</p>
-        </div>
-        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-gray-600 text-sm font-medium mb-1">Showing Tests Reference</h3>
-          <p className="text-xl font-bold text-blue-700">
-            {stats.filteredTests} {searchTerm ? "results" : "tests"}
-          </p>
+      {/* Stats Cards */}
+      <div className="bg-green-50 p-3 rounded-lg border border-green-100 mb-4">
+        <h4 className="font-semibold text-green-800 mb-2 flex items-center">
+          <FaVial className="mr-2 text-green-600" /> Test Statistics
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-white p-3 rounded-lg border border-green-200">
+            <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Total Tests Reference</h3>
+            <p className="text-xl font-bold text-gray-900">{stats.totalTests}</p>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-green-200">
+            <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Categories</h3>
+            <p className="text-xl font-bold text-gray-900">{stats.totalCategories}</p>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-green-200">
+            <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Showing Tests Reference</h3>
+            <p className="text-xl font-bold text-gray-900">
+              {stats.filteredTests} {searchTerm ? "results" : "tests"}
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="flex border-b border-gray-200 mb-4">
-        <button
-          className={`py-2 px-4 font-medium text-sm ${activeTab === "all" ? "text-blue-700 border-b-2 border-blue-700" : "text-gray-600 hover:text-gray-800"}`}
-          onClick={() => setActiveTab("all")}
-        >
-          All Tests
-        </button>
+      <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-4">
+        <div className="flex border-b border-blue-200">
+          <button
+            className={`py-2 px-4 font-medium text-sm ${activeTab === "all" ? "text-blue-800 border-b-2 border-blue-700" : "text-gray-600 hover:text-gray-800"}`}
+            onClick={() => setActiveTab("all")}
+          >
+            All Tests
+          </button>
+        </div>
       </div>
 
       {Object.keys(filteredGroupedData).length > 0 ? (
         <>
           {Object.entries(filteredGroupedData).map(([category, tests]) => (
-            <div key={category} className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 overflow-hidden">
+            <div key={category} className="bg-white rounded-xl shadow-lg border border-gray-200 mb-4 overflow-hidden">
               <button
                 onClick={() => toggleCategory(category)}
                 className="w-full flex justify-between items-center p-3 hover:bg-gray-50 transition-colors"
@@ -556,30 +567,33 @@ const TestReferancePoints = () => {
                       <div className="flex justify-between items-center bg-gray-50 p-2 rounded-lg mb-2">
                         <h4 className="font-medium text-blue-700 text-sm">{testName}</h4>
                         <div className="flex gap-1">
-                          <Button
-                            text="Expand All"
+                          <button
                             onClick={() => toggleAllRows(true)}
-                            className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs"
+                            className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-lg text-xs transition-all duration-200 flex items-center gap-1"
                           >
-                            <FaChevronDown className="mr-1" />
-                          </Button>
-                          <Button
-                            text="Collapse All"
+                            <FaChevronDown className="h-3 w-3" />
+                            Expand All
+                          </button>
+                          <button
                             onClick={() => toggleAllRows(false)}
-                            className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs"
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded-lg text-xs transition-all duration-200 flex items-center gap-1"
                           >
-                            <FaChevronUp className="mr-1" />
-                          </Button>
-                        <Button
-                          text="Add Reference"
-                          onClick={() => {
-                            setExistingModalOpen(true);
-                            setExistingTestReferanceRecord(prev => ({ ...prev, testName, category }));
-                          }}
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs"
-                        >
-                          <FaPlus className="mr-1" />
-                        </Button>
+                            <FaChevronUp className="h-3 w-3" />
+                            Collapse All
+                          </button>
+                          <button
+                            onClick={() => {
+                              setExistingModalOpen(true);
+                              setExistingTestReferanceRecord(prev => ({ ...prev, testName, category }));
+                            }}
+                            className="px-2 py-1 text-xs font-medium text-white rounded-lg transition-all duration-200 flex items-center gap-1"
+                            style={{
+                              background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+                            }}
+                          >
+                            <FaPlus className="h-3 w-3" />
+                            Add Reference
+                          </button>
                         </div>
                       </div>
 
@@ -946,7 +960,7 @@ const TestReferancePoints = () => {
             </div>
           ))}
 
-          <div className="mt-3">
+          <div className="mt-3 flex justify-center">
             <Pagination
               currentPage={currentPage}
               totalPages={Math.ceil(totalCategories / ITEMS_PER_PAGE)}
@@ -955,9 +969,9 @@ const TestReferancePoints = () => {
           </div>
         </>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 text-center">
           <FaSearch className="mx-auto text-3xl text-gray-400 mb-3" />
-          <h3 className="text-lg font-medium text-blue-700 mb-2">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">
             {searchTerm ? "No matching results found" : "No test reference data available"}
           </h3>
           <p className="text-gray-600 text-sm">
@@ -966,7 +980,10 @@ const TestReferancePoints = () => {
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
-              className="mt-3 text-blue-600 hover:text-blue-800 font-medium text-sm"
+              className="mt-3 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
+              style={{
+                background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+              }}
             >
               Clear search
             </button>

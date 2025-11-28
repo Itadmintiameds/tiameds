@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { BsCurrencyRupee, BsPercent } from "react-icons/bs";
 import { FiCheck, FiPlusCircle, FiSearch, FiTag, FiTrash2 } from 'react-icons/fi';
 import { LuTestTube } from "react-icons/lu";
+import { FaTimes, FaBox, FaVial, FaDollarSign } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 // interface Package {
@@ -28,7 +29,11 @@ interface PackageFormData {
   testIds: number[];
 }
 
-const PackageCreation = () => {
+interface PackageCreationProps {
+  closeModal?: () => void;
+}
+
+const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
   const [packageData, setPackageData] = useState<PackageFormData>({
     packageName: '',
     price: 0,
@@ -253,138 +258,163 @@ const PackageCreation = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 rounded-lg shadow-md max-w-full mx-auto">
+    <div className="p-6 bg-gray-50 rounded-xl shadow-lg max-w-full mx-auto">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="flex items-center gap-3 mb-6"
+        className="flex items-center justify-between mb-6"
       >
-        <div className="p-3 bg-indigo-100 rounded-full">
-          <FiTag className="text-indigo-600 text-xl" />
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-indigo-100 rounded-full">
+            <FiTag className="text-indigo-600 text-xl" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Create New Package</h1>
+            <p className="text-sm text-gray-600">Combine multiple tests into a single discounted package</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Create New Package</h1>
-          <p className="text-sm text-gray-500">Combine multiple tests into a single discounted package</p>
-        </div>
+        {closeModal && (
+          <button
+            onClick={closeModal}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Close"
+          >
+            <FaTimes className="h-5 w-5" />
+          </button>
+        )}
       </motion.div>
 
       {/* Package Details */}
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"
+        className="mb-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-          <label className="block text-sm font-medium mb-2 text-gray-600 flex items-center gap-1">
-            <FiTag className="text-indigo-500" /> Package Name
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              value={packageData.packageName}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Allow letters, numbers, and spaces
-                let filteredValue = value.replace(/[^a-zA-Z0-9\s]/g, '');
-                // Remove leading spaces
-                filteredValue = filteredValue.replace(/^\s+/, '');
-                setPackageData({ ...packageData, packageName: filteredValue });
-              }}
-              placeholder="e.g., Complete Health Checkup 2024"
-              className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
-            />
-          </div>
-        </div>
+        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 space-y-3">
+          <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
+            <FaBox className="mr-2 text-blue-600" /> Package Information
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-600 flex items-center gap-1">
+                <FiTag className="text-blue-500" /> Package Name
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={packageData.packageName}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow letters, numbers, and spaces
+                    let filteredValue = value.replace(/[^a-zA-Z0-9\s]/g, '');
+                    // Remove leading spaces
+                    filteredValue = filteredValue.replace(/^\s+/, '');
+                    setPackageData({ ...packageData, packageName: filteredValue });
+                  }}
+                  placeholder="e.g., Complete Health Checkup 2024"
+                  className="w-full border border-blue-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition-all"
+                />
+              </div>
+            </div>
 
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-          <label className="block text-sm font-medium mb-2 text-gray-600 flex items-center gap-1">
-            <BsPercent className="text-indigo-500" /> Discount (%)
-          </label>
-          <div className="relative">
-            <input
-              type="number"
-              value={discount}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === '') {
-                  setDiscount("0");
-                } else {
-                  // Allow numbers and one decimal point
-                  let numericValue = value.replace(/[^0-9.]/g, '');
-                  
-                  // Ensure only one decimal point
-                  const parts = numericValue.split('.');
-                  if (parts.length > 2) {
-                    numericValue = parts[0] + '.' + parts.slice(1).join('');
-                  }
-                  
-                  // Limit to 2 decimal places
-                  if (parts.length === 2 && parts[1].length > 2) {
-                    numericValue = parts[0] + '.' + parts[1].substring(0, 2);
-                  }
-                  
-                  // Validate range (0-100)
-                  const numValue = parseFloat(numericValue);
-                  if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
-                    setDiscount(numericValue);
-                  } else if (numValue > 100) {
-                    setDiscount("100.00");
-                  } else if (numValue < 0) {
-                    setDiscount("0");
-                  }
-                }
-              }}
-              onInput={(e) => {
-                const input = e.target as HTMLInputElement;
-                let value = input.value;
-                
-                // Remove leading zeros but keep decimal point
-                if (value.length > 1 && value.startsWith('0') && !value.startsWith('0.')) {
-                  value = value.replace(/^0+/, '');
-                  // If all zeros were removed, set to 0
-                  if (value === '') {
-                    value = '0';
-                  }
-                  // Update the input value directly
-                  input.value = value;
-                  setDiscount(value);
-                }
-              }}
-              placeholder="0.00"
-              min="0"
-              max="100"
-              step="0.01"
-              className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-            <div className="absolute right-3 top-3 text-gray-400 text-sm">%</div>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-600 flex items-center gap-1">
+                <BsPercent className="text-blue-500" /> Discount (%)
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={discount}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setDiscount("0");
+                    } else {
+                      // Allow numbers and one decimal point
+                      let numericValue = value.replace(/[^0-9.]/g, '');
+                      
+                      // Ensure only one decimal point
+                      const parts = numericValue.split('.');
+                      if (parts.length > 2) {
+                        numericValue = parts[0] + '.' + parts.slice(1).join('');
+                      }
+                      
+                      // Limit to 2 decimal places
+                      if (parts.length === 2 && parts[1].length > 2) {
+                        numericValue = parts[0] + '.' + parts[1].substring(0, 2);
+                      }
+                      
+                      // Validate range (0-100)
+                      const numValue = parseFloat(numericValue);
+                      if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+                        setDiscount(numericValue);
+                      } else if (numValue > 100) {
+                        setDiscount("100.00");
+                      } else if (numValue < 0) {
+                        setDiscount("0");
+                      }
+                    }
+                  }}
+                  onInput={(e) => {
+                    const input = e.target as HTMLInputElement;
+                    let value = input.value;
+                    
+                    // Remove leading zeros but keep decimal point
+                    if (value.length > 1 && value.startsWith('0') && !value.startsWith('0.')) {
+                      value = value.replace(/^0+/, '');
+                      // If all zeros were removed, set to 0
+                      if (value === '') {
+                        value = '0';
+                      }
+                      // Update the input value directly
+                      input.value = value;
+                      setDiscount(value);
+                    }
+                  }}
+                  placeholder="0.00"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  className="w-full border border-blue-300 rounded-lg p-3 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <div className="absolute right-3 top-3 text-gray-400 text-sm">%</div>
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>
 
       {/* Categorization Tabs */}
       <motion.div
-        className="flex flex-wrap gap-2 mb-6"
+        className="mb-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        {categories.map((category) => (
-          <motion.button
-            key={category}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleCategoryChange(category)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${selectedCategory === category
-              ? 'bg-indigo-600 text-white shadow-md'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-          >
-            {category}
-          </motion.button>
-        ))}
+        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+          <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
+            <FiSearch className="mr-2 text-blue-600" /> Filter by Category
+          </h4>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <motion.button
+                key={category}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleCategoryChange(category)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${selectedCategory === category
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-blue-200'
+                  }`}
+              >
+                {category}
+              </motion.button>
+            ))}
+          </div>
+        </div>
       </motion.div>
 
       {/* Test Search and List */}
@@ -394,29 +424,30 @@ const PackageCreation = () => {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
       >
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            <LuTestTube className="text-indigo-600" /> Available Tests
-          </h2>
-          <div className="text-xs text-gray-500">
-            Showing {filteredTests.length} of {tests.length} tests
+        <div className="bg-green-50 p-3 rounded-lg border border-green-100 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-green-800 flex items-center">
+              <FaVial className="mr-2 text-green-600" /> Available Tests
+            </h4>
+            <div className="text-xs text-gray-600">
+              Showing {filteredTests.length} of {tests.length} tests
+            </div>
           </div>
-        </div>
 
-        <div className="relative mb-4">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FiSearch className="text-gray-400" />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiSearch className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search tests by name or category..."
+              className="w-full pl-10 pr-4 py-2.5 border border-green-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:outline-none bg-white transition-all"
+            />
           </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search tests by name or category..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
-          />
-        </div>
 
-        <div className="border border-gray-200 rounded-lg bg-white p-3 max-h-60 overflow-y-auto shadow-inner">
+          <div className="border border-green-200 rounded-lg bg-white p-3 max-h-60 overflow-y-auto shadow-inner">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64">
               <Loader type="progress" fullScreen={false} text=" Loading tests..." />
@@ -467,6 +498,7 @@ const PackageCreation = () => {
               ))}
             </ul>
           )}
+          </div>
         </div>
       </motion.div>
 
@@ -477,25 +509,26 @@ const PackageCreation = () => {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
       >
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            <FiCheck className="text-green-500" /> Selected Tests ({selectedTests.length})
-          </h2>
-          {selectedTests.length > 0 && (
-            <div className="text-xs text-gray-500">
-              Total: <span className="font-medium">₹{calculateTotal()}</span>
-            </div>
-          )}
-        </div>
+        <div className="bg-green-50 p-3 rounded-lg border border-green-100 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-green-800 flex items-center">
+              <FiCheck className="mr-2 text-green-600" /> Selected Tests ({selectedTests.length})
+            </h4>
+            {selectedTests.length > 0 && (
+              <div className="text-xs text-gray-600">
+                Total: <span className="font-medium">₹{calculateTotal()}</span>
+              </div>
+            )}
+          </div>
 
-        <AnimatePresence>
-          {selectedTests.length > 0 ? (
-            <motion.div
-              className="border border-gray-200 rounded-lg bg-white p-3 max-h-60 overflow-y-auto shadow-inner"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-            >
+          <AnimatePresence>
+            {selectedTests.length > 0 ? (
+              <motion.div
+                className="border border-green-200 rounded-lg bg-white p-3 max-h-60 overflow-y-auto shadow-inner"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
               <ul className="divide-y divide-gray-100">
                 <AnimatePresence>
                   {selectedTests.map((test) => (
@@ -531,76 +564,91 @@ const PackageCreation = () => {
                 </AnimatePresence>
               </ul>
             </motion.div>
-          ) : (
-            <motion.div
-              className="border-2 border-dashed border-gray-200 rounded-lg bg-gray-50 p-6 text-center h-20  "
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              {/* <FiPlusCircle className="mx-auto text-3xl text-gray-300 mb-2 -mt-8" /> */}
-              <p className="text-sm text-gray-500">No tests selected yet. Search and add tests above.</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            ) : (
+              <motion.div
+                className="border-2 border-dashed border-green-200 rounded-lg bg-white p-6 text-center h-20"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                <p className="text-sm text-gray-500">No tests selected yet. Search and add tests above.</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </motion.div>
 
       {/* Summary */}
       <motion.div
-        className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6"
+        className="mb-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
       >
-        <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-          <BsCurrencyRupee className="text-indigo-500" /> Package Summary
-        </h3>
+        <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
+          <h4 className="font-semibold text-yellow-800 mb-3 flex items-center">
+            <FaDollarSign className="mr-2 text-yellow-600" /> Package Summary
+          </h4>
 
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Subtotal ({selectedTests.length} tests):</span>
-            <span className="text-sm font-medium">₹{calculateTotal()}</span>
-          </div>
+          <div className="space-y-2 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-gray-600">Subtotal ({selectedTests.length} tests):</span>
+              <span className="text-gray-900 font-semibold">₹{calculateTotal()}</span>
+            </div>
 
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Discount ({discount}%):</span>
-            <span className="text-sm font-medium text-red-500">-₹{((calculateTotal() * (parseFloat(discount) || 0)) / 100).toFixed(2)}</span>
-          </div>
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-gray-600">Discount ({discount}%):</span>
+              <span className="text-red-600 font-semibold">-₹{((calculateTotal() * (parseFloat(discount) || 0)) / 100).toFixed(2)}</span>
+            </div>
 
-          <div className="border-t border-gray-200 my-2"></div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-base font-semibold text-gray-800">Final Price:</span>
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={calculateFinalPrice()}
-                initial={{ scale: 1.2, color: '#4f46e5' }}
-                animate={{ scale: 1, color: '#111827' }}
-                exit={{ scale: 0.8, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 500 }}
-                className="text-lg font-bold"
-              >
-                ₹{calculateFinalPrice().toFixed(2)}
-              </motion.span>
-            </AnimatePresence>
+            <div className="border-t border-yellow-200 pt-2 mt-2">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-gray-900">Final Price:</span>
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={calculateFinalPrice()}
+                    initial={{ scale: 1.2, color: '#4f46e5' }}
+                    animate={{ scale: 1, color: '#111827' }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 500 }}
+                    className="text-base font-bold text-gray-900"
+                  >
+                    ₹{calculateFinalPrice().toFixed(2)}
+                  </motion.span>
+                </AnimatePresence>
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>
 
-      {/* Submit Button */}
+      {/* Action Buttons */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
+        className="flex justify-end space-x-3"
       >
+        {closeModal && (
+          <button
+            onClick={closeModal}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200 flex items-center gap-2"
+          >
+            <FaTimes className="h-4 w-4" />
+            Cancel
+          </button>
+        )}
         <button
           onClick={handleSubmit}
           disabled={!packageData.packageName.trim() || selectedTests.length === 0 || loading}
-          className={`w-full px-6 py-3 rounded-lg text-white font-medium shadow-md transition-all flex items-center justify-center gap-2
+          className={`px-6 py-3 rounded-lg text-white font-medium shadow-md transition-all flex items-center justify-center gap-2
             ${(!packageData.packageName.trim() || selectedTests.length === 0)
               ? 'bg-gray-300 cursor-not-allowed'
-              : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 hover:shadow-lg'
+              : ''
             }`}
+          style={(!packageData.packageName.trim() || selectedTests.length === 0) ? {} : {
+            background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+          }}
         >
           {loading ? (
             <>

@@ -7,49 +7,74 @@ const DoctorProfile = ({ selectedDoctor }: { selectedDoctor: Doctor }) => {
   const avatarLetter = selectedDoctor.name.charAt(0).toUpperCase();
 
   return (
-    <div className=" bg-gradient-to-r from-white via-gray-100 to-gray-200">
-
-      <div className="flex items-center space-x-4">
+    <div className="space-y-4 text-sm">
+      {/* Header Section */}
+      <div className="flex items-center space-x-4 pb-4 border-b border-gray-200">
         {/* Avatar with the first letter */}
         <div className="w-16 h-16 rounded-full bg-blue-500 text-white flex items-center justify-center text-2xl font-semibold">
           {avatarLetter}
         </div>
-        <h2 className="text-3xl font-bold text-gray-800 tracking-wide">{selectedDoctor.name}</h2>
+        <h2 className="text-2xl font-bold text-gray-900">{selectedDoctor.name}</h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
-        {/* Left column */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2 text-sm">
-            <FaEnvelope className="text-xl text-blue-500" />
-            <p className="text-gray-800 font-medium"><strong>Email:</strong> {selectedDoctor.email}</p>
+      {/* Personal Information Section */}
+      <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+        <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
+          <FaEnvelope className="mr-2 text-blue-500" size={16} />
+          Personal Information
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="font-medium text-gray-600">Email:</span>
+            <span className="ml-2 text-gray-900">{selectedDoctor.email || 'N/A'}</span>
           </div>
-          <div className="flex items-center space-x-2 text-sm">
-            <FaStethoscope className="text-xl text-purple-600" />
-            <p className="text-gray-800 font-medium"><strong>Specialty:</strong> {selectedDoctor.speciality}</p>
-          </div>
-          <div className="flex items-center space-x-2 text-sm">
-            <FaGraduationCap className="text-xl text-orange-500" />
-            <p className="text-gray-800 font-medium"><strong>Qualification:</strong> {selectedDoctor.qualification}</p>
-          </div>
-          <div className="flex items-center space-x-2 text-sm">
-            <FaHospital className="text-xl text-teal-600" />
-            <p className="text-gray-800 font-medium"><strong>Hospital Affiliation:</strong> {selectedDoctor.hospitalAffiliation}</p>
+          <div>
+            <span className="font-medium text-gray-600">Phone:</span>
+            <span className="ml-2 text-gray-900">{selectedDoctor.phone || 'N/A'}</span>
           </div>
         </div>
+      </div>
 
-        {/* Right column */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2 text-sm">
-            <FaPhoneAlt className="text-xl text-yellow-500" />
-            <p className="text-gray-800 font-medium"><strong>Phone:</strong> {selectedDoctor.phone}</p>
+      {/* Professional Information Section */}
+      <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+        <h4 className="font-semibold text-purple-800 mb-2 flex items-center">
+          <FaStethoscope className="mr-2 text-purple-500" size={16} />
+          Professional Information
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="font-medium text-gray-600">Speciality:</span>
+            <span className="ml-2 text-gray-900">{selectedDoctor.speciality || 'N/A'}</span>
           </div>
-          <div className="flex items-center space-x-2 text-sm">
-            <FaMapMarkerAlt className="text-xl text-red-500" />
-            <p className="text-gray-800 font-medium"><strong>Address:</strong> {selectedDoctor.address}, {selectedDoctor.city}, {selectedDoctor.state}, {selectedDoctor.country}</p>
+          <div>
+            <span className="font-medium text-gray-600">Qualification:</span>
+            <span className="ml-2 text-gray-900">{selectedDoctor.qualification || 'N/A'}</span>
           </div>
-          <div className="flex items-center space-x-2 text-sm">
-            <p className="text-gray-800 font-medium"><strong>License Number:</strong> {selectedDoctor.licenseNumber}</p>
+          <div>
+            <span className="font-medium text-gray-600">Hospital Affiliation:</span>
+            <span className="ml-2 text-gray-900">{selectedDoctor.hospitalAffiliation || 'N/A'}</span>
+          </div>
+          <div>
+            <span className="font-medium text-gray-600">License Number:</span>
+            <span className="ml-2 text-gray-900">{selectedDoctor.licenseNumber || 'N/A'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Address Information Section */}
+      <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+        <h4 className="font-semibold text-green-800 mb-2 flex items-center">
+          <FaMapMarkerAlt className="mr-2 text-green-500" size={16} />
+          Address Information
+        </h4>
+        <div className="grid grid-cols-1 gap-2 text-xs">
+          <div>
+            <span className="font-medium text-gray-600">Address:</span>
+            <span className="ml-2 text-gray-900">
+              {selectedDoctor.address ? 
+                `${selectedDoctor.address}, ${selectedDoctor.city || ''}, ${selectedDoctor.state || ''}, ${selectedDoctor.country || ''}`.replace(/,\s*,/g, ',').replace(/^,\s*|,\s*$/g, '') 
+                : 'N/A'}
+            </span>
           </div>
         </div>
       </div>

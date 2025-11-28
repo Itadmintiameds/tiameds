@@ -607,9 +607,9 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-8">
+      <div className="flex flex-col items-center justify-center p-6">
         <Loader type="progress" fullScreen={false} text="Loading report data..." />
-        <p className="mt-4 text-sm text-gray-500">Fetching test and reference data...</p>
+        <p className="mt-4 text-sm text-gray-600">Fetching test and reference data...</p>
       </div>
     );
   }
@@ -617,48 +617,30 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   // const patientAge = selectedPatient.dateOfBirth ? calculateAgeObject(selectedPatient.dateOfBirth) : { years: 0, months: 0, days: 0 };
 
   return (
-    <div className="bg-white shadow-lg rounded-xl overflow-hidden h-[500px] overflow-y-auto p-5">
+    <div className="bg-white shadow-lg rounded-xl overflow-hidden h-[500px] overflow-y-auto p-6">
       <PatientBasicInfo patient={selectedPatient} />
-
-      {/* Highlighted Banner for Reference Range Selection */}
-      {/* <div className="relative bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 mb-6 shadow-md">
-        <div className="text-white">
-          <h3 className="text-lg font-bold mb-1 flex items-center">
-            <TbInfoCircle className="mr-2" size={20} />
-            Reference Range Selection
-          </h3>
-          <p className="text-sm opacity-90">
-            Select appropriate reference ranges for this patient. You can remove ranges that aren&lsquo;t relevant.
-          </p>
-          {selectedPatient.dateOfBirth && (
-            <p className="text-xs mt-2 bg-white/20 inline-block px-2 py-1 rounded">
-              Patient Age: <span className="font-semibold">{formatAgeDisplay(patientAge)}</span>
-            </p>
-          )}
-        </div>
-      </div> */}
 
       {/* Range Indicator Legend */}
       <div className="flex flex-wrap items-center justify-center gap-4 mb-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
-        <div className="flex items-center text-sm">
+        <div className="flex items-center text-sm text-gray-700">
           <TbSquareRoundedCheck className="text-green-500 mr-2" size={18} />
-          <span>Normal Range</span>
+          <span className="font-medium">Normal Range</span>
         </div>
-        <div className="flex items-center text-sm">
+        <div className="flex items-center text-sm text-gray-700">
           <TbArrowDownCircle className="text-red-500 mr-2" size={18} />
-          <span>Below Normal</span>
+          <span className="font-medium">Below Normal</span>
         </div>
-        <div className="flex items-center text-sm">
+        <div className="flex items-center text-sm text-gray-700">
           <TbArrowUpCircle className="text-red-500 mr-2" size={18} />
-          <span>Above Normal</span>
+          <span className="font-medium">Above Normal</span>
         </div>
-        <div className="flex items-center text-sm">
+        <div className="flex items-center text-sm text-gray-700">
           <TbInfoCircle className="text-blue-500 mr-2" size={18} />
-          <span>No Reference</span>
+          <span className="font-medium">No Reference</span>
         </div>
       </div>
 
-      <div className="space-y-5 mt-6">
+      <div className="space-y-4 mt-6">
         {allTests.map((test) => {
           // Check if any reference point has DETAILED REPORT description
           const hasDetailedReport = referencePoints[test.name]?.some(point => point.testDescription === "DETAILED REPORT");
@@ -710,7 +692,10 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
       <div className="mt-8 text-center">
         <button
           onClick={prepareReportPreview}
-          className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition-colors flex items-center justify-center"
+          className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center mx-auto"
+          style={{
+            background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+          }}
         >
           <TbReportMedical className="mr-2" size={18} />
           Confirm

@@ -1,216 +1,3 @@
-// 'use client';
-// import Button from "@/app/(admin)/component/common/Button";
-// import Loader from "@/app/(admin)/component/common/Loader";
-// import Modal from "@/app/(admin)/component/common/Model";
-// import Pagination from "@/app/(admin)/component/common/Pagination";
-// import TableComponent from "@/app/(admin)/component/common/TableComponent";
-// import { SampleList } from "@/types/sample/sample";
-// import { PlusIcon } from "lucide-react";
-// import { useEffect, useState } from "react";
-// import { IoMdCreate, IoMdTrash } from "react-icons/io";
-// import { RxUpdate } from "react-icons/rx";
-// import { toast } from "react-toastify";
-// import { createSample, deleteSample, getSamples, updateSample } from "../../../../../../services/sampleServices";
-
-// import { MdOutlineCancel } from "react-icons/md";
-
-// const Page = () => {
-//   const [samples, setSamples] = useState<SampleList[]>([]);
-//   const [currentPage, setCurrentPage] = useState(1);
-//   const itemsPerPage = 5;
-
-//   // Modal state
-//   const [isModalOpen, setIsModalOpen] = useState(false);
-//   const [selectedSample, setSelectedSample] = useState<SampleList | null>(null);
-//   const [formData, setFormData] = useState<Partial<SampleList>>({ name: "" });
-
-//   // Fetch samples
-//   useEffect(() => {
-//     loadSamples();
-//   }, []);
-
-//   const loadSamples = async () => {
-//     try {
-//       const data = await getSamples();
-//       setSamples(data);
-//     } catch (error) {
-//       // Handle samples load error
-//     }
-//   };
-
-//   // Open modal for create/update
-//   const handleOpenModal = (sample?: SampleList) => {
-//     if (sample) {
-//       setSelectedSample(sample);
-//       setFormData({ name: sample.name }); // Populate form data for update
-//     } else {
-//       setSelectedSample(null);
-//       setFormData({ name: "" }); // Reset form for new entry
-//     }
-//     setIsModalOpen(true);
-//   };
-
-//   // Close modal
-//   const handleCloseModal = () => {
-//     setIsModalOpen(false);
-//     setFormData({ name: "" });
-//     setSelectedSample(null);
-//   };
-
-//   // Handle form input
-//   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-//     setFormData({ ...formData, [e.target.name]: e.target.value });
-//   };
-
-//   // Handle create or update submission
-//   const handleSubmit = async () => {
-//     try {
-//       if (selectedSample) {
-//         // Update Sample
-//         await updateSample(selectedSample.id, formData);
-//         toast.success("Sample updated successfully");
-//       } else {
-//         // Create Sample
-//         await createSample(formData);
-//         toast.success("Sample created successfully");
-//       }
-//       loadSamples(); // Refresh data
-//       handleCloseModal();
-//     } catch (error: unknown) {
-//       if (error instanceof Error) {
-//         toast.error(error.message); // Show error message in toast
-//       } else {
-//         toast.error("An error occurred while processing the request.");
-//       }
-//     }
-//   };
-
-
-//   // Handle delete
-//   const handleDelete = async (id: number) => {
-//     if (confirm("Are you sure you want to delete this sample?")) {
-//       try {
-//         await deleteSample(id);
-//         toast.success("Sample deleted successfully");
-//         loadSamples(); // Refresh list
-//       } catch (error) {
-//         // Handle sample delete error
-//       }
-//     }
-//   };
-
-//   // Corrected time formatter
-//   const formatDate = (dateString: string) => {
-//     if (!dateString) return "N/A";
-//     const date = new Date(dateString);
-//     return date.toLocaleString(); // Formats in local date-time format
-//   };
-
-//   if (!samples.length) return <Loader />;
-
-//   const columns = [
-//     { header: "ID", accessor: "id" as keyof SampleList },
-//     { header: "Name", accessor: "name" as keyof SampleList },
-//     {
-//       header: "Created At",
-//       accessor: "createdAt" as keyof SampleList,
-//       Cell: ({ value }: { value: string }) => formatDate(value),
-//     },
-//     {
-//       header: "Updated At",
-//       accessor: "updatedAt" as keyof SampleList,
-//       Cell: ({ value }: { value: string }) => formatDate(value),
-//     },
-//   ];
-
-//   const paginatedData = samples.slice(
-//     (currentPage - 1) * itemsPerPage,
-//     currentPage * itemsPerPage
-//   );
-
-//   return (
-//     <div>
-//       {/* Header */}
-//       <div className="flex justify-between items-center mb-4">
-//         <h1 className="text-lg font-bold">Sample List</h1>
-//         <Button
-//           text="Sample"
-//           className="bg-primary hover:bg-primarylight text-textzinc text-xs px-4 py-2 rounded"
-//           onClick={() => handleOpenModal()}
-//         >
-//           <PlusIcon size={20} />
-//         </Button>
-//       </div>
-
-//       {/* Table */}
-//       <TableComponent
-//         data={paginatedData}
-//         columns={columns}
-//         actions={(item) => (
-//           <div className="flex gap-2">
-//             <Button
-//               text=""
-//               onClick={() => handleOpenModal(item)}
-//               className="text-edit  border border-edit hover:bg-edit hover:text-white"
-//             >
-//               <IoMdCreate size={20} />
-//             </Button>
-//             <Button
-//               text=""
-//               onClick={() => handleDelete(item.id)}
-//               className="text-deletebutton hover:text-red-700 border border-red-500 hover:bg-deletehover hover:text-white"
-//             >
-//               <IoMdTrash size={20} />
-//             </Button>
-//           </div>
-//         )}
-//       />
-
-//       {/* Pagination */}
-//       <Pagination
-//         currentPage={currentPage}
-//         totalPages={Math.ceil(samples.length / itemsPerPage)}
-//         onPageChange={setCurrentPage}
-//       />
-
-//       {/* Modal for Create/Update */}
-//       <Modal
-//         modalClassName="max-w-sm"
-
-//         isOpen={isModalOpen} onClose={handleCloseModal} title={selectedSample ? "Edit Sample" : "Add Sample"}>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium">Sample Name</label>
-//           <input
-//             type="text"
-//             name="name"
-//             value={formData.name || ""}
-//             onChange={handleChange}
-//             className="w-full p-2 border rounded"
-//           />
-//         </div>
-//         <div className="mt-4 flex justify-end gap-2">
-//           <Button
-//             text="Cancel" className="bg-deletebutton hover:bg-red-600 text-white px-4 py-2 rounded text-xs"
-//             onClick={handleCloseModal} >
-//             <MdOutlineCancel size={12} />
-//           </Button>
-//           <Button
-//             text={selectedSample ? "Update" : "Create"}
-//             className="bg-primary hover:bg-primarylight text-white px-4 py-2 rounded text-xs"
-//             onClick={handleSubmit}
-//           >
-//             {selectedSample ? <RxUpdate size={12} /> : <PlusIcon size={12} />}
-//           </Button>
-//         </div>
-//       </Modal>
-//     </div>
-//   );
-// };
-
-// export default Page;
-
-
-
 
 'use client';
 import Button from "@/app/(admin)/component/common/Button";
@@ -425,22 +212,32 @@ const Page = () => {
   // Format date
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
+    try {
     const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "N/A";
     return date.toLocaleString();
+    } catch (error) {
+      return "N/A";
+    }
   };
 
   // Show loading state
   if (isLoading) {
-    return <Loader />;
+    return (
+      <div className="flex flex-col items-center justify-center p-6">
+        <Loader type="progress" fullScreen={false} text="Loading samples..." />
+        <p className="mt-4 text-sm text-gray-600">Please wait while we fetch the sample data...</p>
+      </div>
+    );
   }
 
   // Show message if no lab is selected
   if (!currentLab?.id) {
     return (
-      <div className="p-6 bg-white rounded-lg shadow-md">
+      <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
         <div className="text-center py-12">
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">No Lab Selected</h2>
-          <p className="text-gray-500">Please select a lab to manage samples.</p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No Lab Selected</h2>
+          <p className="text-sm text-gray-600">Please select a lab to manage samples.</p>
         </div>
       </div>
     );
@@ -449,41 +246,45 @@ const Page = () => {
   // Show empty state
   if (samples.length === 0) {
     return (
-      <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Sample Management</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Sample Management</h1>
             <p className="text-sm text-gray-600 mt-1">Manage samples for {currentLab.name}</p>
           </div>
-          <Button
-            text="Add Sample"
-            className="bg-primary hover:bg-primarylight text-white text-sm px-5 py-2.5 rounded-lg shadow-sm transition-all duration-200 flex items-center gap-2"
+          <button
             onClick={() => handleOpenModal()}
+            className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center gap-2"
+            style={{
+              background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+            }}
           >
             <PlusIcon size={18} />
             <span>Add Sample</span>
-          </Button>
+          </button>
         </div>
 
         {/* No Data State */}
-        <div className="border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 py-16">
+        <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl py-16">
           <div className="text-center">
             <div className="flex justify-center mb-4">
               <div className="p-4 bg-gray-200 rounded-full">
                 <FaInbox className="text-4xl text-gray-400" />
               </div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">No Data</h3>
-            <p className="text-sm text-gray-500 mb-6">No samples have been added for this lab yet.</p>
-            <Button
-              text="Add Sample"
-              className="bg-primary hover:bg-primarylight text-white text-sm px-6 py-2.5 rounded-lg shadow-sm transition-all duration-200 flex items-center gap-2 mx-auto"
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Data</h3>
+            <p className="text-sm text-gray-600 mb-6">No samples have been added for this lab yet.</p>
+            <button
               onClick={() => handleOpenModal()}
+              className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center gap-2 mx-auto"
+              style={{
+                background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+              }}
             >
               <PlusIcon size={18} />
               <span>Add Sample</span>
-            </Button>
+            </button>
           </div>
         </div>
 
@@ -494,9 +295,10 @@ const Page = () => {
           onClose={handleCloseModal}
           title={selectedSample ? "Edit Sample" : "Add New Sample"}
         >
-          <div className="space-y-4">
-            <div className="relative">
-              <label className="block mb-2 text-sm font-medium text-gray-700">
+          <div className="space-y-4 text-sm">
+            {/* Sample Name Input Section */}
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+              <label className="block mb-2 text-sm font-semibold text-blue-800">
                 Sample Name <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -515,7 +317,7 @@ const Page = () => {
                       setShowSuggestions(filtered.length > 0);
                     }
                   }}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent pr-10"
+                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white pr-10"
                   placeholder="Enter or select sample name"
                   disabled={isSubmitting}
                   autoFocus
@@ -528,7 +330,7 @@ const Page = () => {
                       setShowSuggestions(false);
                       inputRef.current?.focus();
                     }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   >
                     <X size={18} />
                   </button>
@@ -541,7 +343,7 @@ const Page = () => {
                   ref={suggestionsRef}
                   className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
                 >
-                  <div className="p-2 text-xs text-gray-500 font-medium border-b border-gray-100">
+                  <div className="p-2 text-xs text-gray-600 font-semibold border-b border-gray-100 bg-gray-50">
                     Suggested Samples
                   </div>
                   {filteredSuggestions.map((suggestion, index) => (
@@ -549,9 +351,9 @@ const Page = () => {
                       key={index}
                       type="button"
                       onClick={() => handleSuggestionClick(suggestion)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-primary hover:text-white transition-colors flex items-center gap-2"
+                      className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition-colors flex items-center gap-2 text-xs text-gray-900"
                     >
-                      <FaFlask size={14} className="text-gray-400" />
+                      <FaFlask size={14} className="text-blue-500" />
                       <span>{suggestion}</span>
                     </button>
                   ))}
@@ -561,8 +363,8 @@ const Page = () => {
 
             {/* Quick Add Suggestions */}
             {!formData.name && !selectedSample && (
-              <div>
-                <label className="block mb-2 text-sm font-medium text-gray-700">
+              <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+                <label className="block mb-2 text-sm font-semibold text-green-800">
                   Quick Add
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -571,7 +373,7 @@ const Page = () => {
                       key={index}
                       type="button"
                       onClick={() => handleSuggestionClick(sample)}
-                      className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-primary hover:text-white rounded-md transition-colors border border-gray-200 hover:border-primary"
+                      className="px-3 py-1.5 text-xs bg-white hover:bg-green-100 text-gray-900 rounded-lg transition-colors border border-green-200 hover:border-green-300 font-medium"
                     >
                       {sample}
                     </button>
@@ -581,25 +383,30 @@ const Page = () => {
             )}
           </div>
 
-          <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-200">
-            <Button
-              text="Cancel"
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-lg text-sm transition-all duration-200"
+          <div className="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button
+              type="button"
               onClick={handleCloseModal}
               disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200"
             >
-              <MdOutlineCancel size={14} className="mr-1" />
+              <MdOutlineCancel size={14} className="mr-1 inline" />
               Cancel
-            </Button>
-            <Button
-              text={selectedSample ? "Update" : "Create"}
-              className="bg-primary hover:bg-primarylight text-white px-5 py-2.5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2"
+            </button>
+            <button
+              type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              style={{
+                background: isSubmitting 
+                  ? '#9CA3AF' 
+                  : `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+              }}
             >
-              {selectedSample ? <RxUpdate size={14} /> : <PlusIcon size={14} />}
+              {selectedSample ? <RxUpdate size={14} className="mr-2" /> : <PlusIcon size={14} className="mr-2" />}
               {selectedSample ? "Update" : "Create"}
-            </Button>
+            </button>
           </div>
         </Modal>
       </div>
@@ -627,35 +434,37 @@ const Page = () => {
   );
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Sample Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Sample Management</h1>
           <p className="text-sm text-gray-600 mt-1">Manage samples for {currentLab.name}</p>
         </div>
-        <Button
-          text="Add Sample"
-          className="bg-primary hover:bg-primarylight text-white text-sm px-5 py-2.5 rounded-lg shadow-sm transition-all duration-200 flex items-center gap-2"
+        <button
           onClick={() => handleOpenModal()}
+          className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center gap-2"
+          style={{
+            background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+          }}
         >
           <PlusIcon size={18} />
           <span>Add Sample</span>
-        </Button>
+        </button>
       </div>
 
       {/* Stats Bar */}
-      <div className="mb-6 p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border border-primary/20">
+      <div className="mb-6 bg-blue-50 p-3 rounded-lg border border-blue-100">
         <div className="flex items-center gap-2">
-          <FaFlask className="text-primary text-xl" />
-          <span className="text-sm font-medium text-gray-700">
-            Total Samples: <span className="text-primary font-bold">{samples.length}</span>
+          <FaFlask className="text-blue-500 text-xl" />
+          <span className="text-sm font-semibold text-blue-800">
+            Total Samples: <span className="text-blue-900 font-bold">{samples.length}</span>
           </span>
         </div>
       </div>
 
       {/* Table */}
-      <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
         <TableComponent
           data={paginatedData}
           columns={columns}
@@ -684,7 +493,7 @@ const Page = () => {
 
       {/* Pagination */}
       {samples.length > itemsPerPage && (
-        <div className="mt-6">
+        <div className="mt-6 flex justify-center">
           <Pagination
             currentPage={currentPage}
             totalPages={Math.ceil(samples.length / itemsPerPage)}
@@ -700,9 +509,10 @@ const Page = () => {
         onClose={handleCloseModal}
         title={selectedSample ? "Edit Sample" : "Add New Sample"}
       >
-        <div className="space-y-4">
-          <div className="relative">
-            <label className="block mb-2 text-sm font-medium text-gray-700">
+        <div className="space-y-4 text-sm">
+          {/* Sample Name Input Section */}
+          <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+            <label className="block mb-2 text-sm font-semibold text-blue-800">
               Sample Name <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -721,7 +531,7 @@ const Page = () => {
                     setShowSuggestions(filtered.length > 0);
                   }
                 }}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent pr-10"
+                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white pr-10"
                 placeholder="Enter or select sample name"
                 disabled={isSubmitting}
                 autoFocus
@@ -747,7 +557,7 @@ const Page = () => {
                 ref={suggestionsRef}
                 className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
               >
-                <div className="p-2 text-xs text-gray-500 font-medium border-b border-gray-100">
+                <div className="p-2 text-xs text-gray-600 font-semibold border-b border-gray-100 bg-gray-50">
                   Suggested Samples
                 </div>
                 {filteredSuggestions.map((suggestion, index) => (
@@ -755,9 +565,9 @@ const Page = () => {
                     key={index}
                     type="button"
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-primary hover:text-white transition-colors flex items-center gap-2"
+                    className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition-colors flex items-center gap-2 text-xs text-gray-900"
                   >
-                    <FaFlask size={14} className="text-gray-400" />
+                    <FaFlask size={14} className="text-blue-500" />
                     <span>{suggestion}</span>
                   </button>
                 ))}
@@ -767,8 +577,8 @@ const Page = () => {
 
           {/* Quick Add Suggestions */}
           {!formData.name && !selectedSample && (
-            <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">
+            <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+              <label className="block mb-2 text-sm font-semibold text-green-800">
                 Quick Add
               </label>
               <div className="flex flex-wrap gap-2">
@@ -777,7 +587,7 @@ const Page = () => {
                     key={index}
                     type="button"
                     onClick={() => handleSuggestionClick(sample)}
-                    className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-primary hover:text-white rounded-md transition-colors border border-gray-200 hover:border-primary"
+                    className="px-3 py-1.5 text-xs bg-white hover:bg-green-100 text-gray-900 rounded-lg transition-colors border border-green-200 hover:border-green-300 font-medium"
                   >
                     {sample}
                   </button>
@@ -787,25 +597,30 @@ const Page = () => {
           )}
         </div>
 
-        <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-200">
-          <Button
-            text="Cancel"
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-lg text-sm transition-all duration-200"
+        <div className="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-200">
+          <button
+            type="button"
             onClick={handleCloseModal}
             disabled={isSubmitting}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200"
           >
-            <MdOutlineCancel size={14} className="mr-1" />
+            <MdOutlineCancel size={14} className="mr-1 inline" />
             Cancel
-          </Button>
-          <Button
-            text={selectedSample ? "Update" : "Create"}
-            className="bg-primary hover:bg-primarylight text-white px-5 py-2.5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2"
+          </button>
+          <button
+            type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
+            className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            style={{
+              background: isSubmitting 
+                ? '#9CA3AF' 
+                : `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+            }}
           >
-            {selectedSample ? <RxUpdate size={14} /> : <PlusIcon size={14} />}
+            {selectedSample ? <RxUpdate size={14} className="mr-2" /> : <PlusIcon size={14} className="mr-2" />}
             {selectedSample ? "Update" : "Create"}
-          </Button>
+          </button>
         </div>
       </Modal>
     </div>

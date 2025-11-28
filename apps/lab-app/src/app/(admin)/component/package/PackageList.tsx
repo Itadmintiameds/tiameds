@@ -6,7 +6,7 @@ import { getPackage, packageDelete, updatePackage } from '@/../services/packageS
 import Modal from '@/app/(admin)/component/common/Model';
 import { useLabs } from '@/context/LabContext';
 import { useCallback, useEffect, useState } from 'react';
-import { FaBoxOpen, FaChevronDown, FaChevronUp, FaEdit, FaSearch, FaTrash } from 'react-icons/fa';
+import { FaBoxOpen, FaChevronDown, FaChevronUp, FaEdit, FaSearch, FaTrash, FaTimes, FaBox } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import Loader from '../common/Loader';
 import UpdatePackage from './UpdatePackage';
@@ -41,7 +41,11 @@ interface updatePackage {
   tests: TestList[];
 }
 
-const PackageList = () => {
+interface PackageListProps {
+  closeModal?: () => void;
+}
+
+const PackageList = ({ closeModal }: PackageListProps = {}) => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [filteredPackages, setFilteredPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -176,9 +180,9 @@ const PackageList = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Loader type="progress" fullScreen={false} text=" Loading packages..." />
-        <p className="mt-4 text-sm text-gray-500">Please wait while we load the available packages.</p>
+      <div className="flex flex-col items-center justify-center p-6">
+        <Loader type="progress" fullScreen={false} text="Loading packages..." />
+        <p className="mt-4 text-sm text-gray-600">Please wait while we load the available packages.</p>
       </div>
     );
   }
@@ -188,35 +192,47 @@ const PackageList = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="text-center p-6 bg-red-50 rounded-lg border border-red-100"
+        className="text-center p-6 bg-red-50 rounded-xl border border-red-100"
       >
-        <div className="text-red-500 font-semibold text-lg mb-2">
+        <div className="text-red-600 font-semibold text-lg mb-2">
           {error}
         </div>
-        <Button
-          text="Retry"
+        <button
           onClick={fetchPackages}
-          className="bg-red-500 hover:bg-red-600 text-white"
-        />
+          className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-all duration-200"
+        >
+          Retry
+        </button>
       </motion.div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 rounded-lg">
+    <div className="p-6 space-y-4 bg-gray-50 rounded-xl shadow-lg">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 mb-6"
+        className="flex items-center justify-between mb-4"
       >
-        <div className="p-3 bg-indigo-100 rounded-full">
-          <FiPackage className="text-indigo-600 text-xl" />
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-indigo-100 rounded-full">
+            <FiPackage className="text-indigo-600 text-xl" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Package Management</h1>
+            <p className="text-sm text-gray-600">View and manage all your test packages</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Package Management</h1>
-          <p className="text-sm text-gray-500">View and manage all your test packages</p>
-        </div>
+        {closeModal && (
+          <button
+            onClick={closeModal}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Close"
+          >
+            <FaTimes className="h-5 w-5" />
+          </button>
+        )}
       </motion.div>
 
       {/* Search Bar */}
@@ -224,18 +240,23 @@ const PackageList = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="relative"
+        className="bg-blue-50 p-3 rounded-lg border border-blue-100"
       >
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <FaSearch className="text-gray-400" />
+        <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
+          <FaSearch className="mr-2 text-blue-600" /> Search Packages
+        </h4>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <FaSearch className="text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search packages or tests..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition-all"
+          />
         </div>
-        <input
-          type="text"
-          placeholder="Search packages or tests..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
-        />
       </motion.div>
 
       {/* Package List */}
@@ -249,7 +270,7 @@ const PackageList = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.3 }}
-                className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow"
+                className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow"
               >
                 {/* Package Header */}
                 <div className="p-4 flex items-center justify-between border-b">
@@ -274,27 +295,25 @@ const PackageList = () => {
                   </div>
 
                   <div className="flex space-x-2">
-                    <Button
-                      text=""
+                    <button
                       onClick={() => handleEditPackage(pkg.id)}
-                      className="p-2 bg-blue-50 hover:bg-blue-100 rounded-full text-blue-600 transition-colors"
-
+                      className="p-2 bg-blue-50 hover:bg-blue-100 rounded-lg text-blue-600 transition-colors"
+                      title="Edit package"
                     >
                       <FaEdit className="text-sm" />
-                    </Button>
-                    <Button
-                      text=""
+                    </button>
+                    <button
                       onClick={() => handleDeletePackage(pkg.id)}
                       disabled={isDeleting === pkg.id}
-                      className="p-2 bg-red-50 hover:bg-red-100 rounded-full text-red-600 transition-colors"
-                    // tooltip="Delete package"
+                      className="p-2 bg-red-50 hover:bg-red-100 rounded-lg text-red-600 transition-colors disabled:opacity-50"
+                      title="Delete package"
                     >
                       {isDeleting === pkg.id ? (
                         <Loader type="progress" fullScreen={false} text="Deleting..." />
                       ) : (
                         <FaTrash className="text-sm" />
                       )}
-                    </Button>
+                    </button>
                   </div>
                 </div>
 
@@ -308,11 +327,9 @@ const PackageList = () => {
                       transition={{ duration: 0.3 }}
                       className="overflow-hidden"
                     >
-                      <div className="p-4 border-t">
-                        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                          <span className="bg-indigo-100 text-indigo-600 p-1 rounded-full">
-                            <FaBoxOpen className="text-xs" />
-                          </span>
+                      <div className="p-4 border-t bg-green-50">
+                        <h3 className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
+                          <FaBox className="text-green-600" />
                           Included Tests
                         </h3>
                         <div className="space-y-2">
@@ -321,17 +338,17 @@ const PackageList = () => {
                               key={test.id}
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
-                              className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                              className="flex justify-between items-center p-3 bg-white rounded-lg border border-green-200 hover:bg-green-50 transition-colors"
                             >
                               <div className="flex items-center space-x-3">
                                 <div className="p-1.5 bg-green-100 rounded-full">
-                                  <FaChevronDown className="text-green-500 text-xs" />
+                                  <FaChevronDown className="text-green-600 text-xs" />
                                 </div>
                                 <span className="text-sm font-medium text-gray-800">{test.name}</span>
                               </div>
-                                                             <p className="text-sm font-medium text-gray-700 flex items-center">
-                                 <BsCurrencyRupee className="text-xs mr-1" /> {Number(test.price).toFixed(2)}
-                               </p>
+                              <p className="text-sm font-medium text-gray-700 flex items-center">
+                                <BsCurrencyRupee className="text-xs mr-1" /> {Number(test.price).toFixed(2)}
+                              </p>
                             </motion.div>
                           ))}
                         </div>
@@ -341,11 +358,10 @@ const PackageList = () => {
                 </AnimatePresence>
 
                 {/* Toggle Button */}
-                <div className="p-2 border-t flex justify-center">
-                  <Button
-                    text=""
+                <div className="p-2 border-t bg-gray-50 flex justify-center">
+                  <button
                     onClick={() => togglePackageDetails(pkg.id)}
-                    className="text-xs text-blue-600 hover:text-blue-800 focus:outline-none flex items-center gap-1"
+                    className="text-xs text-blue-600 hover:text-blue-800 focus:outline-none flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
                   >
                     {expandedPackage === pkg.id ? (
                       <>
@@ -358,7 +374,7 @@ const PackageList = () => {
                         <span>View Details</span>
                       </>
                     )}
-                  </Button>
+                  </button>
                 </div>
               </motion.div>
             ))}
@@ -367,13 +383,24 @@ const PackageList = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center p-8 bg-white rounded-xl border-2 border-dashed border-gray-200"
+            className="text-center p-8 bg-white rounded-xl shadow-lg border-2 border-dashed border-gray-200"
           >
             <FiPackage className="mx-auto text-4xl text-gray-300 mb-3" />
-            <h3 className="text-lg font-medium text-gray-500">No packages found</h3>
-            <p className="text-sm text-gray-400 mt-1">
+            <h3 className="text-lg font-semibold text-gray-800">No packages found</h3>
+            <p className="text-sm text-gray-600 mt-1">
               {searchQuery ? 'Try a different search term' : 'Create your first package to get started'}
             </p>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mt-3 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
+                style={{
+                  background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+                }}
+              >
+                Clear search
+              </button>
+            )}
           </motion.div>
         )}
       </div>
@@ -384,6 +411,7 @@ const PackageList = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
+          className="flex justify-center"
         >
           <Pagination
             currentPage={currentPage}

@@ -187,228 +187,253 @@ const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-gradient-to-r from-white via-gray-100 to-gray-200">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Left Column */}
-        <div className="mb-2">
-          <label htmlFor="name" className="text-xs font-medium text-gray-700 flex items-center">
-            <FaUserMd className="mr-2" /> Name
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={updatedDoctor.name}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`mt-1 block w-full p-2 text-xs border ${errors.name && touched.name ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
-          />
-          {errors.name && touched.name && (
-            <p className="text-xs text-red-500 mt-1">{errors.name}</p>
-          )}
-        </div>
+    <form onSubmit={handleSubmit} className="space-y-4 text-sm">
+      {/* Personal Information Section */}
+      <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+        <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
+          <FaUserMd className="mr-2 text-blue-500" size={16} />
+          Personal Information
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="name" className="text-xs font-medium text-gray-600 flex items-center mb-1">
+              <FaUserMd className="mr-2 text-blue-500" size={14} /> Name
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={updatedDoctor.name}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={`block w-full px-3 py-2 text-xs border ${errors.name && touched.name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white`}
+            />
+            {errors.name && touched.name && (
+              <p className="text-xs text-red-500 mt-1">{errors.name}</p>
+            )}
+          </div>
 
-        <div className="mb-2">
-          <label htmlFor="speciality" className="text-xs font-medium text-gray-700 flex items-center">
-            <FaHeart className="mr-2" /> Speciality
-          </label>
-          <input
-            type="text"
-            id="speciality"
-            name="speciality"
-            value={updatedDoctor.speciality}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`mt-1 block w-full p-2 text-xs border ${errors.speciality && touched.speciality ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
-          />
-          {errors.speciality && touched.speciality && (
-            <p className="text-xs text-red-500 mt-1">{errors.speciality}</p>
-          )}
-        </div>
+          <div>
+            <label htmlFor="email" className="text-xs font-medium text-gray-600 flex items-center mb-1">
+              <FaEnvelope className="mr-2 text-blue-500" size={14} /> Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={updatedDoctor.email}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={`block w-full px-3 py-2 text-xs border ${errors.email && touched.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white`}
+            />
+            {errors.email && touched.email && (
+              <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+            )}
+          </div>
 
-        <div className="mb-2">
-          <label htmlFor="email" className="text-xs font-medium text-gray-700 flex items-center">
-            <FaEnvelope className="mr-2" /> Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={updatedDoctor.email}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`mt-1 block w-full p-2 text-xs border ${errors.email && touched.email ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
-          />
-          {errors.email && touched.email && (
-            <p className="text-xs text-red-500 mt-1">{errors.email}</p>
-          )}
-        </div>
-
-        <div className="mb-2">
-          <label htmlFor="phone" className="text-xs font-medium text-gray-700 flex items-center">
-            <FaPhoneAlt className="mr-2" /> Phone
-          </label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            value={updatedDoctor.phone}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`mt-1 block w-full p-2 text-xs border ${errors.phone && touched.phone ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={10}
-            onKeyPress={(e) => {
-              // Prevent non-numeric characters
-              if (!/[0-9]/.test(e.key)) {
-                e.preventDefault();
-              }
-            }}
-          />
-          {errors.phone && touched.phone && (
-            <p className="text-xs text-red-500 mt-1">{errors.phone}</p>
-          )}
-        </div>
-
-        {/* Right Column */}
-        <div className="mb-2">
-          <label htmlFor="qualification" className="text-xs font-medium text-gray-700 flex items-center">
-            <FaGraduationCap className="mr-2" /> Qualification
-          </label>
-          <input
-            type="text"
-            id="qualification"
-            name="qualification"
-            value={updatedDoctor.qualification}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`mt-1 block w-full p-2 text-xs border ${errors.qualification && touched.qualification ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
-          />
-          {errors.qualification && touched.qualification && (
-            <p className="text-xs text-red-500 mt-1">{errors.qualification}</p>
-          )}
-        </div>
-
-        <div className="mb-2">
-          <label htmlFor="hospitalAffiliation" className="text-xs font-medium text-gray-700 flex items-center">
-            <FaHospital className="mr-2" /> Hospital Affiliation
-          </label>
-          <input
-            type="text"
-            id="hospitalAffiliation"
-            name="hospitalAffiliation"
-            value={updatedDoctor.hospitalAffiliation}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`mt-1 block w-full p-2 text-xs border ${errors.hospitalAffiliation && touched.hospitalAffiliation ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
-          />
-          {errors.hospitalAffiliation && touched.hospitalAffiliation && (
-            <p className="text-xs text-red-500 mt-1">{errors.hospitalAffiliation}</p>
-          )}
-        </div>
-
-        <div className="mb-2">
-          <label htmlFor="licenseNumber" className="text-xs font-medium text-gray-700 flex items-center">
-            <FaIdCard className="mr-2" /> License Number
-          </label>
-          <input
-            type="text"
-            id="licenseNumber"
-            name="licenseNumber"
-            value={updatedDoctor.licenseNumber}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`mt-1 block w-full p-2 text-xs border ${errors.licenseNumber && touched.licenseNumber ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
-          />
-          {errors.licenseNumber && touched.licenseNumber && (
-            <p className="text-xs text-red-500 mt-1">{errors.licenseNumber}</p>
-          )}
-        </div>
-
-        <div className="mb-2">
-          <label htmlFor="address" className="text-xs font-medium text-gray-700 flex items-center">
-            <FaMapMarkerAlt className="mr-2" /> Address
-          </label>
-          <input
-            type="text"
-            id="address"
-            name="address"
-            value={updatedDoctor.address}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`mt-1 block w-full p-2 text-xs border ${errors.address && touched.address ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
-          />
-          {errors.address && touched.address && (
-            <p className="text-xs text-red-500 mt-1">{errors.address}</p>
-          )}
+          <div>
+            <label htmlFor="phone" className="text-xs font-medium text-gray-600 flex items-center mb-1">
+              <FaPhoneAlt className="mr-2 text-blue-500" size={14} /> Phone
+            </label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={updatedDoctor.phone}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={`block w-full px-3 py-2 text-xs border ${errors.phone && touched.phone ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white`}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
+              onKeyPress={(e) => {
+                // Prevent non-numeric characters
+                if (!/[0-9]/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+            />
+            {errors.phone && touched.phone && (
+              <p className="text-xs text-red-500 mt-1">{errors.phone}</p>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Left Column (continued) */}
-        <div className="mb-2">
-          <label htmlFor="city" className="text-xs font-medium text-gray-700 flex items-center">
-            <FaMapMarkerAlt className="mr-2" /> City
-          </label>
-          <input
-            type="text"
-            id="city"
-            name="city"
-            value={updatedDoctor.city}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`mt-1 block w-full p-2 text-xs border ${errors.city && touched.city ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
-          />
-          {errors.city && touched.city && (
-            <p className="text-xs text-red-500 mt-1">{errors.city}</p>
-          )}
-        </div>
+      {/* Professional Information Section */}
+      <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+        <h4 className="font-semibold text-purple-800 mb-2 flex items-center">
+          <FaHeart className="mr-2 text-purple-500" size={16} />
+          Professional Information
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="speciality" className="text-xs font-medium text-gray-600 flex items-center mb-1">
+              <FaHeart className="mr-2 text-purple-500" size={14} /> Speciality
+            </label>
+            <input
+              type="text"
+              id="speciality"
+              name="speciality"
+              value={updatedDoctor.speciality}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={`block w-full px-3 py-2 text-xs border ${errors.speciality && touched.speciality ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white`}
+            />
+            {errors.speciality && touched.speciality && (
+              <p className="text-xs text-red-500 mt-1">{errors.speciality}</p>
+            )}
+          </div>
 
-        <div className="mb-2">
-          <label htmlFor="state" className="text-xs font-medium text-gray-700 flex items-center">
-            <FaMapMarkerAlt className="mr-2" /> State
-          </label>
-          <input
-            type="text"
-            id="state"
-            name="state"
-            value={updatedDoctor.state}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`mt-1 block w-full p-2 text-xs border ${errors.state && touched.state ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
-          />
-          {errors.state && touched.state && (
-            <p className="text-xs text-red-500 mt-1">{errors.state}</p>
-          )}
-        </div>
+          <div>
+            <label htmlFor="qualification" className="text-xs font-medium text-gray-600 flex items-center mb-1">
+              <FaGraduationCap className="mr-2 text-purple-500" size={14} /> Qualification
+            </label>
+            <input
+              type="text"
+              id="qualification"
+              name="qualification"
+              value={updatedDoctor.qualification}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={`block w-full px-3 py-2 text-xs border ${errors.qualification && touched.qualification ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white`}
+            />
+            {errors.qualification && touched.qualification && (
+              <p className="text-xs text-red-500 mt-1">{errors.qualification}</p>
+            )}
+          </div>
 
-        {/* Right Column (continued) */}
-        <div className="mb-2">
-          <label htmlFor="country" className="text-xs font-medium text-gray-700 flex items-center">
-            <FaMapMarkerAlt className="mr-2" /> Country
-          </label>
-          <input
-            type="text"
-            id="country"
-            name="country"
-            value={updatedDoctor.country}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`mt-1 block w-full p-2 text-xs border ${errors.country && touched.country ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500`}
-          />
-          {errors.country && touched.country && (
-            <p className="text-xs text-red-500 mt-1">{errors.country}</p>
-          )}
+          <div>
+            <label htmlFor="hospitalAffiliation" className="text-xs font-medium text-gray-600 flex items-center mb-1">
+              <FaHospital className="mr-2 text-purple-500" size={14} /> Hospital Affiliation
+            </label>
+            <input
+              type="text"
+              id="hospitalAffiliation"
+              name="hospitalAffiliation"
+              value={updatedDoctor.hospitalAffiliation}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={`block w-full px-3 py-2 text-xs border ${errors.hospitalAffiliation && touched.hospitalAffiliation ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white`}
+            />
+            {errors.hospitalAffiliation && touched.hospitalAffiliation && (
+              <p className="text-xs text-red-500 mt-1">{errors.hospitalAffiliation}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="licenseNumber" className="text-xs font-medium text-gray-600 flex items-center mb-1">
+              <FaIdCard className="mr-2 text-purple-500" size={14} /> License Number
+            </label>
+            <input
+              type="text"
+              id="licenseNumber"
+              name="licenseNumber"
+              value={updatedDoctor.licenseNumber}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={`block w-full px-3 py-2 text-xs border ${errors.licenseNumber && touched.licenseNumber ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white`}
+            />
+            {errors.licenseNumber && touched.licenseNumber && (
+              <p className="text-xs text-red-500 mt-1">{errors.licenseNumber}</p>
+            )}
+          </div>
         </div>
       </div>
 
-      <button
-        type="submit"
-        className="px-4 py-2 bg-blue-500 text-white text-xs rounded-md hover:bg-blue-600 w-full"
-      >
-        Update Doctor
-      </button>
+      {/* Address Information Section */}
+      <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+        <h4 className="font-semibold text-green-800 mb-2 flex items-center">
+          <FaMapMarkerAlt className="mr-2 text-green-500" size={16} />
+          Address Information
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="address" className="text-xs font-medium text-gray-600 flex items-center mb-1">
+              <FaMapMarkerAlt className="mr-2 text-green-500" size={14} /> Address
+            </label>
+            <input
+              type="text"
+              id="address"
+              name="address"
+              value={updatedDoctor.address}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={`block w-full px-3 py-2 text-xs border ${errors.address && touched.address ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white`}
+            />
+            {errors.address && touched.address && (
+              <p className="text-xs text-red-500 mt-1">{errors.address}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="city" className="text-xs font-medium text-gray-600 flex items-center mb-1">
+              <FaMapMarkerAlt className="mr-2 text-green-500" size={14} /> City
+            </label>
+            <input
+              type="text"
+              id="city"
+              name="city"
+              value={updatedDoctor.city}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={`block w-full px-3 py-2 text-xs border ${errors.city && touched.city ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white`}
+            />
+            {errors.city && touched.city && (
+              <p className="text-xs text-red-500 mt-1">{errors.city}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="state" className="text-xs font-medium text-gray-600 flex items-center mb-1">
+              <FaMapMarkerAlt className="mr-2 text-green-500" size={14} /> State
+            </label>
+            <input
+              type="text"
+              id="state"
+              name="state"
+              value={updatedDoctor.state}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={`block w-full px-3 py-2 text-xs border ${errors.state && touched.state ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white`}
+            />
+            {errors.state && touched.state && (
+              <p className="text-xs text-red-500 mt-1">{errors.state}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="country" className="text-xs font-medium text-gray-600 flex items-center mb-1">
+              <FaMapMarkerAlt className="mr-2 text-green-500" size={14} /> Country
+            </label>
+            <input
+              type="text"
+              id="country"
+              name="country"
+              value={updatedDoctor.country}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={`block w-full px-3 py-2 text-xs border ${errors.country && touched.country ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white`}
+            />
+            {errors.country && touched.country && (
+              <p className="text-xs text-red-500 mt-1">{errors.country}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Submit Button */}
+      <div className="flex justify-end pt-4 border-t border-gray-200">
+        <button
+          type="submit"
+          className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
+          style={{
+            background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+          }}
+        >
+          Update Doctor
+        </button>
+      </div>
     </form>
   );
 };

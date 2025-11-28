@@ -9,7 +9,7 @@ interface PatientBasicInfoProps {
 const PatientBasicInfo = ({ patient }: PatientBasicInfoProps) => {
     // Format date to DD-MM-YYYY format
     const formatDate = (dateString: string | undefined) => {
-        if (!dateString) return '';
+        if (!dateString) return 'N/A';
         try {
             const date = new Date(dateString);
             const day = date.getDate().toString().padStart(2, '0');
@@ -21,49 +21,92 @@ const PatientBasicInfo = ({ patient }: PatientBasicInfoProps) => {
         }
     };
 
+    if (!patient) {
+        return (
+            <div className="bg-white p-3 rounded-lg border border-gray-200 mb-4">
+                <p className="text-gray-600 text-xs text-center py-3">No patient data available</p>
+            </div>
+        );
+    }
+
     return (
-        <div className="bg-white rounded-lg border border-gray-200 p-4 my-4 shadow-xs">
-            <div className="flex justify-between items-center mb-3">
-                <h3 className="text-sm font-medium text-blue-700 bg-blue-50 px-3 py-1 rounded-md inline-flex items-center">
-                    <FaUser className="mr-2 text-blue-500" />
-                    Patient Report Data
+        <div className="space-y-4 mb-4">
+            {/* Patient Information Section */}
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
+                    <FaUser className="mr-2 text-blue-500" size={16} />
+                    Patient Information
                     <span className="ml-2 text-xs font-normal text-blue-600 bg-white px-2 py-0.5 rounded-full">
                         {patient ? 1 : 0} record
                     </span>
-                </h3>
-            </div>
-
-            {patient ? (
-                <div className="space-y-2">
-                    <div className="p-3 rounded-lg border border-gray-100 bg-gray-50/50">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-                            <InfoItem icon={<FaUser className="text-blue-500" />} label="Name" value={patient.patientname} />
-                            <InfoItem icon={<FaVenusMars className="text-purple-500" />} label="Gender" value={patient.gender} />
-                            <InfoItem icon={<FaPhone className="text-green-500" />} label="Contact" value={patient.contactNumber} />
-                            <InfoItem icon={<FaEnvelope className="text-red-500" />} label="Email" value={patient.email} />
-                            <InfoItem icon={<FaCalendarAlt className="text-orange-500" />} label="DOB" value={formatDate(patient.dateOfBirth)} />
-                            <InfoItem icon={<FaCalendarAlt className="text-blue-400" />} label="Visit" value={formatDate(patient.visitDate)} />
-                            <InfoItem icon={<FaCalendarAlt className="text-gray-500" />} label="Status" value={patient.visitStatus} />
-                            <InfoItem icon={<FaVial className="text-yellow-500" />} label="Samples" value={patient.sampleNames?.join(", ") ?? ''} />
-                            <InfoItem icon={<FaFlask className="text-indigo-500" />} label="Tests" value={patient.testIds?.join(", ") ?? ''} />
-                        </div>
+                </h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <span className="font-medium text-gray-600">Name:</span>
+                        <span className="ml-2 text-gray-900">{patient.patientname || 'N/A'}</span>
+                    </div>
+                    <div>
+                        <span className="font-medium text-gray-600">Gender:</span>
+                        <span className="ml-2 text-gray-900 capitalize">{patient.gender || 'N/A'}</span>
+                    </div>
+                    <div>
+                        <span className="font-medium text-gray-600">Contact:</span>
+                        <span className="ml-2 text-gray-900">{patient.contactNumber || 'N/A'}</span>
+                    </div>
+                    <div>
+                        <span className="font-medium text-gray-600">Email:</span>
+                        <span className="ml-2 text-gray-900">{patient.email || 'N/A'}</span>
+                    </div>
+                    <div>
+                        <span className="font-medium text-gray-600">Date of Birth:</span>
+                        <span className="ml-2 text-gray-900">{formatDate(patient.dateOfBirth)}</span>
                     </div>
                 </div>
-            ) : (
-                <p className="text-gray-400 text-xs text-center py-3 bg-gray-50 rounded">No patient data available</p>
+            </div>
+
+            {/* Visit Information Section */}
+            <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                <h4 className="font-semibold text-purple-800 mb-2 flex items-center">
+                    <FaCalendarAlt className="mr-2 text-purple-500" size={16} />
+                    Visit Information
+                </h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <span className="font-medium text-gray-600">Visit Date:</span>
+                        <span className="ml-2 text-gray-900">{formatDate(patient.visitDate)}</span>
+                    </div>
+                    <div>
+                        <span className="font-medium text-gray-600">Status:</span>
+                        <span className="ml-2 text-gray-900 capitalize">{patient.visitStatus?.toLowerCase().replace('_', ' ') || 'N/A'}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Sample & Test Information Section */}
+            {(patient.sampleNames?.length > 0 || patient.testIds?.length > 0) && (
+                <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+                    <h4 className="font-semibold text-green-800 mb-2 flex items-center">
+                        <FaFlask className="mr-2 text-green-500" size={16} />
+                        Sample & Test Information
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                        {patient.sampleNames && patient.sampleNames.length > 0 && (
+                            <div className="col-span-2">
+                                <span className="font-medium text-gray-600">Samples:</span>
+                                <span className="ml-2 text-gray-900">{patient.sampleNames.join(", ") || 'N/A'}</span>
+                            </div>
+                        )}
+                        {patient.testIds && patient.testIds.length > 0 && (
+                            <div className="col-span-2">
+                                <span className="font-medium text-gray-600">Tests:</span>
+                                <span className="ml-2 text-gray-900">{patient.testIds.length} test(s)</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
         </div>
     )
 }
-
-const InfoItem = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) => (
-    <div className="flex items-start space-x-1.5 truncate">
-        <span className="mt-0.5">{icon}</span>
-        <div className="truncate">
-            <span className="font-medium text-gray-600">{label}: </span>
-            <span className="text-gray-700 truncate">{value}</span>
-        </div>
-    </div>
-);
 
 export default PatientBasicInfo;

@@ -1,7 +1,7 @@
 'use client'
 import { Dialog, DialogBackdrop, DialogTitle } from '@headlessui/react';
 import { motion } from "framer-motion";
-import { IoMdClose } from "react-icons/io";
+import { FaTimes, FaExclamationTriangle } from "react-icons/fa";
 
 interface ModalProps {
     isOpen: boolean;
@@ -17,12 +17,12 @@ const Modal = ({ isOpen, onClose, children, title, footer, modalClassName }: Mod
         <Dialog
             open={isOpen}
             onClose={onClose}
-            className="fixed inset-0 z-30 flex items-center justify-center "
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
             aria-labelledby="modal-title" 
             aria-describedby="modal-description"
         >
             {/* Backdrop */}
-            <DialogBackdrop className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+            <DialogBackdrop className="fixed inset-0 bg-black bg-opacity-50" />
 
             {/* Modal Content */}
             <motion.div
@@ -30,37 +30,53 @@ const Modal = ({ isOpen, onClose, children, title, footer, modalClassName }: Mod
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className={`relative z-10 w-full  p-6 bg-white rounded-lg shadow-xl ${modalClassName}`} // Merge default classes with passed classes
+                className={`relative z-10 bg-white rounded-xl shadow-2xl w-full overflow-hidden max-h-[90vh] overflow-y-auto ${modalClassName || 'max-w-2xl'}`}
             >
-                {/* Close Button */}
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 p-2 text-gray-500 text-2xl hover:text-gray-700 focus:outline-none"
-                    aria-label="Close modal"
-                >
-                    <IoMdClose size={24} />
-                </button>
-
-                {/* Modal Title */}
+                {/* Header with gradient background */}
                 {title && (
+                    <div 
+                        className="px-6 py-4 border-b border-gray-200 relative overflow-hidden"
+                        style={{
+                            background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)`
+                        }}
+                    >
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <div className="bg-white/20 p-2 rounded-lg mr-3">
+                                    <FaExclamationTriangle className="text-white text-lg" />
+                                </div>
                     <DialogTitle
                         id="modal-title"
-                        className="mb-4 text-lg font-semibold text-gray-900"
+                                    className="text-lg font-semibold text-white"
                     >
                         {title}
                     </DialogTitle>
+                            </div>
+                            <button
+                                onClick={onClose}
+                                className="text-white/80 hover:text-white transition-colors disabled:opacity-50 p-1 rounded-lg hover:bg-white/10 focus:outline-none"
+                                aria-label="Close modal"
+                            >
+                                <FaTimes className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
                 )}
 
                 {/* Modal Body */}
                 <div
                     id="modal-description"
-                    className=""
+                    className="p-6"
                 >
                     {children}
                 </div>
 
                 {/* Modal Footer */}
-                {footer && <div className="mt-4 border-t pt-4">{footer}</div>}
+                {footer && (
+                    <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                        {footer}
+                    </div>
+                )}
             </motion.div>
         </Dialog>
     );

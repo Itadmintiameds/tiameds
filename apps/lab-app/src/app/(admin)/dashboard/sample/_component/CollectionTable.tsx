@@ -11,6 +11,7 @@ import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, formatDisplayD
 import html2canvas from 'html2canvas';
 import { CalendarDays, Edit, PlusIcon, Download } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { FaTimes, FaVial } from 'react-icons/fa';
 import { createRoot } from 'react-dom/client';
 import Barcode from 'react-barcode';
 import { MdCancelPresentation } from 'react-icons/md';
@@ -63,7 +64,11 @@ interface TestResult {
 }
 
 
-const CollectionTable: React.FC = () => {
+interface CollectionTableProps {
+  closeModal?: () => void;
+}
+
+const CollectionTable: React.FC<CollectionTableProps> = ({ closeModal }) => {
   const { currentLab } = useLabs();
   const [patientList, setPatientList] = useState<Patient[]>([]);
   const [tests, setTests] = useState<TestList[]>([]);
@@ -653,86 +658,98 @@ const CollectionTable: React.FC = () => {
 
   if (isFetching) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
+      <div className="flex flex-col items-center justify-center p-6">
         <Loader type="progress" fullScreen={false} text="Loading collected samples..." />
-        <p className="mt-4 text-sm text-gray-500">Fetching collected samples, please wait...</p>
+        <p className="mt-4 text-sm text-gray-600">Fetching collected samples, please wait...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-100">
+    <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-gray-800">Collected Samples</h2>
-          <p className="text-xs text-gray-500">Manage collected patient samples</p>
+        <div className="flex-1">
+          <h2 className="text-xl font-semibold text-gray-900">Collected Samples</h2>
+          <p className="text-xs text-gray-600">Manage collected patient samples</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex flex-col w-40">
-            <label className="text-xs font-semibold mb-1 text-gray-600">Date Range:</label>
-            <select
-              value={dateFilter}
-              onChange={(e) => handleDateFilterChange(e.target.value as DateFilterOption)}
-              className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-            >
-              {DATE_FILTER_OPTIONS.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col w-40">
+              <label className="text-xs font-semibold mb-1 text-gray-600">Date Range:</label>
+              <select
+                value={dateFilter}
+                onChange={(e) => handleDateFilterChange(e.target.value as DateFilterOption)}
+                className="border border-blue-300 px-3 py-1.5 rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+              >
+                {DATE_FILTER_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {dateFilter === 'custom' && (
+              <>
+                <div className="flex flex-col w-40">
+                  <label className="text-xs font-semibold mb-1 text-gray-600">Start Date:</label>
+                  <input
+                    type="date"
+                    value={customStartDate ? customStartDate.toISOString().split('T')[0] : ''}
+                    onChange={(e) => setCustomStartDate(e.target.value ? new Date(e.target.value) : null)}
+                    className="border border-blue-300 px-3 py-1.5 rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  />
+                </div>
+
+                <div className="flex flex-col w-40">
+                  <label className="text-xs font-semibold mb-1 text-gray-600">End Date:</label>
+                  <input
+                    type="date"
+                    value={customEndDate ? customEndDate.toISOString().split('T')[0] : ''}
+                    onChange={(e) => setCustomEndDate(e.target.value ? new Date(e.target.value) : null)}
+                    className="border border-blue-300 px-3 py-1.5 rounded-lg text-sm w-full focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  />
+                </div>
+              </>
+            )}
           </div>
-
-          {dateFilter === 'custom' && (
-            <>
-              <div className="flex flex-col w-40">
-                <label className="text-xs font-semibold mb-1 text-gray-600">Start Date:</label>
-                <input
-                  type="date"
-                  value={customStartDate ? customStartDate.toISOString().split('T')[0] : ''}
-                  onChange={(e) => setCustomStartDate(e.target.value ? new Date(e.target.value) : null)}
-                  className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                />
-              </div>
-
-              <div className="flex flex-col w-40">
-                <label className="text-xs font-semibold mb-1 text-gray-600">End Date:</label>
-                <input
-                  type="date"
-                  value={customEndDate ? customEndDate.toISOString().split('T')[0] : ''}
-                  onChange={(e) => setCustomEndDate(e.target.value ? new Date(e.target.value) : null)}
-                  className="border border-gray-300 px-3 py-1.5 rounded-md text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                />
-              </div>
-            </>
+          {closeModal && (
+            <button
+              onClick={closeModal}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Close"
+            >
+              <FaTimes className="h-5 w-5" />
+            </button>
           )}
         </div>
       </div>
       
 
-      <div className="mb-3 flex justify-between items-center">
-        <div className="bg-blue-50 px-2 py-0.5 rounded-full">
-          <p className="text-xs font-medium text-blue-700">
-            Showing <span className="font-bold">{patientList.length}</span> collected sample{patientList.length !== 1 ? 's' : ''}
+      <div className="mb-3">
+        <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+          <h4 className="font-semibold text-green-800 mb-1 flex items-center">
+            <FaVial className="mr-2 text-green-600" /> Statistics
+          </h4>
+          <p className="text-xs font-medium text-gray-600">
+            Showing <span className="font-bold text-gray-900">{patientList.length}</span> collected sample{patientList.length !== 1 ? 's' : ''}
           </p>
         </div>
-        
-
       </div>
 
       {patientList.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded-lg">
+        <div className="text-center py-8 bg-gray-50 rounded-xl shadow-lg border border-gray-200">
           <div className="mx-auto w-16 h-16 mb-3 text-gray-300">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h3 className="text-md font-medium text-gray-700">No collected samples</h3>
-          <p className="text-gray-500 text-xs mt-1">No samples found for the selected date range</p>
+          <h3 className="text-md font-semibold text-gray-800">No collected samples</h3>
+          <p className="text-gray-600 text-xs mt-1">No samples found for the selected date range</p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <div className="overflow-x-auto rounded-xl border border-gray-200">
             <TableComponent
               data={paginatedPatients}
               columns={columns}

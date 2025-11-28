@@ -532,66 +532,72 @@ const DoctorList = () => {
 
     if (isLoading && doctors.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center h-64">
-            <Loader type="progress" fullScreen={false} text="Loading doctors..." />
-            <p className="mt-4 text-sm text-gray-500">Please wait while we fetch the doctor data.</p>
-          </div>
+            <div className="flex flex-col items-center justify-center p-6">
+                <Loader type="progress" fullScreen={false} text="Loading doctors..." />
+                <p className="mt-4 text-sm text-gray-600">Please wait while we fetch the doctor data.</p>
+            </div>
         );
     }
 
     return (
-        <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-lg p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-                    <h1 className="text-2xl font-semibold text-gray-800">Doctor Management</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900">Doctor Management</h1>
                     <div className="flex-1" />
-                    <Button
-                        text=''
+                    <button
                         onClick={() => setDoctorToAdd({} as Doctor)}
-                        className="ml-auto flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        className="ml-auto flex items-center px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
+                        style={{
+                            background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+                        }}
                     >
                         <PlusIcon className="h-4 w-4 mr-2" />
                         Add New Doctor
-                    </Button>
+                    </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <SearchIcon className="h-5 w-5 text-gray-400" />
+                {/* Filters Section */}
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-6">
+                    <h4 className="font-semibold text-blue-800 mb-2 text-sm">Search & Filters</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <SearchIcon className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Search doctors..."
+                                value={searchQuery}
+                                onChange={handleSearchChange}
+                                className="pl-10 w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                            />
                         </div>
-                        <input
-                            type="text"
-                            placeholder="Search doctors..."
-                            value={searchQuery}
-                            onChange={handleSearchChange}
-                            className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                        />
+                        <select
+                            value={specialityFilter}
+                            onChange={(e) => setSpecialityFilter(e.target.value)}
+                            className="rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                        >
+                            <option value="">All Specialities</option>
+                            {DOCTOR_SPECIALITIES.map(speciality => (
+                                <option key={speciality} value={speciality}>
+                                    {speciality}
+                                </option>
+                            ))}
+                        </select>
+                        <select
+                            value={qualificationFilter}
+                            onChange={(e) => setQualificationFilter(e.target.value)}
+                            className="rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                        >
+                            <option value="">All Qualifications</option>
+                            {DOCTOR_QUALIFICATIONS.map(qualification => (
+                                <option key={qualification} value={qualification}>
+                                    {qualification}
+                                </option>
+                            ))}
+                        </select>
                     </div>
-                    <select
-                        value={specialityFilter}
-                        onChange={(e) => setSpecialityFilter(e.target.value)}
-                        className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                    >
-                        <option value="">All Specialities</option>
-                        {DOCTOR_SPECIALITIES.map(speciality => (
-                            <option key={speciality} value={speciality}>
-                                {speciality}
-                            </option>
-                        ))}
-                    </select>
-                    <select
-                        value={qualificationFilter}
-                        onChange={(e) => setQualificationFilter(e.target.value)}
-                        className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                    >
-                        <option value="">All Qualifications</option>
-                        {DOCTOR_QUALIFICATIONS.map(qualification => (
-                            <option key={qualification} value={qualification}>
-                                {qualification}
-                            </option>
-                        ))}
-                    </select>
                 </div>
 
                 <div className="overflow-hidden border border-gray-200 rounded-lg">
@@ -622,7 +628,7 @@ const DoctorList = () => {
                     isOpen={!!selectedDoctor}
                     onClose={() => setSelectedDoctor(null)}
                     title="Doctor Profile"
-                    modalClassName="bg-white max-w-2xl rounded-lg shadow-xl"
+                    modalClassName="max-w-2xl"
                 >
                     <DocterProfile selectedDoctor={selectedDoctor} />
                 </Modal>
@@ -637,7 +643,7 @@ const DoctorList = () => {
                         setDoctorToEdit(null);
                     }}
                     title="Update Doctor Details"
-                    modalClassName="bg-gradient-to-r from-white via-gray-100 to-gray-200 max-w-2xl rounded-lg shadow-xl"
+                    modalClassName="max-w-2xl"
                 >
                     <UpdateDoctor
                         editDoctor={doctorToEdit}
@@ -652,7 +658,7 @@ const DoctorList = () => {
                     isOpen={!!doctorToAdd}
                     onClose={() => setDoctorToAdd(null)}
                     title="Register New Doctor"
-                    modalClassName="bg-gradient-to-r from-white via-gray-100 to-gray-200 max-w-2xl"
+                    modalClassName="max-w-2xl"
                 >
                     <AddDoctor handleAddDoctor={handleAddNewDoctor} />
                 </Modal>

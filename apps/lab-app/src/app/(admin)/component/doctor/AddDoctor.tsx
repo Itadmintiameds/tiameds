@@ -247,65 +247,141 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
     };
 
     return (
-        <form onSubmit={handleSubmit} noValidate className="space-y-4 bg-gradient-to-r from-white via-gray-100 to-gray-200 p-4 ">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                    { label: 'Name', name: 'name', icon: FaUser, type: 'text', placeholder: 'Enter Doctor Name', required: true },
-                    { label: 'Email', name: 'email', icon: FaEnvelope, type: 'email', placeholder: 'Enter Doctor Email', required: true },
-                    { label: 'Speciality', name: 'speciality', icon: FaStethoscope, type: 'text', placeholder: 'Enter Doctor Speciality', required: false },
-                    { label: 'Qualification', name: 'qualification', icon: FaUniversity, type: 'text', placeholder: 'Enter Doctor Qualification', required: false },
-                    { label: 'Hospital Affiliation', name: 'hospitalAffiliation', icon: FaHospital, type: 'text', placeholder: 'Enter Hospital Affiliation', required: true },
-                    { label: 'License Number', name: 'licenseNumber', icon: FaIdCard, type: 'text', placeholder: 'Enter License Number', required: true },
-                    { label: 'Phone', name: 'phone', icon: FaPhoneAlt, type: 'tel', placeholder: 'Enter Doctor Phone Number', required: true },
-                    { label: 'Address', name: 'address', icon: FaMapMarkerAlt, type: 'text', placeholder: 'Enter Doctor Address', required: true },
-                    { label: 'City', name: 'city', icon: FaMapMarkerAlt, type: 'text', placeholder: 'Enter Doctor City', required: true },
-                    { label: 'State', name: 'state', icon: FaMapMarkerAlt, type: 'text', placeholder: 'Enter Doctor State', required: true },
-                    { label: 'Country', name: 'country', icon: FaMapMarkerAlt, type: 'text', placeholder: 'Enter Doctor Country', required: true },
-                ].map(({ label, name, icon: Icon, type, placeholder, required }) => (
-                    <div key={name} className="mb-2">
-                        <label htmlFor={name} className="text-xs font-medium text-gray-700 flex items-center">
-                            <Icon className="mr-2 text-gray-500" /> {label}
-                        </label>
-                        <input
-                            type={type}
-                            id={name}
-                            name={name}
-                            placeholder={placeholder}
-                            value={doctor[name as keyof Doctor]?.toString() || ''}
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            required={required} // Dynamically apply required attribute
-                            className={`mt-1 block w-full p-2 text-xs border ${errors[name] && touched[name] ? 'border-red-500' : 'border-gray-300'
-                                } rounded-md focus:outline-none focus:ring-1 focus:ring-primary`}
-                            {...(name === 'phone' && {
-                                inputMode: 'numeric',
-                                pattern: '[0-9]*',
-                                maxLength: 10,
-                                onKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => {
-                                    // Prevent non-numeric characters
-                                    if (!/[0-9]/.test(e.key)) {
-                                        e.preventDefault();
+        <form onSubmit={handleSubmit} noValidate className="space-y-4 text-sm">
+            {/* Personal Information Section */}
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
+                    <FaUser className="mr-2 text-blue-500" size={16} />
+                    Personal Information
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                        { label: 'Name', name: 'name', icon: FaUser, type: 'text', placeholder: 'Enter Doctor Name', required: true },
+                        { label: 'Email', name: 'email', icon: FaEnvelope, type: 'email', placeholder: 'Enter Doctor Email', required: true },
+                        { label: 'Phone', name: 'phone', icon: FaPhoneAlt, type: 'tel', placeholder: 'Enter Doctor Phone Number', required: true },
+                    ].map(({ label, name, icon: Icon, type, placeholder, required }) => (
+                        <div key={name}>
+                            <label htmlFor={name} className="text-xs font-medium text-gray-600 flex items-center mb-1">
+                                <Icon className="mr-2 text-blue-500" size={14} /> {label}
+                            </label>
+                            <input
+                                type={type}
+                                id={name}
+                                name={name}
+                                placeholder={placeholder}
+                                value={doctor[name as keyof Doctor]?.toString() || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                required={required}
+                                className={`block w-full px-3 py-2 text-xs border ${errors[name] && touched[name] ? 'border-red-500' : 'border-gray-300'
+                                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white`}
+                                {...(name === 'phone' && {
+                                    inputMode: 'numeric',
+                                    pattern: '[0-9]*',
+                                    maxLength: 10,
+                                    onKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => {
+                                        // Prevent non-numeric characters
+                                        if (!/[0-9]/.test(e.key)) {
+                                            e.preventDefault();
+                                        }
                                     }
-                                }
-                            })}
-                        />
-                        {errors[name] && touched[name] && (
-                            <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
-                        )}
-                    </div>
-                ))}
+                                })}
+                            />
+                            {errors[name] && touched[name] && (
+                                <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Professional Information Section */}
+            <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                <h4 className="font-semibold text-purple-800 mb-2 flex items-center">
+                    <FaStethoscope className="mr-2 text-purple-500" size={16} />
+                    Professional Information
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                        { label: 'Speciality', name: 'speciality', icon: FaStethoscope, type: 'text', placeholder: 'Enter Doctor Speciality', required: false },
+                        { label: 'Qualification', name: 'qualification', icon: FaUniversity, type: 'text', placeholder: 'Enter Doctor Qualification', required: false },
+                        { label: 'Hospital Affiliation', name: 'hospitalAffiliation', icon: FaHospital, type: 'text', placeholder: 'Enter Hospital Affiliation', required: true },
+                        { label: 'License Number', name: 'licenseNumber', icon: FaIdCard, type: 'text', placeholder: 'Enter License Number', required: true },
+                    ].map(({ label, name, icon: Icon, type, placeholder, required }) => (
+                        <div key={name}>
+                            <label htmlFor={name} className="text-xs font-medium text-gray-600 flex items-center mb-1">
+                                <Icon className="mr-2 text-purple-500" size={14} /> {label}
+                            </label>
+                            <input
+                                type={type}
+                                id={name}
+                                name={name}
+                                placeholder={placeholder}
+                                value={doctor[name as keyof Doctor]?.toString() || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                required={required}
+                                className={`block w-full px-3 py-2 text-xs border ${errors[name] && touched[name] ? 'border-red-500' : 'border-gray-300'
+                                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white`}
+                            />
+                            {errors[name] && touched[name] && (
+                                <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Address Information Section */}
+            <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+                <h4 className="font-semibold text-green-800 mb-2 flex items-center">
+                    <FaMapMarkerAlt className="mr-2 text-green-500" size={16} />
+                    Address Information
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                        { label: 'Address', name: 'address', icon: FaMapMarkerAlt, type: 'text', placeholder: 'Enter Doctor Address', required: true },
+                        { label: 'City', name: 'city', icon: FaMapMarkerAlt, type: 'text', placeholder: 'Enter Doctor City', required: true },
+                        { label: 'State', name: 'state', icon: FaMapMarkerAlt, type: 'text', placeholder: 'Enter Doctor State', required: true },
+                        { label: 'Country', name: 'country', icon: FaMapMarkerAlt, type: 'text', placeholder: 'Enter Doctor Country', required: true },
+                    ].map(({ label, name, icon: Icon, type, placeholder, required }) => (
+                        <div key={name}>
+                            <label htmlFor={name} className="text-xs font-medium text-gray-600 flex items-center mb-1">
+                                <Icon className="mr-2 text-green-500" size={14} /> {label}
+                            </label>
+                            <input
+                                type={type}
+                                id={name}
+                                name={name}
+                                placeholder={placeholder}
+                                value={doctor[name as keyof Doctor]?.toString() || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                required={required}
+                                className={`block w-full px-3 py-2 text-xs border ${errors[name] && touched[name] ? 'border-red-500' : 'border-gray-300'
+                                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white`}
+                            />
+                            {errors[name] && touched[name] && (
+                                <p className="text-xs text-red-500 mt-1">{errors[name]}</p>
+                            )}
+                        </div>
+                    ))}
+                </div>
             </div>
 
             {/* Submit Button */}
-            <Button
-                text='Add Doctor'
-                onClick={() => { }}
-                type="submit"
-                className="w-full px-4 py-2 text-xs bg-primary text-textzinc rounded-md hover:bg-primarylight focus:outline-none flex items-center justify-center space-x-2"
-            >
-                <Plus size={20} />
-
-            </Button>
+            <div className="flex justify-end pt-4 border-t border-gray-200">
+                <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center"
+                    style={{
+                        background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+                    }}
+                >
+                    <Plus size={18} className="mr-2" />
+                    Add Doctor
+                </button>
+            </div>
         </form>
     );
 };

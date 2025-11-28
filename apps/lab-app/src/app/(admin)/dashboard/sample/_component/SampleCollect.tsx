@@ -80,38 +80,26 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-40">
-                <Loader />
-                <span className="ml-3 text-sm text-gray-600">Loading sample types...</span>
+            <div className="flex flex-col items-center justify-center p-6">
+                <Loader type="progress" fullScreen={false} text="Loading sample types..." />
+                <p className="mt-4 text-sm text-gray-600">Fetching available samples...</p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-4">
-            {/* Header */}
-            <div className="bg-blue-600 px-4 py-3 flex justify-between items-center rounded-t-lg">
-                <div className="flex items-center">
-                    <TbTestPipe2Filled className="text-xl text-white mr-2" />
-                    <h2 className="text-lg font-semibold text-white">Sample Collection</h2>
-                </div>
-                {onClose && (
-                    <button 
-                        onClick={handleCancel}
-                        className="text-white hover:text-blue-200 transition-colors"
-                    >
-                        <FaTimes className="text-lg" />
-                    </button>
-                )}
-            </div>
-
+        <div className="space-y-4 text-sm">
             {/* Add Sample Section */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center gap-3">
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
+                    <TbTestPipe2Filled className="mr-2 text-blue-500" size={16} />
+                    Add Sample
+                </h4>
+                <div className="flex items-center gap-2">
                     <select
                         value={selectedSample}
                         onChange={(e) => setSelectedSample(e.target.value)}
-                        className="flex-1 border border-blue-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                     >
                         <option value="">Select sample type</option>
                         {allSamples.map((sample) => (
@@ -123,37 +111,45 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
                     <button
                         onClick={handleAddSample}
                         disabled={!selectedSample}
-                        className="flex items-center gap-2 bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                        style={{
+                            background: !selectedSample 
+                                ? '#9CA3AF' 
+                                : `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+                        }}
                     >
-                        <FaPlusCircle className="w-4 h-4" />
+                        <FaPlusCircle className="w-4 h-4 mr-2" />
                         Add
                     </button>
                 </div>
             </div>
 
             {/* Collected Samples List */}
-            <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                    <h4 className="text-sm font-medium text-gray-700">Collected Samples</h4>
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+            <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+                <div className="flex justify-between items-center mb-2">
+                    <h4 className="font-semibold text-green-800 flex items-center">
+                        <TbTestPipe2Filled className="mr-2 text-green-500" size={16} />
+                        Collected Samples
+                    </h4>
+                    <span className="text-xs font-medium text-green-600 bg-white px-2 py-1 rounded-full border border-green-200">
                         {samples.length} collected
                     </span>
                 </div>
                 {samples.length === 0 ? (
-                    <div className="text-center py-4 text-gray-500 bg-gray-50 rounded-lg">
-                        No samples added yet. Click &ldquo;Add Sample&rdquo; to get started.
+                    <div className="text-center py-4 text-gray-600 bg-white rounded-lg border border-gray-200">
+                        <p className="text-xs">No samples added yet. Select a sample type and click &ldquo;Add&rdquo; to get started.</p>
                     </div>
                 ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
                         {samples.map((sample, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                                <div className="flex items-center">
-                                    <TbTestPipe2Filled className="text-blue-500 mr-3 text-sm" />
-                                    <span className="text-sm font-medium text-gray-800">{sample}</span>
+                            <div key={index} className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center flex-1 min-w-0">
+                                    <TbTestPipe2Filled className="text-green-500 mr-2 text-sm flex-shrink-0" />
+                                    <span className="text-xs font-medium text-gray-900 truncate">{sample}</span>
                                 </div>
                                 <button
                                     onClick={() => handleDeleteSample(index)}
-                                    className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50 transition-colors"
+                                    className="text-red-600 hover:text-red-800 p-1 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0 ml-2"
                                     title="Delete sample"
                                 >
                                     <FaTrashAlt className="w-4 h-4" />
@@ -165,25 +161,30 @@ const SampleCollect: React.FC<SampleCollectProps> = ({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
                 {samples.length > 0 && (
                     <button
                         onClick={handleClearAll}
-                        className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 border border-gray-200"
                     >
                         Clear All
                     </button>
                 )}
                 <button
                     onClick={handleCancel}
-                    className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200"
                 >
                     Cancel
                 </button>
                 <button
                     onClick={handleVititSample}
                     disabled={samples.length === 0}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                    style={{
+                        background: samples.length === 0 
+                            ? '#9CA3AF' 
+                            : `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+                    }}
                 >
                     Submit Samples
                 </button>

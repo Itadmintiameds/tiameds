@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaLock, FaEye, FaEyeSlash, FaTimes, FaKey } from 'react-icons/fa';
 import Button from '@/app/(admin)/component/common/Button';
 import Loader from '@/app/(admin)/component/common/Loader';
 import { useLabs } from "@/context/LabContext";
@@ -128,97 +128,117 @@ const UpdateUserPassword = ({ member, setShowUpdatePassword }: UpdateUserPasswor
     };
 
     return (
-        <div className="max-w-md mx-auto p-4">
-            <div className="text-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 mb-2">Update Password</h2>
-                <p className="text-sm text-gray-600">
-                    Update the password for <span className="font-medium text-gray-800">{member.firstName} {member.lastName}</span>.
-                </p>
+        <div className="max-w-full mx-auto ">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex-1">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-2">Update Password</h2>
+                    <p className="text-sm text-gray-600">
+                        Update the password for <span className="font-medium text-gray-800">{member.firstName} {member.lastName}</span>.
+                    </p>
+                </div>
+                <button
+                    onClick={() => setShowUpdatePassword(false)}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors ml-4"
+                    title="Close"
+                >
+                    <FaTimes className="h-5 w-5" />
+                </button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-                {/* New Password */}
-                <div>
-                    <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                        New Password
-                    </label>
-                    <div className="relative">
-                        <input
-                            id="newPassword"
-                            name="newPassword"
-                            type={showPassword.new ? "text" : "password"}
-                            value={formData.newPassword}
-                            onChange={handleChangePassword}
-                            className={`w-full p-2.5 border ${errors.newPassword ? 'border-red-500' : 'border-gray-300'} rounded-md pr-10 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
-                            placeholder="Enter new password (min 8 characters)"
-                        />
-                        <button
-                            type="button"
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-                            onClick={() => togglePasswordVisibility('new')}
-                            aria-label={showPassword.new ? "Hide password" : "Show password"}
-                        >
-                            {showPassword.new ? <FaEyeSlash className="h-4 w-4" /> : <FaEye className="h-4 w-4" />}
-                        </button>
+                {/* Password Information Section */}
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 space-y-3">
+                    <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
+                        <FaKey className="mr-2 text-blue-600" /> Password Information
+                    </h4>
+                    
+                    {/* New Password */}
+                    <div>
+                        <label htmlFor="newPassword" className="block text-sm font-medium text-gray-600 mb-1">
+                            New Password
+                        </label>
+                        <div className="relative">
+                            <input
+                                id="newPassword"
+                                name="newPassword"
+                                type={showPassword.new ? "text" : "password"}
+                                value={formData.newPassword}
+                                onChange={handleChangePassword}
+                                className={`w-full p-2.5 border ${errors.newPassword ? 'border-red-500' : 'border-blue-300'} rounded-lg pr-10 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-sm`}
+                                placeholder="Enter new password (min 8 characters)"
+                            />
+                            <button
+                                type="button"
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                                onClick={() => togglePasswordVisibility('new')}
+                                aria-label={showPassword.new ? "Hide password" : "Show password"}
+                            >
+                                {showPassword.new ? <FaEyeSlash className="h-4 w-4" /> : <FaEye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                        {errors.newPassword && (
+                            <p className="mt-1 text-xs text-red-600">{errors.newPassword}</p>
+                        )}
                     </div>
-                    {errors.newPassword && (
-                        <p className="mt-1 text-xs text-red-600">{errors.newPassword}</p>
-                    )}
+
+                    {/* Confirm Password */}
+                    <div>
+                        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-600 mb-1">
+                            Confirm New Password
+                        </label>
+                        <div className="relative">
+                            <input
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                type={showPassword.confirm ? "text" : "password"}
+                                value={formData.confirmPassword}
+                                onChange={handleChangePassword}
+                                className={`w-full p-2.5 border ${errors.confirmPassword ? 'border-red-500' : 'border-blue-300'} rounded-lg pr-10 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-sm`}
+                                placeholder="Confirm new password"
+                            />
+                            <button
+                                type="button"
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                                onClick={() => togglePasswordVisibility('confirm')}
+                                aria-label={showPassword.confirm ? "Hide password" : "Show password"}
+                            >
+                                {showPassword.confirm ? <FaEyeSlash className="h-4 w-4" /> : <FaEye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                        {errors.confirmPassword && (
+                            <p className="mt-1 text-xs text-red-600">{errors.confirmPassword}</p>
+                        )}
+                    </div>
                 </div>
 
-                {/* Confirm Password */}
-                <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                        Confirm New Password
-                    </label>
-                    <div className="relative">
-                        <input
-                            id="confirmPassword"
-                            name="confirmPassword"
-                            type={showPassword.confirm ? "text" : "password"}
-                            value={formData.confirmPassword}
-                            onChange={handleChangePassword}
-                            className={`w-full p-2.5 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'} rounded-md pr-10 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
-                            placeholder="Confirm new password"
-                        />
-                        <button
-                            type="button"
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-                            onClick={() => togglePasswordVisibility('confirm')}
-                            aria-label={showPassword.confirm ? "Hide password" : "Show password"}
-                        >
-                            {showPassword.confirm ? <FaEyeSlash className="h-4 w-4" /> : <FaEye className="h-4 w-4" />}
-                        </button>
-                    </div>
-                    {errors.confirmPassword && (
-                        <p className="mt-1 text-xs text-red-600">{errors.confirmPassword}</p>
-                    )}
-                </div>
-
+                {/* Action Buttons */}
                 <div className="pt-3 flex gap-3">
-                    <Button
-                        text="Cancel"
+                    <button
                         onClick={() => setShowUpdatePassword(false)}
                         type="button"
-                        className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md text-sm transition-colors"
                         disabled={loading}
-                    />
-                    <Button
-                        text=""
+                        className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <FaTimes className="h-4 w-4 inline mr-2" />
+                        Cancel
+                    </button>
+                    <button
                         type="submit"
-                        onClick={()=>{}}
-                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center text-sm transition-colors"
                         disabled={loading}
+                        className="flex-1 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                            background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+                        }}
                     >
                         {loading ? (
                             <Loader />
                         ) : (
                             <>
-                                <FaLock className="mr-2 h-4 w-4" />
+                                <FaLock className="h-4 w-4" />
                                 Update Password
                             </>
                         )}
-                    </Button>
+                    </button>
                 </div>
             </form>
         </div>

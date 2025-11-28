@@ -28,14 +28,17 @@ const Page = () => {
   };
 
   return (
-    <div>
+    <div className="p-6">
       <Tabs
         tabs={tabs}
         selectedTab={selectedTab}
         onTabChange={handleTabChange} // Pass tab change handler
       >
         {loading ? (
-          <Loader />
+          <div className="flex flex-col items-center justify-center p-6">
+            <Loader type="progress" fullScreen={false} text="Loading..." />
+            <p className="mt-4 text-sm text-gray-600">Please wait while we load the data...</p>
+          </div>
         ) : (
           <>
             {selectedTab === 'doctor' && <DoctorList />}

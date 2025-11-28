@@ -80,7 +80,7 @@ const TableComponent = <T,>({
   className = ""
 }: TableProps<T>) => {
   return (
-    <div className={`rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm ${className}`}>
+    <div className={`rounded-xl border border-gray-200 bg-white overflow-hidden shadow-lg ${className}`}>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -89,7 +89,7 @@ const TableComponent = <T,>({
                 <th 
                   key={index} 
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
                 >
                   {col.header}
                 </th>
@@ -97,7 +97,7 @@ const TableComponent = <T,>({
               {actions && (
                 <th 
                   scope="col"
-                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider"
                 >
                   Actions
                 </th>
@@ -109,12 +109,12 @@ const TableComponent = <T,>({
               data?.map((item, rowIndex) => (
                 <tr 
                   key={rowIndex} 
-                  className={`transition-colors duration-150 ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100`}
+                  className={`transition-all duration-200 ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50`}
                 >
                   {columns.map((col, colIndex) => (
                     <td 
                       key={colIndex} 
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-800"
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
                     >
                       <div className="flex items-center">
                         {typeof col.accessor === 'function' 
@@ -128,7 +128,7 @@ const TableComponent = <T,>({
                     </td>
                   ))}
                   {actions && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       <div className="flex justify-center space-x-2">
                         {actions(item)}
                       </div>
@@ -140,7 +140,7 @@ const TableComponent = <T,>({
               <tr>
                 <td 
                   colSpan={columns.length + (actions ? 1 : 0)} 
-                  className="px-6 py-8 text-center text-sm text-gray-500"
+                  className="px-6 py-8 text-center"
                 >
                   <div className="flex flex-col items-center justify-center">
                     <svg 
@@ -157,7 +157,7 @@ const TableComponent = <T,>({
                         d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
                       />
                     </svg>
-                    <span className="text-gray-600 font-medium">{noDataMessage}</span>
+                    <span className="text-sm text-gray-600 font-medium">{noDataMessage}</span>
                   </div>
                 </td>
               </tr>

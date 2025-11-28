@@ -7,7 +7,7 @@ import { TestList } from '@/types/test/testlist';
 import { Plus } from 'lucide-react';
 import Papa from 'papaparse';
 import { useEffect, useMemo, useState } from 'react';
-import { FaDownload, FaFileExcel, FaFilter, FaSearch, FaTimes, FaTrash } from 'react-icons/fa';
+import { FaDownload, FaFileExcel, FaFilter, FaSearch, FaTimes, FaTrash, FaVial } from 'react-icons/fa';
 import { MdModeEditOutline } from "react-icons/md";
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
@@ -23,7 +23,7 @@ import TestEditComponent from './TestEditComponent';
 
 const ITEMS_PER_PAGE = 10;
 
-export const TestLists = () => {
+const TestLists = () => {
   const [tests, setTests] = useState<TestList[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -211,15 +211,15 @@ export const TestLists = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 bg-gray-50 rounded-lg">
-        <Loader type="progress" text="Loading tests..." />
-        <p className="mt-3 text-sm text-gray-600">Please wait while we fetch the test data.</p>
+      <div className="flex flex-col items-center justify-center p-6">
+        <Loader type="progress" fullScreen={false} text="Loading tests..." />
+        <p className="mt-4 text-sm text-gray-600">Please wait while we fetch the test data.</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full bg-gray-50 p-4 rounded-lg">
+    <div className="w-full bg-gray-50 p-6 rounded-xl shadow-lg">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
         <div className="space-y-1">
@@ -228,53 +228,61 @@ export const TestLists = () => {
         </div>
         
         <div className="flex gap-2">
-          <Button
-            text=""
+          <button
             onClick={() => setModalOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md flex items-center gap-2 transition-colors text-sm font-medium"
+            className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center gap-2"
+            style={{
+              background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+            }}
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Add Test</span>
-          </Button>
-          <Button
-            text=""
+          </button>
+          <button
             onClick={handleDownloadExcel}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-md flex items-center gap-2 transition-colors text-sm font-medium"
+            className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all duration-200 flex items-center gap-2"
           >
             <FaFileExcel className="h-4 w-4" />
             <span className="hidden sm:inline">Excel</span>
-          </Button>
-          <Button
-            text=""
+          </button>
+          <button
             onClick={handleDownloadCsv}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md flex items-center gap-2 transition-colors text-sm font-medium"
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all duration-200 flex items-center gap-2"
           >
             <FaDownload className="h-4 w-4" />
             <span className="hidden sm:inline">CSV</span>
-          </Button>
+          </button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Total Tests</h3>
-          <p className="text-xl font-bold text-gray-900">{tests.length}</p>
-        </div>
-        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Categories</h3>
-          <p className="text-xl font-bold text-gray-900">{categories.length}</p>
-        </div>
-        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Showing</h3>
-          <p className="text-xl font-bold text-gray-900">
-            {filteredTests.length} {searchTerm ? "results" : "tests"}
-          </p>
+      <div className="bg-green-50 p-3 rounded-lg border border-green-100 mb-4">
+        <h4 className="font-semibold text-green-800 mb-2 flex items-center">
+          <FaVial className="mr-2 text-green-600" /> Test Statistics
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-white p-3 rounded-lg border border-green-200">
+            <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Total Tests</h3>
+            <p className="text-xl font-bold text-gray-900">{tests.length}</p>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-green-200">
+            <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Categories</h3>
+            <p className="text-xl font-bold text-gray-900">{categories.length}</p>
+          </div>
+          <div className="bg-white p-3 rounded-lg border border-green-200">
+            <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Showing</h3>
+            <p className="text-xl font-bold text-gray-900">
+              {filteredTests.length} {searchTerm ? "results" : "tests"}
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Filters Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 mb-4">
+      <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-4 space-y-3">
+        <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
+          <FaSearch className="mr-2 text-blue-600" /> Filter Tests
+        </h4>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {/* Search with filter */}
           <div className="relative col-span-1 md:col-span-2">
@@ -283,7 +291,7 @@ export const TestLists = () => {
             </div>
             <div className="absolute inset-y-0 right-0 flex items-center">
               <button 
-                className="h-full px-3 flex items-center text-gray-500 hover:text-indigo-600 transition-colors"
+                className="h-full px-3 flex items-center text-gray-500 hover:text-blue-600 transition-colors"
                 onClick={() => setActiveFilter(prev => 
                   prev === 'all' ? 'name' : prev === 'name' ? 'category' : 'all'
                 )}
@@ -295,7 +303,7 @@ export const TestLists = () => {
             <input
               type="text"
               placeholder={`Search by ${activeFilter === 'all' ? 'name or category' : activeFilter}...`}
-              className="pl-10 pr-20 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+              className="pl-10 pr-20 py-2 w-full border border-blue-300 rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -311,7 +319,7 @@ export const TestLists = () => {
               setCategory(e.target.value);
               setCurrentPage(1);
             }}
-            className="border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+            className="border border-blue-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           >
             <option value="">All Categories</option>
             {categories.map((cat: string) => (
@@ -326,7 +334,7 @@ export const TestLists = () => {
               setSortOrder(e.target.value as 'low' | 'high');
               setCurrentPage(1);
             }}
-            className="border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+            className="border border-blue-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           >
             <option value="">Sort by Price</option>
             <option value="low">Low to High</option>
@@ -364,7 +372,7 @@ export const TestLists = () => {
         />
       </Modal>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
           {paginatedTests.length > 0 ? (
             <>
               <TableComponent
@@ -372,7 +380,7 @@ export const TestLists = () => {
                 columns={columns}
               />
               
-              <div className="p-3 border-t border-gray-200">
+              <div className="p-3 border-t border-gray-200 flex justify-center">
                 <Pagination 
                   currentPage={currentPage} 
                   totalPages={totalPages} 
@@ -394,7 +402,10 @@ export const TestLists = () => {
               {searchTerm && (
                 <button
                   onClick={clearFilters}
-                  className="mt-3 text-indigo-600 hover:text-indigo-800 font-medium text-sm transition-colors"
+                  className="mt-3 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
+                  style={{
+                    background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+                  }}
                 >
                   Clear search
                 </button>

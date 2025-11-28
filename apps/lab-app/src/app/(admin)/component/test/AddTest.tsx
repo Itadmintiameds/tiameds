@@ -3,7 +3,7 @@ import { addTest } from '@/../services/testService';
 import { useLabs } from '@/context/LabContext';
 import { testFormDataSchema } from '@/schema/testFormDataSchema';
 import React, { useState } from 'react';
-import { FaClipboardList, FaPlusCircle, FaRupeeSign, FaTag } from 'react-icons/fa';
+import { FaClipboardList, FaPlusCircle, FaRupeeSign, FaTag, FaVial, FaTimes } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { z } from 'zod';
 import Button from '../common/Button';
@@ -44,9 +44,16 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
           [name]: value === '' ? undefined : value
         }));
       }
-    } else if (name === 'category' || name === 'name') {
-      // Allow letters, numbers, spaces, and hyphens only (no underscores, periods, or special chars)
-      // Allow spaces to be typed freely, will be cleaned up on submit
+    } else if (name === 'category') {
+      // Category: Only allow letters, spaces, and hyphens (no numbers)
+      if (/^[a-zA-Z\s\-]*$/.test(value)) {
+        setFormData((prev) => ({
+          ...prev,
+          [name]: value.toUpperCase()
+        }));
+      }
+    } else if (name === 'name') {
+      // Test Name: Allow alphanumeric (letters and numbers), spaces, and hyphens
       if (/^[a-zA-Z0-9\s\-]*$/.test(value)) {
         setFormData((prev) => ({
           ...prev,
@@ -77,7 +84,12 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
     }
     
     try {
-      testFormDataSchema.parse(formData);
+      // Convert price to number for schema validation
+      const dataForValidation = {
+        ...formData,
+        price: Number(formData.price) || 0
+      };
+      testFormDataSchema.parse(dataForValidation);
       const testListData = {
         category: cleanedCategory,
         name: cleanedName,
@@ -107,12 +119,14 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
   }
 
   return (
-    <div className="flex justify-center items-center  ">
-      <div className=" rounded-lg p-2 w-full max-w-lg">
-        <h1 className="text-2xl font-semibold text-textzinc flex items-center mb-6">
-          <FaPlusCircle className="mr-3 text-primary" /> Add New Test
-        </h1>
-        <form onSubmit={handleSubmit} className="space-y-5">
+    <div className="w-full">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Test Information Section */}
+        <div className="bg-green-50 p-3 rounded-lg border border-green-100 space-y-3">
+          <h4 className="font-semibold text-green-800 mb-2 flex items-center">
+            <FaVial className="mr-2 text-green-600" /> Test Information
+          </h4>
+          
           {/* Category Input */}
           <div className="relative">
             <label htmlFor="category" className="block text-sm font-medium text-gray-600 mb-1">
@@ -126,7 +140,7 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
-                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                className="border border-green-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-green-500 focus:outline-none bg-white text-sm"
                 placeholder="Enter category"
               />
             </div>
@@ -145,12 +159,19 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                className="border border-green-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-green-500 focus:outline-none bg-white text-sm"
                 placeholder="Enter test name"
               />
             </div>
           </div>
+        </div>
 
+        {/* Pricing Information Section */}
+        <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100 space-y-3">
+          <h4 className="font-semibold text-yellow-800 mb-2 flex items-center">
+            <FaRupeeSign className="mr-2 text-yellow-600" /> Pricing Information
+          </h4>
+          
           {/* Price Input */}
           <div className="relative">
             <label htmlFor="price" className="block text-sm font-medium text-gray-600 mb-1">
@@ -182,30 +203,41 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
                   }
                 }}
                 pattern="^\d+(\.\d{0,2})?$"
-                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                className="border border-yellow-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-yellow-500 focus:outline-none bg-white text-sm"
                 placeholder="Enter price"
               />
             </div>
           </div>
+        </div>
 
-          {
-            isLoading ? (
-              <div className="flex justify-center items-center">
-                <Loader />
-              </div>
-            ) : (
-              <Button
-                text="Add Test"
-                onClick={() => { }}
-                type='submit'
-                className="flex items-center justify-center px-4 py-1 w-full text-xs bg-primary text-textzinc rounded-md hover:bg-primarylight focus:outline-none"
-              >
-                <Plus className="h-4" />
-              </Button>
-            )
-          }
-        </form>
-      </div>
+        {/* Action Buttons */}
+        {isLoading ? (
+          <div className="flex justify-center items-center py-4">
+            <Loader />
+          </div>
+        ) : (
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={closeModal}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200 flex items-center gap-2"
+            >
+              <FaTimes className="h-4 w-4" />
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+              style={{
+                background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Add Test
+            </button>
+          </div>
+        )}
+      </form>
     </div>
   );
 };

@@ -3,7 +3,7 @@ import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
 import { Plus } from 'lucide-react';
 import React from 'react';
-import { FaClipboardList, FaRegEdit, FaRupeeSign, FaTag } from 'react-icons/fa';
+import { FaClipboardList, FaRegEdit, FaRupeeSign, FaTag, FaVial, FaTimes } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import Button from '../common/Button';
 import Loader from '../common/Loader';
@@ -90,12 +90,14 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
     }
 
     return (
-        <div className="flex justify-center items-center">
-            <div className="rounded-lg p-2 w-full max-w-lg">
-                <h1 className="text-2xl font-semibold text-textzinc flex items-center mb-6">
-                    <FaRegEdit className="mr-3 text-primary" /> Edit Test
-                </h1>
-                <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="w-full">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Test Information Section */}
+                <div className="bg-green-50 p-3 rounded-lg border border-green-100 space-y-3">
+                    <h4 className="font-semibold text-green-800 mb-2 flex items-center">
+                        <FaVial className="mr-2 text-green-600" /> Test Information
+                    </h4>
+                    
                     {/* Category Input */}
                     <div className="relative">
                         <label htmlFor="category" className="block text-sm font-medium text-gray-600 mb-1">
@@ -109,7 +111,7 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
                                 name="category"
                                 value={formData.category}
                                 onChange={handleInputChange}
-                                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                className="border border-green-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-green-500 focus:outline-none bg-white text-sm"
                                 placeholder="Enter category"
                             />
                         </div>
@@ -128,12 +130,19 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
                                 name="name"
                                 value={formData.name}
                                 onChange={handleInputChange}
-                                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                className="border border-green-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-green-500 focus:outline-none bg-white text-sm"
                                 placeholder="Enter test name"
                             />
                         </div>
                     </div>
+                </div>
 
+                {/* Pricing Information Section */}
+                <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100 space-y-3">
+                    <h4 className="font-semibold text-yellow-800 mb-2 flex items-center">
+                        <FaRupeeSign className="mr-2 text-yellow-600" /> Pricing Information
+                    </h4>
+                    
                     {/* Price Input */}
                     <div className="relative">
                         <label htmlFor="price" className="block text-sm font-medium text-gray-600 mb-1">
@@ -165,28 +174,41 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
                                     }
                                 }}
                                 pattern="^\d+(\.\d{0,2})?$"
-                                className="border border-gray-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                className="border border-yellow-300 rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-yellow-500 focus:outline-none bg-white text-sm"
                                 placeholder="Enter price"
                             />
                         </div>
                     </div>
+                </div>
 
-                    {isLoading ? (
-                        <div className="flex justify-center items-center">
-                            <Loader />
-                        </div>
-                    ) : (
-                        <Button
-                            text="Update Test"
-                            onClick={() => { }}
-                            type='submit'
-                            className="flex items-center justify-center px-4 py-1 w-full text-xs bg-primary text-textzinc rounded-md hover:bg-primarylight focus:outline-none"
+                {/* Action Buttons */}
+                {isLoading ? (
+                    <div className="flex justify-center items-center py-4">
+                        <Loader />
+                    </div>
+                ) : (
+                    <div className="flex justify-end space-x-3">
+                        <button
+                            type="button"
+                            onClick={closeModal}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200 flex items-center gap-2"
                         >
-                            <Plus className="h-4" />
-                        </Button>
-                    )}
-                </form>
-            </div>
+                            <FaTimes className="h-4 w-4" />
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                            style={{
+                                background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+                            }}
+                        >
+                            <Plus className="h-4 w-4" />
+                            Update Test
+                        </button>
+                    </div>
+                )}
+            </form>
         </div>
     )
 }

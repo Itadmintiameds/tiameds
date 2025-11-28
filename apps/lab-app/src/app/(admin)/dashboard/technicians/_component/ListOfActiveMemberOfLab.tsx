@@ -20,7 +20,7 @@ interface Column {
     accessor: (member: Member) => React.ReactNode;
 }
 
-const ListOfActiveMemberOfLab = () => {
+const  ListOfActiveMemberOfLab = () => {
     const [members, setMembers] = useState<Member[]>([]);
     const { currentLab } = useLabs();
     const [loading, setLoading] = useState(false);

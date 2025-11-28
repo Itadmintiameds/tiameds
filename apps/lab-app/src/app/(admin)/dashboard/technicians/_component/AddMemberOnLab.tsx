@@ -6,7 +6,7 @@ import Pagination from "@/app/(admin)/component/common/Pagination";
 import TableComponent from "@/app/(admin)/component/common/TableComponent";
 import { useLabs } from "@/context/LabContext";
 import React, { useEffect, useState } from "react";
-import { FaEdit, FaSearch, FaUser, FaUserPlus } from "react-icons/fa";
+import { FaEdit, FaSearch, FaUser, FaUserPlus, FaTimes, FaUser as FaUserIcon } from "react-icons/fa";
 import { FiUserPlus } from "react-icons/fi";
 import { RiShieldUserFill } from "react-icons/ri";
 import { TbLockPassword } from "react-icons/tb";
@@ -94,7 +94,11 @@ const initialFormState: FormData = {
     enabled: true,
 };
 
-const AddMemberOnLab = () => {
+interface AddMemberOnLabProps {
+    closeModal?: () => void;
+}
+
+const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [isEditing, setIsEditing] = useState(false);
@@ -523,57 +527,71 @@ const AddMemberOnLab = () => {
 
     return (
         <>
-            <div className="w-full bg-gray-50 p-4 rounded-lg">
-                <div className="max-w-7xl mx-auto">
+            <div className="w-full bg-gray-50">
+                <div className="max-w-9xl mx-auto">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
                         <div>
                             <h1 className="text-xl font-semibold text-gray-900">Lab Member Management</h1>
                             <p className="text-sm text-gray-600">Add and manage lab members</p>
                         </div>
-                        <div className="flex items-center">
-                            <div className="relative">
-                                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                                <input
-                                    type="text"
-                                    placeholder="Search members..."
-                                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm w-full sm:w-64"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
+                        <div className="flex items-center gap-3">
+                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                <div className="relative">
+                                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search members..."
+                                        className="pl-10 pr-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-sm w-full sm:w-64"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
                             </div>
+                            {closeModal && (
+                                <button
+                                    onClick={closeModal}
+                                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                    title="Close"
+                                >
+                                    <FaTimes className="h-5 w-5" />
+                                </button>
+                            )}
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                         {/* Form Section */}
-                        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                            <div className="flex items-center mb-4">
-                                <div className="p-2 bg-indigo-100 rounded-lg mr-3">
-                                    {isEditing ? (
-                                        <FaEdit className="text-indigo-600 text-lg" />
-                                    ) : (
-                                        <FiUserPlus className="text-indigo-600 text-lg" />
-                                    )}
+                        <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-4">
+                                <div className="flex items-center">
+                                    <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                                        {isEditing ? (
+                                            <FaEdit className="text-blue-600 text-lg" />
+                                        ) : (
+                                            <FiUserPlus className="text-blue-600 text-lg" />
+                                        )}
+                                    </div>
+                                    <h2 className="text-lg font-semibold text-blue-800">
+                                        {isEditing ? "Edit Member" : "Add New Member"}
+                                    </h2>
                                 </div>
-                                <h2 className="text-lg font-semibold text-gray-900">
-                                    {isEditing ? "Edit Member" : "Add New Member"}
-                                </h2>
                             </div>
 
                             {loading && (
-                                <div className="flex flex-col items-center justify-center h-48">
+                                <div className="flex flex-col items-center justify-center p-6">
                                     <Loader type="progress" fullScreen={false} text="Loading members..." />
-                                    <p className="mt-3 text-sm text-gray-600">Please wait while we fetch the latest data.</p>
+                                    <p className="mt-4 text-sm text-gray-600">Please wait while we fetch the latest data.</p>
                                 </div>
                             )}
 
                             {!loading && (
-                                <form onSubmit={handleSubmit} className="space-y-3">
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 space-y-3">
                                     <div className="grid grid-cols-1 gap-3">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Username*</label>
+                                            <label className="block text-sm font-medium text-gray-600 mb-1">Username*</label>
                                             <input
-                                                className={`w-full p-2.5 border ${errors.username && touched.username ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
+                                                className={`w-full p-2.5 border ${errors.username && touched.username ? 'border-red-500' : 'border-blue-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-sm`}
                                                 type="text"
                                                 name="username"
                                                 placeholder="Enter username"
@@ -588,9 +606,9 @@ const AddMemberOnLab = () => {
 
                                         {!isEditing && (
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Password*</label>
+                                                <label className="block text-sm font-medium text-gray-600 mb-1">Password*</label>
                                                 <input
-                                                    className={`w-full p-2.5 border ${errors.password && touched.password ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
+                                                    className={`w-full p-2.5 border ${errors.password && touched.password ? 'border-red-500' : 'border-blue-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-sm`}
                                                     type="password"
                                                     name="password"
                                                     placeholder="Enter password"
@@ -606,9 +624,9 @@ const AddMemberOnLab = () => {
 
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">First Name*</label>
+                                                <label className="block text-sm font-medium text-gray-600 mb-1">First Name*</label>
                                                 <input
-                                                    className={`w-full p-2.5 border ${errors.firstName && touched.firstName ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
+                                                    className={`w-full p-2.5 border ${errors.firstName && touched.firstName ? 'border-red-500' : 'border-blue-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-sm`}
                                                     type="text"
                                                     name="firstName"
                                                     placeholder="First name"
@@ -621,9 +639,9 @@ const AddMemberOnLab = () => {
                                                 )}
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name*</label>
+                                                <label className="block text-sm font-medium text-gray-600 mb-1">Last Name*</label>
                                                 <input
-                                                    className={`w-full p-2.5 border ${errors.lastName && touched.lastName ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
+                                                    className={`w-full p-2.5 border ${errors.lastName && touched.lastName ? 'border-red-500' : 'border-blue-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-sm`}
                                                     type="text"
                                                     name="lastName"
                                                     placeholder="Last name"
@@ -638,9 +656,9 @@ const AddMemberOnLab = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Email*</label>
+                                            <label className="block text-sm font-medium text-gray-600 mb-1">Email*</label>
                                             <input
-                                                className={`w-full p-2.5 border ${errors.email && touched.email ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
+                                                className={`w-full p-2.5 border ${errors.email && touched.email ? 'border-red-500' : 'border-blue-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-sm`}
                                                 type="email"
                                                 name="email"
                                                 placeholder="user@example.com"
@@ -655,9 +673,9 @@ const AddMemberOnLab = () => {
 
                                         <div className="grid grid-cols-2 gap-3">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                                    <label className="block text-sm font-medium text-gray-600 mb-1">Phone</label>
                                                     <input
-                                                    className={`w-full p-2.5 border ${errors.phone && touched.phone ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
+                                                    className={`w-full p-2.5 border ${errors.phone && touched.phone ? 'border-red-500' : 'border-blue-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-sm`}
                                                         type="tel"
                                                         name="phone"
                                                         placeholder="Enter phone number"
@@ -683,9 +701,9 @@ const AddMemberOnLab = () => {
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                                                    <label className="block text-sm font-medium text-gray-600 mb-1">City</label>
                                                     <input
-                                                    className={`w-full p-2.5 border ${errors.city && touched.city ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm`}
+                                                    className={`w-full p-2.5 border ${errors.city && touched.city ? 'border-red-500' : 'border-blue-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-sm`}
                                                         type="text"
                                                         name="city"
                                                         placeholder="Enter city"
@@ -700,7 +718,7 @@ const AddMemberOnLab = () => {
                                             </div>
 
                                             <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Roles*</label>
+                                            <label className="block text-sm font-medium text-gray-600 mb-1">Roles*</label>
                                                 <Select
                                                     isMulti
                                                     isClearable={false}
@@ -709,18 +727,18 @@ const AddMemberOnLab = () => {
                                                     value={selectedRoles}
                                                     onChange={handleRoleChange}
                                                     placeholder="Select roles..."
-                                                className={`react-select-container ${errors.roles && touched.roles ? 'border-red-500 rounded-md' : ''}`}
+                                                className={`react-select-container ${errors.roles && touched.roles ? 'border-red-500 rounded-lg' : ''}`}
                                                     classNamePrefix="react-select"
                                                     styles={{
                                                         control: (provided, state) => ({
                                                             ...provided,
                                                         minHeight: '40px',
                                                             padding: '2px 8px',
-                                                            border: errors.roles && touched.roles ? '1px solid #ef4444' : '1px solid #d1d5db',
-                                                        borderRadius: '6px',
-                                                        boxShadow: state.isFocused ? '0 0 0 2px rgba(99, 102, 241, 0.1)' : 'none',
+                                                            border: errors.roles && touched.roles ? '1px solid #ef4444' : '1px solid #93c5fd',
+                                                        borderRadius: '8px',
+                                                        boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.1)' : 'none',
                                                             '&:hover': {
-                                                                border: errors.roles && touched.roles ? '1px solid #ef4444' : '1px solid #9ca3af'
+                                                                border: errors.roles && touched.roles ? '1px solid #ef4444' : '1px solid #60a5fa'
                                                             }
                                                         }),
                                                         valueContainer: (provided) => ({
@@ -820,76 +838,93 @@ const AddMemberOnLab = () => {
                                             </div>
                                             {isEditing && (
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Active Status</label>
+                                                    <label className="block text-sm font-medium text-gray-600 mb-1">Active Status</label>
                                                     <select
                                                         name="enabled"
                                                         value={formData.enabled ? "true" : "false"}
                                                         onChange={(e) => setFormData({ ...formData, enabled: e.target.value === "true" })}
-                                                    className="w-full p-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                                    className="w-full p-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-sm"
                                                     >
                                                         <option value="true">Active</option>
                                                         <option value="false">Inactive</option>
                                                     </select>
                                                 </div>
                                             )}
+                                    </div>
+                                    </div>
 
-                                        <div className="flex gap-3 pt-3">
-                                            <Button
-                                                onClick={() => { }}
-                                                type="submit"
-                                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-md text-sm transition-colors"
-                                                text={isEditing ? "Update Member" : "Add Member"}
+                                    <div className="flex gap-3 pt-3">
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="flex-1 px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            style={{
+                                                background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+                                            }}
+                                        >
+                                            <FaUserPlus className="h-4 w-4" />
+                                            {isEditing ? "Update Member" : "Add Member"}
+                                        </button>
+                                        {isEditing && (
+                                            <button
+                                                type="button"
+                                                onClick={handleCancel}
                                                 disabled={loading}
+                                                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                <FaUserPlus className="mr-2 h-4 w-4" />
-                                            </Button>
-                                            {isEditing && (
-                                                <Button
-                                                    type="button"
-                                                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2.5 px-4 rounded-md text-sm transition-colors"
-                                                    text="Cancel"
-                                                    onClick={handleCancel}
-                                                    disabled={loading}
-                                                />
-                                            )}
-                                        </div>
-                                        </div>
+                                                Cancel
+                                            </button>
+                                        )}
+                                    </div>
                                 </form>
                             )}
                         </div>
 
                         {/* Members List Section */}
-                        <div className="xl:col-span-2 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
-                                <div className="flex items-center">
-                                    <div className="p-2 bg-indigo-100 rounded-lg mr-3">
-                                        <FaUser className="text-indigo-600 text-lg" />
+                        <div className="xl:col-span-2 bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+                            <div className="bg-green-50 p-3 rounded-lg border border-green-100 mb-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    <div className="flex items-center">
+                                        <div className="p-2 bg-green-100 rounded-lg mr-3">
+                                            <FaUserIcon className="text-green-600 text-lg" />
+                                        </div>
+                                        <h2 className="text-lg font-semibold text-green-800">Lab Members</h2>
                                     </div>
-                                    <h2 className="text-lg font-semibold text-gray-900">Lab Members</h2>
-                                </div>
-                                <div className="text-sm text-gray-600">
-                                    {filteredMembers.length} {filteredMembers.length === 1 ? "member" : "members"} found
+                                    <div className="text-sm text-gray-600">
+                                        {filteredMembers.length} {filteredMembers.length === 1 ? "member" : "members"} found
+                                    </div>
                                 </div>
                             </div>
 
                             {loading && members.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-48">
+                                <div className="flex flex-col items-center justify-center p-6">
                                     <Loader type="progress" fullScreen={false} text="Loading lab members..." />
-                                    <p className="mt-3 text-sm text-gray-600">Fetching the lab members, please wait...</p>
+                                    <p className="mt-4 text-sm text-gray-600">Fetching the lab members, please wait...</p>
                                 </div>
                             ) : filteredMembers.length === 0 ? (
                                 <div className="text-center py-8">
                                     <div className="text-gray-400 mb-3">
-                                        <FaUser className="mx-auto text-3xl" />
+                                        <FaUserIcon className="mx-auto text-3xl" />
                                     </div>
                                     <h3 className="text-base font-semibold text-gray-800 mb-1">No members found</h3>
                                     <p className="text-sm text-gray-600">
                                         {searchTerm ? "Try a different search term" : "Add your first member to get started"}
                                     </p>
+                                    {searchTerm && (
+                                        <button
+                                            onClick={() => setSearchTerm('')}
+                                            className="mt-3 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
+                                            style={{
+                                                background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+                                            }}
+                                        >
+                                            Clear search
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <>
-                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                    <div className="border border-gray-200 rounded-xl overflow-hidden">
                                         <TableComponent
                                             data={currentMembers}
                                             columns={columns}
@@ -897,7 +932,7 @@ const AddMemberOnLab = () => {
                                         />
                                     </div>
                                     {filteredMembers.length > itemsPerPage && (
-                                        <div className="mt-4">
+                                        <div className="mt-4 flex justify-center">
                                             <Pagination
                                                 currentPage={currentPage}
                                                 totalPages={totalPages}
