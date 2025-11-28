@@ -140,6 +140,65 @@ interface TestRow {
     description?: string;
 }
 
+interface ReferenceRangeEntry {
+    Gender: string;
+    AgeMin: string;
+    AgeMinUnit: string;
+    AgeMax: string;
+    AgeMaxUnit: string;
+    ReferenceRange: string;
+}
+
+const renderReferenceRanges = (rangesStr?: string | null) => {
+    if (!rangesStr) return null;
+    let ranges: ReferenceRangeEntry[] = [];
+    try {
+        const parsed = JSON.parse(rangesStr) as ReferenceRangeEntry[];
+        ranges = Array.isArray(parsed) ? parsed : [];
+    } catch {
+        ranges = [];
+    }
+    if (ranges.length === 0) return null;
+    const formatGender = (gender: string) => {
+        const normalized = (gender || "").toUpperCase();
+        if (normalized === "M") return "Male";
+        if (normalized === "F") return "Female";
+        if (normalized === "MF") return "Male/Female";
+        return gender;
+    };
+    const formatAge = (range: ReferenceRangeEntry) => {
+        const min = `${range.AgeMin} ${range.AgeMinUnit}`;
+        const max = `${range.AgeMax} ${range.AgeMaxUnit}`;
+        return `${min} - ${max}`;
+    };
+    return (
+        <div className="mt-4">
+            <p className="text-xs text-gray-600 mb-3 italic">
+                The following table shows reference ranges that vary by age and gender. These ranges may differ based on the
+                methodology used. Please consult a qualified healthcare professional for proper interpretation.
+            </p>
+            <table className="w-full text-xs border border-gray-300">
+                <thead>
+                    <tr className="bg-white">
+                        <th className="p-2 font-bold border border-gray-300 text-left">GENDER</th>
+                        <th className="p-2 font-bold border border-gray-300 text-left">AGE RANGE</th>
+                        <th className="p-2 font-bold border border-gray-300 text-left">REFERENCE RANGE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {ranges.map((range, idx) => (
+                        <tr key={`reference-range-${idx}`} className="border-b border-gray-200">
+                            <td className="p-2 border-r border-gray-200">{formatGender(range.Gender)}</td>
+                            <td className="p-2 border-r border-gray-200">{formatAge(range)}</td>
+                            <td className="p-2">{range.ReferenceRange}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
 export interface ConsolidatedReport {
     reportId: number;
     visitId: number;
@@ -440,6 +499,7 @@ const CommonReportView2 = ({
                     const quantitativeRowEntries: RenderRowEntry[] = isCBCTest
                         ? buildOrderedCBCRows(quantitativeRows)
                         : quantitativeRows.map((row) => ({ type: "row", row }));
+                    const referenceRangesContent = renderReferenceRanges(report.referenceRanges);
 
                     const formatResultContent = (row: TestRow) => {
                         const value = row.enteredValue || "N/A";
@@ -516,173 +576,172 @@ const CommonReportView2 = ({
                         }
                     }
 
-                return (
+                    return (
                         <section key={report.reportId} data-report-id={report.reportId} className="mb-10 page-break">
                             <div className="flex flex-col min-h-[297mm]">
-                            <div className="mb-6 bg-white pt-4">
-                                <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between mb-4">
-                                    <div className="flex flex-col gap-y-1">
-                                        <Image src="/CUREPLUS HOSPITALS (1).png"
-                                            alt="Lab Logo" width={90} height={56}
-                                            className="h-14 w-14 mr-4" priority loading="eager"
-                                            unoptimized crossOrigin="anonymous" data-print-logo="true"
-                                            quality={100}
-                                        />
+                                <div className="mb-4 bg-white pt-2">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-2">
+                                        <div className="flex flex-col gap-0.5">
+                                            <Image src="/CUREPLUS HOSPITALS (1).png"
+                                                alt="Lab Logo" width={90} height={56}
+                                                className="h-12 w-12" priority loading="eager"
+                                                unoptimized crossOrigin="anonymous" data-print-logo="true"
+                                                quality={100}
+                                            />
+                                            <h1 className="text-lg font-bold text-black leading-tight">{currentLab?.name}</h1>
+                                            <p className="text-xs text-gray-600 leading-tight">{currentLab?.address}</p>
+                                        </div>
+                                        <div className="text-right flex-1 sm:flex-initial">
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                                                {/* Left Column */}
+                                                <div>
+                                                    <div className="flex items-center">
+                                                        <span className="font-medium text-black w-24 text-left">NAME:</span>
+                                                        <span className="font-bold text-black ml-1">{patientData?.patientname || 'N/A'}</span>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                        <span className="font-medium text-black w-24 text-left">REFERRED BY:</span>
+                                                        <span className="font-bold text-black ml-1">{displayDoctorName}</span>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                        <span className="font-medium text-black w-24 text-left">LAB NO:</span>
+                                                        <span className="font-bold text-black ml-1">{currentLab?.id || 'N/A'}</span>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                        <span className="font-medium text-black w-24 text-left">OPD/IPD:</span>
+                                                        <span className="font-bold text-black ml-1">{patientData?.visitType || 'N/A'}</span>
+                                                    </div>
+                                                </div>
 
-                                        <h1 className="text-xl font-bold text-black">{currentLab?.name}</h1>
-                                        <p className="text-xs text-gray-600">{currentLab?.address}</p>
-                                    </div>
-                                    <div className="w-full sm:w-auto">
-                                        <div className="grid grid-cols-1 gap-4 text-xs sm:grid-cols-2 sm:gap-x-10 sm:gap-y-2">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between gap-4">
-                                                    <span className="font-medium text-black">NAME:</span>
-                                                    <span className="font-bold text-black text-right">{patientData?.patientname || 'N/A'}</span>
-                                                </div>
-                                                <div className="flex items-center justify-between gap-4">
-                                                    <span className="font-medium text-black">REFERRED BY:</span>
-                                                    <span className="font-bold text-black text-right">{displayDoctorName}</span>
-                                                </div>
-                                                <div className="flex items-center justify-between gap-4">
-                                                    <span className="font-medium text-black">LAB NO:</span>
-                                                    <span className="font-bold text-black text-right">{currentLab?.id || 'N/A'}</span>
-                                                </div>
-                                                <div className="flex items-center justify-between gap-4">
-                                                    <span className="font-medium text-black">OPD/IPD:</span>
-                                                    <span className="font-bold text-black text-right">{patientData?.visitType || 'N/A'}</span>
+                                                {/* Right Column */}
+                                                <div>
+                                                    <div className="flex items-center">
+                                                        <span className="font-medium text-black w-24 text-left">AGE/SEX:</span>
+                                                        <span className="font-bold text-black ml-1">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                        <span className="font-medium text-black w-24 text-left">DATE & TIME:</span>
+                                                        <span className="font-bold text-black ml-1">
+                                                            {new Date(report.createdDateTime || Date.now()).toLocaleDateString('en-GB')} at{" "}
+                                                            {new Date(report.createdDateTime || Date.now()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                        <span className="font-medium text-black w-24 text-left">REPORT No:</span>
+                                                        <span className="font-bold text-black ml-1">{report.reportCode || "N/A"}</span>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                        <span className="font-medium text-black w-24 text-left">PATIENT No:</span>
+                                                        <span className="font-bold text-black ml-1">{report.patientCode || "N/A"}</span>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                        <span className="font-medium text-black w-24 text-left">VISIT No:</span>
+                                                        <span className="font-bold text-black ml-1">{report.visitCode || "N/A"}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between gap-4">
-                                                    <span className="font-medium text-black">AGE/SEX:</span>
-                                                    <span className="font-bold text-black text-right">
-                                                        {formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}
-                                                    </span>
-                                                </div>
-                                                <div className="whitespace-nowrap">
-                                                    <span className="font-semibold text-gray-900">Report Code:</span>{" "}
-                                                    <span className="font-medium text-gray-700">{report.reportCode || "N/A"}</span>
-                                                </div>
-                                                <div className="flex items-center justify-between gap-4">
-                                                    <span className="font-medium text-black">DATE OF REPORT:</span>
-                                                    <span className="font-bold text-black text-right">
-                                                        {new Date(report.createdDateTime || Date.now()).toLocaleDateString('en-GB')} at{" "}
-                                                        {new Date(report.createdDateTime || Date.now()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                                                    </span>
-                                                </div>
-                                                <div className="whitespace-nowrap">
-                                                    <span className="font-semibold text-gray-900">Report Code:</span>{" "}
-                                                    <span className="font-medium text-gray-700">{report.reportCode || "N/A"}</span>
-                                                </div>
-                                                <div className="whitespace-nowrap">
-                                                    <span className="font-semibold text-gray-900">Visit Code:</span>{" "}
-                                                    <span className="font-medium text-gray-700">{report.visitCode || "N/A"}</span>
-                                                </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-1.5 mb-1.5 h-0.5 w-full rounded bg-blue-600" />
+                                </div>
+                                <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-800">{report.testName}</h3>
+                                {!shouldHideResultTable && (
+                                    <div className="overflow-hidden rounded-lg border border-blue-200">
+                                        <table className="w-full text-xs border-collapse">
+                                            <thead className="bg-blue-50">
+                                                <tr>
+                                                    <th className="p-2 text-left font-semibold text-black">TEST PARAMETER</th>
+                                                    <th className="p-2 text-center font-semibold text-black">RESULT</th>
+                                                    <th className="p-2 text-left font-semibold text-black">REFERENCE RANGE</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>{renderedRows}</tbody>
+                                        </table>
+                                    </div>
+                                )}
+
+                                {!shouldHideResultTable && referenceRangesContent}
+
+                                {qualitativeRows.length > 0 && (
+                                    <div className="mt-4">
+                                        <h4 className="text-xs font-bold text-black mb-2">Qualitative Results</h4>
+                                        <p className="text-xs text-gray-600 mb-2">
+                                            The following tests are reported as final qualitative outcomes. Please refer to the treating
+                                            physician for clinical correlation.
+                                        </p>
+                                        <div className="space-y-3">
+                                            {qualitativeRows.map((row, idx) => {
+                                                const resultValue = row.enteredValue || "N/A";
+                                                const normalizedResult = resultValue.toString().trim().toLowerCase();
+                                                const normalizedDescription = (row.description || "").toString().trim().toLowerCase();
+                                                const showDescription =
+                                                    shouldShowQualitativeDescriptionRow(row) &&
+                                                    !!row.description &&
+                                                    normalizedDescription !== normalizedResult;
+
+                                                return (
+                                                    <div key={`qual-result-${report.reportId}-${idx}`} className="text-xs">
+                                                        <p className="text-gray-800 font-semibold">{resultValue}</p>
+                                                        {showDescription && (
+                                                            <p className="text-gray-600 mt-1">{row.description}</p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                                <h4 className="text-xs font-bold text-black mt-4 mb-1 text-left">Disclaimer</h4>
+                                <p className="text-xs text-gray-600 italic text-left">
+                                    *This laboratory report is intended for clinical correlation only. Results should be interpreted by a qualified medical professional. Laboratory values may vary based on methodology and biological variance. The diagnostic center is not responsible for misinterpretation or misuse of results.*
+                                </p>
+
+                                <div data-footer-section className="  border-gray-200" style={{ marginTop: "auto" }}>
+                                    <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
+                                        <div className="text-center">
+                                            <p className="text-xs font-medium text-gray-700 mb-2">Lab Technician</p>
+                                            <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+                                                <span className="text-xs text-gray-500">Signature/Stamp</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-xs font-medium text-gray-700 mb-2">Authorized Pathologist</p>
+                                            <div className="h-12 border-t border-gray-300 flex items-center justify-center">
+                                                <span className="text-xs text-gray-500">Dr. Signature/Stamp</span>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                            
-
-                                <div className="mt-2 mb-2 h-1 w-full rounded bg-blue-600" />
-                            </div>
-                            <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-800">{report.testName}</h3>
-                            {!shouldHideResultTable && (
-                                <div className="overflow-hidden rounded-lg border border-blue-200">
-                                    <table className="w-full text-xs border-collapse">
-                                        <thead className="bg-blue-50">
-                                            <tr>
-                                                <th className="p-2 text-left font-semibold text-black">TEST PARAMETER</th>
-                                                <th className="p-2 text-center font-semibold text-black">RESULT</th>
-                                                <th className="p-2 text-left font-semibold text-black">REFERENCE RANGE</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>{renderedRows}</tbody>
-                                    </table>
-                                </div>
-                            )}
-
-                        {qualitativeRows.length > 0 && (
-                                <div className="mt-4">
-                                    <h4 className="text-xs font-bold text-black mb-2">Qualitative Results</h4>
-                                    <p className="text-xs text-gray-600 mb-2">
-                                        The following tests are reported as final qualitative outcomes. Please refer to the treating
-                                        physician for clinical correlation.
-                                    </p>
-                                    <div className="space-y-3">
-                                        {qualitativeRows.map((row, idx) => {
-                                            const resultValue = row.enteredValue || "N/A";
-                                            const normalizedResult = resultValue.toString().trim().toLowerCase();
-                                            const normalizedDescription = (row.description || "").toString().trim().toLowerCase();
-                                            const showDescription =
-                                                shouldShowQualitativeDescriptionRow(row) &&
-                                                !!row.description &&
-                                                normalizedDescription !== normalizedResult;
-
-                                            return (
-                                                <div key={`qual-result-${report.reportId}-${idx}`} className="text-xs">
-                                                    <p className="text-gray-800 font-semibold">{resultValue}</p>
-                                                    {showDescription && (
-                                                        <p className="text-gray-600 mt-1">{row.description}</p>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                    <div className="mt-4 text-center">
+                                        <p className="text-xs text-gray-600 mb-1">
+                                            This is an electronically generated report. No physical signature required.
+                                        </p>
+                                        <p className="text-xs font-medium text-blue-600 mt-2">
+                                            Thank you for choosing {currentLab?.name || "Our Lab"}
+                                        </p>
                                     </div>
-                            </div>
-                            )}
-                        <h4 className="text-xs font-bold text-black mt-4 mb-1 text-left">Disclaimer</h4>
-                        <p className="text-xs text-gray-600 italic text-left">
-                            *This laboratory report is intended for clinical correlation only. Results should be interpreted by a qualified medical professional. Laboratory values may vary based on methodology and biological variance. The diagnostic center is not responsible for misinterpretation or misuse of results.*
-                        </p>
 
-                        <div data-footer-section className="mt-8 pt-6  border-gray-200" style={{ marginTop: "auto" }}>
-                                <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
-                                    <div className="text-center">
-                                        <p className="text-xs font-medium text-gray-700 mb-2">Lab Technician</p>
-                                        <div className="h-12 border-t border-gray-300 flex items-center justify-center">
-                                            <span className="text-xs text-gray-500">Signature/Stamp</span>
+                                    <div className="flex justify-between items-center mt-4">
+                                        <div className="flex items-center">
+                                            <Image
+                                                src="/tiamed1.svg"
+                                                alt="Tiamed Logo"
+                                                width={60}
+                                                height={24}
+                                                className="h-6 w-auto mr-2 opacity-80"
+                                                unoptimized
+                                                crossOrigin="anonymous"
+                                            />
+                                            <span className="text-xs font-medium text-gray-600">
+                                                Powered by Tiameds Technologies Pvt.Ltd
+                                            </span>
                                         </div>
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-xs font-medium text-gray-700 mb-2">Authorized Pathologist</p>
-                                        <div className="h-12 border-t border-gray-300 flex items-center justify-center">
-                                            <span className="text-xs text-gray-500">Dr. Signature/Stamp</span>
+                                        <div className="text-right">
+                                            <p className="text-xs text-gray-500">Generated on:  {new Date(report.createdDateTime || Date.now()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="mt-4 text-center">
-                                    <p className="text-xs text-gray-600 mb-1">
-                                        This is an electronically generated report. No physical signature required.
-                                    </p>
-                                    <p className="text-xs font-medium text-blue-600 mt-2">
-                                        Thank you for choosing {currentLab?.name || "Our Lab"}
-                                    </p>
-                                </div>
-
-                                <div className="flex justify-between items-center mt-4">
-                                    <div className="flex items-center">
-                                        <Image
-                                            src="/tiamed1.svg"
-                                            alt="Tiamed Logo"
-                                            width={60}
-                                            height={24}
-                                            className="h-6 w-auto mr-2 opacity-80"
-                                            unoptimized
-                                            crossOrigin="anonymous"
-                                        />
-                                        <span className="text-xs font-medium text-gray-600">
-                                            Powered by Tiameds Technologies Pvt.Ltd
-                                        </span>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xs text-gray-500">Generated on:  {new Date(report.createdDateTime || Date.now()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
-                                    </div>
-                                </div>
-                        </div>
-                        </div>
+                            </div>
                         </section>
                     );
                 })}
@@ -699,4 +758,5 @@ const CommonReportView2 = ({
 };
 
 export default CommonReportView2;
+
 
