@@ -1,5 +1,5 @@
 import { PatientData } from '@/types/sample/sample';
-import { FaCalendarAlt, FaEnvelope, FaFlask, FaPhone, FaUser, FaVenusMars, FaVial } from 'react-icons/fa';
+import { FaCalendarAlt, FaFlask, FaUser } from 'react-icons/fa';
 
 interface PatientBasicInfoProps {
     patient: PatientData;

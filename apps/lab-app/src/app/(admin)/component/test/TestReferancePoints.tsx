@@ -8,12 +8,12 @@ import {
 import { TestReferancePoint } from "@/types/test/testlist";
 import Loader from "../../component/common/Loader";
 import { useLabs } from "@/context/LabContext";
-import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaFilter, FaChevronDown, FaChevronUp, FaChevronRight, FaVial, FaTimes } from "react-icons/fa";
+import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaFilter, FaChevronDown, FaChevronUp, FaChevronRight, FaVial } from "react-icons/fa";
 import Modal from "../common/Model";
 import TestEditReferance from "./TestEditReferance";
 import { toast } from "react-toastify";
 import AddTestReferanceNew from "./AddTestReferanceNew";
-import Button from "../common/Button";
+// import Button from "../common/Button";
 import AddExistingTestReferance from "./AddExistingTestReferance";
 import Pagination from "../common/Pagination";
 import * as XLSX from 'xlsx';

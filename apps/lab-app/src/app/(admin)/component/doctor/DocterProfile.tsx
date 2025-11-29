@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaEnvelope, FaStethoscope, FaGraduationCap, FaHospital, FaPhoneAlt, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaEnvelope, FaStethoscope,  FaMapMarkerAlt } from 'react-icons/fa';
 import { Doctor } from '@/types/doctor/doctor';
 
 const DoctorProfile = ({ selectedDoctor }: { selectedDoctor: Doctor }) => {

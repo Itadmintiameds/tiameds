@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { FaLock, FaEye, FaEyeSlash, FaTimes, FaKey } from 'react-icons/fa';
-import Button from '@/app/(admin)/component/common/Button';
+// import Button from '@/app/(admin)/component/common/Button';
 import Loader from '@/app/(admin)/component/common/Loader';
 import { useLabs } from "@/context/LabContext";
 import { resetMemberPassword } from '../../../../../../services/technicianServices';

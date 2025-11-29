@@ -1,6 +1,6 @@
 import Loader from "@/app/(admin)/component/common/Loader";
 import React, { useEffect, useState } from "react";
-import { FaPlusCircle, FaTrashAlt, FaTimes } from "react-icons/fa";
+import { FaPlusCircle, FaTrashAlt} from "react-icons/fa";
 import { TbTestPipe2Filled } from "react-icons/tb";
 import { getSamples } from "../../../../../../services/sampleServices";
 import { useLabs } from "@/context/LabContext";

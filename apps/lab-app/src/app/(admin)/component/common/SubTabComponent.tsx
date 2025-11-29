@@ -20,15 +20,15 @@ interface TabsProps {
 
 const SubTabComponent: React.FC<TabsProps> = ({ tabs, selectedTab, onTabChange, children, closeModal }) => {
     // Default colors if not provided
-    const getTabColor = (tab: TabItem) => {
-        return tab.color || [
-            'bg-blue-500', 
-            'bg-purple-500', 
-            'bg-teal-500', 
-            'bg-amber-500',
-            'bg-rose-500'
-        ][tabs.indexOf(tab) % 5];
-    };
+    // const getTabColor = (tab: TabItem) => {
+    //     return tab.color || [
+    //         'bg-blue-500', 
+    //         'bg-purple-500', 
+    //         'bg-teal-500', 
+    //         'bg-amber-500',
+    //         'bg-rose-500'
+    //     ][tabs.indexOf(tab) % 5];
+    // };
 
     return (
         <div className="flex flex-col items-start p-6 bg-white shadow-lg rounded-xl border border-gray-200">
@@ -38,7 +38,7 @@ const SubTabComponent: React.FC<TabsProps> = ({ tabs, selectedTab, onTabChange, 
                     <div className="flex overflow-x-auto space-x-2 pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
                         {tabs.map((tab) => {
                             const isActive = selectedTab === tab.id;
-                            const tabColor = getTabColor(tab);
+                            // const tabColor = getTabColor(tab);
                             
                             return (
                                 <motion.button

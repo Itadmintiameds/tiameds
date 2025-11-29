@@ -11,7 +11,7 @@ import {
     FaUniversity,
     FaUser
 } from 'react-icons/fa';
-import Button from '../common/Button';
+// import Button from '../common/Button';
 
 interface AddDoctorProps {
     handleAddDoctor: (doctor: Doctor) => void;

@@ -3,9 +3,9 @@ import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
 import { Plus } from 'lucide-react';
 import React from 'react';
-import { FaClipboardList, FaRegEdit, FaRupeeSign, FaTag, FaVial, FaTimes } from 'react-icons/fa';
+import { FaClipboardList, FaRupeeSign, FaTag, FaVial, FaTimes } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import Button from '../common/Button';
+// import Button from '../common/Button';
 import Loader from '../common/Loader';
 
 interface TestEditComponentProps {
