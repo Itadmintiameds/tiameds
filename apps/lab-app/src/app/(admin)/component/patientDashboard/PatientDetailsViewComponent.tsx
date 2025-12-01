@@ -12,7 +12,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { FaFileInvoiceDollar, FaFilePdf, FaPrint, FaUser, FaCalendarAlt, FaHospital, FaSignature } from 'react-icons/fa';
+import { FaFileInvoiceDollar, FaFilePdf, FaPrint,  FaSignature } from 'react-icons/fa';
 import Loader from '../common/Loader';
 import { MdDownloading } from "react-icons/md";
 import Image from 'next/image';
@@ -123,76 +123,64 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
     // Use API's due_amount instead of calculating on frontend
     const totalReceived = transactions.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.received_amount || 0), 0);
-    // const totalRefund = transactions.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.refund_amount || 0), 0);
     const remainingDue = Number(patient?.visit?.billing?.due_amount || 0);
 
     return (
-      <div className="mt-6 pt-4 border-t border-gray-200 print:mt-4 print:pt-2">
-        <h3 className="font-bold text-gray-800 mb-3 text-lg print:mb-2">PAYMENT TRANSACTIONS</h3>
+      <div className="mt-4 pt-2 border-t border-gray-600 print:mt-3 print:pt-1.5">
+        <h3 className="font-bold text-black mb-1.5 text-xs print:mb-1 border-b border-gray-600 pb-0.5 uppercase">Payment Transactions</h3>
         <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full text-xs border-collapse print:table-fixed print:w-full">
+          <table className="w-full text-xs border-collapse border border-gray-600 print:table-fixed print:w-full">
             <thead>
-              <tr className="bg-gray-200 text-gray-800">
-                <th className="p-1 font-medium text-left align-top">ID</th>
-                <th className="p-1 font-medium text-left align-top">Method</th>
-                <th className="p-1 font-medium text-left align-top">UPI</th>
-                <th className="p-1 font-medium text-left align-top">Card</th>
-                <th className="p-1 font-medium text-left align-top">Cash</th>
-                <th className="p-1 font-medium text-left align-top">Received</th>
-                {/* <th className="p-1 font-medium text-left align-top">Refund</th> */}
-                <th className="p-1 font-medium text-left align-top">Due</th>
-                <th className="p-1 font-medium text-left align-top">Date/Time</th>
-                <th className="p-1 font-medium text-left align-top">Received by</th>
-                <th className="p-1 font-medium text-left align-top">Remarks</th>
+              <tr className="bg-white">
+                <th className="p-1.5 font-semibold text-left border border-gray-600 text-black">Txn Code</th>
+                <th className="p-1.5 font-semibold text-left border border-gray-600 text-black">Method</th>
+                <th className="p-1.5 font-semibold text-right border border-gray-600 text-black">UPI</th>
+                <th className="p-1.5 font-semibold text-right border border-gray-600 text-black">Card</th>
+                <th className="p-1.5 font-semibold text-right border border-gray-600 text-black">Cash</th>
+                <th className="p-1.5 font-semibold text-right border border-gray-600 text-black">Received</th>
+                <th className="p-1.5 font-semibold text-right border border-gray-600 text-black">Due</th>
+                <th className="p-1.5 font-semibold text-left border border-gray-600 text-black">Date/Time</th>
+                <th className="p-1.5 font-semibold text-left border border-gray-600 text-black">By</th>
+                <th className="p-1.5 font-semibold text-left border border-gray-600 text-black">Remarks</th>
               </tr>
             </thead>
             <tbody>
               {[...transactions]
                 .sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
                 .map((txn: BillingTransaction, idx: number) => {
-                  const isPaid = Number(txn.due_amount ?? 0) <= 0;
                   return (
                     <tr
                       key={`txn-${idx}`}
-                      className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                      className="bg-white"
                     >
-                      <td className="p-1 border-b border-gray-100 align-top">{txn.id}</td>
-                      <td className="p-1 border-b border-gray-100 font-medium align-top">
+                      <td className="p-1.5 border border-gray-400 align-top text-black leading-tight">
+                        {txn.transactionCode || txn.id || '-'}
+                      </td>
+                      <td className="p-1.5 border border-gray-400 font-medium align-top text-black leading-tight">
                         {formatPaymentMethod(txn.payment_method)}
                       </td>
-                      <td className="p-1 border-b border-gray-100 align-top">
-                        {Number(txn.upi_amount ?? 0) > 0 ? `₹${Number(txn.upi_amount ?? 0)}` : '-'}
+                      <td className="p-1.5 border border-gray-400 align-top text-right text-black leading-tight">
+                        {Number(txn.upi_amount ?? 0) > 0 ? `₹${Number(txn.upi_amount ?? 0).toFixed(2)}` : '-'}
                       </td>
-                      <td className="p-1 border-b border-gray-100 align-top">
-                        {Number(txn.card_amount ?? 0) > 0 ? `₹${Number(txn.card_amount ?? 0)}` : '-'}
+                      <td className="p-1.5 border border-gray-400 align-top text-right text-black leading-tight">
+                        {Number(txn.card_amount ?? 0) > 0 ? `₹${Number(txn.card_amount ?? 0).toFixed(2)}` : '-'}
                       </td>
-                      <td className="p-1 border-b border-gray-100 align-top">
-                        {Number(txn.cash_amount ?? 0) > 0 ? `₹${Number(txn.cash_amount ?? 0)}` : '-'}
+                      <td className="p-1.5 border border-gray-400 align-top text-right text-black leading-tight">
+                        {Number(txn.cash_amount ?? 0) > 0 ? `₹${Number(txn.cash_amount ?? 0).toFixed(2)}` : '-'}
                       </td>
-                      <td
-                        className={`p-1 border-b border-gray-100 font-bold align-top ${isPaid ? 'text-green-600' : ''}`}
-                      >
-                        ₹{txn.received_amount}
+                      <td className="p-1.5 border border-gray-400 font-bold align-top text-right text-black leading-tight">
+                        ₹{Number(txn.received_amount || 0).toFixed(2)}
                       </td>
-                      {/* <td className="p-1 border-b border-gray-100 align-top">
-                        {Number(txn.refund_amount ?? 0) > 0 ? (
-                          <span className="text-red-600">-₹{Number(txn.refund_amount ?? 0).toFixed(2)}</span>
-                        ) : (
-                          <span>₹{Number(txn.refund_amount ?? 0).toFixed(2)}</span>
-                        )}
-                      </td> */}
-                      <td
-                        className={`p-1 border-b border-gray-100 align-top ${Number(txn.due_amount ?? 0) > 0 ? 'text-red-600' : ''}`}
-                      >
-                        {Number(txn.due_amount ?? 0) > 0 ? <span>₹{Number(txn.due_amount ?? 0)}</span> : '-'}
+                      <td className="p-1.5 border border-gray-400 align-top text-right text-black leading-tight">
+                        {Number(txn.due_amount ?? 0) > 0 ? `₹${Number(txn.due_amount ?? 0).toFixed(2)}` : '-'}
                       </td>
-                      <td className="p-1 border-b border-gray-100 whitespace-nowrap align-top">
+                      <td className="p-1.5 border border-gray-400 whitespace-nowrap align-top text-black leading-tight text-xs">
                         {formatDateTime(txn.created_at || '')}
                       </td>
-                      <td className="p-1 border-b border-gray-100 align-top">
+                      <td className="p-1.5 border border-gray-400 align-top text-black leading-tight">
                         {txn.createdBy || '-'}
                       </td>
-                      <td className="p-1 border-b border-gray-100 align-top">
+                      <td className="p-1.5 border border-gray-400 align-top text-black leading-tight">
                         {txn.remarks || '-'}
                       </td>
                     </tr>
@@ -202,49 +190,36 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
             {!transaction && (
               <tfoot>
-                <tr className="bg-gray-50 font-medium">
-                  {/* ID + Method columns combined for the label */}
-                  <td colSpan={2} className="p-1 align-top">Total:</td>
-                  {/* UPI total */}
-                  <td className="p-1 align-top">
+                <tr className="bg-white font-semibold">
+                  <td colSpan={2} className="p-1.5 border border-gray-600 align-top text-black">Total:</td>
+                  <td className="p-1.5 border border-gray-600 align-top text-right text-black">
                     ₹{transactions
                       .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.upi_amount || 0), 0)
                       .toFixed(2)}
                   </td>
-                  {/* Card total */}
-                  <td className="p-1 align-top">
+                  <td className="p-1.5 border border-gray-600 align-top text-right text-black">
                     ₹{transactions
                       .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.card_amount || 0), 0)
                       .toFixed(2)}
                   </td>
-                  {/* Cash total */}
-                  <td className="p-1 align-top">
+                  <td className="p-1.5 border border-gray-600 align-top text-right text-black">
                     ₹{transactions
                       .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.cash_amount || 0), 0)
                       .toFixed(2)}
                   </td>
-                  {/* Received total */}
-                  <td className="p-1 text-green-600 font-bold align-top">
+                  <td className="p-1.5 border border-gray-600 font-bold align-top text-right text-black">
                     ₹{totalReceived.toFixed(2)}
                   </td>
-                  {/* Refund total */}
-                  {/* <td className={`p-1 font-bold align-top ${totalRefund > 0 ? 'text-red-600' : ''}`}>
-                    {totalRefund > 0 ? `-₹${totalRefund.toFixed(2)}` : `₹${totalRefund.toFixed(2)}`}
-                  </td> */}
-                  {/* Remaining due (computed) */}
-                  <td
-                    className={`p-1 font-bold align-top ${remainingDue > 0 ? 'text-red-600' : ''}`}
-                  >
+                  <td className="p-1.5 border border-gray-600 font-bold align-top text-right text-black">
                     ₹{remainingDue.toFixed(2)}
                   </td>
-                  {/* Date/Time + Received by + Remarks empty for alignment */}
-                  <td className="p-1 align-top"></td>
-                  <td className="p-1 align-top"></td>
-                  <td className="p-1 align-top"></td>
+                  <td className="p-1.5 border border-gray-600 align-top"></td>
+                  <td className="p-1.5 border border-gray-600 align-top"></td>
+                  <td className="p-1.5 border border-gray-600 align-top"></td>
                 </tr>
-                <tr className="bg-gray-50 font-medium ">
-                  <td colSpan={9} className="p-1 align-top text-right">Net Amount:</td>
-                  <td className="p-1 text-blue-600 font-bold align-top" colSpan={2}>
+                <tr className="bg-white font-bold">
+                  <td colSpan={9} className="p-1.5 border border-gray-600 align-top text-right text-black">Net Amount:</td>
+                  <td className="p-1.5 border border-gray-600 font-bold align-top text-right text-black" colSpan={1}>
                     ₹{Number(patient?.visit?.billing?.netAmount || 0).toFixed(2)}
                   </td>
                 </tr>
@@ -256,84 +231,99 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
     );
   };
 
+  const formatInvoiceDateTime = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-IN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  };
+
   const renderInvoicePage = (pageTests: TestList[], pageNumber: number, totalPages: number, transaction?: BillingTransaction, hideButtons: boolean = false) => {
+    // Get invoice date/time from API - use billing createdAt or updatedAt or paymentDate
+    const billing = patient?.visit?.billing;
+    const invoiceDateTime = billing?.createdAt 
+      ? formatInvoiceDateTime(billing.createdAt)
+      : (billing?.updatedAt 
+        ? formatInvoiceDateTime(billing.updatedAt)
+        : (billing?.paymentDate
+          ? formatInvoiceDateTime(billing.paymentDate)
+          : formatInvoiceDateTime(new Date().toISOString())));
 
     return (
       <div
         key={`page-${pageNumber}${transaction ? `-txn-${transaction.id}` : ''}`}
-        className="bg-white p-6 border border-gray-200 rounded-lg mb-6 font-sans"
+        className="bg-white p-5 mb-6 font-sans"
         style={{
           width: '210mm',
           minHeight: '297mm',
           pageBreakAfter: pageNumber < totalPages ? 'always' : 'auto'
         }}
       >
-        {/* Header Section */}
-        <div className="flex justify-between items-start mb-6 border-b pb-4">
-          <div className="flex flex-col ">
-            <div >
+        {/* Header Section - Compact */}
+        <div className="flex justify-between items-start mb-4 border-b border-gray-600 pb-2">
+          <div className="flex items-center gap-3">
+            <div>
               <Image src="/CUREPLUS HOSPITALS (1).png"
-                alt="Lab Logo" width={90} height={56}
-                className="h-14 w-14 mr-4" priority loading="eager"
+                alt="Lab Logo" width={70} height={44}
+                className="h-11 w-auto" priority loading="eager"
                 unoptimized crossOrigin="anonymous" data-print-logo="true"
                 quality={100}
               />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-800">{currentLab?.name}</h1>
-              <p className="text-xs text-gray-600">{currentLab?.address}</p>
+              <h1 className="text-lg font-bold text-black uppercase tracking-tight leading-tight">{currentLab?.name || 'DIAGNOSTIC CENTER'}</h1>
+              <p className="text-xs text-black leading-tight">{currentLab?.address || ''}</p>
             </div>
           </div>
-          <div className="text-right bg-blue-50 p-3 rounded">
-            <p className="text-sm font-medium">Report No: <span className="font-bold">{patient?.visit?.billing?.billingId || 'N/A'}</span></p>
-            <p className="text-sm font-medium">Date: <span className="font-normal">{new Date().toLocaleDateString()}</span></p>
-            {transaction && (
-              <p className="text-sm font-medium">Transaction ID: <span className="font-bold">{transaction.id}</span></p>
-            )}
+          <div className="text-right border border-gray-600 px-3 py-1.5 bg-white">
+            <p className="text-xs font-bold text-black mb-0.5">INVOICE</p>
+            <p className="text-xs text-black leading-tight"><span className="font-semibold">No:</span> {patient?.visit?.billing?.billingCode || patient?.visit?.billing?.billingId || 'N/A'}</p>
+            <p className="text-xs text-black leading-tight"><span className="font-semibold">Date:</span> {invoiceDateTime}</p>
           </div>
         </div>
         
-        {/* Patient Info Section */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="space-y-2">
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              <FaUser className="text-blue-500" />
-              PATIENT DETAILS
-            </h2>
-            <div className="pl-6 space-y-1">
-              <p className="text-sm"><span className="font-medium">Name:</span> {patient?.firstName} {patient?.lastName}</p>
-              <p className="text-sm"><span className="font-medium">Age/Sex:</span> {calculateAge(patient?.dateOfBirth || '').split(' ')[0]} yrs / {patient?.gender || 'N/A'}</p>
-              <p className="text-sm"><span className="font-medium">Contact:</span> {patient?.phone || 'N/A'}</p>
+        {/* Patient & Visit Info Section - Ultra Compact */}
+        <div className="mb-4 border border-gray-600 p-2">
+          <div className="grid grid-cols-3 gap-3 text-xs">
+            <div>
+              <p className="font-semibold text-black mb-1 border-b border-gray-400 pb-0.5">Patient</p>
+              <p className="text-black leading-tight"><span className="font-medium">Name:</span> {patient?.firstName || ''} {patient?.lastName || ''}</p>
+              <p className="text-black leading-tight"><span className="font-medium">Age/Sex:</span> {calculateAge(patient?.dateOfBirth || '').split(' ')[0]} yrs / {patient?.gender || 'N/A'}</p>
+              <p className="text-black leading-tight"><span className="font-medium">Contact:</span> {patient?.phone || 'N/A'}</p>
+              <p className="text-black leading-tight"><span className="font-medium">Code:</span> {patient?.patientCode || 'N/A'}</p>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              <FaHospital className="text-blue-500" />
-              VISIT DETAILS
-            </h2>
-            <div className="pl-6 space-y-1">
-              <p className="text-sm flex items-center gap-1">
-                <FaCalendarAlt className="text-gray-500" />
-                <span className="font-medium">Date:</span> {patient?.visit?.visitDate ? new Date(patient.visit.visitDate).toLocaleDateString() : 'N/A'}
-              </p>
-              <p className="text-sm"><span className="font-medium">Visit ID:</span> {patient?.visit?.visitId || 'N/A'}</p>
-              <p className="text-sm"><span className="font-medium">Referred By:</span> {doctor?.name || 'N/A'}</p>
+            <div>
+              <p className="font-semibold text-black mb-1 border-b border-gray-400 pb-0.5">Visit</p>
+              <p className="text-black leading-tight"><span className="font-medium">Date:</span> {patient?.visit?.visitDate ? new Date(patient.visit.visitDate).toLocaleDateString('en-IN') : 'N/A'}</p>
+              <p className="text-black leading-tight"><span className="font-medium">Code:</span> {patient?.visit?.visitCode || 'N/A'}</p>
+              <p className="text-black leading-tight"><span className="font-medium">ID:</span> {patient?.visit?.visitId || 'N/A'}</p>
+              <p className="text-black leading-tight"><span className="font-medium">Billing:</span> {patient?.visit?.billing?.billingCode || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-black mb-1 border-b border-gray-400 pb-0.5">Reference</p>
+              <p className="text-black leading-tight"><span className="font-medium">Referred By:</span> {doctor?.name || 'N/A'}</p>
             </div>
           </div>
         </div>
 
-        {/* Tests Table */}
-        <div className="mb-6">
-          <h2 className="text-lg font-bold mb-3 border-b pb-2">TESTS CONDUCTED</h2>
-          <table className="w-full border-collapse text-xs">
+        {/* Tests Table - Compact */}
+        <div className="mb-4">
+          <h2 className="text-xs font-bold mb-1.5 border-b border-gray-600 pb-0.5 text-black uppercase">Tests Conducted</h2>
+          <table className="w-full border-collapse border border-gray-600 text-xs">
             <thead>
-              <tr className="bg-gray-100">
-                <th className="text-left p-1 font-medium border">Test Name</th>
-                <th className="text-left p-1 font-medium border">Category</th>
-                <th className="text-right p-1 font-medium border">Price (₹)</th>
-                <th className="text-right p-1 font-medium border">Discount (₹)</th>
-                <th className="text-right p-1 font-medium border">Net Price (₹)</th>
+              <tr className="bg-white">
+                <th className="text-left p-1.5 font-semibold border border-gray-600 text-black">Test Name</th>
+                <th className="text-left p-1.5 font-semibold border border-gray-600 text-black">Category</th>
+                <th className="text-right p-1.5 font-semibold border border-gray-600 text-black">Price</th>
+                <th className="text-right p-1.5 font-semibold border border-gray-600 text-black">Discount</th>
+                <th className="text-right p-1.5 font-semibold border border-gray-600 text-black">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -341,15 +331,15 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                 const discountInfo = getTestDiscount(test.id);
                 const hasDiscount = discountInfo.discountAmount > 0;
                 return (
-                  <tr key={`test-${idx}`} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="p-1 border">{test.name}</td>
-                    <td className="p-1 border">{test.category || 'General'}</td>
-                    <td className="p-1 text-right border">{test.price.toFixed(2)}</td>
-                    <td className={`p-1 text-right border ${hasDiscount ? 'text-red-600' : ''}`}>
-                      {hasDiscount ? `-${discountInfo.discountAmount.toFixed(2)}` : '0.00'}
+                  <tr key={`test-${idx}`} className="bg-white">
+                    <td className="p-1.5 border border-gray-400 text-black leading-tight">{test.name}</td>
+                    <td className="p-1.5 border border-gray-400 text-black leading-tight">{test.category || 'General'}</td>
+                    <td className="p-1.5 text-right border border-gray-400 text-black leading-tight">₹{test.price.toFixed(2)}</td>
+                    <td className="p-1.5 text-right border border-gray-400 text-black leading-tight">
+                      {hasDiscount ? `-₹${discountInfo.discountAmount.toFixed(2)}` : '₹0.00'}
                     </td>
-                    <td className="p-1 text-right border font-medium">
-                      {hasDiscount ? discountInfo.finalPrice.toFixed(2) : test.price.toFixed(2)}
+                    <td className="p-1.5 text-right border border-gray-400 font-semibold text-black leading-tight">
+                      ₹{hasDiscount ? discountInfo.finalPrice.toFixed(2) : test.price.toFixed(2)}
                     </td>
                   </tr>
                 );
@@ -358,36 +348,36 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
           </table>
         </div>
 
-        {/* Packages Section (only on last page) */}
+        {/* Packages Section (only on last page) - Compact */}
         {pageNumber === totalPages && healthPackage && healthPackage.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-lg font-bold mb-3 border-b pb-2">HEALTH PACKAGES</h2>
-            <table className="w-full border-collapse text-xs">
+          <div className="mb-4">
+            <h2 className="text-xs font-bold mb-1.5 border-b border-gray-600 pb-0.5 text-black uppercase">Health Packages</h2>
+            <table className="w-full border-collapse border border-gray-600 text-xs">
               <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left p-1 font-medium border">Package Name</th>
-                  <th className="text-right p-1 font-medium border">Price (₹)</th>
-                  <th className="text-right p-1 font-medium border">Discount (₹)</th>
-                  <th className="text-right p-1 font-medium border">Net Price (₹)</th>
+                <tr className="bg-white">
+                  <th className="text-left p-1.5 font-semibold border border-gray-600 text-black">Package Name</th>
+                  <th className="text-right p-1.5 font-semibold border border-gray-600 text-black">Price</th>
+                  <th className="text-right p-1.5 font-semibold border border-gray-600 text-black">Discount</th>
+                  <th className="text-right p-1.5 font-semibold border border-gray-600 text-black">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {healthPackage.map((pkg, idx) => (
                   <React.Fragment key={`pkg-${idx}`}>
-                    <tr className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="p-1 border">{pkg.packageName}</td>
-                      <td className="p-1 text-right border">{pkg.price.toFixed(2)}</td>
-                      <td className="p-1 text-right border text-red-600">-{pkg.discount.toFixed(2)}</td>
-                      <td className="p-1 text-right border font-medium text-green-600">{(pkg.price - pkg.discount).toFixed(2)}</td>
+                    <tr className="bg-white">
+                      <td className="p-1.5 border border-gray-400 text-black leading-tight">{pkg.packageName}</td>
+                      <td className="p-1.5 text-right border border-gray-400 text-black leading-tight">₹{pkg.price.toFixed(2)}</td>
+                      <td className="p-1.5 text-right border border-gray-400 text-black leading-tight">-₹{pkg.discount.toFixed(2)}</td>
+                      <td className="p-1.5 text-right border border-gray-400 font-semibold text-black leading-tight">₹{(pkg.price - pkg.discount).toFixed(2)}</td>
                     </tr>
                     {pkg.tests && pkg.tests.length > 0 && (
-                      <tr className="bg-gray-50">
-                        <td colSpan={4} className="p-1 border">
-                          <div className="pl-2">
-                            <p className="text-xs font-medium mb-1 text-gray-600">Includes:</p>
-                            <div className="grid grid-cols-2 gap-1">
+                      <tr className="bg-white">
+                        <td colSpan={4} className="p-1.5 border border-gray-400">
+                          <div className="pl-1">
+                            <p className="text-xs font-semibold mb-0.5 text-black">Includes:</p>
+                            <div className="grid grid-cols-3 gap-0.5">
                               {pkg.tests.map((test, testIdx) => (
-                                <div key={testIdx} className="text-xs bg-white p-1 rounded border border-gray-100">
+                                <div key={testIdx} className="text-xs bg-white p-0.5 border border-gray-300 text-black leading-tight">
                                   {test.name}
                                 </div>
                               ))}
@@ -405,86 +395,60 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
         {/* Payment Summary Section */}
         {pageNumber === totalPages && (() => {
-          // For per-transaction pages, show summary based on that transaction.
-          // Otherwise, show overall summary across all transactions.
-          // const allTxns = patient?.visit?.billing?.transactions || [];
-          // const netAmountVal = Number(patient?.visit?.billing?.netAmount || 0);
           const summaryTxn = transaction ? transaction : undefined;
-
-          // const totalReceived = (summaryTxn ? [summaryTxn] : allTxns)
-          //   .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.received_amount || 0), 0);
-          // const totalRefund = (summaryTxn ? [summaryTxn] : allTxns)
-          //   .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.refund_amount || 0), 0);
-
           const totalDue = summaryTxn
             ? Math.max(0, Number(summaryTxn.due_amount || 0))
             : Number(patient?.visit?.billing?.due_amount || 0);
+          const dueAmount = Number(patient?.visit?.billing?.due_amount || 0);
+          const isPaid = dueAmount === 0;
 
           return (
-            <div className="border-t pt-2">
-              <h2 className="text-sm font-bold mb-2">PAYMENT SUMMARY</h2>
-              <div className="grid grid-cols-1 gap-2 text-xs">
-                <div className="flex justify-between py-1 border-b border-gray-200">
-                  <span className="font-medium">Tests Total:</span>
-                  <span>₹{tests.reduce((sum, test) => sum + (getTestDiscount(test.id).finalPrice || test.price), 0).toFixed(2)}</span>
+            <div className="border-t border-gray-600 pt-2">
+              <h2 className="text-xs font-bold mb-1.5 border-b border-gray-600 pb-0.5 text-black uppercase">Payment Summary</h2>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex justify-between py-1 border-b border-gray-400">
+                  <span className="font-semibold text-black">Tests Total:</span>
+                  <span className="text-black">₹{tests.reduce((sum, test) => sum + (getTestDiscount(test.id).finalPrice || test.price), 0).toFixed(2)}</span>
                 </div>
                 {healthPackage && healthPackage.length > 0 && (
-                  <div className="flex justify-between py-1 border-b border-gray-200">
-                    <span className="font-medium">Packages Total:</span>
-                    <span>₹{healthPackage.reduce((sum, pkg) => sum + (pkg.price - pkg.discount), 0).toFixed(2)}</span>
+                  <div className="flex justify-between py-1 border-b border-gray-400">
+                    <span className="font-semibold text-black">Packages Total:</span>
+                    <span className="text-black">₹{healthPackage.reduce((sum, pkg) => sum + (pkg.price - pkg.discount), 0).toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between py-1 border-b border-gray-200 font-bold">
-                  <span>Subtotal:</span>
-                  <span>₹{calculateTotal().toFixed(2)}</span>
+                <div className="flex justify-between py-1 border-b border-gray-400 font-bold">
+                  <span className="text-black">Subtotal:</span>
+                  <span className="text-black">₹{calculateTotal().toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-gray-200">
-                  <span>Additional Discount:</span>
-                  <span className="text-red-600">-₹{patient?.visit?.billing?.discount || '0.00'}</span>
+                <div className="flex justify-between py-1 border-b border-gray-400">
+                  <span className="text-black">Discount:</span>
+                  <span className="text-black">-₹{Number(patient?.visit?.billing?.discount || 0).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between py-2 font-bold bg-gray-50 px-2 rounded">
+                <div className="col-span-2 flex justify-between py-2 font-bold bg-white border border-gray-600 text-black px-2 mt-1">
                   <span>TOTAL AMOUNT:</span>
-                  <span className="text-blue-600">
-                    ₹{patient?.visit?.billing?.netAmount || calculateTotal().toFixed(2)}
+                  <span>
+                    ₹{Number(patient?.visit?.billing?.netAmount || calculateTotal()).toFixed(2)}
                     {totalDue > 0 && (
-                      <span className="text-red-600 ml-1">(Due: ₹{totalDue.toFixed(2)})</span>
+                      <span className="ml-2 text-xs">(Due: ₹{totalDue.toFixed(2)})</span>
                     )}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">Status:</span>
-                    {(() => {
-                      if (summaryTxn) {
-                        const isPaid = Number(summaryTxn.due_amount || 0) <= 0;
-                        return (
-                          <span className={isPaid ? 'text-green-600' : 'text-red-600'}>
-                            {isPaid ? 'PAID' : 'DUE'}
-                          </span>
-                        );
-                      }
-                      // Use API's due_amount instead of calculating on frontend
-                      const dueAmount = Number(patient?.visit?.billing?.due_amount || 0);
-                      const isPaid = dueAmount === 0;
-                      const label = isPaid ? 'PAID' : (patient?.visit?.billing?.paymentStatus || 'DUE');
-                      return (
-                        <span className={isPaid ? 'text-green-600' : 'text-red-600'}>
-                          {label}
-                        </span>
-                      );
-                    })()}
+                <div className="col-span-2 grid grid-cols-3 gap-2 mt-1.5 pt-1.5 border-t border-gray-400 text-xs">
+                  <div>
+                    <span className="font-semibold text-black">Status:</span>
+                    <span className="ml-1 text-black font-bold">{isPaid ? 'PAID' : (patient?.visit?.billing?.paymentStatus || 'DUE')}</span>
                   </div>
-                  <div className="flex items-center justify-end gap-2">
-                    <span className="font-medium">Method:</span>
-                    <span>{formatPaymentMethod(summaryTxn ? summaryTxn.payment_method : (patient?.visit?.billing?.paymentMethod || 'N/A'))}</span>
+                  <div>
+                    <span className="font-semibold text-black">Method:</span>
+                    <span className="ml-1 text-black">{formatPaymentMethod(summaryTxn ? summaryTxn.payment_method : (patient?.visit?.billing?.paymentMethod || 'N/A'))}</span>
                   </div>
-                  <div className="flex items-center gap-2 col-span-2">
-                    <span className="font-medium">Date:</span>
-                    <span>
+                  <div>
+                    <span className="font-semibold text-black">Date:</span>
+                    <span className="ml-1 text-black">
                       {summaryTxn
-                        ? (summaryTxn.created_at ? new Date(summaryTxn.created_at).toLocaleString() : (summaryTxn.payment_date || 'N/A'))
+                        ? (summaryTxn.created_at ? formatInvoiceDateTime(summaryTxn.created_at) : (summaryTxn.payment_date || 'N/A'))
                         : (patient?.visit?.billing?.paymentDate
-                          ? new Date(patient.visit.billing.paymentDate).toLocaleDateString()
+                          ? formatInvoiceDateTime(patient.visit.billing.paymentDate)
                           : 'N/A')}
                     </span>
                   </div>
@@ -496,7 +460,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
         {/* Transactions Table */}
         {printMode === 'all' && pageNumber === totalPages && renderTransactionTable()}
-        {printMode === 'per-transaction' && transaction && renderTransactionTable(transaction)}
+        {printMode === 'per-transaction' && transaction && pageNumber === totalPages && renderTransactionTable(transaction)}
 
         {/* Individual Transaction Action Buttons - Only for Per Transaction mode */}
         {!hideButtons && printMode === 'per-transaction' && transaction && (
@@ -526,20 +490,20 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
           </div>
         )}
 
-        {/* Footer */}
-        <div className="mt-8 pt-4 border-t text-center text-xs text-gray-600">
-          <p>This is an electronically generated report. No signature required.</p>
-          <p className="mt-1">For any queries, please contact: {currentLab?.name || 'N/A'}</p>
-          <div className="mt-4 flex justify-between items-center">
+        {/* Footer - Compact */}
+        <div className="mt-4 pt-2 border-t border-gray-600 text-center text-xs">
+          <p className="text-black mb-1 leading-tight">This is an electronically generated invoice. No signature required.</p>
+          <p className="text-black mb-2 leading-tight">For queries, contact: {currentLab?.name || 'N/A'}</p>
+          <div className="mt-2 flex justify-between items-center border-t border-gray-400 pt-1.5">
             <div className="flex items-center gap-1">
-              <FaSignature className="text-gray-500" />
-              <span>Authorized Signatory</span>
+              <FaSignature className="text-black text-xs" />
+              <span className="text-black font-semibold text-xs">Authorized Signatory</span>
             </div>
-            <p>Generated on: {new Date().toLocaleString()}</p>
+            <p className="text-black text-xs"><span className="font-semibold">Generated:</span> {invoiceDateTime}</p>
           </div>
-          <div className="mt-4 flex justify-center items-center">
-            <Image src="/tiamed1.svg" alt="TiaMeds Logo" width={16} height={16} className="h-4 mr-2 opacity-80" />
-            <span className="text-xs font-medium text-gray-600">Powered by TiaMeds Technologies Pvt.Ltd</span>
+          <div className="mt-2 flex justify-center items-center pt-1.5 border-t border-gray-400">
+            <Image src="/tiamed1.svg" alt="TiaMeds Logo" width={14} height={14} className="h-3.5 mr-1.5" style={{ filter: 'grayscale(100%)' }} />
+            <span className="text-xs font-medium text-black">Powered by TiaMeds Technologies Pvt.Ltd</span>
           </div>
         </div>
       </div>
@@ -696,9 +660,9 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
       <div className="max-w-4xl mx-auto">
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 print:hidden gap-4">
-          <div className="text-sm text-gray-600 flex items-center gap-2">
+          <div className="text-sm text-black flex items-center gap-2">
             <FaFileInvoiceDollar />
-            <span>Invoice for visit #{patient?.visit?.visitId || 'N/A'}</span>
+            <span>Invoice for Visit Code: {patient?.visit?.visitCode || patient?.visit?.visitId || 'N/A'}</span>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
@@ -742,7 +706,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         </div>
 
         {error && (
-          <div className="mb-4 p-2 bg-red-100 text-red-700 rounded text-sm">
+          <div className="mb-4 p-2 bg-black text-white rounded text-sm print:hidden">
             {error}
           </div>
         )}

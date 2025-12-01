@@ -272,10 +272,10 @@ const PatientVisitListTable: React.FC = () => {
 
   const columns = [
     {
-      header: 'visit ID',
+      header: 'Visit Code',
       accessor: (row: Patient) => (
         <span className="font-mono text-sm text-gray-700">
-          {row?.visit?.visitId}
+          {row?.visit?.visitCode || row?.visit?.visitId}
         </span>
       ),
       className: 'whitespace-nowrap'
@@ -499,8 +499,8 @@ const PatientVisitListTable: React.FC = () => {
             {!isCancelled && isReportPending && (
               <>
                 {/* Edit Button - Only visible for SUPERADMIN role */}
-                {isSuperAdmin && (
-                  <Button
+                {isSuperAdmin || isAdmin|| isDeskRole && (
+                  <Button 
                     text=""
                     className="px-2 py-1 text-white bg-amber-600 rounded hover:bg-amber-700 transition-colors duration-200"
                     onClick={handleEditpatientDetails(row)}

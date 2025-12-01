@@ -8,6 +8,8 @@ export interface PatientTabItem {
 
 export type Patient = {
   id?: number;
+  /** New: backend patient code e.g. PAT1-00001 */
+  patientCode?: string;
   firstName: string;
   lastName: string;
   gender: string;
@@ -25,6 +27,8 @@ export type Patient = {
 
 export type Visit = {
   visitId?: number;
+  /** New: backend visit code e.g. VIS1-00001 */
+  visitCode?: string;
   visitDate: string;
   visitType: VisitType;
   visitStatus: VisitStatus;
@@ -57,6 +61,8 @@ export interface TestResult {
 
 export type Billing = {
   billingId?: number;
+  /** New: backend billing code e.g. BIL1-00001 */
+  billingCode?: string;
   totalAmount: number | null;
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
@@ -74,6 +80,12 @@ export type Billing = {
   due_amount?: number | null;
   transactions?: BillingTransaction[];
   gstRate?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  billingTime?: string;
+  billingDate?: string;
 };
 
 
@@ -137,6 +149,8 @@ export enum DiscountReason {
 
 export type BillingTransaction = {
   id?: number;
+  /** New: backend transaction code e.g. TXN1-00001 */
+  transactionCode?: string;
   billing_id?: number;
   payment_method: PaymentMethod | 'REFUND';
   upi_id?: string | null;

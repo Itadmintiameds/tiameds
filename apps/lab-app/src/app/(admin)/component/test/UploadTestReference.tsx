@@ -1,25 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { FaCloudUploadAlt, FaCheckCircle, FaLock } from 'react-icons/fa';
-import { uploadTestReferanceRangeCsv, getTestReferanceRange } from '@/../services/testService';
+import { uploadTestReferanceRangeCsv, getTestReferences, PaginatedResponse } from '@/../services/testService';
 import { useLabs } from '@/context/LabContext';
 import { toast } from 'react-toastify';
-import { TestReferancePoint } from '@/types/test/testlist';
 import Loader from '@/app/(admin)/component/common/Loader';
 
 const UploadTestReference = () => {
   const { currentLab } = useLabs();
   const [loading, setLoading] = useState(false);
-  const [referencePoints, setReferencePoints] = useState<TestReferancePoint[]>([]);
+  const [totalReferences, setTotalReferences] = useState(0);
 
   useEffect(() => {
-    if (currentLab) {
+    if (currentLab?.id) {
       setLoading(true);
-      getTestReferanceRange(currentLab.id.toString())
-        .then((data) => {
-          setReferencePoints(data);
+      // Use paginated API to check if references exist
+      // Fetch first page with size=1 just to check totalElements
+      getTestReferences(currentLab.id, 0, 1)
+        .then((response: PaginatedResponse) => {
+          // Check if references exist using totalElements
+          const totalElements = response?.totalElements ?? 0;
+          
+          setTotalReferences(totalElements);
         })
-        .catch((error) => toast.error((error as Error).message))
+        .catch((error) => {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to load reference points.';
+          toast.error(errorMessage);
+          // Reset to zero on error to allow upload
+          setTotalReferences(0);
+        })
         .finally(() => setLoading(false));
+    } else {
+      // Reset when no lab is selected
+      setTotalReferences(0);
     }
   }, [currentLab]);
 
@@ -27,24 +39,42 @@ const UploadTestReference = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (referencePoints.length > 0) {
+    // Block upload if references already exist
+    if (totalReferences > 0) {
       toast.info('Reference ranges already exist. Please delete existing references before uploading new ones.');
+      // Reset file input to prevent any upload attempt
+      e.target.value = '';
+      return;
+    }
+
+    // Additional safety check - prevent upload if no lab selected
+    if (!currentLab?.id) {
+      toast.error('Current lab is not selected.');
+      e.target.value = '';
       return;
     }
 
     try {
-      if (currentLab?.id) {
-        await uploadTestReferanceRangeCsv(currentLab.id.toString(), file);
-        toast.success('Test reference file uploaded successfully!', { autoClose: 2000 });
-        // Refresh the reference points after upload
-        const updatedPoints = await getTestReferanceRange(currentLab.id.toString());
-        setReferencePoints(updatedPoints);
-      } else {
-        toast.error('Current lab is not selected.');
-      }
+      setLoading(true);
+      await uploadTestReferanceRangeCsv(currentLab.id.toString(), file);
+      toast.success('Test reference file uploaded successfully!', { autoClose: 2000 });
+      
+      // Refresh the reference count after upload using paginated API
+      const response: PaginatedResponse = await getTestReferences(currentLab.id, 0, 1);
+      const totalElements = response?.totalElements ?? 0;
+      
+      setTotalReferences(totalElements);
+      
+      // Reset file input after successful upload
+      e.target.value = '';
     } catch (error) {
-      // Handle file upload error
-      toast.error('An error occurred while uploading the file.');
+      // Handle file upload error with detailed message
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while uploading the file.';
+      toast.error(errorMessage, { autoClose: 3000 });
+      // Reset file input on error
+      e.target.value = '';
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,7 +94,7 @@ const UploadTestReference = () => {
   return (
     <div className="flex justify-center items-center bg-gray-50 h-screen">
       <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-md text-center -mt-40">
-        {referencePoints.length > 0 ? (
+        {totalReferences > 0 ? (
           <>
             <div className="text-green-500 mb-4">
               <FaCheckCircle size={48} className="mx-auto" />
@@ -73,7 +103,7 @@ const UploadTestReference = () => {
               Reference Ranges Already Uploaded!
             </h1>
             <p className="text-gray-500 text-sm mb-6">
-              You have reference ranges configured for {referencePoints.length} test(s).
+              You have reference ranges configured for {totalReferences} test(s).
             </p>
             
             <div 
@@ -105,7 +135,7 @@ const UploadTestReference = () => {
               htmlFor="file-upload"
               className="cursor-pointer inline-block bg-gradient-to-r from-primary to-primarylight text-textzinc py-2 px-6 rounded-md
                 hover:from-primary hover:to-secondary
-                focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm font-medium"
+                focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FaCloudUploadAlt className="inline-block text-textzinc mr-2" />
               Choose File
@@ -115,6 +145,7 @@ const UploadTestReference = () => {
                 accept=".csv"
                 className="hidden"
                 onChange={handleUpload}
+                disabled={loading || totalReferences > 0}
               />
             </label>
           </>

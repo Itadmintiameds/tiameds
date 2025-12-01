@@ -75,6 +75,10 @@ const DashboardContent = () => {
   // Filter tabs based on user role
   const filteredTabs = tabs.filter(tab => {
     if (isAdmin || isSuperAdmin) return true; // ADMIN and SUPERADMIN see all tabs
+    // If user has both DESKROLE and TECHNICIAN roles, show both tabs
+    if (isDeskRole && isTechnician) {
+      return tab.id === 'patient' || tab.id === 'technician';
+    }
     if (isTechnician) return tab.id === 'technician'; // TECHNICIAN only gets technician tab
     if (isDeskRole) return tab.id === 'patient'; // DESKROLE only gets patient tab
     return false;
@@ -104,6 +108,14 @@ const DashboardContent = () => {
       switch (selectedTab) {
         case 'patient': return <PatientDashboard />;
         case 'dashboard': return <Statistics />;
+        case 'technician': return <Technacian />;
+        default: return <PatientDashboard />;
+      }
+    }
+    // If user has both DESKROLE and TECHNICIAN roles, allow switching between tabs
+    if (isDeskRole && isTechnician) {
+      switch (selectedTab) {
+        case 'patient': return <PatientDashboard />;
         case 'technician': return <Technacian />;
         default: return <PatientDashboard />;
       }
@@ -139,10 +151,10 @@ const DashboardContent = () => {
   return (
     <div className="p-4">
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* Show tabs only if user is ADMIN */}
-        {isAdmin || isSuperAdmin ? (
+        {/* Show tabs if user is ADMIN/SUPERADMIN or has both DESKROLE and TECHNICIAN roles */}
+        {(isAdmin || isSuperAdmin || (isDeskRole && isTechnician)) ? (
           <div className="flex border-b border-gray-200 px-4">
-            {tabs.map((tab) => (
+            {filteredTabs.map((tab) => (
               <TabButton
                 key={tab.id}
                 tab={tab}
