@@ -167,7 +167,7 @@ const DashboardContent = () => {
 
         {/* Tab Content with Smooth Transition */}
         <div className="py-4 px-2">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait"> 
             <motion.div
               key={selectedTab}
               initial={{ opacity: 0, y: 10 }}
