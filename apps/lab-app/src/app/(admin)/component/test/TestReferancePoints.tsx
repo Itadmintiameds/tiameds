@@ -204,6 +204,7 @@ const TestReferancePoints = () => {
     setExpandedRows(newExpandedRows);
   };
 
+  
   const { filteredGroupedData, stats } = useMemo(() => {
     // Ensure referencePoints is always an array
     const safeReferencePoints = Array.isArray(referencePoints) ? referencePoints : [];
