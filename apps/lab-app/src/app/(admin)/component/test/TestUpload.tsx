@@ -1,34 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FaCloudUploadAlt, FaCheckCircle, FaListAlt, FaLock } from 'react-icons/fa';
-import { uploadTestCsv, getTests } from '@/../services/testService';
+import { uploadTestCsv, getTestsPaginated, PaginatedTestResponse } from '@/../services/testService';
 import { useLabs } from '@/context/LabContext';
 import { toast } from 'react-toastify';
-import { TestList } from '@/types/test/testlist';
 import Loader from '@/app/(admin)/component/common/Loader';
 
 const TestUpload = () => {
   const { currentLab } = useLabs();
-  const [tests, setTests] = useState<TestList[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (currentLab) {
+  const fetchTestsCount = useCallback(async () => {
+    if (currentLab?.id) {
       setIsLoading(true);
-      getTests(currentLab.id.toString())
-        .then((tests) => {
-          setTests(tests);
-        })
-        .catch((error) => {
-          toast.error(error.message || 'Failed to load tests');
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+      try {
+        // Fetch just first page with size 1 to check if tests exist
+        const response: PaginatedTestResponse = await getTestsPaginated(currentLab.id, 0, 1);
+        const totalElements = response?.totalElements ?? 0;
+        setTotalElements(totalElements);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load tests';
+        toast.error(errorMessage);
+        setTotalElements(0);
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }, [currentLab]);
+  }, [currentLab?.id]);
+
+  useEffect(() => {
+    fetchTestsCount();
+  }, [fetchTestsCount]);
 
   const handleUploadClick = () => {
-    if (tests.length > 0) {
+    if (totalElements > 0) {
       toast.info('Tests already exist for this lab. Please delete existing tests before uploading new ones.');
     }
   };
@@ -37,7 +42,7 @@ const TestUpload = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (tests.length > 0) {
+    if (totalElements > 0) {
       toast.info('Tests already exist for this lab. Please delete existing tests before uploading new ones.');
       return;
     }
@@ -46,14 +51,15 @@ const TestUpload = () => {
       if (currentLab?.id) {
         await uploadTestCsv(currentLab.id.toString(), file);
         toast.success('Test file uploaded successfully!', { autoClose: 2000 });
-        const updatedTests = await getTests(currentLab.id.toString());
-        setTests(updatedTests);
+        // Refresh the count after upload
+        await fetchTestsCount();
       } else {
         toast.error('Please select a lab first');
       }
     } catch (error) {
       // Handle file upload error
-      toast.error('An error occurred while uploading the file.');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while uploading the file.';
+      toast.error(errorMessage);
     }
   };
 
@@ -69,7 +75,7 @@ const TestUpload = () => {
   return (
     <div className="flex justify-center items-center bg-gray-50 h-screen">
       <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-md text-center -mt-40 transition-all duration-300 hover:shadow-xl">
-        {tests.length > 0 ? (
+        {totalElements > 0 ? (
           <>
             <div className="text-green-500 mb-4">
               <FaCheckCircle size={48} className="mx-auto" />
@@ -78,7 +84,7 @@ const TestUpload = () => {
               Tests Already Uploaded!
             </h1>
             <p className="text-gray-500 text-sm mb-6">
-              You have {tests.length} test(s) available for this lab.
+              You have {totalElements} test(s) available for this lab.
             </p>
             <div className="bg-blue-50 p-4 rounded-md mb-6">
               <div className="flex items-center justify-center">

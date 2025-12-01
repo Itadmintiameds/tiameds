@@ -3,6 +3,16 @@ import { TestList ,TestReferancePoint} from '@/types/test/testlist';
 import { AxiosError } from 'axios';
 
 
+export interface PaginatedTestResponse {
+  content: TestList[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
 export const getTests = async (labId: string): Promise<TestList[]> => {
   try {
     const response = await api.get<{ data: TestList[]; message: string; status: string }>(`admin/lab/${labId}/tests`);
@@ -16,6 +26,54 @@ export const getTests = async (labId: string): Promise<TestList[]> => {
       errorMessage = error.message;
     }
 
+    throw new Error(errorMessage);
+  }
+};
+
+export const getTestsPaginated = async (
+  labId: number,
+  page: number = 0,
+  size: number = 10
+): Promise<PaginatedTestResponse> => {
+  try {
+    const response = await api.get<PaginatedTestResponse | { data: PaginatedTestResponse; message: string; status: string }>(
+      `admin/lab/tests`,
+      {
+        params: {
+          labId,
+          page,
+          size,
+        },
+      }
+    );
+    
+    // Handle both direct response and wrapped response formats
+    const data = (response.data as any)?.data ? (response.data as any).data : response.data;
+    
+    // Ensure the response has the expected structure
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid response format from server');
+    }
+    
+    // Ensure content is always an array
+    const paginatedResponse: PaginatedTestResponse = {
+      content: Array.isArray(data.content) ? data.content : [],
+      page: data.page ?? page,
+      size: data.size ?? size,
+      totalElements: data.totalElements ?? 0,
+      totalPages: data.totalPages ?? 0,
+      hasNext: data.hasNext ?? false,
+      hasPrevious: data.hasPrevious ?? false,
+    };
+    
+    return paginatedResponse;
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while fetching tests.';
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      errorMessage = (error as any).response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
     throw new Error(errorMessage);
   }
 };
@@ -169,6 +227,16 @@ export const updateTest = async (labId: string, testId: string, test: TestList):
 };
 // ======================================================== test referance range ========================================================
 
+export interface PaginatedResponse {
+  content: TestReferancePoint[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
 export const getTestReferanceRange = async (labId: string): Promise<TestReferancePoint[]> => {
   try {
     const response = await api.get<{ data: TestReferancePoint[]; message: string; status: string }>(`lab/test-reference/${labId}`);
@@ -186,9 +254,63 @@ export const getTestReferanceRange = async (labId: string): Promise<TestReferanc
   }
 }
 
-export const updateTestReferanceRange = async (labId: string, testReferenceId: string, testref: TestReferancePoint): Promise<void> => {
+export const getTestReferences = async (
+  labId: number,
+  page: number = 0,
+  size: number = 10
+): Promise<PaginatedResponse> => {
   try {
-    await api.put(`lab/test-reference/${labId}/${testReferenceId}`, testref);
+    const response = await api.get<PaginatedResponse | { data: PaginatedResponse; message: string; status: string }>(
+      `lab/test-reference`,
+      {
+        params: {
+          labId,
+          page,
+          size,
+        },
+      }
+    );
+    
+    // Handle both direct response and wrapped response formats
+    const data = (response.data as any)?.data ? (response.data as any).data : response.data;
+    
+    // Ensure the response has the expected structure
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid response format from server');
+    }
+    
+    // Ensure content is always an array
+    const paginatedResponse: PaginatedResponse = {
+      content: Array.isArray(data.content) ? data.content : [],
+      page: data.page ?? page,
+      size: data.size ?? size,
+      totalElements: data.totalElements ?? 0,
+      totalPages: data.totalPages ?? 0,
+      hasNext: data.hasNext ?? false,
+      hasPrevious: data.hasPrevious ?? false,
+    };
+    
+    return paginatedResponse;
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while fetching test references.';
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      errorMessage = (error as any).response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    throw new Error(errorMessage);
+  }
+};
+
+export const updateTestReferanceRange = async (labId: number, testReferenceCode: string, testref: TestReferancePoint): Promise<void> => {
+  try {
+    // Use new /update endpoint with testReferenceCode in body (no ID in URL)
+    const requestBody = {
+      labId: labId,
+      testReferenceCode: testReferenceCode,
+      ...testref
+    };
+    await api.put(`lab/test-reference/update`, requestBody);
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while updating test referance range.';
 
@@ -202,9 +324,14 @@ export const updateTestReferanceRange = async (labId: string, testReferenceId: s
   }
 }
 
-export const deleteTestReferanceRange = async (labId: Number, testReferenceId: Number) => {
+export const deleteTestReferanceRange = async (labId: number, testReferenceCode: string) => {
   try {
-    await api.delete(`lab/test-reference/${labId}/${testReferenceId}`);
+    // Send labId and testReferenceCode in request body, matching backend API
+    const requestBody = {
+      labId: labId,
+      testReferenceCode: testReferenceCode
+    };
+    await api.delete(`lab/test-reference/delete`, { data: requestBody });
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while deleting test referance range.';
 
@@ -220,7 +347,12 @@ export const deleteTestReferanceRange = async (labId: Number, testReferenceId: N
 
 export const addTestReferanceRange = async (labId: string, testref: TestReferancePoint): Promise<void> => {
   try {
-    await api.post(`lab/test-reference/${labId}/add`, testref);
+    // Include labId in the request body instead of URL
+    const requestBody = {
+      ...testref,
+      labId: labId
+    };
+    await api.post(`lab/test-reference/add`, requestBody);
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while adding test referance range.';
 

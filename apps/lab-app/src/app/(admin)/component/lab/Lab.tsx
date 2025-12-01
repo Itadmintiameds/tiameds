@@ -85,6 +85,74 @@ const Lab = () => {
 
   const router = useRouter();
 
+  // Validation helper functions (same as onboarding)
+  const validatePhone = (phone: string): string | null => {
+    if (!phone.trim()) return 'Phone number is required';
+    const cleaned = phone.replace(/[\s\-+]/g, '');
+    if (!/^\d+$/.test(cleaned)) return 'Phone number must contain only digits';
+    if (cleaned.length !== 10) return 'Phone number must be exactly 10 digits';
+    return null;
+  };
+
+  const validateZip = (zip: string): string | null => {
+    if (!zip.trim()) return 'ZIP code is required';
+    if (!/^\d+$/.test(zip)) return 'ZIP code must contain only numbers';
+    if (zip.length > 6) return 'ZIP code must not exceed 6 digits';
+    if (zip.length < 4) return 'ZIP code must be at least 4 digits';
+    return null;
+  };
+
+  const validateEmail = (email: string): string | null => {
+    if (!email.trim()) return 'Email is required';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return 'Please enter a valid email address';
+    return null;
+  };
+
+  const validateName = (name: string, fieldName: string): string | null => {
+    if (!name.trim()) return `${fieldName} is required`;
+    if (name.length < 2) return `${fieldName} must be at least 2 characters`;
+    if (name.length > 50) return `${fieldName} must not exceed 50 characters`;
+    if (!/^[a-zA-Z\s'-]+$/.test(name)) return `${fieldName} can only contain alphabetic characters, spaces, hyphens, and apostrophes (no numbers)`;
+    return null;
+  };
+
+  const validateLicenseNumber = (license: string): string | null => {
+    if (!license.trim()) return 'License number is required';
+    if (license.length < 5) return 'License number must be at least 5 characters';
+    if (license.length > 20) return 'License number must not exceed 20 characters';
+    if (!/^[a-zA-Z]+$/.test(license)) return 'License number can only contain alphabetic characters (letters only, no numbers or special characters)';
+    return null;
+  };
+
+  const validateAlphaNumericField = (
+    value: string,
+    fieldName: string,
+    minLength = 3,
+    maxLength = 50
+  ): string | null => {
+    if (!value.trim()) return `${fieldName} is required`;
+    if (value.length < minLength) return `${fieldName} must be at least ${minLength} characters`;
+    if (value.length > maxLength) return `${fieldName} must not exceed ${maxLength} characters`;
+    if (!/^[a-zA-Z0-9-]+$/.test(value)) {
+      return `${fieldName} can only contain alphabetic characters, numbers, or hyphens`;
+    }
+    return null;
+  };
+
+  const validateNumericField = (
+    value: string,
+    fieldName: string,
+    minLength = 4,
+    maxLength = 15
+  ): string | null => {
+    if (!value.trim()) return `${fieldName} is required`;
+    if (!/^\d+$/.test(value)) return `${fieldName} must contain only digits`;
+    if (value.length < minLength) return `${fieldName} must be at least ${minLength} digits`;
+    if (value.length > maxLength) return `${fieldName} must not exceed ${maxLength} digits`;
+    return null;
+  };
+
   useEffect(() => {
     const validateForm = async () => {
       try {
@@ -98,20 +166,159 @@ const Lab = () => {
     validateForm();
   }, [formData]);
 
-  const isTabComplete = (tab: 'basic' | 'contact' | 'legal'): boolean => {
-    const requiredFields: Record<'basic' | 'contact' | 'legal', LabFormField[]> = {
-      basic: ['name', 'labType', 'description', 'address', 'city', 'state', 'labZip', 'labCountry'],
-      contact: ['labPhone', 'labEmail', 'directorName', 'directorEmail', 'directorPhone', 'directorGovtId'],
-      legal: ['licenseNumber', 'labBusinessRegistration', 'labLicense', 'taxId', 'labCertificate', 'labAccreditation', 'certificationBody', 'dataPrivacyAgreement']
-    };
+  const validateTab = (tab: 'basic' | 'contact' | 'legal'): boolean => {
+    const newErrors: Partial<Record<LabFormField, string>> = { ...errors };
 
-    return requiredFields[tab].every(field => {
-      if (field === 'dataPrivacyAgreement') {
-        return formData[field] === true;
+    if (tab === 'basic') {
+      // Lab name
+      if (!formData.name.trim()) {
+        newErrors.name = 'Lab name is required';
+      } else if (formData.name.length < 3) {
+        newErrors.name = 'Lab name must be at least 3 characters';
+      } else if (formData.name.length > 100) {
+        newErrors.name = 'Lab name must not exceed 100 characters';
+      } else if (!/^[a-zA-Z\s'-]+$/.test(formData.name)) {
+        newErrors.name = 'Lab name can only contain alphabetic characters, spaces, hyphens, and apostrophes (no numbers)';
+      } else {
+        delete newErrors.name;
       }
-      return !!formData[field];
-    });
+
+      // Lab type
+      if (!formData.labType.trim()) {
+        newErrors.labType = 'Lab type is required';
+      } else {
+        delete newErrors.labType;
+      }
+
+      // Address
+      if (!formData.address.trim()) {
+        newErrors.address = 'Address is required';
+      } else if (formData.address.length < 5) {
+        newErrors.address = 'Address must be at least 5 characters';
+      } else if (formData.address.length > 200) {
+        newErrors.address = 'Address must not exceed 200 characters';
+      } else {
+        delete newErrors.address;
+      }
+
+      // City
+      const cityError = validateName(formData.city, 'City');
+      if (cityError) newErrors.city = cityError;
+      else delete newErrors.city;
+
+      // State
+      const stateError = validateName(formData.state, 'State');
+      if (stateError) newErrors.state = stateError;
+      else delete newErrors.state;
+
+      // ZIP
+      const zipError = validateZip(formData.labZip);
+      if (zipError) newErrors.labZip = zipError;
+      else delete newErrors.labZip;
+
+      // Country
+      if (!formData.labCountry.trim()) {
+        newErrors.labCountry = 'Country is required';
+      } else if (formData.labCountry.length < 2) {
+        newErrors.labCountry = 'Country must be at least 2 characters';
+      } else if (formData.labCountry.length > 50) {
+        newErrors.labCountry = 'Country must not exceed 50 characters';
+      } else if (!/^[a-zA-Z\s'-]+$/.test(formData.labCountry)) {
+        newErrors.labCountry = 'Country can only contain alphabetic characters, spaces, hyphens, and apostrophes (no numbers)';
+      } else {
+        delete newErrors.labCountry;
+      }
+    }
+
+    if (tab === 'contact') {
+      // Lab phone
+      const labPhoneError = validatePhone(formData.labPhone);
+      if (labPhoneError) newErrors.labPhone = labPhoneError;
+      else delete newErrors.labPhone;
+
+      // Lab email
+      const labEmailError = validateEmail(formData.labEmail);
+      if (labEmailError) newErrors.labEmail = labEmailError;
+      else delete newErrors.labEmail;
+
+      // Director name
+      const directorNameError = validateName(formData.directorName, 'Director name');
+      if (directorNameError) newErrors.directorName = directorNameError;
+      else delete newErrors.directorName;
+
+      // Director email
+      const directorEmailError = validateEmail(formData.directorEmail);
+      if (directorEmailError) newErrors.directorEmail = directorEmailError;
+      else delete newErrors.directorEmail;
+
+      // Director phone
+      const directorPhoneError = validatePhone(formData.directorPhone);
+      if (directorPhoneError) newErrors.directorPhone = directorPhoneError;
+      else delete newErrors.directorPhone;
+
+      // Director Govt ID
+      const directorGovtIdError = validateAlphaNumericField(formData.directorGovtId, 'Director government ID', 5, 50);
+      if (directorGovtIdError) newErrors.directorGovtId = directorGovtIdError;
+      else delete newErrors.directorGovtId;
+    }
+
+    if (tab === 'legal') {
+      // License number
+      const licenseError = validateLicenseNumber(formData.licenseNumber);
+      if (licenseError) newErrors.licenseNumber = licenseError;
+      else delete newErrors.licenseNumber;
+
+      // Business registration
+      const businessRegistrationError = validateAlphaNumericField(formData.labBusinessRegistration, 'Business registration ID', 3, 50);
+      if (businessRegistrationError) newErrors.labBusinessRegistration = businessRegistrationError;
+      else delete newErrors.labBusinessRegistration;
+
+      // Lab license
+      const labLicenseError = validateAlphaNumericField(formData.labLicense, 'Lab license ID', 3, 50);
+      if (labLicenseError) newErrors.labLicense = labLicenseError;
+      else delete newErrors.labLicense;
+
+      // Tax ID
+      const taxIdError = validateNumericField(formData.taxId, 'Tax ID', 9, 15);
+      if (taxIdError) newErrors.taxId = taxIdError;
+      else delete newErrors.taxId;
+
+      // Lab certificate
+      const labCertificateError = validateAlphaNumericField(formData.labCertificate, 'Lab certificate ID', 3, 50);
+      if (labCertificateError) newErrors.labCertificate = labCertificateError;
+      else delete newErrors.labCertificate;
+
+      // Lab accreditation
+      const labAccreditationError = validateAlphaNumericField(formData.labAccreditation, 'Lab accreditation', 3, 50);
+      if (labAccreditationError) newErrors.labAccreditation = labAccreditationError;
+      else delete newErrors.labAccreditation;
+
+      // Certification body
+      const certificationBodyError = validateAlphaNumericField(formData.certificationBody, 'Certification body', 3, 50);
+      if (certificationBodyError) newErrors.certificationBody = certificationBodyError;
+      else delete newErrors.certificationBody;
+
+      // Data privacy agreement
+      if (!formData.dataPrivacyAgreement) {
+        newErrors.dataPrivacyAgreement = 'You must agree to the data privacy terms';
+      } else {
+        delete newErrors.dataPrivacyAgreement;
+      }
+    }
+
+    setErrors(newErrors);
+    const tabFields: LabFormField[] = tab === 'basic' 
+      ? ['name', 'labType', 'address', 'city', 'state', 'labZip', 'labCountry']
+      : tab === 'contact'
+      ? ['labPhone', 'labEmail', 'directorName', 'directorEmail', 'directorPhone', 'directorGovtId']
+      : ['licenseNumber', 'labBusinessRegistration', 'labLicense', 'taxId', 'labCertificate', 'labAccreditation', 'certificationBody', 'dataPrivacyAgreement'];
+    
+    return !tabFields.some(field => newErrors[field]);
   };
+
+  // const isTabComplete = (tab: 'basic' | 'contact' | 'legal'): boolean => {
+  //   return validateTab(tab);
+  // };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -120,62 +327,139 @@ const Lab = () => {
     if (name in formData) {
       const fieldName = name as LabFormField;
       
-      // Real-time input filtering
-      let filteredValue = value;
-      if (name === 'name') {
-        // Lab name: only letters, spaces, and specific characters (no numbers)
-        filteredValue = value.replace(/[^a-zA-Z\s&.-]/g, '');
-      } else if (name === 'labZip') {
-        // ZIP code: only numbers, max 6 digits
-        filteredValue = value.replace(/\D/g, '').slice(0, 6);
-      } else if (name === 'state' || name === 'city') {
-        // State and City: only letters and spaces (no numbers)
-        filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
-      } else if (name === 'labPhone') {
-        // Lab Phone: only numbers, max 10 digits
-        filteredValue = value.replace(/\D/g, '').slice(0, 10);
-      } else if (name === 'labEmail') {
-        // Lab Email: allow email format characters
-        filteredValue = value.replace(/[^a-zA-Z0-9@._-]/g, '');
-      } else if (name === 'directorName') {
-        // Director Name: only letters and spaces (no numbers)
-        filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
-      } else if (name === 'directorEmail') {
-        // Director Email: allow email format characters
-        filteredValue = value.replace(/[^a-zA-Z0-9@._-]/g, '');
-      } else if (name === 'directorPhone') {
-        // Director Phone: only numbers, max 10 digits
-        filteredValue = value.replace(/\D/g, '').slice(0, 10);
+      // Real-time input filtering (same as onboarding)
+      let processedValue = value;
+      
+      // Handle phone numbers - only digits, max 10
+      if (name === 'labPhone' || name === 'directorPhone') {
+        processedValue = value.replace(/\D/g, '').slice(0, 10);
+      }
+      // Handle ZIP code - only digits, max 6
+      else if (name === 'labZip') {
+        processedValue = value.replace(/\D/g, '').slice(0, 6);
+      }
+      // Handle license number - alphabetic only, max 20, uppercase
+      else if (name === 'licenseNumber') {
+        processedValue = value.replace(/[^a-zA-Z]/g, '').slice(0, 20).toUpperCase();
+      }
+      // Handle alphanumeric compliance fields with hyphen support - uppercase
+      else if (
+        name === 'certificationBody' ||
+        name === 'labCertificate' ||
+        name === 'directorGovtId' ||
+        name === 'labBusinessRegistration' ||
+        name === 'labLicense' ||
+        name === 'labAccreditation'
+      ) {
+        processedValue = value.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 50).toUpperCase();
+      }
+      // Handle tax ID - digits only, max 15
+      else if (name === 'taxId') {
+        processedValue = value.replace(/\D/g, '').slice(0, 15);
+      }
+      // Handle email fields - keep in lowercase
+      else if (name === 'labEmail' || name === 'directorEmail') {
+        processedValue = value.toLowerCase();
+      }
+      // Handle name fields - alphabetic with spaces, hyphens, apostrophes, uppercase
+      else if (name === 'name' || name === 'city' || name === 'state' || name === 'labCountry' || name === 'directorName') {
+        processedValue = value.replace(/[^a-zA-Z\s'-]/g, '').toUpperCase();
+      }
+      // Handle address - convert to uppercase
+      else if (name === 'address') {
+        processedValue = value.toUpperCase();
       }
       
       setFormData(prev => ({
         ...prev,
-        [fieldName]: type === 'checkbox' ? checked : filteredValue
+        [fieldName]: type === 'checkbox' ? checked : processedValue
       }));
-      setErrors(prev => ({ ...prev, [fieldName]: '' }));
+      
+      // Clear error for this field
+      if (errors[fieldName]) {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[fieldName];
+          return newErrors;
+        });
+      }
     }
   };
 
-  // Handle field blur (when user leaves the field)
+  // Handle field blur (when user leaves the field) - validate and set errors
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    
-    // Validate email fields when user leaves the field
-    if (name === 'labEmail') {
-      if (value.trim() && !emailRegex.test(value.trim())) {
-        toast.error('Lab email must be a valid email address (e.g., user@domain.com)', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
+    const fieldName = name as LabFormField;
+    let error: string | null = null;
+
+    // Validate based on field type
+    if (name === 'labPhone' || name === 'directorPhone') {
+      error = validatePhone(value);
+    } else if (name === 'labZip') {
+      error = validateZip(value);
+    } else if (name === 'labEmail' || name === 'directorEmail') {
+      error = validateEmail(value);
+    } else if (name === 'name') {
+      if (!value.trim()) {
+        error = 'Lab name is required';
+      } else if (value.length < 3) {
+        error = 'Lab name must be at least 3 characters';
+      } else if (value.length > 100) {
+        error = 'Lab name must not exceed 100 characters';
+      } else if (!/^[a-zA-Z\s'-]+$/.test(value)) {
+        error = 'Lab name can only contain alphabetic characters, spaces, hyphens, and apostrophes (no numbers)';
       }
-    } else if (name === 'directorEmail') {
-      if (value.trim() && !emailRegex.test(value.trim())) {
-        toast.error('Director email must be a valid email address (e.g., user@domain.com)', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
+    } else if (name === 'city' || name === 'state' || name === 'directorName') {
+      error = validateName(value, name === 'city' ? 'City' : name === 'state' ? 'State' : 'Director name');
+    } else if (name === 'labCountry') {
+      if (!value.trim()) {
+        error = 'Country is required';
+      } else if (value.length < 2) {
+        error = 'Country must be at least 2 characters';
+      } else if (value.length > 50) {
+        error = 'Country must not exceed 50 characters';
+      } else if (!/^[a-zA-Z\s'-]+$/.test(value)) {
+        error = 'Country can only contain alphabetic characters, spaces, hyphens, and apostrophes (no numbers)';
       }
+    } else if (name === 'address') {
+      if (!value.trim()) {
+        error = 'Address is required';
+      } else if (value.length < 5) {
+        error = 'Address must be at least 5 characters';
+      } else if (value.length > 200) {
+        error = 'Address must not exceed 200 characters';
+      }
+    } else if (name === 'licenseNumber') {
+      error = validateLicenseNumber(value);
+    } else if (name === 'directorGovtId') {
+      error = validateAlphaNumericField(value, 'Director government ID', 5, 50);
+    } else if (name === 'certificationBody') {
+      error = validateAlphaNumericField(value, 'Certification body', 3, 50);
+    } else if (name === 'labCertificate') {
+      error = validateAlphaNumericField(value, 'Lab certificate ID', 3, 50);
+    } else if (name === 'labLicense') {
+      error = validateAlphaNumericField(value, 'Lab license ID', 3, 50);
+    } else if (name === 'labAccreditation') {
+      error = validateAlphaNumericField(value, 'Lab accreditation', 3, 50);
+    } else if (name === 'labBusinessRegistration') {
+      error = validateAlphaNumericField(value, 'Business registration ID', 3, 50);
+    } else if (name === 'taxId') {
+      error = validateNumericField(value, 'Tax ID', 9, 15);
+    } else if (name === 'labType') {
+      if (!value.trim()) {
+        error = 'Lab type is required';
+      }
+    }
+
+    // Set or clear error
+    if (error) {
+      setErrors(prev => ({ ...prev, [fieldName]: error! }));
+    } else {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldName];
+        return newErrors;
+      });
     }
   };
 
@@ -207,16 +491,9 @@ const Lab = () => {
   const handleNextClick = (e: React.MouseEvent) => {
     e.preventDefault();
 
-    if (activeTab === 'basic' && !isTabComplete('basic')) {
-      toast.error('Please complete all basic information before proceeding', {
-        position: 'top-right',
-        autoClose: 5000,
-      });
-      return;
-    }
-
-    if (activeTab === 'contact' && !isTabComplete('contact')) {
-      toast.error('Please complete all contact information before proceeding', {
+    if (!validateTab(activeTab)) {
+      const tabName = activeTab === 'basic' ? 'basic information' : activeTab === 'contact' ? 'contact information' : 'legal information';
+      toast.error(`Please fix all errors in ${tabName} before proceeding`, {
         position: 'top-right',
         autoClose: 5000,
       });
@@ -233,172 +510,28 @@ const Lab = () => {
     setIsSubmitting(true);
 
     try {
-      // Validate lab name (string only)
-      if (!formData.name.trim()) {
-        toast.error('Lab name is required', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
+      // Validate all tabs before submitting
+      const basicValid = validateTab('basic');
+      const contactValid = validateTab('contact');
+      const legalValid = validateTab('legal');
 
-      if (!/^[a-zA-Z\s&.-]+$/.test(formData.name.trim())) {
-        toast.error('Lab name must contain only letters, spaces, and special characters (&, ., -)', {
+      if (!basicValid || !contactValid || !legalValid) {
+        toast.error('Please fix all validation errors before submitting', {
           position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Validate ZIP code (6 digits only)
-      if (!formData.labZip.trim()) {
-        toast.error('ZIP code is required', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      if (!/^\d{6}$/.test(formData.labZip.trim())) {
-        toast.error('ZIP code must be exactly 6 digits', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Validate State (letters only)
-      if (!formData.state.trim()) {
-        toast.error('State is required', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      if (!/^[a-zA-Z\s]+$/.test(formData.state.trim())) {
-        toast.error('State must contain only letters and spaces', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Validate City (letters only)
-      if (!formData.city.trim()) {
-        toast.error('City is required', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      if (!/^[a-zA-Z\s]+$/.test(formData.city.trim())) {
-        toast.error('City must contain only letters and spaces', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Validate Lab Phone (10 digits only)
-      if (!formData.labPhone.trim()) {
-        toast.error('Lab phone is required', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      if (!/^\d{10}$/.test(formData.labPhone.trim())) {
-        toast.error('Lab phone must be exactly 10 digits', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Validate Lab Email (valid email format)
-      if (!formData.labEmail.trim()) {
-        toast.error('Lab email is required', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(formData.labEmail.trim())) {
-        toast.error('Lab email must be a valid email address (e.g., user@domain.com)', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Validate Director Name (letters only)
-      if (!formData.directorName.trim()) {
-        toast.error('Director name is required', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      if (!/^[a-zA-Z\s]+$/.test(formData.directorName.trim())) {
-        toast.error('Director name must contain only letters and spaces', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Validate Director Email (valid email format)
-      if (!formData.directorEmail.trim()) {
-        toast.error('Director email is required', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      if (!emailRegex.test(formData.directorEmail.trim())) {
-        toast.error('Director email must be a valid email address (e.g., user@domain.com)', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Validate Director Phone (10 digits only)
-      if (!formData.directorPhone.trim()) {
-        toast.error('Director phone is required', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      if (!/^\d{10}$/.test(formData.directorPhone.trim())) {
-        toast.error('Director phone must be exactly 10 digits', {
-          position: 'top-right',
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      if (!isTabComplete('legal')) {
-        toast.warn('Please complete all legal information before submitting', {
-          position: 'top-center',
           autoClose: 5000,
         });
+        setIsSubmitting(false);
+        // Navigate to first tab with errors
+        if (!basicValid) setActiveTab('basic');
+        else if (!contactValid) setActiveTab('contact');
+        else if (!legalValid) setActiveTab('legal');
         return;
       }
 
       await labFormDataSchema.parseAsync(formData);
       const labData: LabFormDataNew = {
         ...formData,
-        isActive: true // Assuming you want to set this to true on creation
+        isActive: true
       };
       await createLab(labData);
       setFormData({
@@ -429,7 +562,7 @@ const Lab = () => {
       });
 
       setErrors({});
-      setRefreshLab(!refreshlab); // Trigger refresh of labs context
+      setRefreshLab(!refreshlab);
       setTimeout(() => {
         router.push('/dashboard');
       }, 1500);
@@ -482,11 +615,11 @@ const Lab = () => {
     ];
 
     return (
-      <div className="space-y-6">
-        <div className="flex flex-col items-center mb-6">
+      <div className="space-y-4">
+        <div className="flex flex-col items-center mb-4">
           <div
             onClick={triggerFileInput}
-            className="w-32 h-32 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500 transition-colors relative overflow-hidden"
+            className="w-24 h-24 bg-gradient-to-br from-purple-50 to-purple-100 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden shadow-md"
           >
             {formData.labLogo ? (
               <Image
@@ -496,8 +629,8 @@ const Lab = () => {
               />
             ) : (
               <>
-                <FaImage className="text-gray-400 text-3xl mb-2" />
-                <span className="text-xs text-gray-500 text-center px-2">Upload Logo</span>
+                <FaImage className="text-purple-400 text-3xl mb-2" />
+                <span className="text-xs text-purple-600 text-center px-2 font-medium">Upload Logo</span>
               </>
             )}
           </div>
@@ -511,17 +644,18 @@ const Lab = () => {
           <button
             type="button"
             onClick={triggerFileInput}
-            className="mt-3 inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="mt-2 inline-flex items-center px-3 py-1.5 text-xs font-medium text-white transition-all duration-200"
+            style={{ background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)` }}
           >
             <FaUpload className="mr-1.5 text-xs" />
             {formData.labLogo ? 'Change Logo' : 'Upload Logo'}
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {basicFields.map(({ id, label, icon: Icon, placeholder, isSelect, options }) => (
             <div key={id} className="w-full">
-              <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5">
                 {label}
               </label>
               <div className="relative">
@@ -532,8 +666,9 @@ const Lab = () => {
                     name={id}
                     value={formData[id] as string}
                     onChange={handleInputChange}
-                    className={`block w-full pl-10 pr-3 py-2.5 text-sm border ${errors[id] ? 'border-red-500' : 'border-gray-300'
-                      } rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-gray-800`}
+                    onBlur={handleBlur}
+                    className={`block w-full pl-10 pr-3 py-2 text-sm ${errors[id] ? 'border border-red-500' : ''
+                      } shadow-sm focus:ring-purple-500 focus:border-purple-500 text-gray-800`}
                   >
                     <option value="" disabled>Select Lab Type</option>
                     {options?.map(option => (
@@ -547,14 +682,15 @@ const Lab = () => {
                     name={id}
                     value={formData[id] as string}
                     onChange={handleInputChange}
-                    className={`block w-full pl-10 pr-3 py-2.5 text-sm border ${errors[id] ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                      : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-                      } rounded-md shadow-sm text-gray-800`}
+                    onBlur={handleBlur}
+                    className={`block w-full pl-10 pr-3 py-2 text-sm ${errors[id] ? 'border border-red-500 focus:ring-red-500 focus:border-red-500'
+                      : 'focus:ring-purple-500 focus:border-purple-500'
+                      } shadow-sm text-gray-800`}
                     placeholder={placeholder}
                   />
                 )}
                 {errors[id] && (
-                  <p className="text-red-500 text-xs mt-1">{errors[id]}</p>
+                  <p className="text-red-500 text-xs mt-0.5">{errors[id]}</p>
                 )}
               </div>
             </div>
@@ -562,32 +698,33 @@ const Lab = () => {
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1.5">
             Description
           </label>
           <div className="relative">
-            <FaRegFileAlt className="absolute left-3 top-3 text-gray-400 text-sm" />
+            <FaRegFileAlt className="absolute left-3 top-2.5 text-gray-400 text-sm" />
             <textarea
               id="description"
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              className={`block w-full pl-10 pr-3 py-2.5 text-sm border ${errors.description ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-                } rounded-md shadow-sm text-gray-800`}
+              onBlur={handleBlur}
+                    className={`block w-full pl-10 pr-3 py-2 text-sm ${errors.description ? 'border border-red-500 focus:ring-red-500 focus:border-red-500'
+                : 'focus:ring-purple-500 focus:border-purple-500'
+                } shadow-sm text-gray-800`}
               placeholder="Enter Description"
-              rows={4}
+              rows={3}
             />
             {errors.description && (
-              <p className="text-red-500 text-xs mt-1">{errors.description}</p>
+              <p className="text-red-500 text-xs mt-0.5">{errors.description}</p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {addressFields.map(({ id, label, icon: Icon, placeholder }) => (
             <div key={id} className="w-full">
-              <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5">
                 {label}
               </label>
               <div className="relative">
@@ -598,13 +735,14 @@ const Lab = () => {
                   name={id}
                   value={formData[id] as string}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-2.5 text-sm border ${errors[id] ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                  onBlur={handleBlur}
+                  className={`block w-full pl-10 pr-3 py-2 text-sm border ${errors[id] ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'
                     } rounded-md shadow-sm text-gray-800`}
                   placeholder={placeholder}
                 />
                 {errors[id] && (
-                  <p className="text-red-500 text-xs mt-1">{errors[id]}</p>
+                  <p className="text-red-500 text-xs mt-0.5">{errors[id]}</p>
                 )}
               </div>
             </div>
@@ -628,11 +766,11 @@ const Lab = () => {
     ];
 
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {labContactFields.map(({ id, label, icon: Icon, placeholder }) => (
             <div key={id} className="w-full">
-              <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5">
                 {label}
               </label>
               <div className="relative">
@@ -644,29 +782,29 @@ const Lab = () => {
                   value={formData[id] as string}
                   onChange={handleInputChange}
                   onBlur={handleBlur}
-                  className={`block w-full pl-10 pr-3 py-2.5 text-sm border ${errors[id] ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                  className={`block w-full pl-10 pr-3 py-2 text-sm border ${errors[id] ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'
                     } rounded-md shadow-sm text-gray-800`}
                   placeholder={placeholder}
                 />
                 {errors[id] && (
-                  <p className="text-red-500 text-xs mt-1">{errors[id]}</p>
+                  <p className="text-red-500 text-xs mt-0.5">{errors[id]}</p>
                 )}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="border-t border-gray-200 pt-6">
-          <h3 className="text-md font-medium text-gray-900 flex items-center">
-            <FaUserTie className="text-indigo-600 mr-2" /> Director Information
+        <div className="pt-4">
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+            <FaUserTie className="text-purple-600 mr-2" /> Director Information
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {directorFields.map(({ id, label, icon: Icon, placeholder }) => (
             <div key={id} className="w-full">
-              <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5">
                 {label}
               </label>
               <div className="relative">
@@ -678,13 +816,13 @@ const Lab = () => {
                   value={formData[id] as string}
                   onChange={handleInputChange}
                   onBlur={handleBlur}
-                  className={`block w-full pl-10 pr-3 py-2.5 text-sm border ${errors[id] ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                  className={`block w-full pl-10 pr-3 py-2 text-sm border ${errors[id] ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'
                     } rounded-md shadow-sm text-gray-800`}
                   placeholder={placeholder}
                 />
                 {errors[id] && (
-                  <p className="text-red-500 text-xs mt-1">{errors[id]}</p>
+                  <p className="text-red-500 text-xs mt-0.5">{errors[id]}</p>
                 )}
               </div>
             </div>
@@ -706,11 +844,11 @@ const Lab = () => {
     ];
 
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {legalFields.map(({ id, label, icon: Icon, placeholder }) => (
             <div key={id} className="w-full">
-              <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5">
                 {label}
               </label>
               <div className="relative">
@@ -721,20 +859,21 @@ const Lab = () => {
                   name={id}
                   value={formData[id] as string}
                   onChange={handleInputChange}
-                  className={`block w-full pl-10 pr-3 py-2.5 text-sm border ${errors[id] ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                  onBlur={handleBlur}
+                  className={`block w-full pl-10 pr-3 py-2 text-sm border ${errors[id] ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'
                     } rounded-md shadow-sm text-gray-800`}
                   placeholder={placeholder}
                 />
                 {errors[id] && (
-                  <p className="text-red-500 text-xs mt-1">{errors[id]}</p>
+                  <p className="text-red-500 text-xs mt-0.5">{errors[id]}</p>
                 )}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="space-y-4 pt-4">
+        <div className="pt-3">
           <div className="flex items-center">
             <input
               type="checkbox"
@@ -742,7 +881,7 @@ const Lab = () => {
               name="dataPrivacyAgreement"
               checked={formData.dataPrivacyAgreement}
               onChange={handleInputChange}
-              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              className="h-4 w-4 text-purple-600 focus:ring-purple-500"
             />
             <label htmlFor="dataPrivacyAgreement" className="ml-2 block text-sm text-gray-700">
               I agree to the data privacy agreement
@@ -757,111 +896,196 @@ const Lab = () => {
   };
 
   const renderPreview = () => (
-    <div className={`bg-white h-full flex flex-col transition-all duration-300 ${isPreviewCollapsed ? 'w-16' : 'w-1/2 border-l border-gray-200'}`}>
-      <div className="bg-gray-50 py-4 px-6 border-b border-gray-200 flex justify-between items-center">
-        {!isPreviewCollapsed && <h3 className="text-lg font-medium text-gray-900">Live Preview</h3>}
+    <div className={`bg-white h-full flex flex-col transition-all duration-300 ${isPreviewCollapsed ? 'w-16' : 'w-1/2'}`}>
+      <div 
+        className="px-4 py-3 flex justify-between items-center relative overflow-hidden"
+        style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
+      >
+        {!isPreviewCollapsed && (
+          <h3 className="text-lg font-semibold text-white flex items-center">
+            <div className="bg-white/20 p-2 mr-3">
+              <FaFlask className="text-white text-sm" />
+            </div>
+            Live Preview
+          </h3>
+        )}
         <button
           onClick={() => setIsPreviewCollapsed(!isPreviewCollapsed)}
-          className="text-gray-500 hover:text-gray-700 focus:outline-none"
+          className="text-white/80 hover:text-white transition-colors p-1 hover:bg-white/10"
         >
           {isPreviewCollapsed ? <FaChevronLeft /> : <FaChevronRight />}
         </button>
       </div>
 
       {!isPreviewCollapsed && (
-        <div className="p-8 overflow-y-auto flex-1">
-          <div className="flex flex-col gap-8">
-            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-6 shadow-sm">
+        <div className="p-4 overflow-y-auto flex-1">
+          <div className="space-y-3">
+            {/* Lab Header Card */}
+            <div 
+              className="p-4 shadow-sm"
+              style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
+            >
               <div className="flex flex-col items-center text-center">
-                <div className="w-32 h-32 bg-white rounded-full shadow-md flex items-center justify-center mb-4 border-4 border-white">
+                <div className="w-24 h-24 bg-white shadow-lg flex items-center justify-center mb-3">
                   {formData.labLogo ? (
                     <Image src={formData.labLogo} alt="Lab Logo" className="w-full h-full rounded-full object-cover" />
                   ) : (
-                    <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center">
-                      <FaFlask className="text-indigo-400 text-4xl" />
+                    <div className="w-full h-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center">
+                      <FaFlask className="text-purple-500 text-4xl" />
                     </div>
                   )}
                 </div>
-                <h4 className="text-xl font-bold text-gray-900">{formData.name || "Lab Name"}</h4>
-                <p className="text-sm text-indigo-600 font-medium bg-indigo-50 px-3 py-1 rounded-full mt-1">
+                <h4 className="text-xl font-bold text-white">{formData.name || "Lab Name"}</h4>
+                <p className="text-sm text-white font-medium bg-white/20 px-3 py-1 mt-1">
                   {formData.labType || "Lab Type"}
                 </p>
+              </div>
+            </div>
 
-                <div className="mt-6 text-left w-full space-y-3">
-                  <p className="text-sm flex items-start">
-                    <FaMapMarkerAlt className="text-gray-400 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>{formData.address || "Address not provided"}</span>
-                  </p>
-                  <p className="text-sm flex items-start">
-                    <FaPhone className="text-gray-400 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>{formData.labPhone || "Phone not provided"}</span>
-                  </p>
-                  <p className="text-sm flex items-start">
-                    <FaEnvelope className="text-gray-400 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>{formData.labEmail || "Email not provided"}</span>
-                  </p>
+            {/* Basic Information - Blue */}
+            <div className="bg-blue-50 p-3">
+              <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
+                <FaMapMarkerAlt className="mr-2 text-blue-600" />
+                Basic Information
+              </h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="font-medium text-gray-600">Address:</span>
+                  <span className="ml-2 text-gray-900">{formData.address || "Not provided"}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">City:</span>
+                  <span className="ml-2 text-gray-900">{formData.city || "Not provided"}</span>
+              </div>
+                <div>
+                  <span className="font-medium text-gray-600">State:</span>
+                  <span className="ml-2 text-gray-900">{formData.state || "Not provided"}</span>
+            </div>
+              <div>
+                  <span className="font-medium text-gray-600">ZIP Code:</span>
+                  <span className="ml-2 text-gray-900">{formData.labZip || "Not provided"}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Country:</span>
+                  <span className="ml-2 text-gray-900">{formData.labCountry || "Not provided"}</span>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-8">
-              <div>
-                <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center">
-                  <FaRegFileAlt className="text-indigo-500 mr-2" />
+            {/* Description - White */}
+            {formData.description && (
+              <div className="bg-white p-3">
+                <h4 className="font-semibold text-gray-800 mb-2 flex items-center">
+                  <FaRegFileAlt className="mr-2 text-gray-600" />
                   Description
                 </h4>
-                <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
-                  {formData.description || "No description provided"}
+                <p className="text-xs text-gray-700 leading-relaxed">
+                  {formData.description}
                 </p>
               </div>
+            )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center">
-                    <FaUserTie className="text-indigo-500 mr-2" />
+            {/* Contact Information - Purple */}
+            <div className="bg-purple-50 p-3">
+              <h4 className="font-semibold text-purple-800 mb-2 flex items-center">
+                <FaPhone className="mr-2 text-purple-600" />
+                Contact Information
+              </h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="font-medium text-gray-600">Lab Phone:</span>
+                  <span className="ml-2 text-gray-900">{formData.labPhone || "Not provided"}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Lab Email:</span>
+                  <span className="ml-2 text-gray-900">{formData.labEmail || "Not provided"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Director Information - Blue */}
+            <div className="bg-blue-50 p-3">
+              <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
+                <FaUserTie className="mr-2 text-blue-600" />
                     Director Information
                   </h4>
-                  <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Name:</span> {formData.directorName || "Not provided"}</p>
-                    <p><span className="font-medium">Email:</span> {formData.directorEmail || "Not provided"}</p>
-                    <p><span className="font-medium">Phone:</span> {formData.directorPhone || "Not provided"}</p>
-                    <p><span className="font-medium">Govt ID:</span> {formData.directorGovtId || "Not provided"}</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="font-medium text-gray-600">Name:</span>
+                  <span className="ml-2 text-gray-900">{formData.directorName || "Not provided"}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Email:</span>
+                  <span className="ml-2 text-gray-900">{formData.directorEmail || "Not provided"}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Phone:</span>
+                  <span className="ml-2 text-gray-900">{formData.directorPhone || "Not provided"}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Govt ID:</span>
+                  <span className="ml-2 text-gray-900">{formData.directorGovtId || "Not provided"}</span>
+                </div>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center">
-                    <FaCertificate className="text-indigo-500 mr-2" />
+            {/* Legal Information - Green */}
+            <div className="bg-green-50 p-3">
+              <h4 className="font-semibold text-green-800 mb-2 flex items-center">
+                <FaCertificate className="mr-2 text-green-600" />
                     Legal Information
                   </h4>
-                  <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">License:</span> {formData.licenseNumber || "Not provided"}</p>
-                    <p><span className="font-medium">Tax ID:</span> {formData.taxId || "Not provided"}</p>
-                    <p><span className="font-medium">Accreditation:</span> {formData.labAccreditation || "Not provided"}</p>
-                    <p><span className="font-medium">Certification:</span> {formData.certificationBody || "Not provided"}</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="font-medium text-gray-600">License Number:</span>
+                  <span className="ml-2 text-gray-900">{formData.licenseNumber || "Not provided"}</span>
                   </div>
+                <div>
+                  <span className="font-medium text-gray-600">Business Registration:</span>
+                  <span className="ml-2 text-gray-900">{formData.labBusinessRegistration || "Not provided"}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Lab License:</span>
+                  <span className="ml-2 text-gray-900">{formData.labLicense || "Not provided"}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Tax ID:</span>
+                  <span className="ml-2 text-gray-900">{formData.taxId || "Not provided"}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Certificate Number:</span>
+                  <span className="ml-2 text-gray-900">{formData.labCertificate || "Not provided"}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Accreditation:</span>
+                  <span className="ml-2 text-gray-900">{formData.labAccreditation || "Not provided"}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Certification Body:</span>
+                  <span className="ml-2 text-gray-900">{formData.certificationBody || "Not provided"}</span>
+                </div>
                 </div>
               </div>
 
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center">
-                  <FaDatabase className="text-indigo-500 mr-2" />
+            {/* Status & Compliance - Yellow */}
+            <div className="bg-yellow-50 p-3">
+              <h4 className="font-semibold text-yellow-800 mb-2 flex items-center">
+                <FaDatabase className="mr-2 text-yellow-600" />
                   Status & Compliance
                 </h4>
-                <div className="flex flex-wrap items-center gap-4">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${formData.dataPrivacyAgreement ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`inline-flex items-center px-3 py-1 text-xs font-medium ${formData.dataPrivacyAgreement ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
                     {formData.dataPrivacyAgreement ? (
                       <>
-                        <FaCheckCircle className="mr-1.5 text-blue-500" /> Privacy Agreement Signed
+                      <FaCheckCircle className="mr-1.5 text-green-600" /> Privacy Agreement Signed
                       </>
                     ) : (
                       <>
-                        <FaTimesCircle className="mr-1.5 text-yellow-500" /> Privacy Agreement Pending
+                      <FaTimesCircle className="mr-1.5 text-yellow-600" /> Privacy Agreement Pending
                       </>
                     )}
                   </span>
-                </div>
               </div>
             </div>
           </div>
@@ -875,30 +1099,33 @@ const Lab = () => {
       <div className="flex h-full">
         {/* Main Form Area */}
         <div className={`flex-1 transition-all duration-300 ${isPreviewCollapsed ? 'w-full' : 'w-1/2'}`}>
-          <div className="max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            <div className="bg-white shadow-xl rounded-xl overflow-hidden">
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-white shadow-xl overflow-hidden">
               {/* Header */}
-              <div className="bg-gradient-to-r from-indigo-900 to-indigo-700 text-white py-6 px-8">
+              <div 
+                className="px-6 py-3 relative overflow-hidden"
+                style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className="bg-white/20 p-2 rounded-lg mr-4">
-                      <FaFlask className="text-white text-xl" />
+                    <div className="bg-white/20 p-2 mr-3">
+                      <FaFlask className="text-white text-lg" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold">
+                      <h2 className="text-lg font-semibold text-white">
                         {formData.name || "New Laboratory Profile"}
                       </h2>
-                      <p className="text-sm text-indigo-100 mt-1">
+                      <p className="text-sm text-white/90 mt-1">
                         {formData.labType || "Complete the form to create a new lab profile"}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${formData.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    <span className={`inline-flex items-center px-3 py-1 text-xs font-medium ${formData.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                       }`}>
                       {formData.isActive ? (
                         <>
-                          <FaCheckCircle className="mr-1.5 text-green-500" /> Active
+                          <FaCheckCircle className="mr-1.5 text-green-600" /> Active
                         </>
                       ) : (
                         <>
@@ -911,16 +1138,16 @@ const Lab = () => {
               </div>
 
               {/* Progress Steps */}
-              <div className="px-8 pt-6">
+              <div className="px-6 pt-4">
                 <div className="flex items-center justify-between">
                   {['basic', 'contact', 'legal'].map((tab, index) => (
                     <React.Fragment key={tab}>
                       <button
                         type="button"
                         onClick={() => setActiveTab(tab as 'basic' | 'contact' | 'legal')}
-                        className={`flex flex-col items-center ${activeTab === tab ? 'text-indigo-600' : 'text-gray-500'}`}
+                        className={`flex flex-col items-center transition-all duration-200 ${activeTab === tab ? 'text-purple-600' : 'text-gray-500'}`}
                       >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${activeTab === tab ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
+                        <div className={`w-8 h-8 flex items-center justify-center mb-1 transition-all duration-200 ${activeTab === tab ? 'bg-purple-100 text-purple-600 shadow-sm' : 'bg-gray-100 text-gray-500'
                           }`}>
                           {index + 1}
                         </div>
@@ -931,7 +1158,7 @@ const Lab = () => {
                         </span>
                       </button>
                       {index < 2 && (
-                        <div className={`flex-1 h-0.5 mx-2 ${activeTab === tab || (index === 0 && activeTab === 'legal') ? 'bg-indigo-200' : 'bg-gray-200'}`}></div>
+                        <div className={`flex-1 h-0.5 mx-2 transition-all duration-200 ${activeTab === tab || (index === 0 && activeTab === 'legal') ? 'bg-purple-200' : 'bg-gray-200'}`}></div>
                       )}
                     </React.Fragment>
                   ))}
@@ -939,17 +1166,18 @@ const Lab = () => {
               </div>
 
               {/* Form */}
-              <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 {activeTab === 'basic' && renderBasicInfoTab()}
                 {activeTab === 'contact' && renderContactInfoTab()}
                 {activeTab === 'legal' && renderLegalInfoTab()}
 
-                <div className="flex justify-between pt-8 border-t border-gray-200">
+                <div className="flex justify-between pt-4">
+                  <div className="flex justify-between w-full">
                   {activeTab !== 'basic' && (
                     <button
                       type="button"
                       onClick={() => setActiveTab(activeTab === 'legal' ? 'contact' : 'basic')}
-                      className="inline-flex items-center px-5 py-2.5 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200"
                     >
                       Previous
                     </button>
@@ -959,7 +1187,8 @@ const Lab = () => {
                     <button
                       type="button"
                       onClick={handleNextClick}
-                      className="ml-auto inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        className="ml-auto px-4 py-2 text-sm font-medium text-white transition-all duration-200 flex items-center"
+                        style={{ background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)` }}
                     >
                       Next
                     </button>
@@ -967,10 +1196,11 @@ const Lab = () => {
                     <button
                       type="submit"
                       disabled={isSubmitting || !isFormValid}
-                      className={`ml-auto inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white ${isSubmitting || !isFormValid
-                        ? 'bg-indigo-400 cursor-not-allowed'
-                        : 'bg-indigo-600 hover:bg-indigo-700'
-                        } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+                        className={`ml-auto px-4 py-2 text-sm font-medium text-white transition-all duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed ${isSubmitting || !isFormValid
+                          ? 'bg-gray-400'
+                          : ''
+                          }`}
+                        style={!isSubmitting && isFormValid ? { background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)` } : {}}
                     >
                       {isSubmitting ? (
                         <>
@@ -988,6 +1218,7 @@ const Lab = () => {
                       )}
                     </button>
                   )}
+                  </div>
                 </div>
               </form>
             </div>

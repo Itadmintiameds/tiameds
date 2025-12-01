@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import RichTextEditor from "@/components/ui/rich-text-editor";
 import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
 import Button from "../common/Button";
+import { toast } from "react-toastify";
 
 interface ReportSection {
   id: string;
@@ -37,6 +38,145 @@ interface TestEditReferanceProps {
 
 const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChange, formData, setFormData }: TestEditReferanceProps) => {
     const hasEditRecord = Boolean(editRecord);
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+    // Custom validation function
+    const validateForm = (recordToValidate?: TestReferancePoint) => {
+        const record = recordToValidate || formData;
+        const errors: Record<string, string> = {};
+
+        // Required fields validation
+        if (!record.testDescription?.trim()) {
+            errors.testDescription = "Test description is required";
+        }
+        if (!record.units?.trim()) {
+            errors.units = "Units are required";
+        }
+        if (!record.gender) {
+            errors.gender = "Gender selection is required";
+        }
+        // Allow ageMin to be 0, only check for undefined/null
+        if (record.ageMin === undefined || record.ageMin === null) {
+            errors.ageMin = "Minimum age is required";
+        }
+        // Allow minReferenceRange to be 0, only check for undefined/null
+        if (record.minReferenceRange === undefined || record.minReferenceRange === null) {
+            errors.minReferenceRange = "Minimum reference range is required";
+        }
+        if (record.maxReferenceRange === undefined || record.maxReferenceRange === null) {
+            errors.maxReferenceRange = "Maximum reference range is required";
+        }
+
+        // Age validation - allow 0 as valid value
+        if (record.ageMin !== undefined && record.ageMin !== null && record.ageMin < 0) {
+            errors.ageMin = "Minimum age cannot be negative";
+        }
+        if (record.ageMax !== undefined && record.ageMax !== null && record.ageMax < 0) {
+            errors.ageMax = "Maximum age cannot be negative";
+        }
+        // Convert to numbers for proper comparison
+        const ageMinNum = typeof record.ageMin === 'string' 
+            ? parseFloat(record.ageMin) 
+            : record.ageMin;
+        const ageMaxNum = typeof record.ageMax === 'string' 
+            ? parseFloat(record.ageMax) 
+            : record.ageMax;
+        if (ageMinNum !== undefined && ageMinNum !== null && ageMaxNum !== undefined && ageMaxNum !== null && 
+            !isNaN(ageMinNum) && !isNaN(ageMaxNum) && ageMinNum >= ageMaxNum) {
+            errors.ageMax = "Maximum age must be greater than minimum age";
+        }
+
+        // Range validation - convert to numbers for proper comparison
+        const minRangeNum = typeof record.minReferenceRange === 'string' 
+            ? parseFloat(record.minReferenceRange) 
+            : record.minReferenceRange;
+        const maxRangeNum = typeof record.maxReferenceRange === 'string' 
+            ? parseFloat(record.maxReferenceRange) 
+            : record.maxReferenceRange;
+        
+        if (minRangeNum !== undefined && minRangeNum !== null && maxRangeNum !== undefined && maxRangeNum !== null && 
+            !isNaN(minRangeNum) && !isNaN(maxRangeNum)) {
+            if (minRangeNum < 0) {
+                errors.minReferenceRange = "Minimum reference range cannot be negative";
+            }
+            if (maxRangeNum < 0) {
+                errors.maxReferenceRange = "Maximum reference range cannot be negative";
+            }
+            // Check if max is greater than min
+            if (maxRangeNum <= minRangeNum) {
+                errors.maxReferenceRange = "Maximum range must be greater than minimum range";
+            }
+        }
+
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    // Custom form submission handler
+    const handleFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        // Set default values for age units if they are undefined
+        const recordWithDefaults = {
+            ...formData,
+            minAgeUnit: formData.minAgeUnit || "YEARS",
+            maxAgeUnit: formData.maxAgeUnit || "YEARS",
+        };
+        
+        // Update state with defaults
+        setFormData(recordWithDefaults);
+        
+        // Validate with the record that has defaults
+        const isValid = validateForm(recordWithDefaults);
+        
+        if (isValid) {
+            // Ensure defaults are set before calling parent handler
+            handleUpdate(e);
+        } else {
+            // Show detailed validation errors
+            const errorMessages = Object.entries(validationErrors)
+                .filter(([, message]) => message)
+                .map(([field, message]) => {
+                    // Convert field name to readable format
+                    const fieldName = field
+                        .replace(/([A-Z])/g, ' $1')
+                        .replace(/^./, str => str.toUpperCase())
+                        .trim();
+                    return `${fieldName}: ${message}`;
+                });
+            
+            if (errorMessages.length > 0) {
+                // Show first error in toast, and all errors in console
+                toast.error(`Validation Error: ${errorMessages[0]}`, {
+                    autoClose: 5000,
+                });
+                
+                // If multiple errors, show additional toast after a delay
+                if (errorMessages.length > 1) {
+                    setTimeout(() => {
+                        toast.warning(`${errorMessages.length - 1} more error(s). Please check all fields.`, {
+                            autoClose: 4000,
+                        });
+                    }, 500);
+                }
+                
+                // Log all errors to console for debugging
+                console.error('Validation Errors:', validationErrors);
+            } else {
+                toast.error("Please fix the validation errors before submitting");
+            }
+            
+            // Scroll to first error field
+            const firstErrorField = Object.keys(validationErrors)[0];
+            if (firstErrorField) {
+                const errorElement = document.querySelector(`[name="${firstErrorField}"]`);
+                if (errorElement) {
+                    errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    (errorElement as HTMLElement).focus();
+                }
+            }
+        }
+    };
 
     // Custom handler for age fields to prevent negative values and values > 100
     const handleAgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,6 +188,28 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
             setFormData(prev => ({
                 ...prev,
                 [name]: value === "" ? "" : numericValue
+            }));
+            
+            // Clear validation error when user starts typing
+            if (validationErrors[name]) {
+                setValidationErrors(prev => ({
+                    ...prev,
+                    [name]: ""
+                }));
+            }
+        }
+    };
+
+    // Wrapper for handleChange to clear validation errors
+    const handleChangeWithValidation = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        handleChange(e);
+        
+        // Clear validation error when user starts typing
+        const fieldName = e.target.name;
+        if (validationErrors[fieldName]) {
+            setValidationErrors(prev => ({
+                ...prev,
+                [fieldName]: ""
             }));
         }
     };
@@ -266,11 +428,11 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
         return Number.isNaN(numeric) ? "" : numeric;
     };
 
-    const isAgeUnit = (unit: unknown): unit is AgeUnit =>
-        unit === "YEARS" || unit === "MONTHS" || unit === "WEEKS" || unit === "DAYS";
+    const isAgeUnit = useCallback((unit: unknown): unit is AgeUnit =>
+        unit === "YEARS" || unit === "MONTHS" || unit === "WEEKS" || unit === "DAYS", []);
 
-    const isGenderOption = (gender: unknown): gender is GenderOption =>
-        gender === "M" || gender === "F" || gender === "MF";
+    const isGenderOption = useCallback((gender: unknown): gender is GenderOption =>
+        gender === "M" || gender === "F" || gender === "MF", []);
 
     const normalizeRangeRow = useCallback((row: Partial<RangeRow>): RangeRow => ({
         Gender: isGenderOption(row.Gender) ? row.Gender : "MF",
@@ -279,7 +441,7 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
         AgeMax: normalizeRangeValue(row.AgeMax),
         AgeMaxUnit: isAgeUnit(row.AgeMaxUnit) ? row.AgeMaxUnit : "YEARS",
         ReferenceRange: row.ReferenceRange ?? "",
-    }), []);
+    }), [isAgeUnit, isGenderOption]);
 
     const getInitialRangeRow = useCallback((): RangeRow => normalizeRangeRow({
         Gender: formData.gender as GenderOption | undefined,
@@ -340,6 +502,21 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
         }
     }, [formData.referenceRanges, loadRangesFromJson]);
 
+    // Set default values for age units if they are undefined (only once)
+    useEffect(() => {
+        const needsUpdate = 
+            (formData.minAgeUnit === undefined || formData.minAgeUnit === null || formData.minAgeUnit === "") ||
+            (formData.maxAgeUnit === undefined || formData.maxAgeUnit === null || formData.maxAgeUnit === "");
+        
+        if (needsUpdate) {
+            setFormData(prev => ({
+                ...prev,
+                minAgeUnit: prev.minAgeUnit || "YEARS",
+                maxAgeUnit: prev.maxAgeUnit || "YEARS"
+            }));
+        }
+    }, [formData.minAgeUnit, formData.maxAgeUnit, setFormData]); // Set defaults when age units are undefined
+
     if (!hasEditRecord) {
         return null;
     }
@@ -357,7 +534,41 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                 </p>
             </div>
 
-            <form onSubmit={handleUpdate} className="space-y-4">
+            {/* Validation Errors Summary */}
+            {Object.keys(validationErrors).length > 0 && Object.values(validationErrors).some(msg => msg) && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                    <div className="flex items-start gap-2">
+                        <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="flex-1">
+                            <h3 className="text-sm font-semibold text-red-800 mb-2">
+                                Please fix the following {Object.values(validationErrors).filter(msg => msg).length} error(s):
+                            </h3>
+                            <ul className="space-y-1">
+                                {Object.entries(validationErrors)
+                                    .filter(([, message]) => message)
+                                    .map(([field, message]) => {
+                                        const fieldName = field
+                                            .replace(/([A-Z])/g, ' $1')
+                                            .replace(/^./, str => str.toUpperCase())
+                                            .trim();
+                                        return (
+                                            <li key={field} className="text-sm text-red-700 flex items-start gap-2">
+                                                <span className="text-red-500 mt-1">•</span>
+                                                <span>
+                                                    <strong className="font-medium">{fieldName}:</strong> {message}
+                                                </span>
+                                            </li>
+                                        );
+                                    })}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <form onSubmit={handleFormSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {/* Description */}
                     <div className="sm:col-span-2">
@@ -367,10 +578,13 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                             name="testDescription"
                             list="editTestDescriptionOptions"
                             value={formData.testDescription.toLocaleUpperCase()}
-                            onChange={handleChange}
-                            className="w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
+                            onChange={handleChangeWithValidation}
+                            className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.testDescription ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
                             placeholder="Type or select test description"
                         />
+                        {validationErrors.testDescription && (
+                            <p className="text-xs text-red-500 mt-1">{validationErrors.testDescription}</p>
+                        )}
                         <datalist id="editTestDescriptionOptions">
                             <option value="DESCRIPTION">Description</option>
                             <option value="DROPDOWN">Dropdown</option>
@@ -390,13 +604,16 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                         <select
                             name="gender"
                             value={formData.gender}
-                            onChange={handleChange}
-                            className="w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
+                            onChange={handleChangeWithValidation}
+                            className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.gender ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
                         >
                             <option value="M">Male</option>
                             <option value="F">Female</option>
                             {/* <option value="O">Unisex</option> */}
                         </select>
+                        {validationErrors.gender && (
+                            <p className="text-xs text-red-500 mt-1">{validationErrors.gender}</p>
+                        )}
                     </div>
 
                     {/* Units */}
@@ -406,10 +623,13 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                             type="text"
                             name="units"
                             value={formData.units}
-                            onChange={handleChange}
-                            className="w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
+                            onChange={handleChangeWithValidation}
+                            className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.units ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
                             placeholder="Measurement units"
                         />
+                        {validationErrors.units && (
+                            <p className="text-xs text-red-500 mt-1">{validationErrors.units}</p>
+                        )}
                     </div>
 
                     {/* Min Age with Unit */}
@@ -421,14 +641,14 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                 name="ageMin"
                                 value={formData.ageMin}
                                 onChange={handleAgeChange}
-                                className="w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
+                                className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.ageMin ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
                                 min={0}
                                 max={100}
                             />
                             <select
                                 name="minAgeUnit"
                                 value={formData.minAgeUnit || "YEARS"}
-                                onChange={handleChange}
+                                onChange={handleChangeWithValidation}
                                 className="w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
                             >
                                 <option value="YEARS">Years</option>
@@ -437,6 +657,9 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                 <option value="DAYS">Days</option>
                             </select>
                         </div>
+                        {validationErrors.ageMin && (
+                            <p className="text-xs text-red-500 mt-1">{validationErrors.ageMin}</p>
+                        )}
                     </div>
 
                     {/* Max Age with Unit */}
@@ -450,12 +673,12 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                 max={100}
                                 value={formData.ageMax}
                                 onChange={handleAgeChange}
-                                className="w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
+                                className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.ageMax ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
                             />
                             <select
                                 name="maxAgeUnit"
                                 value={formData.maxAgeUnit || "YEARS"}
-                                onChange={handleChange}
+                                onChange={handleChangeWithValidation}
                                 className="w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
                             >
                                 <option value="YEARS">Years</option>
@@ -464,6 +687,9 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                 <option value="DAYS">Days</option>
                             </select>
                         </div>
+                        {validationErrors.ageMax && (
+                            <p className="text-xs text-red-500 mt-1">{validationErrors.ageMax}</p>
+                        )}
                     </div>
 
                     {/* Reference Range */}
@@ -476,10 +702,13 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                 min={0}
                                 // max={100}
                                 value={formData.minReferenceRange}
-                                onChange={handleChange}
-                                className="w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
+                                onChange={handleChangeWithValidation}
+                                className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.minReferenceRange ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
                                 step="0.01"
                             />
+                            {validationErrors.minReferenceRange && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors.minReferenceRange}</p>
+                            )}
                         </div>
                         <div>
                             <label className="text-xs font-medium text-gray-700 block mb-1">Max Range</label>
@@ -488,10 +717,13 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                 name="maxReferenceRange"
                                 min={0}
                                 value={formData.maxReferenceRange}
-                                onChange={handleChange}
-                                className="w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
+                                onChange={handleChangeWithValidation}
+                                className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.maxReferenceRange ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
                                 step="0.01"
                             />
+                            {validationErrors.maxReferenceRange && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors.maxReferenceRange}</p>
+                            )}
                         </div>
                     </div>
                 </div>

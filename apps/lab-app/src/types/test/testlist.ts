@@ -1,5 +1,6 @@
 export interface TestList {
   id: number;
+  testCode?: string;
   name: string;
   price: number;
   category: string;
@@ -16,6 +17,7 @@ export interface TestForm {
 
 export interface TestReferancePoint {
     id: number;
+    testReferenceCode?: string;
     category: string;
     testName: string;
     testDescription: string;

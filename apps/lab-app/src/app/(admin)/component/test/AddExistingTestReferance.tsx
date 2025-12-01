@@ -63,45 +63,71 @@ const AddExistingTestReferance = ({
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
     // Custom validation function
-    const validateForm = () => {
+    const validateForm = (recordToValidate?: TestReferancePoint) => {
+        const record = recordToValidate || existingTestReferanceRecord;
         const errors: Record<string, string> = {};
 
         // Required fields validation
-        if (!existingTestReferanceRecord.testDescription?.trim()) {
+        if (!record.testDescription?.trim()) {
             errors.testDescription = "Test description is required";
         }
-        if (!existingTestReferanceRecord.units?.trim()) {
+        if (!record.units?.trim()) {
             errors.units = "Units are required";
         }
-        if (!existingTestReferanceRecord.gender) {
+        if (!record.gender) {
             errors.gender = "Gender selection is required";
         }
-        if (existingTestReferanceRecord.ageMin === undefined || existingTestReferanceRecord.ageMin === null) {
+        // Allow ageMin to be 0, only check for undefined/null
+        if (record.ageMin === undefined || record.ageMin === null) {
             errors.ageMin = "Minimum age is required";
         }
-        if (existingTestReferanceRecord.minReferenceRange === undefined || existingTestReferanceRecord.minReferenceRange === null) {
+        // Allow minReferenceRange to be 0, only check for undefined/null
+        if (record.minReferenceRange === undefined || record.minReferenceRange === null) {
             errors.minReferenceRange = "Minimum reference range is required";
         }
-        if (existingTestReferanceRecord.maxReferenceRange === undefined || existingTestReferanceRecord.maxReferenceRange === null) {
+        if (record.maxReferenceRange === undefined || record.maxReferenceRange === null) {
             errors.maxReferenceRange = "Maximum reference range is required";
         }
 
-        // Age validation
-        if (existingTestReferanceRecord.ageMin !== undefined && existingTestReferanceRecord.ageMin < 0) {
+        // Age validation - allow 0 as valid value
+        if (record.ageMin !== undefined && record.ageMin !== null && record.ageMin < 0) {
             errors.ageMin = "Minimum age cannot be negative";
         }
-        if (existingTestReferanceRecord.ageMax !== undefined && existingTestReferanceRecord.ageMax < 0) {
+        if (record.ageMax !== undefined && record.ageMax !== null && record.ageMax < 0) {
             errors.ageMax = "Maximum age cannot be negative";
         }
-        if (existingTestReferanceRecord.ageMin !== undefined && existingTestReferanceRecord.ageMax !== undefined && 
-            existingTestReferanceRecord.ageMin > existingTestReferanceRecord.ageMax) {
+        // Convert to numbers for proper comparison
+        const ageMinNum = typeof record.ageMin === 'string' 
+            ? parseFloat(record.ageMin) 
+            : record.ageMin;
+        const ageMaxNum = typeof record.ageMax === 'string' 
+            ? parseFloat(record.ageMax) 
+            : record.ageMax;
+        if (ageMinNum !== undefined && ageMinNum !== null && ageMaxNum !== undefined && ageMaxNum !== null && 
+            !isNaN(ageMinNum) && !isNaN(ageMaxNum) && ageMinNum >= ageMaxNum) {
             errors.ageMax = "Maximum age must be greater than minimum age";
         }
 
-        // Range validation
-        if (existingTestReferanceRecord.minReferenceRange !== undefined && existingTestReferanceRecord.maxReferenceRange !== undefined && 
-            existingTestReferanceRecord.minReferenceRange > existingTestReferanceRecord.maxReferenceRange) {
-            errors.maxReferenceRange = "Maximum range must be greater than minimum range";
+        // Range validation - convert to numbers for proper comparison
+        const minRangeNum = typeof record.minReferenceRange === 'string' 
+            ? parseFloat(record.minReferenceRange) 
+            : record.minReferenceRange;
+        const maxRangeNum = typeof record.maxReferenceRange === 'string' 
+            ? parseFloat(record.maxReferenceRange) 
+            : record.maxReferenceRange;
+        
+        if (minRangeNum !== undefined && minRangeNum !== null && maxRangeNum !== undefined && maxRangeNum !== null && 
+            !isNaN(minRangeNum) && !isNaN(maxRangeNum)) {
+            if (minRangeNum < 0) {
+                errors.minReferenceRange = "Minimum reference range cannot be negative";
+            }
+            if (maxRangeNum < 0) {
+                errors.maxReferenceRange = "Maximum reference range cannot be negative";
+            }
+            // Check if max is greater than min (allowing equal values might be needed, but typically max should be > min)
+            if (maxRangeNum <= minRangeNum) {
+                errors.maxReferenceRange = "Maximum range must be greater than minimum range";
+            }
         }
 
         setValidationErrors(errors);
@@ -112,10 +138,65 @@ const AddExistingTestReferance = ({
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (validateForm()) {
+        // Set default values for age units if they are undefined
+        const recordWithDefaults = {
+            ...existingTestReferanceRecord,
+            minAgeUnit: existingTestReferanceRecord.minAgeUnit || "YEARS",
+            maxAgeUnit: existingTestReferanceRecord.maxAgeUnit || "YEARS",
+        };
+        
+        // Update state with defaults
+        setExistingTestReferanceRecord(recordWithDefaults);
+        
+        // Validate with the record that has defaults
+        const isValid = validateForm(recordWithDefaults);
+        
+        if (isValid) {
+            // Ensure defaults are set before calling parent handler
             handleAddExistingReferanceRecord(e);
         } else {
-            toast.error("Please fix the validation errors before submitting");
+            // Show detailed validation errors
+            const errorMessages = Object.entries(validationErrors)
+                .filter(([, message]) => message)
+                .map(([field, message]) => {
+                    // Convert field name to readable format
+                    const fieldName = field
+                        .replace(/([A-Z])/g, ' $1')
+                        .replace(/^./, str => str.toUpperCase())
+                        .trim();
+                    return `${fieldName}: ${message}`;
+                });
+            
+            if (errorMessages.length > 0) {
+                // Show first error in toast, and all errors in console
+                toast.error(`Validation Error: ${errorMessages[0]}`, {
+                    autoClose: 5000,
+                });
+                
+                // If multiple errors, show additional toast after a delay
+                if (errorMessages.length > 1) {
+                    setTimeout(() => {
+                        toast.warning(`${errorMessages.length - 1} more error(s). Please check all fields.`, {
+                            autoClose: 4000,
+                        });
+                    }, 500);
+                }
+                
+                // Log all errors to console for debugging
+                console.error('Validation Errors:', validationErrors);
+            } else {
+                toast.error("Please fix the validation errors before submitting");
+            }
+            
+            // Scroll to first error field
+            const firstErrorField = Object.keys(validationErrors)[0];
+            if (firstErrorField) {
+                const errorElement = document.querySelector(`[name="${firstErrorField}"]`);
+                if (errorElement) {
+                    errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    (errorElement as HTMLElement).focus();
+                }
+            }
         }
     };
 
@@ -146,6 +227,28 @@ const AddExistingTestReferance = ({
             setExistingTestReferanceRecord(prev => ({
                 ...prev,
                 [name]: value === "" ? "" : numericValue
+            }));
+            
+            // Clear validation error when user starts typing
+            if (validationErrors[name]) {
+                setValidationErrors(prev => ({
+                    ...prev,
+                    [name]: ""
+                }));
+            }
+        }
+    };
+
+    // Wrapper for handleChangeRef to clear validation errors
+    const handleChangeWithValidation = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        handleChangeRef(e);
+        
+        // Clear validation error when user starts typing
+        const fieldName = e.target.name;
+        if (validationErrors[fieldName]) {
+            setValidationErrors(prev => ({
+                ...prev,
+                [fieldName]: ""
             }));
         }
     };
@@ -183,6 +286,21 @@ const AddExistingTestReferance = ({
         }
     }, [existingTestReferanceRecord.referenceRanges, loadRangesFromJson]);
 
+    // Set default values for age units if they are undefined (only once)
+    useEffect(() => {
+        const needsUpdate = 
+            (existingTestReferanceRecord.minAgeUnit === undefined || existingTestReferanceRecord.minAgeUnit === null || existingTestReferanceRecord.minAgeUnit === "") ||
+            (existingTestReferanceRecord.maxAgeUnit === undefined || existingTestReferanceRecord.maxAgeUnit === null || existingTestReferanceRecord.maxAgeUnit === "");
+        
+        if (needsUpdate) {
+            setExistingTestReferanceRecord(prev => ({
+                ...prev,
+                minAgeUnit: prev.minAgeUnit || "YEARS",
+                maxAgeUnit: prev.maxAgeUnit || "YEARS"
+            }));
+        }
+    }, [existingTestReferanceRecord.minAgeUnit, existingTestReferanceRecord.maxAgeUnit, setExistingTestReferanceRecord]); // Set defaults when age units are undefined
+
     return (
         <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-200">
             <h2 className="text-lg font-semibold mb-4 text-blue-700">Add Existing Test Reference</h2>
@@ -197,6 +315,40 @@ const AddExistingTestReferance = ({
                         </div>
                     </div>
                         </div>
+            )}
+
+            {/* Validation Errors Summary */}
+            {Object.keys(validationErrors).length > 0 && Object.values(validationErrors).some(msg => msg) && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                    <div className="flex items-start gap-2">
+                        <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="flex-1">
+                            <h3 className="text-sm font-semibold text-red-800 mb-2">
+                                Please fix the following {Object.values(validationErrors).filter(msg => msg).length} error(s):
+                            </h3>
+                            <ul className="space-y-1">
+                                {Object.entries(validationErrors)
+                                    .filter(([, message]) => message)
+                                    .map(([field, message]) => {
+                                        const fieldName = field
+                                            .replace(/([A-Z])/g, ' $1')
+                                            .replace(/^./, str => str.toUpperCase())
+                                            .trim();
+                                        return (
+                                            <li key={field} className="text-sm text-red-700 flex items-start gap-2">
+                                                <span className="text-red-500 mt-1">•</span>
+                                                <span>
+                                                    <strong className="font-medium">{fieldName}:</strong> {message}
+                                                </span>
+                                            </li>
+                                        );
+                                    })}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Form Section */}
@@ -234,7 +386,7 @@ const AddExistingTestReferance = ({
                         <select
                             name="gender"
                             value={existingTestReferanceRecord.gender || ""}
-                            onChange={handleChangeRef}
+                            onChange={handleChangeWithValidation}
                         className={`w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500 ${validationErrors.gender ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
                         >
                         <option value="" disabled selected>Select Gender</option>
@@ -253,7 +405,7 @@ const AddExistingTestReferance = ({
                         name="units"
                         placeholder="Units"
                         value={existingTestReferanceRecord.units || ""}
-                        onChange={handleChangeRef}
+                        onChange={handleChangeWithValidation}
                         className={`w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500 ${validationErrors.units ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
                     />
                     {validationErrors.units && (
@@ -277,7 +429,7 @@ const AddExistingTestReferance = ({
                             <select
                                 name="minAgeUnit"
                                 value={existingTestReferanceRecord.minAgeUnit || "YEARS"}
-                                onChange={handleChangeRef}
+                                onChange={handleChangeWithValidation}
                             className="w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500"
                             >
                                 <option value="YEARS">Years</option>
@@ -307,7 +459,7 @@ const AddExistingTestReferance = ({
                             <select
                                 name="maxAgeUnit"
                                 value={existingTestReferanceRecord.maxAgeUnit || "YEARS"}
-                                onChange={handleChangeRef}
+                                onChange={handleChangeWithValidation}
                             className="w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500"
                             >
                                 <option value="YEARS">Years</option>
@@ -329,7 +481,7 @@ const AddExistingTestReferance = ({
                         placeholder="Minimum Range"
                         min={0}
                         value={existingTestReferanceRecord.minReferenceRange || ""}
-                        onChange={handleChangeRef}
+                        onChange={handleChangeWithValidation}
                         className={`w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500 ${validationErrors.minReferenceRange ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
                     />
                     {validationErrors.minReferenceRange && (
@@ -345,7 +497,7 @@ const AddExistingTestReferance = ({
                         placeholder="Maximum Range"
                                  min={0}
                         value={existingTestReferanceRecord.maxReferenceRange || ""}
-                                onChange={handleChangeRef}
+                                onChange={handleChangeWithValidation}
                         className={`w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500 ${validationErrors.maxReferenceRange ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
                     />
                     {validationErrors.maxReferenceRange && (

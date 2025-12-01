@@ -5,7 +5,6 @@ import { FaPersonChalkboard, FaPersonCirclePlus } from 'react-icons/fa6';
 import ListOfMemberOfLab from './_component/ListOfMemberOfLab';
 import AddMemberOnLab from './_component/AddMemberOnLab';
 import Unauthorised from '@/app/(admin)/component/Unauthorised';
-// import { useLabs } from '@/context/LabContext';
 import useAuthStore from '@/context/userStore';
 
 interface TechnicianTab {

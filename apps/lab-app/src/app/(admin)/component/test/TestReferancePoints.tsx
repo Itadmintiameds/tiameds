@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  getTestReferanceRange,
+  getTestReferences,
   updateTestReferanceRange,
   deleteTestReferanceRange,
-  addTestReferanceRange
+  addTestReferanceRange,
+  PaginatedResponse
 } from "../../../../../services/testService";
 import { TestReferancePoint } from "@/types/test/testlist";
 import Loader from "../../component/common/Loader";
@@ -89,7 +90,7 @@ export const TestReferancePointSchema = z.object({
   path: ["maxReferenceRange"]
 });
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 10; // Items per page for API pagination
 
 type ReferenceRangeItem = {
   Gender?: string;
@@ -134,25 +135,41 @@ const TestReferancePoints = () => {
   const [existingModalOpen, setExistingModalOpen] = useState(false);
   const [existingTestReferanceRecord, setExistingTestReferanceRecord] = useState<TestReferancePoint>({} as TestReferancePoint);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0); // API uses 0-based indexing
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const { currentLab } = useLabs();
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
   const [activeFilter, setActiveFilter] = useState<"all" | "category" | "test" | "description">("all");
   const [activeTab, setActiveTab] = useState<"all" | "common" | "special">("all");
 
-  const fetchReferencePoints = useCallback(async () => {
+  const fetchReferencePoints = useCallback(async (page: number = 0, size: number = ITEMS_PER_PAGE) => {
     if (currentLab?.id) {
       setLoading(true);
       try {
-        const data = await getTestReferanceRange(currentLab.id.toString());
-        setReferencePoints(data);
-        if (data.length > 0) {
-          const firstCategory = data[0].category;
+        const response: PaginatedResponse = await getTestReferences(currentLab.id, page, size);
+        
+        // Safety checks for response structure
+        const content = Array.isArray(response?.content) ? response.content : [];
+        const totalPages = response?.totalPages ?? 0;
+        const totalElements = response?.totalElements ?? 0;
+        
+        setReferencePoints(content);
+        setTotalPages(totalPages);
+        setTotalElements(totalElements);
+        
+        if (content.length > 0 && content[0]?.category) {
+          const firstCategory = content[0].category;
           setExpandedCategories({ [firstCategory]: true });
         }
       } catch (error) {
-        toast.error((error as Error).message);
+        const errorMessage = error instanceof Error ? error.message : 'An error occurred while fetching test references.';
+        toast.error(errorMessage);
+        // Reset to empty state on error
+        setReferencePoints([]);
+        setTotalPages(0);
+        setTotalElements(0);
       } finally {
         setLoading(false);
       }
@@ -160,8 +177,8 @@ const TestReferancePoints = () => {
   }, [currentLab?.id]);
 
   useEffect(() => {
-    fetchReferencePoints();
-  }, [fetchReferencePoints]);
+    fetchReferencePoints(currentPage, ITEMS_PER_PAGE);
+  }, [fetchReferencePoints, currentPage]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
@@ -187,38 +204,43 @@ const TestReferancePoints = () => {
     setExpandedRows(newExpandedRows);
   };
 
-  const { filteredGroupedData, totalCategories, stats } = useMemo(() => {
-    let filtered = referencePoints;
+  const { filteredGroupedData, stats } = useMemo(() => {
+    // Ensure referencePoints is always an array
+    const safeReferencePoints = Array.isArray(referencePoints) ? referencePoints : [];
+    
+    let filtered = safeReferencePoints;
     if (activeTab === "common") {
-      filtered = filtered.filter(test => test.category.toLowerCase().includes("common"));
+      filtered = filtered.filter(test => test?.category?.toLowerCase().includes("common"));
     } else if (activeTab === "special") {
-      filtered = filtered.filter(test => !test.category.toLowerCase().includes("common"));
+      filtered = filtered.filter(test => !test?.category?.toLowerCase().includes("common"));
     }
 
     filtered = filtered.filter(test => {
+      if (!test) return false;
       const lowerSearchTerm = searchTerm.toLowerCase();
       if (activeFilter === "category") {
-        return test.category.toLowerCase().includes(lowerSearchTerm);
+        return test.category?.toLowerCase().includes(lowerSearchTerm);
       } else if (activeFilter === "test") {
-        return test.testName.toLowerCase().includes(lowerSearchTerm);
+        return test.testName?.toLowerCase().includes(lowerSearchTerm);
       } else if (activeFilter === "description") {
         return test.testDescription?.toLowerCase().includes(lowerSearchTerm);
       }
       return (
-        test?.category.toLowerCase().includes(lowerSearchTerm) ||
-        test?.testName.toLowerCase().includes(lowerSearchTerm) ||
+        test?.category?.toLowerCase().includes(lowerSearchTerm) ||
+        test?.testName?.toLowerCase().includes(lowerSearchTerm) ||
         test?.testDescription?.toLowerCase().includes(lowerSearchTerm)
       );
     });
 
     const stats = {
-      totalTests: referencePoints.length,
-      totalCategories: new Set(referencePoints.map(t => t?.category)).size,
+      totalTests: totalElements, // Use total from API
+      totalCategories: new Set(safeReferencePoints.map(t => t?.category).filter(Boolean)).size,
       filteredTests: filtered.length,
-      filteredCategories: new Set(filtered.map(t => t?.category)).size
+      filteredCategories: new Set(filtered.map(t => t?.category).filter(Boolean)).size
     };
 
     const grouped = filtered.reduce<Record<string, Record<string, TestReferancePoint[]>>>((acc, test) => {
+      if (!test) return acc;
       const category = test?.category ?? "Uncategorized";
       if (!acc[category]) acc[category] = {};
       if (!acc[category][test.testName]) acc[category][test.testName] = [];
@@ -226,23 +248,13 @@ const TestReferancePoints = () => {
       return acc;
     }, {});
 
-    const categories = Object.keys(grouped);
-    const paginatedCategories = categories.slice(
-      (currentPage - 1) * ITEMS_PER_PAGE,
-      currentPage * ITEMS_PER_PAGE
-    );
-
-    const paginatedGroupedData: Record<string, Record<string, TestReferancePoint[]>> = {};
-    paginatedCategories?.forEach(category => {
-      paginatedGroupedData[category] = grouped[category];
-    });
-
+    // No need for client-side category pagination since API handles pagination
+    // Just return all filtered and grouped data for current page
     return {
-      filteredGroupedData: paginatedGroupedData,
-      totalCategories: categories.length,
+      filteredGroupedData: grouped,
       stats
     };
-  }, [referencePoints, searchTerm, currentPage, activeFilter, activeTab]);
+  }, [referencePoints, searchTerm, activeFilter, activeTab, totalElements]);
 
 
   const handleDownloadCsv = async () => {
@@ -290,8 +302,8 @@ const TestReferancePoints = () => {
       return;
     }
 
-    if (!editRecord?.id) {
-      toast.error("No record selected for editing.");
+    if (!editRecord?.testReferenceCode) {
+      toast.error("No test reference code found for editing.");
       return;
     }
 
@@ -320,12 +332,12 @@ const TestReferancePoints = () => {
       };
 
       await updateTestReferanceRange(
-        currentLab.id.toString(), 
-        editRecord.id.toString(), 
+        currentLab.id, 
+        editRecord.testReferenceCode, 
         dataToUpdate
       );
       
-      await fetchReferencePoints(); // Refresh data after update
+      await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after update
       
       toast.success("Test reference range updated successfully.");
       setEditModalOpen(false);
@@ -338,8 +350,8 @@ const TestReferancePoints = () => {
   };
 
   const handleEditRecord = (test: TestReferancePoint) => {
-    if (!test?.id) {
-      toast.error("Invalid test record");
+    if (!test?.testReferenceCode) {
+      toast.error("Invalid test record: missing test reference code");
       return;
     }
     setEditRecord(test);
@@ -347,9 +359,9 @@ const TestReferancePoints = () => {
     setEditModalOpen(true);
   };
 
-  const handleDelete = async (id: number | undefined) => {
-    if (!id) {
-      toast.error("Invalid test reference range ID.", { autoClose: 2000 });
+  const handleDelete = async (testReferenceCode: string | undefined) => {
+    if (!testReferenceCode) {
+      toast.error("Invalid test reference code.", { autoClose: 2000 });
       return;
     }
 
@@ -362,8 +374,8 @@ const TestReferancePoints = () => {
 
     try {
       setLoading(true);
-      await deleteTestReferanceRange(currentLab?.id, id);
-      await fetchReferencePoints(); // Refresh data after delete
+      await deleteTestReferanceRange(currentLab.id, testReferenceCode);
+      await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after delete
       toast.success("Test reference range deleted successfully.", { autoClose: 2000 });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "An unexpected error occurred while deleting the test reference range.";
@@ -390,7 +402,7 @@ const TestReferancePoints = () => {
       }
 
       await addTestReferanceRange(currentLab.id.toString(), newReferanceRecord);
-      await fetchReferencePoints(); // Refresh data after adding
+      await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after adding
       
       toast.success("Test reference range added successfully.", { autoClose: 2000 });
       setAddModalOpen(false);
@@ -419,7 +431,7 @@ const TestReferancePoints = () => {
       }
 
       await addTestReferanceRange(currentLab.id.toString(), existingTestReferanceRecord);
-      await fetchReferencePoints(); // Refresh data after adding
+      await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after adding
       
       toast.success("Test reference range added successfully.", { autoClose: 2000 });
       setExistingModalOpen(false);
@@ -471,7 +483,7 @@ const TestReferancePoints = () => {
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
-                setCurrentPage(1);
+                setCurrentPage(0); // Reset to first page when searching
               }}
             />
           </div>
@@ -600,12 +612,13 @@ const TestReferancePoints = () => {
                       {/* Table Header */}
                       <div className="bg-gray-100 p-3 rounded-lg mb-2">
                         <div className="grid grid-cols-12 gap-3 items-center font-medium text-gray-700 text-sm">
+                          <div className="col-span-1">Code</div>
                           <div className="col-span-2">Test Name</div>
                           <div className="col-span-2">Description</div>
                           <div className="col-span-1 text-center">Gender</div>
                           <div className="col-span-2 text-center">Age Range</div>
                           <div className="col-span-2">Reference Range</div>
-                          <div className="col-span-2">Report JSON</div>
+                          <div className="col-span-1">Report JSON</div>
                           <div className="col-span-1 text-center">Actions</div>
                         </div>
                       </div>
@@ -616,6 +629,9 @@ const TestReferancePoints = () => {
                             {/* Main Row */}
                             <div className="p-3">
                               <div className="grid grid-cols-12 gap-3 items-center">
+                                <div className="col-span-1">
+                                  <span className="text-xs font-semibold text-blue-600">{test.testReferenceCode || "N/A"}</span>
+                                </div>
                                 <div className="col-span-2">
                                   <div className="flex items-center gap-2">
                                     <button
@@ -647,15 +663,15 @@ const TestReferancePoints = () => {
                                     {test.minReferenceRange} - {test.maxReferenceRange} {test.units && <span className="text-gray-500">{test.units}</span>}
                                   </span>
                                 </div>
-                                <div className="col-span-2">
+                                <div className="col-span-1">
                                   {test.reportJson ? (
-                                    <div className="text-xs text-gray-500">
+                                    <div className="text-xs text-gray-500 truncate" title="Report Available">
                                       {(() => {
                                         try {
                                           const parsed = JSON.parse(test.reportJson);
-                                          return parsed.testName || parsed.note || "Report Available";
+                                          return parsed.testName || parsed.note || "Report";
                                         } catch {
-                                          return "Invalid JSON";
+                                          return "Report";
                                         }
                                       })()}
                                     </div>
@@ -672,7 +688,7 @@ const TestReferancePoints = () => {
                                       size={14}
                             />
                             <FaTrash
-                              onClick={() => test?.id && handleDelete(test.id)}
+                              onClick={() => test?.testReferenceCode && handleDelete(test.testReferenceCode)}
                               className="text-red-500 cursor-pointer hover:text-red-700"
                               title="Delete"
                                       size={14}
@@ -929,7 +945,11 @@ const TestReferancePoints = () => {
                                 {/* Additional Test Information */}
                                 <div className="mt-3 pt-3 border-t border-gray-200">
                                   <h4 className="font-semibold text-blue-700 mb-2 text-sm">Additional Information</h4>
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+                                    <div>
+                                      <span className="font-medium text-gray-600">Reference Code:</span>
+                                      <p className="text-gray-800 font-semibold">{test.testReferenceCode || "N/A"}</p>
+                                    </div>
                                     <div>
                                       <span className="font-medium text-gray-600">Created By:</span>
                                       <p className="text-gray-800">{test.createdBy || "N/A"}</p>
@@ -962,9 +982,9 @@ const TestReferancePoints = () => {
 
           <div className="mt-3 flex justify-center">
             <Pagination
-              currentPage={currentPage}
-              totalPages={Math.ceil(totalCategories / ITEMS_PER_PAGE)}
-              onPageChange={setCurrentPage}
+              currentPage={currentPage + 1} // Convert 0-based to 1-based for display
+              totalPages={totalPages}
+              onPageChange={(page) => setCurrentPage(page - 1)} // Convert back to 0-based
             />
           </div>
         </>

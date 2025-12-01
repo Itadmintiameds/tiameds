@@ -1,12 +1,12 @@
 
 'use client';
-import { deleteTest, getTests } from '@/../../services/testService';
+import { deleteTest, getTestsPaginated, PaginatedTestResponse } from '@/../../services/testService';
 import { downloadTestCsv, downloadTestCsvExcel } from '@/../services/testService';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
 import { Plus } from 'lucide-react';
 import Papa from 'papaparse';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { FaDownload, FaFileExcel, FaFilter, FaSearch, FaTimes, FaTrash, FaVial } from 'react-icons/fa';
 import { MdModeEditOutline } from "react-icons/md";
 import { toast } from 'react-toastify';
@@ -29,7 +29,9 @@ const TestLists = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('');
   const [sortOrder, setSortOrder] = useState<'low' | 'high' | ''>('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0); // API uses 0-based indexing
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [activeFilter, setActiveFilter] = useState<'name' | 'category' | 'all'>('all');
   const [isModalOpen, setModalOpen] = useState(false);
   const [editPopup, setEditPopup] = useState(false);
@@ -37,62 +39,80 @@ const TestLists = () => {
   const [updateList, setUpdateList] = useState(false);
   const [updateTest, setUpdateTest] = useState<TestList>();
 
-  useEffect(() => {
-    if (currentLab) {
+  const fetchTests = useCallback(async (page: number = 0, size: number = ITEMS_PER_PAGE) => {
+    if (currentLab?.id) {
       setLoading(true);
-      getTests(currentLab.id.toString())
-        .then((tests) => {
-          setTests(tests);
-        })
-        .catch((error) => {
-          toast.error(error.message || 'Failed to load tests');
-        })
-        .finally(() => setLoading(false));
+      try {
+        const response: PaginatedTestResponse = await getTestsPaginated(currentLab.id, page, size);
+        
+        // Safety checks for response structure
+        const content = Array.isArray(response?.content) ? response.content : [];
+        const totalPages = response?.totalPages ?? 0;
+        const totalElements = response?.totalElements ?? 0;
+        
+        setTests(content);
+        setTotalPages(totalPages);
+        setTotalElements(totalElements);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An error occurred while fetching tests.';
+        toast.error(errorMessage);
+        // Reset to empty state on error
+        setTests([]);
+        setTotalPages(0);
+        setTotalElements(0);
+      } finally {
+        setLoading(false);
+      }
     }
-  }, [currentLab, updateList]);
+  }, [currentLab?.id]);
 
-  // Filter and sort tests
+  useEffect(() => {
+    fetchTests(currentPage, ITEMS_PER_PAGE);
+  }, [fetchTests, currentPage, updateList]);
+
+  // Filter and sort tests (client-side filtering on current page)
   const filteredTests = useMemo(() => {
-    let results = [...tests];
+    // Ensure tests is always an array
+    const safeTests = Array.isArray(tests) ? tests : [];
+    let results = [...safeTests];
     
     // Apply search filter based on active filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       if (activeFilter === 'name') {
-        results = results.filter(test => test.name.toLowerCase().includes(term));
+        results = results.filter(test => test?.name?.toLowerCase().includes(term));
       } else if (activeFilter === 'category') {
-        results = results.filter(test => test.category.toLowerCase().includes(term));
+        results = results.filter(test => test?.category?.toLowerCase().includes(term));
       } else {
         results = results.filter(test => 
-          test.name.toLowerCase().includes(term) || 
-          test.category.toLowerCase().includes(term)
+          test?.name?.toLowerCase().includes(term) || 
+          test?.category?.toLowerCase().includes(term)
         );
       }
     }
 
     // Apply category filter
     if (category) {
-      results = results.filter(test => test.category === category);
+      results = results.filter(test => test?.category === category);
     }
 
     // Apply sorting
     if (sortOrder === 'low') {
-      results.sort((a, b) => a.price - b.price);
+      results.sort((a, b) => (a?.price ?? 0) - (b?.price ?? 0));
     } else if (sortOrder === 'high') {
-      results.sort((a, b) => b.price - a.price);
+      results.sort((a, b) => (b?.price ?? 0) - (a?.price ?? 0));
     }
 
     return results;
   }, [tests, searchTerm, category, sortOrder, activeFilter]);
 
-  // Pagination
-  const paginatedTests = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredTests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredTests, currentPage]);
+  // No need for client-side pagination since API handles pagination
+  const paginatedTests = filteredTests;
 
-  const totalPages = Math.ceil(filteredTests.length / ITEMS_PER_PAGE);
-  const categories = useMemo(() => Array.from(new Set(tests.map(test => test.category))), [tests]);
+  const categories = useMemo(() => {
+    const safeTests = Array.isArray(tests) ? tests : [];
+    return Array.from(new Set(safeTests.map(test => test?.category).filter(Boolean)));
+  }, [tests]);
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -140,11 +160,11 @@ const TestLists = () => {
 
   const columns = [
     { 
-      header: "Test ID", 
+      header: "Test Code", 
       accessor: (test: TestList) => (
-        <span className="text-sm font-medium text-gray-900">#{test.id}</span>
+        <span className="text-sm font-semibold text-blue-600">{test.testCode || `#${test.id}`}</span>
       ),
-      className: "w-20 text-center"
+      className: "w-32 text-center"
     },
     { 
       header: "Test Name", 
@@ -190,7 +210,8 @@ const TestLists = () => {
               if (currentLab) {
                 deleteTest(test.id.toString(), currentLab.id.toString())
                   .then(() => {
-                    setUpdateList(prev => !prev);
+                    // Refresh current page after delete
+                    fetchTests(currentPage, ITEMS_PER_PAGE);
                     toast.success('Test deleted successfully');
                   })
                   .catch((err) => {
@@ -263,7 +284,7 @@ const TestLists = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-white p-3 rounded-lg border border-green-200">
             <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Total Tests</h3>
-            <p className="text-xl font-bold text-gray-900">{tests.length}</p>
+            <p className="text-xl font-bold text-gray-900">{totalElements}</p>
           </div>
           <div className="bg-white p-3 rounded-lg border border-green-200">
             <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Categories</h3>
@@ -307,7 +328,7 @@ const TestLists = () => {
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
-                setCurrentPage(1);
+                setCurrentPage(0); // Reset to first page when searching
               }}
             />
           </div>
@@ -317,7 +338,7 @@ const TestLists = () => {
             value={category}
             onChange={(e) => {
               setCategory(e.target.value);
-              setCurrentPage(1);
+              setCurrentPage(0); // Reset to first page when filtering
             }}
             className="border border-blue-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           >
@@ -332,7 +353,7 @@ const TestLists = () => {
             value={sortOrder}
             onChange={(e) => {
               setSortOrder(e.target.value as 'low' | 'high');
-              setCurrentPage(1);
+              setCurrentPage(0); // Reset to first page when sorting
             }}
             className="border border-blue-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
           >
@@ -382,9 +403,9 @@ const TestLists = () => {
               
               <div className="p-3 border-t border-gray-200 flex justify-center">
                 <Pagination 
-                  currentPage={currentPage} 
+                  currentPage={currentPage + 1} // Convert 0-based to 1-based for display
                   totalPages={totalPages} 
-                  onPageChange={setCurrentPage}
+                  onPageChange={(page) => setCurrentPage(page - 1)} // Convert back to 0-based
                 />
               </div>
             </>
