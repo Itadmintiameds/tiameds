@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { 
   FaArrowLeft, FaSignInAlt,FaFlask, 
-  FaMicroscope, FaLock, FaUser, FaEye, FaEyeSlash, FaEnvelope,FaUserPlus
+  FaMicroscope, FaLock, FaUser, FaEye, FaEyeSlash, FaEnvelope
 } from 'react-icons/fa'
 // import {FaUserPlus} 'react-icons/fa'
 import { FiLoader } from 'react-icons/fi'
