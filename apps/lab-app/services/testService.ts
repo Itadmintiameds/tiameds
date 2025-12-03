@@ -305,10 +305,12 @@ export const getTestReferences = async (
 export const updateTestReferanceRange = async (labId: number, testReferenceCode: string, testref: TestReferancePoint): Promise<void> => {
   try {
     // Use new /update endpoint with testReferenceCode in body (no ID in URL)
+    // Exclude labId from testref to ensure we use the passed labId parameter
+    const { labId: _, ...testrefWithoutLabId } = testref as any;
     const requestBody = {
-      labId: labId,
+      ...testrefWithoutLabId,
+      labId: labId.toString(), // Ensure labId is always set from the parameter as string
       testReferenceCode: testReferenceCode,
-      ...testref
     };
     await api.put(`lab/test-reference/update`, requestBody);
   } catch (error: unknown) {

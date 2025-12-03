@@ -31,8 +31,8 @@ export const TestReferancePointSchema = z.object({
   testName: z.string().min(1, "Test name is required"),
   testDescription: z.string().min(1, "Test description is required"),
   units: z.string().min(1, "Units are required"),
-  gender: z.enum(["M", "F", "B"], {
-    errorMap: () => ({ message: "Gender must be M (Male), F (Female), or B (Both)" })
+  gender: z.enum(["M", "F", "B", "MF"], {
+    errorMap: () => ({ message: "Gender must be M (Male), F (Female), B (Both), or MF (Both)" })
   }),
   minReferenceRange: z.union([
     z.number().min(0, "Minimum reference range must be 0 or greater"),
@@ -318,6 +318,7 @@ const TestReferancePoints = () => {
       
       const dataToUpdate = {
         ...formData,
+        gender: formData.gender === "B" ? "MF" : formData.gender,
         minReferenceRange: typeof formData.minReferenceRange === 'string' 
           ? parseFloat(formData.minReferenceRange) 
           : formData.minReferenceRange,
@@ -402,7 +403,11 @@ const TestReferancePoints = () => {
         return;
       }
 
-      await addTestReferanceRange(currentLab.id.toString(), newReferanceRecord);
+      const dataToAdd = {
+        ...newReferanceRecord,
+        gender: newReferanceRecord.gender === "B" ? "MF" : newReferanceRecord.gender,
+      };
+      await addTestReferanceRange(currentLab.id.toString(), dataToAdd);
       await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after adding
       
       toast.success("Test reference range added successfully.", { autoClose: 2000 });
@@ -431,7 +436,11 @@ const TestReferancePoints = () => {
         return;
       }
 
-      await addTestReferanceRange(currentLab.id.toString(), existingTestReferanceRecord);
+      const dataToAdd = {
+        ...existingTestReferanceRecord,
+        gender: existingTestReferanceRecord.gender === "B" ? "MF" : existingTestReferanceRecord.gender,
+      };
+      await addTestReferanceRange(currentLab.id.toString(), dataToAdd);
       await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after adding
       
       toast.success("Test reference range added successfully.", { autoClose: 2000 });

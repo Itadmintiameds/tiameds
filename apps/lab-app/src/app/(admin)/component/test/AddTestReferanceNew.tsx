@@ -117,6 +117,15 @@ const AddTestReferanceNew = ({
         }
     };
 
+    // Custom handler for gender to convert "B" to "MF"
+    const handleGenderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value === "B" ? "MF" : e.target.value;
+        setNewReferanceRecord(prev => ({
+            ...prev,
+            gender: value
+        }));
+    };
+
     const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setNewReferanceRecord(prev => ({
@@ -320,14 +329,14 @@ const AddTestReferanceNew = ({
                     <label className="text-gray-700 mb-1">Gender</label>
                     <select
                         name="gender"
-                        value={newReferanceRecord?.gender || ""}
-                        onChange={handleChangeRef}
+                        value={newReferanceRecord?.gender === "MF" ? "B" : (newReferanceRecord?.gender || "")}
+                        onChange={handleGenderChange}
                         className="w-full bg-white border border-gray-300 px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500"
                     >
                         <option value="" disabled selected>Select Gender</option>
                         <option value="M">Male</option>
                         <option value="F">Female</option>
-                        {/* <option value="U">Unspecified</option> */}
+                        <option value="B">Both</option>
                     </select>
                 </div>
 

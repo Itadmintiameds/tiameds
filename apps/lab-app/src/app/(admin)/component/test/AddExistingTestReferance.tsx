@@ -253,6 +253,20 @@ const AddExistingTestReferance = ({
         }
     };
 
+    // Custom handler for gender to convert "B" to "MF"
+    const handleGenderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value === "B" ? "MF" : e.target.value;
+        const syntheticEvent = {
+            ...e,
+            target: {
+                ...e.target,
+                name: e.target.name,
+                value: value
+            }
+        } as React.ChangeEvent<HTMLInputElement | HTMLSelectElement>;
+        handleChangeWithValidation(syntheticEvent);
+    };
+
     // Removed raw JSON textarea handler; structured builder and rich editor are used instead
 
     const [rangesRows, setRangesRows] = useState<RangeRow[]>([DEFAULT_RANGE_ROW()]);
@@ -385,13 +399,14 @@ const AddExistingTestReferance = ({
                     <label className="text-gray-700 mb-1">Gender</label>
                         <select
                             name="gender"
-                            value={existingTestReferanceRecord.gender || ""}
-                            onChange={handleChangeWithValidation}
+                            value={existingTestReferanceRecord.gender === "MF" ? "B" : (existingTestReferanceRecord.gender || "")}
+                            onChange={handleGenderChange}
                         className={`w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500 ${validationErrors.gender ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
                         >
                         <option value="" disabled selected>Select Gender</option>
                             <option value="M">Male</option>
                             <option value="F">Female</option>
+                            <option value="B">Both</option>
                         </select>
                         {validationErrors.gender && (
                             <p className="text-xs text-red-500 mt-1">{validationErrors.gender}</p>

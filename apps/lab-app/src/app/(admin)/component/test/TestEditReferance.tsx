@@ -214,6 +214,20 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
         }
     };
 
+    // Custom handler for gender to convert "B" to "MF"
+    const handleGenderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value === "B" ? "MF" : e.target.value;
+        const syntheticEvent = {
+            ...e,
+            target: {
+                ...e.target,
+                name: e.target.name,
+                value: value
+            }
+        } as React.ChangeEvent<HTMLInputElement | HTMLSelectElement>;
+        handleChangeWithValidation(syntheticEvent);
+    };
+
     // JSON fields handlers
     const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -603,13 +617,13 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                         <label className="text-xs font-medium text-gray-700 block mb-1">Gender</label>
                         <select
                             name="gender"
-                            value={formData.gender}
-                            onChange={handleChangeWithValidation}
+                            value={formData.gender === "MF" ? "B" : formData.gender}
+                            onChange={handleGenderChange}
                             className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.gender ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
                         >
                             <option value="M">Male</option>
                             <option value="F">Female</option>
-                            {/* <option value="O">Unisex</option> */}
+                            <option value="B">Both</option>
                         </select>
                         {validationErrors.gender && (
                             <p className="text-xs text-red-500 mt-1">{validationErrors.gender}</p>
