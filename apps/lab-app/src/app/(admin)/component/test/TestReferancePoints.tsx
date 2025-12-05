@@ -90,7 +90,7 @@ export const TestReferancePointSchema = z.object({
   path: ["maxReferenceRange"]
 });
 
-const ITEMS_PER_PAGE = 10; // Items per page for API pagination
+const ITEMS_PER_PAGE = 700; // Items per page for API pagination
 
 type ReferenceRangeItem = {
   Gender?: string;
