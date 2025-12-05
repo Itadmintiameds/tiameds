@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TestReferancePoint } from '@/types/test/testlist';
 import RichTextEditor from '@/components/ui/rich-text-editor';
+import DetailedReportTiptapEditor from '@/components/ui/detailed-report-tiptap-editor';
 import SectionEditorModal from '@/components/ui/section-editor-modal';
 import { formatMedicalReportToHTML } from '@/utils/reportFormatter';
 
@@ -62,9 +63,28 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
     if (point.reportJson) {
       try {
         const parsed = JSON.parse(point.reportJson);
-        // Check if it's already a structured report or raw data
-        if (parsed.title && parsed.sections) {
+        // Check if it's already a structured report (with title and sections array matching our format)
+        if (parsed.title && parsed.sections && Array.isArray(parsed.sections) && parsed.sections[0]?.id) {
           setReportData(parsed);
+        } else if (parsed.tables || (parsed.sections && Array.isArray(parsed.sections)) || (parsed.impression && Array.isArray(parsed.impression))) {
+          // New API format with tables, sections, impression, etc. - convert to HTML
+          const formattedContent = formatMedicalReportToHTML(point.reportJson);
+          setReportData({
+            title: point.testName || parsed.reportType || 'Test Report',
+            description: parsed.description || '',
+            sections: [{
+              id: '1',
+              title: 'Formatted Report',
+              content: formattedContent || '<p>No report data available. Please add content using the editor.</p>',
+              type: 'text',
+              order: 1
+            }],
+            metadata: {
+              author: '',
+              date: new Date().toISOString().split('T')[0],
+              version: parsed.meta?.version || '1.0'
+            }
+          });
         } else {
           // Convert raw data to structured format using the formatter
           const formattedContent = formatMedicalReportToHTML(point.reportJson);
@@ -198,6 +218,10 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
   };
 
   const startInlineEdit = (section: ReportSection) => {
+    // Allow editing for all sections (including ones that contain tables).
+    // Note: editing sections with complex <table> markup in the rich text editor
+    // may still change their layout, but we intentionally avoid blocking or
+    // showing alerts here so the UX stays simple.
     setEditingSectionId(section.id);
     setEditingSection(section);
   };
@@ -290,9 +314,9 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
       </div>
 
       {/* Report Editor Section */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+      <div className="bg-white">
         
-          <div className="p-6">
+          <div className="p-4">
             <div className="space-y-6">
               {/* Report Sections */}
               <div className="space-y-4">
@@ -359,7 +383,7 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
                     {reportData.sections
                       .sort((a, b) => a.order - b.order)
                       .map((section, index) => (
-                        <div key={section.id} className="border border-gray-200 rounded-lg bg-white shadow-sm">
+                        <div key={section.id} className="border border-gray-200 rounded-lg bg-white shadow-sm overflow-hidden">
                           {/* Section Header */}
                           <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
                             <div className="flex items-center gap-3">
@@ -437,21 +461,24 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
         </div>
 
                           {/* Section Content */}
-        <div className="p-4">
+                          <div className="p-4 rounded-b-lg overflow-hidden">
                             {editingSectionId === section.id ? (
-                              <div>
-                                <RichTextEditor
+                              <div className="overflow-hidden rounded-b-lg min-h-[500px]">
+                                <DetailedReportTiptapEditor
                                   value={editingSection?.content || ''}
-                                  onChange={(value) => setEditingSection(prev => prev ? { ...prev, content: value } : null)}
-                                  placeholder="Enter section content..."
-                                  height="300px"
+                                  onChange={(value: string) =>
+                                    setEditingSection(prev =>
+                                      prev ? { ...prev, content: value } : null
+                                    )
+                                  }
+                                  height="500px"
                                 />
                               </div>
                             ) : (
                               <>
                                 {section.content && section.content.trim() && !section.content.includes('Click here to start editing') ? (
                                   <div
-                                    className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
+                                    className="report-html prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
                                     dangerouslySetInnerHTML={{ __html: section.content }}
                                   />
                                 ) : (

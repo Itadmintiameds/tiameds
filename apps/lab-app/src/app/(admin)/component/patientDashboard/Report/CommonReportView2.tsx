@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 import { useLabs } from "@/context/LabContext";
 import { formatAgeForDisplay } from "@/utils/ageUtils";
 import type { PatientData } from "@/types/sample/sample";
+import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
 
 type Html2CanvasBaseOptions = NonNullable<Parameters<typeof html2canvas>[1]>;
 type Html2CanvasEnhancedOptions = Html2CanvasBaseOptions & {
@@ -16,7 +17,7 @@ type Html2CanvasEnhancedOptions = Html2CanvasBaseOptions & {
 };
 
 const DEFAULT_FONT_FAMILY = '"Inter", "Helvetica Neue", Arial, sans-serif';
-const BASE_TEXT_COLOR = "#0f172a";
+const BASE_TEXT_COLOR = "#0f172a"; 
 
 const normalizeFieldKey = (value?: string) =>
     (value || "")
@@ -197,6 +198,115 @@ const renderReferenceRanges = (rangesStr?: string | null) => {
             </table>
         </div>
     );
+};
+
+interface DetailedReportSection {
+    order?: number;
+    title?: string;
+    content?: string;
+}
+
+interface DetailedReportTable {
+    title?: string;
+    headers?: string[];
+    rows?: any[][];
+}
+
+interface DetailedReport {
+    title?: string;
+    description?: string;
+    sections?: DetailedReportSection[];
+    tables?: DetailedReportTable[];
+    impression?: string[];
+}
+
+const buildDetailedReportHTML = (reportJson?: string | null, fallbackTitle?: string) => {
+    if (!reportJson) return '';
+    try {
+        const parsed = JSON.parse(reportJson) as DetailedReport;
+        
+        // Check if this is a structured report with tables, sections, or impression
+        const hasStructuredData = 
+            (parsed.tables && Array.isArray(parsed.tables) && parsed.tables.length > 0) ||
+            (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) ||
+            (parsed.impression && Array.isArray(parsed.impression) && parsed.impression.length > 0);
+        
+        if (parsed && hasStructuredData) {
+            let htmlParts: string[] = [];
+            
+            // Add description if present
+            if (parsed.description) {
+                htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #374151;">${parsed.description}</p>`);
+            }
+            
+            // Render Impression (array of strings)
+            if (parsed.impression && Array.isArray(parsed.impression) && parsed.impression.length > 0) {
+                htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;"><strong>Impression:</strong> ${parsed.impression.join(', ')}</p>`);
+            }
+            
+            // Render Tables
+            if (parsed.tables && Array.isArray(parsed.tables) && parsed.tables.length > 0) {
+                parsed.tables.forEach((table) => {
+                    if (table.title) {
+                        htmlParts.push(`<h4 style="font-size: 11px; font-weight: 600; margin: 8px 0 4px 0; color: #000;">${table.title}</h4>`);
+                    }
+                    if (table.headers && Array.isArray(table.headers) && table.rows && Array.isArray(table.rows)) {
+                        let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 11px; border: 1px solid #ddd;">';
+                        // Header row
+                        tableHtml += '<thead><tr>';
+                        table.headers.forEach((header: string) => {
+                            tableHtml += `<th style="border: 1px solid #ddd; padding: 6px 8px; text-align: left; background-color: #f2f2f2; font-size: 11px; font-weight: bold; color: #000;">${header}</th>`;
+                        });
+                        tableHtml += '</tr></thead>';
+                        // Data rows
+                        tableHtml += '<tbody>';
+                        table.rows.forEach((row: any[]) => {
+                            tableHtml += '<tr>';
+                            row.forEach((cell: any) => {
+                                tableHtml += `<td style="border: 1px solid #ddd; padding: 6px 8px; font-size: 11px; color: #000;">${String(cell)}</td>`;
+                            });
+                            tableHtml += '</tr>';
+                        });
+                        tableHtml += '</tbody></table>';
+                        htmlParts.push(tableHtml);
+                    }
+                });
+            }
+            
+            // Render Sections
+            if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
+                const sectionsHtml = parsed.sections
+                    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                    .map((section) => {
+                        // Ensure readable spacing before bold labels like "Limitations:" when missing spaces
+                        const cleanedContent = String(section.content ?? '')
+                            .replace(/([^\s>])<strong>/g, '$1 <strong>')
+                            .replace(/<ul>/g, '<ul style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4;">')
+                            .replace(/<ol>/g, '<ol style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4;">')
+                            .replace(/<li>/g, '<li style="margin: 2px 0;">')
+                            .replace(/<p>/g, '<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;">')
+                            // strip background styles that cause gray fill in print
+                            .replace(/background(?:-color)?:[^;"']*;?/gi, '')
+                            .replace(/style="\s*"/gi, '');
+                        return `
+                            <div style="margin-bottom: 8px;">
+                                ${section.title ? `<h4 style="font-size: 11px; font-weight: 600; margin: 4px 0; color: #000;">${section.title}</h4>` : ''}
+                                <div style="font-size: 11px; line-height: 1.4;">${cleanedContent}</div>
+                            </div>
+                        `;
+                    })
+                    .join('');
+                htmlParts.push(sectionsHtml);
+            }
+            
+            return `<div style="margin-bottom: 8px;">${htmlParts.join('')}</div>`;
+        }
+        
+        // Fallback to formatter if structure is not as expected
+        return `<div>${formatMedicalReportToHTML(reportJson) || ''}</div>`;
+    } catch {
+        return `<div>${formatMedicalReportToHTML(reportJson) || ''}</div>`;
+    }
 };
 
 export interface ConsolidatedReport {
@@ -494,6 +604,12 @@ const CommonReportView2 = ({
                     const isCBCTest = (report.testName || "").toUpperCase().includes("CBC");
 
                     const shouldHideResultTable = rows.length > 0 && isExcludedQualitativeRow(rows[0]);
+                    
+                    // Check for detailed report - either reportJson exists on report or testRow has DETAILED REPORT
+                    const hasDetailedReportRow = rows.some(row => (row.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
+                    const detailedEntry = (report.reportJson || hasDetailedReportRow) 
+                        ? { reportJson: report.reportJson, referenceRanges: report.referenceRanges }
+                        : null;
 
                     const renderedRows: JSX.Element[] = [];
                     const quantitativeRowEntries: RenderRowEntry[] = isCBCTest
@@ -644,8 +760,35 @@ const CommonReportView2 = ({
                                     </div>
                                     <div className="mt-1.5 mb-1.5 h-0.5 w-full rounded bg-blue-600" />
                                 </div>
-                                <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-800">{report.testName}</h3>
-                                {!shouldHideResultTable && (
+                                
+                                {/* Test Name Heading */}
+                                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center">{report.testName}</h3>
+
+                                {/* If DETAILED REPORT -> render reportJson content and optional reference ranges, skip table */}
+                                {detailedEntry && detailedEntry.reportJson && (
+                                    <div className="w-full">
+                                        {/* Detailed Report Section */}
+                                        <div className="mb-3">
+                                            <div className="p-2 bg-white">
+                                                <div
+                                                    className="report-html"
+                                                    style={{ 
+                                                        background: '#ffffff',
+                                                        fontSize: '11px',
+                                                        lineHeight: '1.4'
+                                                    }}
+                                                    dangerouslySetInnerHTML={{ __html: buildDetailedReportHTML(detailedEntry.reportJson, report.testName) }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Reference Ranges Table */}
+                                        {renderReferenceRanges(detailedEntry.referenceRanges)}
+                                    </div>
+                                )}
+
+                                {/* If not detailed report, render the classic table */}
+                                {!detailedEntry && !shouldHideResultTable && (
                                     <div className="overflow-hidden rounded-lg border border-blue-200">
                                         <table className="w-full text-xs border-collapse">
                                             <thead className="bg-blue-50">
@@ -660,9 +803,9 @@ const CommonReportView2 = ({
                                     </div>
                                 )}
 
-                                {!shouldHideResultTable && referenceRangesContent}
+                                {!detailedEntry && !shouldHideResultTable && referenceRangesContent}
 
-                                {qualitativeRows.length > 0 && (
+                                {!detailedEntry && qualitativeRows.length > 0 && (
                                     <div className="mt-4">
                                         <h4 className="text-xs font-bold text-black mb-2">Qualitative Results</h4>
                                         <p className="text-xs text-gray-600 mb-2">

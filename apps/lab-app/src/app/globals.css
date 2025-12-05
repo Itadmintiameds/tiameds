@@ -171,3 +171,24 @@ html {
     @apply bg-background text-foreground;
   }
 }
+
+/* Shared styling for detailed report HTML (tables, etc.) */
+.report-html table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #d1d5db; /* gray-300 */
+}
+
+.report-html th,
+.report-html td {
+  border: 1px solid #d1d5db;
+  padding: 2px 4px; /* more compact */
+  font-size: 11px; /* slightly smaller text */
+  line-height: 1.2;
+  vertical-align: top;
+}
+
+.report-html thead th {
+  background-color: #f3f4f6; /* gray-100 */
+  font-weight: 600;
+}
