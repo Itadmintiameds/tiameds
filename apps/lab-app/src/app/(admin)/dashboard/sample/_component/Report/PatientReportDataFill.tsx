@@ -255,6 +255,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     // Only show error for negative values if it's not an auto-calculated field
     // Auto-calculated fields are identified by checking if the field is read-only
     // We'll allow negative values to pass through and let the individual components handle validation
+    // if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
     if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
       // Check if this might be an auto-calculated field by looking at the reference data
       const referenceData = referencePoints[testName] || [];
