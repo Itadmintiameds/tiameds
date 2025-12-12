@@ -209,7 +209,7 @@ interface DetailedReportSection {
 interface DetailedReportTable {
     title?: string;
     headers?: string[];
-    rows?: any[][];
+    rows?: (string | number | boolean | null)[][];
 }
 
 interface DetailedReport {
@@ -220,7 +220,7 @@ interface DetailedReport {
     impression?: string[];
 }
 
-const buildDetailedReportHTML = (reportJson?: string | null, fallbackTitle?: string) => {
+const buildDetailedReportHTML = (reportJson?: string | null) => {
     if (!reportJson) return '';
     try {
         const parsed = JSON.parse(reportJson) as DetailedReport;
@@ -232,7 +232,7 @@ const buildDetailedReportHTML = (reportJson?: string | null, fallbackTitle?: str
             (parsed.impression && Array.isArray(parsed.impression) && parsed.impression.length > 0);
         
         if (parsed && hasStructuredData) {
-            let htmlParts: string[] = [];
+            const htmlParts: string[] = [];
             
             // Add description if present
             if (parsed.description) {
@@ -260,9 +260,9 @@ const buildDetailedReportHTML = (reportJson?: string | null, fallbackTitle?: str
                         tableHtml += '</tr></thead>';
                         // Data rows
                         tableHtml += '<tbody>';
-                        table.rows.forEach((row: any[]) => {
+                        table.rows.forEach((row: (string | number | boolean | null)[]) => {
                             tableHtml += '<tr>';
-                            row.forEach((cell: any) => {
+                            row.forEach((cell: string | number | boolean | null) => {
                                 tableHtml += `<td style="border: 1px solid #ddd; padding: 6px 8px; font-size: 11px; color: #000;">${String(cell)}</td>`;
                             });
                             tableHtml += '</tr>';
@@ -777,7 +777,7 @@ const CommonReportView2 = ({
                                                         fontSize: '11px',
                                                         lineHeight: '1.4'
                                                     }}
-                                                    dangerouslySetInnerHTML={{ __html: buildDetailedReportHTML(detailedEntry.reportJson, report.testName) }}
+                                                    dangerouslySetInnerHTML={{ __html: buildDetailedReportHTML(detailedEntry.reportJson) }}
                                                 />
                                             </div>
                                         </div>

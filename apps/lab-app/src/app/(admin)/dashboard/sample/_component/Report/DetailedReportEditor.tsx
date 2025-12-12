@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TestReferancePoint } from '@/types/test/testlist';
-import RichTextEditor from '@/components/ui/rich-text-editor';
+// import RichTextEditor from '@/components/ui/rich-text-editor';
 import DetailedReportTiptapEditor from '@/components/ui/detailed-report-tiptap-editor';
 import SectionEditorModal from '@/components/ui/section-editor-modal';
 import { formatMedicalReportToHTML } from '@/utils/reportFormatter';

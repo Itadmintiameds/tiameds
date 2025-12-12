@@ -19,6 +19,31 @@ interface ReportData {
   [key: string]: unknown; // Allow for additional fields
 }
 
+interface StructuredReportTable {
+  title?: string;
+  headers?: string[];
+  rows?: (string | number | boolean | null)[][];
+}
+
+interface StructuredReportSection {
+  title?: string;
+  content?: string | Record<string, unknown>;
+  contentType?: string;
+}
+
+interface MeasurementValue {
+  value?: string | number;
+  unit?: string;
+}
+
+interface StructuredReportData {
+  impression?: string[];
+  tables?: StructuredReportTable[];
+  sections?: StructuredReportSection[];
+  reportType?: string;
+  measurements?: Record<string, string | number | MeasurementValue>;
+}
+
 export function formatMedicalReport(reportJson: string): string {
   try {
     const data: ReportData = JSON.parse(reportJson);
@@ -176,7 +201,7 @@ export function formatMedicalReportToHTML(reportJson: string): string {
 /**
  * Format the new structured report format to HTML
  */
-function formatStructuredReportToHTML(data: any): string {
+function formatStructuredReportToHTML(data: StructuredReportData): string {
   let html = '';
 
   // Impression (array of strings)
@@ -189,7 +214,7 @@ function formatStructuredReportToHTML(data: any): string {
   // Tables
   if (data.tables && Array.isArray(data.tables) && data.tables.length > 0) {
     html += '<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;"><strong>Tables:</strong></p>';
-    data.tables.forEach((table: any) => {
+    data.tables.forEach((table: StructuredReportTable) => {
       if (table.title) {
         html += `<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;"><strong>${table.title}</strong></p>`;
       }
@@ -203,9 +228,9 @@ function formatStructuredReportToHTML(data: any): string {
         html += '</tr></thead>';
         // Data rows
         html += '<tbody>';
-        table.rows.forEach((row: any[]) => {
+        table.rows.forEach((row: (string | number | boolean | null)[]) => {
           html += '<tr>';
-          row.forEach((cell: any) => {
+          row.forEach((cell: string | number | boolean | null) => {
             html += `<td style="border: 1px solid #ddd; padding: 3px 4px; font-size: 10px;">${String(cell)}</td>`;
           });
           html += '</tr>';
@@ -218,7 +243,7 @@ function formatStructuredReportToHTML(data: any): string {
   // Sections
   if (data.sections && Array.isArray(data.sections) && data.sections.length > 0) {
     html += '<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;"><strong>Sections:</strong></p>';
-    data.sections.forEach((section: any) => {
+    data.sections.forEach((section: StructuredReportSection) => {
       if (section.title) {
         html += `<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;"><strong>${section.title}</strong></p>`;
       }
@@ -253,7 +278,7 @@ function formatStructuredReportToHTML(data: any): string {
   if (data.measurements && typeof data.measurements === 'object') {
     html += '<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;"><strong>Measurements:</strong> ';
     const measurementParts: string[] = [];
-    Object.entries(data.measurements).forEach(([key, value]: [string, any]) => {
+    Object.entries(data.measurements).forEach(([key, value]: [string, string | number | MeasurementValue]) => {
       if (value && typeof value === 'object' && value.value !== undefined && value.unit !== undefined) {
         measurementParts.push(`${key}: ${value.value} ${value.unit}`);
       } else {
