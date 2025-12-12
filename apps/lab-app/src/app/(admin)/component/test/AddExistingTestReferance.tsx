@@ -384,6 +384,7 @@ const AddExistingTestReferance = ({
                         <datalist id="existingTestDescriptionOptions">
                             <option value="DESCRIPTION">Description</option>
                             <option value="DROPDOWN">Dropdown</option>
+                            <option value="DETAILED REPORT">DETAILED REPORT</option>
                             <option value="DROPDOWN-POSITIVE/NEGATIVE">Dropdown - Positive/Negative</option>
                             <option value="DROPDOWN-PRESENT/ABSENT">Dropdown - Present/Absent</option>
                             <option value="DROPDOWN-REACTIVE/NONREACTIVE">Dropdown - Reactive/Nonreactive</option>

@@ -350,6 +350,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
 
         // Create minimal report data for radiology tests
         // This ensures the test is recorded in the system
+        const detailedReportPoint = referencePoints[test.name]?.find(point => point.testDescription === "DETAILED REPORT");
         generatedReportData.push({
           visit_id: selectedPatient.visitId.toString(),
           testName: formattedTestName,
@@ -360,7 +361,9 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
           enteredValue: "Hard copy will be provided",
           referenceAgeRange: "N/A",
           unit: "N/A",
-          description: "Imaging test - Results provided separately"
+          description: "Imaging test - Results provided separately",
+          referenceRanges: detailedReportPoint?.referenceRanges || undefined,
+          reportJson: detailedReportPoint?.reportJson || undefined
         });
         
         return; // Skip the regular reference data processing
@@ -794,7 +797,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
             <div className="border rounded-lg overflow-hidden bg-white">
               <div className="p-4">
                 <div
-                  className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
+                  className="report-html prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
                   dangerouslySetInnerHTML={{ __html: buildReadablePreviewHTML() }}
                 />
               </div>

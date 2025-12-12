@@ -25,6 +25,17 @@ import { z } from "zod";
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const renderValue = (value: unknown): string => {
+  if (value === null || value === undefined) return 'N/A';
+  if (typeof value === 'object') {
+    if (Array.isArray(value)) {
+      return value.map(item => renderValue(item)).join(', ');
+    }
+    return JSON.stringify(value, null, 2);
+  }
+  return String(value);
+};
+
 export const TestReferancePointSchema = z.object({
   id: z.number().optional(),
   category: z.string().min(1, "Category is required"),
@@ -755,7 +766,7 @@ const TestReferancePoints = () => {
                                                   <ul className="list-disc list-inside space-y-1">
                                                     {parsed.limitations.map((limitation: unknown, idx: number) => (
                                                       <li key={idx} className="text-gray-700 text-sm bg-orange-50 p-2 rounded">
-                                                        {String(limitation)}
+                                                        {renderValue(limitation)}
                                                       </li>
                                                     ))}
                                                   </ul>
@@ -767,7 +778,7 @@ const TestReferancePoints = () => {
                                                   <ul className="list-disc list-inside space-y-1">
                                                     {parsed.organReview.map((organ: unknown, idx: number) => (
                                                       <li key={idx} className="text-gray-700 text-sm bg-blue-50 p-2 rounded">
-                                                        {String(organ)}
+                                                        {renderValue(organ)}
                                                       </li>
                                                     ))}
                                                   </ul>
@@ -779,7 +790,7 @@ const TestReferancePoints = () => {
                                                   <ul className="list-disc list-inside space-y-1">
                                                     {parsed.observations.map((observation: unknown, idx: number) => (
                                                       <li key={idx} className="text-gray-700 text-sm bg-purple-50 p-2 rounded">
-                                                        {String(observation)}
+                                                        {renderValue(observation)}
                                                       </li>
                                                     ))}
                                                   </ul>
@@ -797,7 +808,7 @@ const TestReferancePoints = () => {
                                                             {Object.entries(params).map(([key, value]) => (
                                                               <div key={key} className="text-sm">
                                                                 <span className="font-medium text-gray-600">{key}:</span>
-                                                                <span className="ml-2 text-gray-800">{String(value)}</span>
+                                                                <span className="ml-2 text-gray-800">{renderValue(value)}</span>
                                                               </div>
                                                             ))}
                                                           </div>
@@ -819,7 +830,7 @@ const TestReferancePoints = () => {
                                                             {Object.entries(data).map(([key, value]) => (
                                                               <div key={key}>
                                                                 <span className="font-medium text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</span>
-                                                                <span className="ml-2 text-gray-800">{String(value)}</span>
+                                                                <span className="ml-2 text-gray-800">{renderValue(value)}</span>
                                                               </div>
                                                             ))}
                                                           </div>
@@ -837,14 +848,14 @@ const TestReferancePoints = () => {
                                                       ? parsed.sections.map((section, idx) => (
                                                           <div key={section.title ?? idx} className="bg-gray-50 p-3 rounded">
                                                             <h6 className="text-gray-800 mb-1">{section.title || `Section ${idx + 1}`}</h6>
-                                                            <p className="text-gray-700 text-sm">{section.content || 'N/A'}</p>
+                                                            <p className="text-gray-700 text-sm">{renderValue(section.content)}</p>
                                                           </div>
                                                         ))
                                                       : isPlainObject(parsed.sections)
                                                         ? Object.entries(parsed.sections as Record<string, unknown>).map(([sectionTitle, description]) => (
                                                             <div key={sectionTitle} className="bg-gray-50 p-3 rounded">
                                                               <h6 className="font-medium text-gray-800 mb-1">{sectionTitle}</h6>
-                                                              <p className="text-gray-700 text-sm">{String(description)}</p>
+                                                              <p className="text-gray-700 text-sm">{renderValue(description)}</p>
                                                             </div>
                                                           ))
                                                         : null}
