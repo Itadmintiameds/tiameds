@@ -1,8 +1,7 @@
 import { TestReferancePoint } from "@/types/test/testlist";
 import { PlusIcon } from "@heroicons/react/24/outline";
-import { TrashIcon } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
-import RichTextEditor from "@/components/ui/rich-text-editor";
+import DetailedReportTiptapEditor from "@/components/ui/detailed-report-tiptap-editor";
 import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
 import Button from "../common/Button";
 import { toast } from "react-toastify";
@@ -40,16 +39,42 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
     const hasEditRecord = Boolean(editRecord);
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
+    // List of testDescription values that require special handling
+    const specialTestDescriptions = [
+        "DESCRIPTION",
+        "DROPDOWN",
+        "DROPDOWN-POSITIVE/NEGATIVE",
+        "DROPDOWN-PRESENT/ABSENT",
+        "DROPDOWN-REACTIVE/NONREACTIVE",
+        "DROPDOWN-PERCENTAGE",
+        "DROPDOWN-COMPATIBLE/INCOMPATIBLE",
+        "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE",
+        "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT",
+        "DETAILED REPORT"
+    ];
+
+    // Helper function to check if testDescription requires special handling
+    const isSpecialTestDescription = (testDescription?: string): boolean => {
+        if (!testDescription) return false;
+        return specialTestDescriptions.includes(testDescription.toUpperCase().trim());
+    };
+
+    // Check if current formData has special testDescription
+    const hasSpecialTestDescription = isSpecialTestDescription(formData.testDescription);
+    const isDetailedReport = formData.testDescription?.toUpperCase().trim() === "DETAILED REPORT";
+
     // Custom validation function
     const validateForm = (recordToValidate?: TestReferancePoint) => {
         const record = recordToValidate || formData;
         const errors: Record<string, string> = {};
+        const isSpecial = isSpecialTestDescription(record.testDescription);
 
         // Required fields validation
         if (!record.testDescription?.trim()) {
             errors.testDescription = "Test description is required";
         }
-        if (!record.units?.trim()) {
+        // Units field is optional for special test descriptions
+        if (!isSpecial && !record.units?.trim()) {
             errors.units = "Units are required";
         }
         if (!record.gender) {
@@ -59,12 +84,15 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
         if (record.ageMin === undefined || record.ageMin === null) {
             errors.ageMin = "Minimum age is required";
         }
-        // Allow minReferenceRange to be 0, only check for undefined/null
-        if (record.minReferenceRange === undefined || record.minReferenceRange === null) {
-            errors.minReferenceRange = "Minimum reference range is required";
-        }
-        if (record.maxReferenceRange === undefined || record.maxReferenceRange === null) {
-            errors.maxReferenceRange = "Maximum reference range is required";
+        // Reference range validation only for non-special test descriptions
+        if (!isSpecial) {
+            // Allow minReferenceRange to be 0, only check for undefined/null
+            if (record.minReferenceRange === undefined || record.minReferenceRange === null) {
+                errors.minReferenceRange = "Minimum reference range is required";
+            }
+            if (record.maxReferenceRange === undefined || record.maxReferenceRange === null) {
+                errors.maxReferenceRange = "Maximum reference range is required";
+            }
         }
 
         // Age validation - allow 0 as valid value
@@ -86,25 +114,27 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
             errors.ageMax = "Maximum age must be greater than minimum age";
         }
 
-        // Range validation - convert to numbers for proper comparison
-        const minRangeNum = typeof record.minReferenceRange === 'string' 
-            ? parseFloat(record.minReferenceRange) 
-            : record.minReferenceRange;
-        const maxRangeNum = typeof record.maxReferenceRange === 'string' 
-            ? parseFloat(record.maxReferenceRange) 
-            : record.maxReferenceRange;
-        
-        if (minRangeNum !== undefined && minRangeNum !== null && maxRangeNum !== undefined && maxRangeNum !== null && 
-            !isNaN(minRangeNum) && !isNaN(maxRangeNum)) {
-            if (minRangeNum < 0) {
-                errors.minReferenceRange = "Minimum reference range cannot be negative";
-            }
-            if (maxRangeNum < 0) {
-                errors.maxReferenceRange = "Maximum reference range cannot be negative";
-            }
-            // Check if max is greater than min
-            if (maxRangeNum <= minRangeNum) {
-                errors.maxReferenceRange = "Maximum range must be greater than minimum range";
+        // Range validation - convert to numbers for proper comparison (only for non-special test descriptions)
+        if (!isSpecial) {
+            const minRangeNum = typeof record.minReferenceRange === 'string' 
+                ? parseFloat(record.minReferenceRange) 
+                : record.minReferenceRange;
+            const maxRangeNum = typeof record.maxReferenceRange === 'string' 
+                ? parseFloat(record.maxReferenceRange) 
+                : record.maxReferenceRange;
+            
+            if (minRangeNum !== undefined && minRangeNum !== null && maxRangeNum !== undefined && maxRangeNum !== null && 
+                !isNaN(minRangeNum) && !isNaN(maxRangeNum)) {
+                if (minRangeNum < 0) {
+                    errors.minReferenceRange = "Minimum reference range cannot be negative";
+                }
+                if (maxRangeNum < 0) {
+                    errors.maxReferenceRange = "Maximum reference range cannot be negative";
+                }
+                // Check if max is greater than min
+                if (maxRangeNum <= minRangeNum) {
+                    errors.maxReferenceRange = "Maximum range must be greater than minimum range";
+                }
             }
         }
 
@@ -318,52 +348,6 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
         setFormData(prev => ({ ...prev, reportJson: jsonString } as TestReferancePoint));
     };
 
-    const addSection = (template?: 'introduction' | 'results' | 'conclusion' | 'custom') => {
-        let newSection: ReportSection;
-
-        switch (template) {
-            case 'introduction':
-                newSection = {
-                    id: Date.now().toString(),
-                    title: 'Introduction',
-                    content: '<p><strong>Purpose:</strong> This section provides an overview of the test and its purpose.</p><p><strong>Methodology:</strong> [Describe the testing methodology here]</p>',
-                    type: 'text',
-                    order: reportData.sections.length + 1
-                };
-                break;
-            case 'results':
-                newSection = {
-                    id: Date.now().toString(),
-                    title: 'Results',
-                    content: '<p><strong>Findings:</strong></p><ul><li>Test results and findings will be documented here</li><li>Add specific observations and measurements</li></ul>',
-                    type: 'text',
-                    order: reportData.sections.length + 1
-                };
-                break;
-            case 'conclusion':
-                newSection = {
-                    id: Date.now().toString(),
-                    title: 'Conclusion',
-                    content: '<p><strong>Summary:</strong> Summary and conclusions based on the test results.</p><p><strong>Recommendations:</strong> [Add any recommendations here]</p>',
-                    type: 'text',
-                    order: reportData.sections.length + 1
-                };
-                break;
-            default:
-                newSection = {
-                    id: Date.now().toString(),
-                    title: 'New Section',
-                    content: '<p>Click here to start editing this section...</p>',
-                    type: 'text',
-                    order: reportData.sections.length + 1
-                };
-        }
-
-        setEditingSection(newSection);
-        setIsNewSection(true);
-        setEditingSectionId(newSection.id);
-    };
-
     const startInlineEdit = (section: ReportSection) => {
         setEditingSectionId(section.id);
         setEditingSection(section);
@@ -458,28 +442,16 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
     }), [isAgeUnit, isGenderOption]);
 
     const getInitialRangeRow = useCallback((): RangeRow => normalizeRangeRow({
-        Gender: formData.gender as GenderOption | undefined,
-        AgeMin: formData.ageMin ?? 0,
-        AgeMinUnit: (formData.minAgeUnit as AgeUnit | undefined),
-        AgeMax: formData.ageMax ?? "",
-        AgeMaxUnit: (formData.maxAgeUnit as AgeUnit | undefined),
-        ReferenceRange:
-            formData.minReferenceRange !== undefined && formData.maxReferenceRange !== undefined
-                ? `${formData.minReferenceRange} - ${formData.maxReferenceRange} ${formData.units || ''}`.trim()
-                : "",
-    }), [
-        normalizeRangeRow,
-        formData.gender,
-        formData.ageMin,
-        formData.ageMax,
-        formData.minAgeUnit,
-        formData.maxAgeUnit,
-        formData.minReferenceRange,
-        formData.maxReferenceRange,
-        formData.units,
-    ]);
+        Gender: "MF",
+        AgeMin: "",
+        AgeMinUnit: "YEARS",
+        AgeMax: "",
+        AgeMaxUnit: "YEARS",
+        ReferenceRange: "",
+    }), [normalizeRangeRow]);
 
-    const [rangesRows, setRangesRows] = useState<RangeRow[]>([getInitialRangeRow()]);
+    // Start with no rows; rows are added only when user clicks "Add Row"
+    const [rangesRows, setRangesRows] = useState<RangeRow[]>([]);
 
     // Removed structured report helpers; single editor directly updates reportJson
 
@@ -490,31 +462,28 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
             prev.map((r, i) => (i === idx ? ({ ...r, [field]: value } as RangeRow) : r))
         );
 
-    const applyRangesToJson = () => {
+    // Automatically apply ranges to JSON whenever rangesRows changes
+    useEffect(() => {
         const rows = rangesRows.filter(r => r.ReferenceRange);
         setFormData(prev => ({ ...prev, referenceRanges: JSON.stringify(rows) } as TestReferancePoint));
-    };
+    }, [rangesRows, setFormData]);
 
-    const loadRangesFromJson = useCallback(() => {
-        if (!formData.referenceRanges) return;
-        try {
-            const parsed = JSON.parse(formData.referenceRanges as string);
-            if (Array.isArray(parsed)) {
-                const normalized = parsed.map((row: unknown) =>
-                    normalizeRangeRow(
-                        typeof row === "object" && row !== null ? (row as Partial<RangeRow>) : {}
-                    )
-                );
-                setRangesRows(normalized.length ? normalized : [getInitialRangeRow()]);
-            }
-        } catch {}
-    }, [formData.referenceRanges, getInitialRangeRow, normalizeRangeRow]);
-
+    // Load ranges from JSON on initial load
     useEffect(() => {
         if (formData.referenceRanges) {
-            loadRangesFromJson();
+            try {
+                const parsed = JSON.parse(formData.referenceRanges as string);
+                if (Array.isArray(parsed)) {
+                    const normalized = parsed.map((row: unknown) =>
+                        normalizeRangeRow(
+                            typeof row === "object" && row !== null ? (row as Partial<RangeRow>) : {}
+                        )
+                    );
+                    setRangesRows(normalized.length ? normalized : [getInitialRangeRow()]);
+                }
+            } catch {}
         }
-    }, [formData.referenceRanges, loadRangesFromJson]);
+    }, [formData.referenceRanges, getInitialRangeRow, normalizeRangeRow]);
 
     // Set default values for age units if they are undefined (only once)
     useEffect(() => {
@@ -583,245 +552,201 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
             )}
 
             <form onSubmit={handleFormSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {/* Description */}
-                    <div className="sm:col-span-2">
-                        <label className="text-xs font-medium text-gray-700 block mb-1">Description</label>
-                        <input
-                            type="text"
-                            name="testDescription"
-                            list="editTestDescriptionOptions"
-                            value={formData.testDescription.toLocaleUpperCase()}
-                            onChange={handleChangeWithValidation}
-                            className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.testDescription ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
-                            placeholder="Type or select test description"
-                        />
-                        {validationErrors.testDescription && (
-                            <p className="text-xs text-red-500 mt-1">{validationErrors.testDescription}</p>
-                        )}
-                        <datalist id="editTestDescriptionOptions">
-                            <option value="DESCRIPTION">Description</option>
-                            <option value="DROPDOWN">Dropdown</option>
-                            <option value="DROPDOWN-POSITIVE/NEGATIVE">Dropdown - Positive/Negative</option>
-                            <option value="DROPDOWN-PRESENT/ABSENT">Dropdown - Present/Absent</option>
-                            <option value="DROPDOWN-REACTIVE/NONREACTIVE">Dropdown - Reactive/Nonreactive</option>
-                            <option value="DROPDOWN-PERCENTAGE">Dropdown - Percentage</option>
-                            <option value="DROPDOWN-COMPATIBLE/INCOMPATIBLE">Dropdown - Compatible/Incompatible</option>
-                            <option value="DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE">Dropdown with Description - Reactive/Nonreactive</option>
-                            <option value="DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT">Dropdown with Description - Present/Absent</option>
-                        </datalist>
-                    </div>
-
-                    {/* Gender */}
-                    <div>
-                        <label className="text-xs font-medium text-gray-700 block mb-1">Gender</label>
-                        <select
-                            name="gender"
-                            value={formData.gender === "MF" ? "B" : formData.gender}
-                            onChange={handleGenderChange}
-                            className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.gender ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
-                        >
-                            <option value="M">Male</option>
-                            <option value="F">Female</option>
-                            <option value="B">Both</option>
-                        </select>
-                        {validationErrors.gender && (
-                            <p className="text-xs text-red-500 mt-1">{validationErrors.gender}</p>
-                        )}
-                    </div>
-
-                    {/* Units */}
-                    <div>
-                        <label className="text-xs font-medium text-gray-700 block mb-1">Units</label>
-                        <input
-                            type="text"
-                            name="units"
-                            value={formData.units}
-                            onChange={handleChangeWithValidation}
-                            className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.units ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
-                            placeholder="Measurement units"
-                        />
-                        {validationErrors.units && (
-                            <p className="text-xs text-red-500 mt-1">{validationErrors.units}</p>
-                        )}
-                    </div>
-
-                    {/* Min Age with Unit */}
-                    <div>
-                        <label className="text-xs font-medium text-gray-700 block mb-1">Min Age</label>
-                        <div className="flex gap-2">
+                {/* Test Information Section - Green */}
+                <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+                    <h4 className="font-semibold text-green-800 mb-2">Test Information</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="sm:col-span-2">
+                            <label className="text-xs font-medium text-gray-600 block mb-1">Description</label>
                             <input
-                                type="number"
-                                name="ageMin"
-                                value={formData.ageMin}
-                                onChange={handleAgeChange}
-                                className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.ageMin ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
-                                min={0}
-                                max={100}
-                            />
-                            <select
-                                name="minAgeUnit"
-                                value={formData.minAgeUnit || "YEARS"}
+                                type="text"
+                                name="testDescription"
+                                list="editTestDescriptionOptions"
+                                value={formData.testDescription.toLocaleUpperCase()}
                                 onChange={handleChangeWithValidation}
-                                className="w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
-                            >
-                                <option value="YEARS">Years</option>
-                                <option value="MONTHS">Months</option>
-                                <option value="WEEKS">Weeks</option>
-                                <option value="DAYS">Days</option>
-                            </select>
-                        </div>
-                        {validationErrors.ageMin && (
-                            <p className="text-xs text-red-500 mt-1">{validationErrors.ageMin}</p>
-                        )}
-                    </div>
-
-                    {/* Max Age with Unit */}
-                    <div>
-                        <label className="text-xs font-medium text-gray-700 block mb-1">Max Age</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="number"
-                                name="ageMax"
-                                min={0}
-                                max={100}
-                                value={formData.ageMax}
-                                onChange={handleAgeChange}
-                                className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.ageMax ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
+                                className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-green-300 transition-all ${validationErrors.testDescription ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
+                                placeholder="Type or select test description"
                             />
-                            <select
-                                name="maxAgeUnit"
-                                value={formData.maxAgeUnit || "YEARS"}
-                                onChange={handleChangeWithValidation}
-                                className="w-full px-2.5 py-2 text-sm bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
-                            >
-                                <option value="YEARS">Years</option>
-                                <option value="MONTHS">Months</option>
-                                <option value="WEEKS">Weeks</option>
-                                <option value="DAYS">Days</option>
-                            </select>
-                        </div>
-                        {validationErrors.ageMax && (
-                            <p className="text-xs text-red-500 mt-1">{validationErrors.ageMax}</p>
-                        )}
-                    </div>
-
-                    {/* Reference Range */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <div>
-                            <label className="text-xs font-medium text-gray-700 block mb-1">Min Range</label>
-                            <input
-                                type="number"
-                                name="minReferenceRange"
-                                min={0}
-                                // max={100}
-                                value={formData.minReferenceRange}
-                                onChange={handleChangeWithValidation}
-                                className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.minReferenceRange ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
-                                step="0.01"
-                            />
-                            {validationErrors.minReferenceRange && (
-                                <p className="text-xs text-red-500 mt-1">{validationErrors.minReferenceRange}</p>
+                            {validationErrors.testDescription && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors.testDescription}</p>
                             )}
-                        </div>
-                        <div>
-                            <label className="text-xs font-medium text-gray-700 block mb-1">Max Range</label>
-                            <input
-                                type="number"
-                                name="maxReferenceRange"
-                                min={0}
-                                value={formData.maxReferenceRange}
-                                onChange={handleChangeWithValidation}
-                                className={`w-full px-2.5 py-2 text-sm bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.maxReferenceRange ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
-                                step="0.01"
-                            />
-                            {validationErrors.maxReferenceRange && (
-                                <p className="text-xs text-red-500 mt-1">{validationErrors.maxReferenceRange}</p>
-                            )}
+                            <datalist id="editTestDescriptionOptions">
+                                <option value="DESCRIPTION">Description</option>
+                                <option value="DROPDOWN">Dropdown</option>
+                                <option value="DROPDOWN-POSITIVE/NEGATIVE">Dropdown - Positive/Negative</option>
+                                <option value="DROPDOWN-PRESENT/ABSENT">Dropdown - Present/Absent</option>
+                                <option value="DROPDOWN-REACTIVE/NONREACTIVE">Dropdown - Reactive/Nonreactive</option>
+                                <option value="DROPDOWN-PERCENTAGE">Dropdown - Percentage</option>
+                                <option value="DROPDOWN-COMPATIBLE/INCOMPATIBLE">Dropdown - Compatible/Incompatible</option>
+                                <option value="DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE">Dropdown with Description - Reactive/Nonreactive</option>
+                                <option value="DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT">Dropdown with Description - Present/Absent</option>
+                                <option value="DETAILED REPORT">Detailed Report</option>
+                            </datalist>
                         </div>
                     </div>
                 </div>
 
-                {/* Structured Report Editor */}
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <label className="text-xs font-medium text-gray-700">Report Content</label>
-                        <div className="text-xs text-gray-500">
-                            {reportData.sections.length} section{reportData.sections.length !== 1 ? 's' : ''}
+                {/* Reference Range Information Section - Blue */}
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    <h4 className="font-semibold text-blue-800 mb-2">Reference Range Information</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {/* Gender */}
+                        <div>
+                            <label className="text-xs font-medium text-gray-600 block mb-1">Gender</label>
+                            <select
+                                name="gender"
+                                value={formData.gender === "MF" ? "B" : formData.gender}
+                                onChange={handleGenderChange}
+                                className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.gender ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
+                            >
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                                <option value="B">Both</option>
+                            </select>
+                            {validationErrors.gender && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors.gender}</p>
+                            )}
                         </div>
+
+                        {/* Units */}
+                        <div>
+                            <label className="text-xs font-medium text-gray-600 block mb-1">Units</label>
+                            <input
+                                type="text"
+                                name="units"
+                                value={formData.units}
+                                onChange={handleChangeWithValidation}
+                                className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.units ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
+                                placeholder="Measurement units"
+                            />
+                            {validationErrors.units && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors.units}</p>
+                            )}
+                        </div>
+
+                        {/* Min Age with Unit */}
+                        <div>
+                            <label className="text-xs font-medium text-gray-600 block mb-1">Min Age</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="number"
+                                    name="ageMin"
+                                    value={formData.ageMin}
+                                    onChange={handleAgeChange}
+                                    className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.ageMin ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
+                                    min={0}
+                                    max={100}
+                                />
+                                <select
+                                    name="minAgeUnit"
+                                    value={formData.minAgeUnit || "YEARS"}
+                                    onChange={handleChangeWithValidation}
+                                    className="w-full px-2.5 py-2 text-xs bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
+                                >
+                                    <option value="YEARS">Years</option>
+                                    <option value="MONTHS">Months</option>
+                                    <option value="WEEKS">Weeks</option>
+                                    <option value="DAYS">Days</option>
+                                </select>
+                            </div>
+                            {validationErrors.ageMin && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors.ageMin}</p>
+                            )}
+                        </div>
+
+                        {/* Max Age with Unit */}
+                        <div>
+                            <label className="text-xs font-medium text-gray-600 block mb-1">Max Age</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="number"
+                                    name="ageMax"
+                                    min={0}
+                                    max={100}
+                                    value={formData.ageMax}
+                                    onChange={handleAgeChange}
+                                    className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.ageMax ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
+                                />
+                                <select
+                                    name="maxAgeUnit"
+                                    value={formData.maxAgeUnit || "YEARS"}
+                                    onChange={handleChangeWithValidation}
+                                    className="w-full px-2.5 py-2 text-xs bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
+                                >
+                                    <option value="YEARS">Years</option>
+                                    <option value="MONTHS">Months</option>
+                                    <option value="WEEKS">Weeks</option>
+                                    <option value="DAYS">Days</option>
+                                </select>
+                            </div>
+                            {validationErrors.ageMax && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors.ageMax}</p>
+                            )}
+                        </div>
+
+                        {/* Reference Range - Hidden for special test descriptions */}
+                        {!hasSpecialTestDescription && (
+                            <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+                                <div>
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">Min Range</label>
+                                    <input
+                                        type="number"
+                                        name="minReferenceRange"
+                                        min={0}
+                                        value={formData.minReferenceRange}
+                                        onChange={handleChangeWithValidation}
+                                        className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.minReferenceRange ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
+                                        step="0.01"
+                                    />
+                                    {validationErrors.minReferenceRange && (
+                                        <p className="text-xs text-red-500 mt-1">{validationErrors.minReferenceRange}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">Max Range</label>
+                                    <input
+                                        type="number"
+                                        name="maxReferenceRange"
+                                        min={0}
+                                        value={formData.maxReferenceRange}
+                                        onChange={handleChangeWithValidation}
+                                        className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.maxReferenceRange ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
+                                        step="0.01"
+                                    />
+                                    {validationErrors.maxReferenceRange && (
+                                        <p className="text-xs text-red-500 mt-1">{validationErrors.maxReferenceRange}</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
+                </div>
 
-                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-                        <div className="p-4">
-                            <div className="space-y-4">
+                {/* Report Content Section - Purple (Show only for DETAILED REPORT) */}
+                {isDetailedReport && (
+                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                        <h4 className="font-semibold text-purple-800 mb-2">Report Content</h4>
+                        <div className="bg-white w-full rounded-lg border border-gray-200">
+                            <div className="p-2 w-full">
+                            <div className="space-y-4 w-full">
                                 {/* Report Sections */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <h5 className="text-sm font-semibold text-blue-700 flex items-center gap-2">
-                                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                            Report Sections
-                                        </h5>
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => addSection()}
-                                                className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors flex items-center gap-1"
-                                            >
-                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                                </svg>
-                                                Add Section
-                                            </button>
-
-                                            <div className="relative group">
-                                                <button className="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex items-center gap-1">
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                    </svg>
-                                                    Templates
-                                                </button>
-                                                <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-                                                    <div className="py-1">
-                                                        <button
-                                                            onClick={() => addSection('introduction')}
-                                                            className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100"
-                                                        >
-                                                            Introduction
-                                                        </button>
-                                                        <button
-                                                            onClick={() => addSection('results')}
-                                                            className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100"
-                                                        >
-                                                            Results
-                                                        </button>
-                                                        <button
-                                                            onClick={() => addSection('conclusion')}
-                                                            className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100"
-                                                        >
-                                                            Conclusion
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div className="space-y-4 w-full">
 
                                     {reportData.sections.length === 0 ? (
                                         <div className="text-center py-8 text-gray-500">
                                             <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                             </svg>
-                                            <p className="text-sm">No sections added yet. Click &quot;Add Section&quot; to get started.</p>
+                                            <p className="text-sm">No sections added yet.</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-4">
                                             {reportData.sections
                                                 .sort((a, b) => a.order - b.order)
                                                 .map((section, index) => (
-                                                    <div key={section.id} className="border border-gray-200 rounded-lg bg-white shadow-sm">
+                                                    <div key={section.id} className="border border-gray-200 rounded-lg bg-white shadow-sm w-full">
                                                         {/* Section Header */}
-                                                        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+                                                        <div className="flex items-center justify-between p-2 border-b border-gray-200 bg-gray-50 rounded-t-lg w-full">
                                                             <div className="flex items-center gap-3">
                                                                 <span className="text-sm font-medium text-gray-500 bg-white px-2 py-1 rounded border">
                                                                     {section.order}
@@ -897,13 +822,12 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                                         </div>
 
                                                         {/* Section Content */}
-                                                        <div className="p-4">
+                                                        <div className="p-2 w-full">
                                                             {editingSectionId === section.id ? (
-                                                                <div>
-                                                                    <RichTextEditor
+                                                                <div className="w-full">
+                                                                    <DetailedReportTiptapEditor
                                                                         value={editingSection?.content || ''}
                                                                         onChange={(value) => setEditingSection(prev => prev ? { ...prev, content: value } : null)}
-                                                                        placeholder="Enter section content..."
                                                                         height="300px"
                                                                     />
                                                                 </div>
@@ -911,7 +835,7 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                                                 <>
                                                                     {section.content && section.content.trim() && !section.content.includes('Click here to start editing') ? (
                                                                         <div
-                                                                            className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
+                                                                            className="report-html prose prose-sm max-w-none w-full prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
                                                                             dangerouslySetInnerHTML={{ __html: section.content }}
                                                                         />
                                                                     ) : (
@@ -935,30 +859,30 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                             </div>
                         </div>
                     </div>
-                </div>
-
-                {/* Reference Ranges - Structured/Raw */}
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <label className="text-xs font-medium text-gray-700">Reference Ranges</label>
-                        <div className="inline-flex rounded-md overflow-hidden border border-gray-200">
-                            <button type="button" className={`px-3 py-1 text-xs ${rangesTab === 'structured' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`} onClick={() => setRangesTab('structured')}>Structured</button>
-                            <button type="button" className={`px-3 py-1 text-xs ${rangesTab === 'raw' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`} onClick={() => setRangesTab('raw')}>Raw</button>
-                        </div>
                     </div>
+                )}
 
-                    {rangesTab === 'structured' ? (
-                        <div className="space-y-3 border border-gray-200 rounded-md p-3">
+                {/* Reference Ranges Section - Orange (Hidden for special test descriptions) */}
+                {!hasSpecialTestDescription && (
+                    <div className="bg-orange-50 p-3 rounded-lg border border-orange-100">
+                        <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-orange-800">Reference Ranges</h4>
+                            <div className="inline-flex rounded-md overflow-hidden border border-gray-200">
+                                <button type="button" className={`px-3 py-1 text-xs ${rangesTab === 'structured' ? 'bg-orange-600 text-white' : 'bg-white text-gray-700'}`} onClick={() => setRangesTab('structured')}>Structured</button>
+                                <button type="button" className={`px-3 py-1 text-xs ${rangesTab === 'raw' ? 'bg-orange-600 text-white' : 'bg-white text-gray-700'}`} onClick={() => setRangesTab('raw')}>Raw</button>
+                            </div>
+                        </div>
+
+                        {rangesTab === 'structured' ? (
+                        <div className="space-y-3 bg-white border border-gray-200 rounded-md p-3">
                             <div className="flex items-center justify-between">
-                                <h5 className="text-sm font-semibold text-gray-800">Reference Ranges Builder</h5>
+                                <h5 className="text-xs font-semibold text-orange-800">Reference Ranges Builder</h5>
                                 <span className="text-[11px] text-gray-500">Use rows per age/gender</span>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-xs text-gray-600">Ranges</span>
                                 <div className="flex gap-2">
                                     <Button type="button" text="Add Row" onClick={addRangeRow} className="bg-gray-100 text-gray-700 px-2 py-1 rounded-md hover:bg-gray-200 border border-gray-300 text-xs" />
-                                    <Button type="button" text="Load from JSON" onClick={loadRangesFromJson} className="bg-gray-100 text-gray-700 px-2 py-1 rounded-md hover:bg-gray-200 border border-gray-300 text-xs" />
-                                    <Button type="button" text="Apply to JSON" onClick={applyRangesToJson} className="bg-blue-600 text-white px-2 py-1 rounded-md hover:bg-blue-700 text-xs" />
                                 </div>
                             </div>
                             <div className="overflow-auto">
@@ -1051,37 +975,38 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                                 )}
                             </div>
                         </div>
-                    ) : (
-                        <textarea
-                            name="referenceRanges"
-                            value={formData.referenceRanges || ""}
-                            onChange={handleJsonChange}
-                            rows={6}
-                            className={`w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all font-mono ${
-                                formData.referenceRanges && !validateJson(formData.referenceRanges) ? 'border-red-300 focus:ring-red-300' : ''
-                            }`}
-                            placeholder="Paste or edit JSON array"
-                        />
-                    )}
-                </div>
+                        ) : (
+                            <textarea
+                                name="referenceRanges"
+                                value={formData.referenceRanges || ""}
+                                onChange={handleJsonChange}
+                                rows={6}
+                                className={`w-full px-3 py-2 text-sm bg-gray-50 rounded focus:ring-1 focus:ring-blue-300 focus:bg-white transition-all font-mono ${
+                                    formData.referenceRanges && !validateJson(formData.referenceRanges) ? 'border-red-300 focus:ring-red-300' : ''
+                                }`}
+                                placeholder="Paste or edit JSON array"
+                            />
+                        )}
+                    </div>
+                )}
 
-                {/* Action Buttons - Compact */}
-                <div className="flex justify-end gap-2 pt-3">
-                    <Button
-                        text="Cancel"
+                {/* Action Buttons */}
+                <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                        type="button"
                         onClick={() => setEditRecord(null)}
-                        className="text-xs px-3 py-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors flex items-center"
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 border border-gray-200"
                     >
-                        <TrashIcon className="w-3.5 h-3.5 mr-1.5" />
-                    </Button>
-                    <Button
-                        text="Save"
-                        onClick={() => {}}
+                        Cancel
+                    </button>
+                    <button
                         type="submit"
-                        className="text-xs px-3 py-1.5 bg-blue-500 text-white hover:bg-blue-600 rounded transition-colors flex items-center"
+                        className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center"
+                        style={{ background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)` }}
                     >
-                        <PlusIcon className="w-3.5 h-3.5 mr-1.5" />
-                    </Button>
+                        <PlusIcon className="w-4 h-4 mr-1.5" />
+                        Save
+                    </button>
                 </div>
             </form>
         </div>

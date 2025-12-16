@@ -226,14 +226,7 @@ const GenericTestComponent: React.FC<GenericTestComponentProps> = ({
             className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300"
             placeholder="Enter value"
             value={currentValue}
-            onChange={(e) => {
-              const value = e.target.value;
-              // Allow empty string, numbers, and decimal point
-              // Prevent negative values by not allowing minus sign
-              if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
-                onInputChange(testName, index, value);
-              }
-            }}
+            onChange={(e) => onInputChange(testName, index, e.target.value)}
             required
           />
         );
