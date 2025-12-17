@@ -9,7 +9,8 @@ import {
 import { TestReferancePoint } from "@/types/test/testlist";
 import Loader from "../../component/common/Loader";
 import { useLabs } from "@/context/LabContext";
-import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaFilter, FaChevronDown, FaChevronUp, FaChevronRight, FaVial } from "react-icons/fa";
+import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaFilter, FaChevronDown, FaChevronUp, FaChevronRight, FaVial, FaBook } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 import Modal from "../common/Model";
 import TestEditReferance from "./TestEditReferance";
 import { toast } from "react-toastify";
@@ -25,12 +26,23 @@ import { z } from "zod";
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const renderValue = (value: unknown): string => {
+  if (value === null || value === undefined) return 'N/A';
+  if (typeof value === 'object') {
+    if (Array.isArray(value)) {
+      return value.map(item => renderValue(item)).join(', ');
+    }
+    return JSON.stringify(value, null, 2);
+  }
+  return String(value);
+};
+
 export const TestReferancePointSchema = z.object({
   id: z.number().optional(),
   category: z.string().min(1, "Category is required"),
   testName: z.string().min(1, "Test name is required"),
   testDescription: z.string().min(1, "Test description is required"),
-  units: z.string().min(1, "Units are required"),
+  units: z.string().nullish(),
   gender: z.enum(["M", "F", "B", "MF"], {
     errorMap: () => ({ message: "Gender must be M (Male), F (Female), B (Both), or MF (Both)" })
   }),
@@ -39,13 +51,13 @@ export const TestReferancePointSchema = z.object({
     z.string().min(1, "Minimum reference range is required")
       .transform(val => parseFloat(val))
       .refine(val => !isNaN(val), "Must be a valid number")
-  ]),
+  ]).nullish(),
   maxReferenceRange: z.union([
     z.number().min(0, "Maximum reference range must be 0 or greater"),
     z.string().min(1, "Maximum reference range is required")
       .transform(val => parseFloat(val))
       .refine(val => !isNaN(val), "Must be a valid number")
-  ]).optional(),
+  ]).nullish(),
   ageMin: z.union([
     z.number().min(0, "Minimum age must be 0 or greater").max(100, "Minimum age must be 100 or less"),
     z.string().min(1, "Minimum age is required")
@@ -72,7 +84,45 @@ export const TestReferancePointSchema = z.object({
   updatedBy: z.string().optional(),
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
+}).superRefine((data, ctx) => {
+  const desc = (data.testDescription || "").toUpperCase();
+  
+  // For DETAILED REPORT and DROPDOWN types, skip range and units validation
+  if (desc === "DETAILED REPORT" || desc.startsWith("DROPDOWN")) {
+    // Skip all range-related validation for these types
+    return;
+  }
+  
+  // For other types, validate that units and ranges are provided
+  if (!data.units || data.units.trim() === "") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["units"],
+      message: "Units are required",
+    });
+  }
+  
+  if (data.minReferenceRange === undefined || data.minReferenceRange === null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["minReferenceRange"],
+      message: "Minimum reference range is required",
+    });
+  }
+  
+  if (data.maxReferenceRange === undefined || data.maxReferenceRange === null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["maxReferenceRange"],
+      message: "Maximum reference range is required",
+    });
+  }
 }).refine(data => {
+  const desc = (data.testDescription || "").toUpperCase();
+  // Skip age validation for DETAILED REPORT and DROPDOWN types
+  if (desc === "DETAILED REPORT" || desc.startsWith("DROPDOWN")) {
+    return true;
+  }
   if (data.ageMax !== undefined && data.ageMin !== undefined) {
     return data.ageMax > data.ageMin;
   }
@@ -81,7 +131,13 @@ export const TestReferancePointSchema = z.object({
   message: "Maximum age must be greater than minimum age",
   path: ["ageMax"]
 }).refine(data => {
-  if (data.maxReferenceRange !== undefined && data.minReferenceRange !== undefined) {
+  const desc = (data.testDescription || "").toUpperCase();
+  // Skip range validation for DETAILED REPORT and DROPDOWN types
+  if (desc === "DETAILED REPORT" || desc.startsWith("DROPDOWN")) {
+    return true;
+  }
+  if (data.maxReferenceRange !== undefined && data.maxReferenceRange !== null && 
+      data.minReferenceRange !== undefined && data.minReferenceRange !== null) {
     return data.maxReferenceRange > data.minReferenceRange;
   }
   return true;
@@ -123,6 +179,7 @@ interface ParsedReport {
 }
 
 const TestReferancePoints = () => {
+  const router = useRouter();
   const [referencePoints, setReferencePoints] = useState<TestReferancePoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
@@ -465,9 +522,19 @@ const TestReferancePoints = () => {
   return (
     <div className="w-full bg-gray-50 p-6 rounded-xl shadow-lg">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Test Reference Ranges</h2>
-          <p className="text-gray-600 text-sm">Manage laboratory test reference values</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Test Reference Ranges</h2>
+            <p className="text-gray-600 text-sm">Manage laboratory test reference values</p>
+          </div>
+          <button
+            onClick={() => router.push('/dashboard/test-reference-docs')}
+            className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all duration-200 flex items-center gap-2 group"
+            title="View Documentation"
+          >
+            <FaBook className="h-5 w-5 group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-medium hidden sm:inline">Help</span>
+          </button>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
@@ -755,7 +822,7 @@ const TestReferancePoints = () => {
                                                   <ul className="list-disc list-inside space-y-1">
                                                     {parsed.limitations.map((limitation: unknown, idx: number) => (
                                                       <li key={idx} className="text-gray-700 text-sm bg-orange-50 p-2 rounded">
-                                                        {String(limitation)}
+                                                        {renderValue(limitation)}
                                                       </li>
                                                     ))}
                                                   </ul>
@@ -767,7 +834,7 @@ const TestReferancePoints = () => {
                                                   <ul className="list-disc list-inside space-y-1">
                                                     {parsed.organReview.map((organ: unknown, idx: number) => (
                                                       <li key={idx} className="text-gray-700 text-sm bg-blue-50 p-2 rounded">
-                                                        {String(organ)}
+                                                        {renderValue(organ)}
                                                       </li>
                                                     ))}
                                                   </ul>
@@ -779,7 +846,7 @@ const TestReferancePoints = () => {
                                                   <ul className="list-disc list-inside space-y-1">
                                                     {parsed.observations.map((observation: unknown, idx: number) => (
                                                       <li key={idx} className="text-gray-700 text-sm bg-purple-50 p-2 rounded">
-                                                        {String(observation)}
+                                                        {renderValue(observation)}
                                                       </li>
                                                     ))}
                                                   </ul>
@@ -797,7 +864,7 @@ const TestReferancePoints = () => {
                                                             {Object.entries(params).map(([key, value]) => (
                                                               <div key={key} className="text-sm">
                                                                 <span className="font-medium text-gray-600">{key}:</span>
-                                                                <span className="ml-2 text-gray-800">{String(value)}</span>
+                                                                <span className="ml-2 text-gray-800">{renderValue(value)}</span>
                                                               </div>
                                                             ))}
                                                           </div>
@@ -819,7 +886,7 @@ const TestReferancePoints = () => {
                                                             {Object.entries(data).map(([key, value]) => (
                                                               <div key={key}>
                                                                 <span className="font-medium text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</span>
-                                                                <span className="ml-2 text-gray-800">{String(value)}</span>
+                                                                <span className="ml-2 text-gray-800">{renderValue(value)}</span>
                                                               </div>
                                                             ))}
                                                           </div>
@@ -837,14 +904,14 @@ const TestReferancePoints = () => {
                                                       ? parsed.sections.map((section, idx) => (
                                                           <div key={section.title ?? idx} className="bg-gray-50 p-3 rounded">
                                                             <h6 className="text-gray-800 mb-1">{section.title || `Section ${idx + 1}`}</h6>
-                                                            <p className="text-gray-700 text-sm">{section.content || 'N/A'}</p>
+                                                            <p className="text-gray-700 text-sm">{renderValue(section.content)}</p>
                                                           </div>
                                                         ))
                                                       : isPlainObject(parsed.sections)
                                                         ? Object.entries(parsed.sections as Record<string, unknown>).map(([sectionTitle, description]) => (
                                                             <div key={sectionTitle} className="bg-gray-50 p-3 rounded">
                                                               <h6 className="font-medium text-gray-800 mb-1">{sectionTitle}</h6>
-                                                              <p className="text-gray-700 text-sm">{String(description)}</p>
+                                                              <p className="text-gray-700 text-sm">{renderValue(description)}</p>
                                                             </div>
                                                           ))
                                                         : null}

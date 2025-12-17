@@ -3,7 +3,51 @@ import { TestReferancePoint } from "@/types/test/testlist";
 import Button from "../common/Button";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
-import RichTextEditor from "@/components/ui/rich-text-editor";
+import { X } from "lucide-react";
+
+// Import DetailedReportFormEditor and template from AddTestReferanceNew
+// We'll need to define these here or import them
+const DETAILED_REPORT_JSON_TEMPLATE = {
+  reportType: "Report Type Placeholder",
+  indication: "Indication Placeholder",
+  method: "Method/Technique Placeholder",
+  sections: [
+    {
+      title: "Section Title 1",
+      content: "Paragraph-style text placeholder.",
+      contentType: "text",
+    },
+    {
+      title: "Section Title 2",
+      content: [
+        "Bullet point 1 placeholder",
+        "Bullet point 2 placeholder",
+        "Bullet point 3 placeholder",
+      ],
+      contentType: "list",
+    },
+    {
+      title: "Section Title 3",
+      content: "Additional notes or observations placeholder.",
+      contentType: "text",
+    },
+  ],
+  tables: [
+    {
+      title: "Table Title Placeholder",
+      headers: ["Header 1", "Header 2", "Header 3"],
+      rows: [
+        ["Row 1 Cell 1", "Row 1 Cell 2", "Row 1 Cell 3"],
+        ["Row 2 Cell 1", "Row 2 Cell 2", "Row 2 Cell 3"],
+      ],
+    },
+  ],
+  impression: [
+    "Impression statement 1 placeholder",
+    "Impression statement 2 placeholder",
+  ],
+  followUp: "Follow-up instructions placeholder",
+} as const;
 
 interface TestAddReferanceProps {
     handleAddExistingReferanceRecord: (e: React.FormEvent) => void;
@@ -54,6 +98,502 @@ const normalizeRangeRow = (row: Partial<RangeRow>): RangeRow => ({
     ReferenceRange: row.ReferenceRange ?? "",
 });
 
+// Detailed Report Form Editor Component
+interface ReportSectionType {
+    title?: string;
+    content?: string | string[] | readonly string[];
+    contentType?: "text" | "list";
+}
+
+interface ReportTableType {
+    title?: string;
+    headers?: string[] | readonly string[];
+    rows?: string[][] | readonly (readonly string[])[];
+}
+
+interface DetailedReportDataType {
+    reportType?: string;
+    indication?: string;
+    method?: string;
+    sections?: ReportSectionType[];
+    tables?: ReportTableType[];
+    impression?: string[];
+    followUp?: string;
+}
+
+interface DetailedReportFormEditorProps {
+    reportData: DetailedReportDataType | null | undefined;
+    onUpdate: (updates: Partial<typeof DETAILED_REPORT_JSON_TEMPLATE>) => void;
+}
+
+const DetailedReportFormEditor: React.FC<DetailedReportFormEditorProps> = ({ reportData, onUpdate }) => {
+    const data = reportData || { ...DETAILED_REPORT_JSON_TEMPLATE };
+
+    const updateField = (field: string, value: string | string[] | ReportSectionType[] | ReportTableType[] | undefined) => {
+        onUpdate({ [field]: value });
+    };
+
+    const addSection = () => {
+        const sections = data.sections || [];
+        updateField("sections", [
+            ...sections,
+            { title: "", content: "", contentType: "text" }
+        ]);
+    };
+
+    const updateSection = (index: number, field: string, value: string | string[] | "text" | "list") => {
+        const sections = [...(data.sections || [])];
+        sections[index] = { ...sections[index], [field]: value };
+        updateField("sections", sections);
+    };
+
+    const removeSection = (index: number) => {
+        const sections = [...(data.sections || [])];
+        sections.splice(index, 1);
+        updateField("sections", sections);
+    };
+
+    const addTable = () => {
+        const tables = data.tables || [];
+        updateField("tables", [
+            ...tables,
+            { title: "", headers: ["Header 1"], rows: [[""]] }
+        ]);
+    };
+
+    const updateTable = (index: number, field: string, value: string | string[] | string[][]) => {
+        const tables = [...(data.tables || [])];
+        tables[index] = { ...tables[index], [field]: value };
+        updateField("tables", tables);
+    };
+
+    const addTableRow = (tableIndex: number) => {
+        const tables = [...(data.tables || [])];
+        const table = { ...tables[tableIndex] };
+        const headersCount = Array.isArray(table.headers) ? table.headers.length : (table.headers as readonly string[])?.length || 1;
+        const newRow = Array(headersCount).fill("") as string[];
+        const currentRows = Array.isArray(table.rows) ? table.rows : (table.rows ? [...(table.rows as readonly (readonly string[])[])] : []);
+        table.rows = [...currentRows, newRow];
+        tables[tableIndex] = table;
+        updateField("tables", tables);
+    };
+
+    const updateTableRow = (tableIndex: number, rowIndex: number, cellIndex: number, value: string) => {
+        const tables = [...(data.tables || [])];
+        const table = { ...tables[tableIndex] };
+        const currentRows = Array.isArray(table.rows) ? table.rows : (table.rows ? [...(table.rows as readonly (readonly string[])[])] : []);
+        const rows = [...currentRows];
+        const rowToUpdate = Array.isArray(rows[rowIndex]) ? [...rows[rowIndex] as string[]] : [...(rows[rowIndex] as readonly string[])];
+        rowToUpdate[cellIndex] = value;
+        rows[rowIndex] = rowToUpdate;
+        table.rows = rows;
+        tables[tableIndex] = table;
+        updateField("tables", tables);
+    };
+
+    const addTableHeader = (tableIndex: number) => {
+        const tables = [...(data.tables || [])];
+        const table = { ...tables[tableIndex] };
+        const currentHeaders = Array.isArray(table.headers) ? table.headers : (table.headers ? [...(table.headers as readonly string[])] : []);
+        const headers = [...currentHeaders, ""];
+        const currentRows = Array.isArray(table.rows) ? table.rows : (table.rows ? [...(table.rows as readonly (readonly string[])[])] : []);
+        const rows = currentRows.map((row: string[] | readonly string[]) => {
+            const rowArray = Array.isArray(row) ? [...row] : [...(row as readonly string[])];
+            return [...rowArray, ""];
+        });
+        table.headers = headers;
+        table.rows = rows;
+        tables[tableIndex] = table;
+        updateField("tables", tables);
+    };
+
+    const removeTableHeader = (tableIndex: number, headerIndex: number) => {
+        const tables = [...(data.tables || [])];
+        const table = { ...tables[tableIndex] };
+        const currentHeaders = Array.isArray(table.headers) ? table.headers : (table.headers ? [...(table.headers as readonly string[])] : []);
+        const headers = [...currentHeaders];
+        headers.splice(headerIndex, 1);
+        const currentRows = Array.isArray(table.rows) ? table.rows : (table.rows ? [...(table.rows as readonly (readonly string[])[])] : []);
+        const rows = currentRows.map((row: string[] | readonly string[]) => {
+            const newRow = Array.isArray(row) ? [...row] : [...(row as readonly string[])];
+            newRow.splice(headerIndex, 1);
+            return newRow;
+        });
+        table.headers = headers;
+        table.rows = rows;
+        tables[tableIndex] = table;
+        updateField("tables", tables);
+    };
+
+    const removeTableRow = (tableIndex: number, rowIndex: number) => {
+        const tables = [...(data.tables || [])];
+        const table = { ...tables[tableIndex] };
+        const currentRows = Array.isArray(table.rows) ? table.rows : (table.rows ? [...(table.rows as readonly (readonly string[])[])] : []);
+        const rows = [...currentRows];
+        rows.splice(rowIndex, 1);
+        table.rows = rows;
+        tables[tableIndex] = table;
+        updateField("tables", tables);
+    };
+
+    const removeTable = (index: number) => {
+        const tables = [...(data.tables || [])];
+        tables.splice(index, 1);
+        updateField("tables", tables);
+    };
+
+    const addImpression = () => {
+        const impression = data.impression || [];
+        updateField("impression", [...impression, ""]);
+    };
+
+    const updateImpression = (index: number, value: string) => {
+        const impression = [...(data.impression || [])];
+        impression[index] = value;
+        updateField("impression", impression);
+    };
+
+    const removeImpression = (index: number) => {
+        const impression = [...(data.impression || [])];
+        impression.splice(index, 1);
+        updateField("impression", impression);
+    };
+
+    return (
+        <div className="space-y-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
+            <div className="flex items-center justify-between mb-4">
+                <label className="text-gray-700 font-semibold text-base">Detailed Report Structure</label>
+                <p className="text-xs text-gray-500">Add, edit, or remove any fields as needed</p>
+            </div>
+
+            {/* Basic Fields */}
+            <div className="space-y-3 bg-white p-4 rounded-md border border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Basic Information</h3>
+                <div className="grid grid-cols-1 gap-3">
+                    <div>
+                        <label className="text-xs text-gray-600 mb-1 block">Report Type</label>
+                        <input
+                            type="text"
+                            value={data.reportType || ""}
+                            onChange={(e) => updateField("reportType", e.target.value)}
+                            placeholder="e.g., Ultrasound, X-Ray, CT Scan"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs text-gray-600 mb-1 block">Indication</label>
+                        <input
+                            type="text"
+                            value={data.indication || ""}
+                            onChange={(e) => updateField("indication", e.target.value)}
+                            placeholder="Clinical indication for the test"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs text-gray-600 mb-1 block">Method/Technique</label>
+                        <input
+                            type="text"
+                            value={data.method || ""}
+                            onChange={(e) => updateField("method", e.target.value)}
+                            placeholder="Method or technique used"
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Sections */}
+            <div className="bg-white p-4 rounded-md border border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-700">Sections</h3>
+                    <button
+                        type="button"
+                        onClick={addSection}
+                        className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                        <PlusIcon className="h-3 w-3" />
+                        Add Section
+                    </button>
+                </div>
+                <div className="space-y-4">
+                    {(data.sections || []).map((section: ReportSectionType, index: number) => (
+                        <div key={index} className="border border-gray-200 rounded-md p-3 bg-gray-50">
+                            <div className="flex items-center justify-between mb-2">
+                                <input
+                                    type="text"
+                                    value={section.title || ""}
+                                    onChange={(e) => updateSection(index, "title", e.target.value)}
+                                    placeholder="Section Title"
+                                    className="flex-1 border border-gray-300 rounded-md px-2 py-1 text-sm mr-2 focus:ring-1 focus:ring-blue-500"
+                                />
+                                <select
+                                    value={section.contentType || "text"}
+                                    onChange={(e) => {
+                                        const contentType = e.target.value as "text" | "list";
+                                        updateSection(index, "contentType", contentType);
+                                        if (contentType === "list" && typeof section.content === "string") {
+                                            updateSection(index, "content", []);
+                                        } else if (contentType === "text" && Array.isArray(section.content)) {
+                                            updateSection(index, "content", "");
+                                        }
+                                    }}
+                                    className="border border-gray-300 rounded-md px-2 py-1 text-xs mr-2 focus:ring-1 focus:ring-blue-500"
+                                >
+                                    <option value="text">Text</option>
+                                    <option value="list">List</option>
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={() => removeSection(index)}
+                                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+                            {section.contentType === "list" ? (
+                                <div className="space-y-2">
+                                    {(() => {
+                                        const contentArray = Array.isArray(section.content) 
+                                            ? (Array.isArray(section.content as string[]) ? section.content as string[] : [...(section.content as readonly string[])])
+                                            : [];
+                                        return contentArray.map((item: string, itemIndex: number) => (
+                                            <div key={itemIndex} className="flex items-center gap-2">
+                                                <span className="text-gray-500 text-xs">•</span>
+                                                <input
+                                                    type="text"
+                                                    value={item}
+                                                    onChange={(e) => {
+                                                        const currentContent = Array.isArray(section.content) 
+                                                            ? (Array.isArray(section.content as string[]) ? [...(section.content as string[])] : [...(section.content as readonly string[])])
+                                                            : [];
+                                                        const content = [...currentContent];
+                                                        content[itemIndex] = e.target.value;
+                                                        updateSection(index, "content", content);
+                                                    }}
+                                                    placeholder="Bullet point"
+                                                    className="flex-1 border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const currentContent = Array.isArray(section.content) 
+                                                            ? (Array.isArray(section.content as string[]) ? [...(section.content as string[])] : [...(section.content as readonly string[])])
+                                                            : [];
+                                                        const content = [...currentContent];
+                                                        content.splice(itemIndex, 1);
+                                                        updateSection(index, "content", content);
+                                                    }}
+                                                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        ));
+                                    })()}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const currentContent = Array.isArray(section.content) 
+                                                ? (Array.isArray(section.content as string[]) ? [...(section.content as string[])] : [...(section.content as readonly string[])])
+                                                : [];
+                                            const content = [...currentContent];
+                                            content.push("");
+                                            updateSection(index, "content", content);
+                                        }}
+                                        className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                    >
+                                        <PlusIcon className="h-3 w-3" />
+                                        Add bullet point
+                                    </button>
+                                </div>
+                            ) : (
+                                <textarea
+                                    value={typeof section.content === "string" ? section.content : ""}
+                                    onChange={(e) => updateSection(index, "content", e.target.value)}
+                                    placeholder="Section content (paragraph text)"
+                                    rows={3}
+                                    className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500"
+                                />
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Tables */}
+            <div className="bg-white p-4 rounded-md border border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-700">Tables</h3>
+                    <button
+                        type="button"
+                        onClick={addTable}
+                        className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                        <PlusIcon className="h-3 w-3" />
+                        Add Table
+                    </button>
+                </div>
+                <div className="space-y-4">
+                    {(data.tables || []).map((table: ReportTableType, tableIndex: number) => (
+                        <div key={tableIndex} className="border border-gray-200 rounded-md p-3 bg-gray-50">
+                            <div className="flex items-center justify-between mb-3">
+                                <input
+                                    type="text"
+                                    value={table.title || ""}
+                                    onChange={(e) => updateTable(tableIndex, "title", e.target.value)}
+                                    placeholder="Table Title"
+                                    className="flex-1 border border-gray-300 rounded-md px-2 py-1 text-sm mr-2 focus:ring-1 focus:ring-blue-500"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => removeTable(tableIndex)}
+                                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full border border-gray-300 rounded-md">
+                                    <thead>
+                                        <tr className="bg-gray-100">
+                                            {(table.headers || []).map((header: string, headerIndex: number) => (
+                                                <th key={headerIndex} className="border border-gray-300 px-2 py-1">
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            type="text"
+                                                            value={header}
+                                                            onChange={(e) => {
+                                                                const headers = [...(table.headers || [])];
+                                                                headers[headerIndex] = e.target.value;
+                                                                updateTable(tableIndex, "headers", headers);
+                                                            }}
+                                                            placeholder="Header"
+                                                            className="flex-1 text-xs border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                                                        />
+                                                        {(table.headers || []).length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeTableHeader(tableIndex, headerIndex)}
+                                                                className="p-0.5 text-red-600 hover:bg-red-100 rounded"
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </th>
+                                            ))}
+                                            <th className="border border-gray-300 px-2 py-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => addTableHeader(tableIndex)}
+                                                    className="text-blue-600 hover:text-blue-700 text-xs"
+                                                >
+                                                    <PlusIcon className="h-3 w-3" />
+                                                </button>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(() => {
+                                            const rows = Array.isArray(table.rows) 
+                                                ? (Array.isArray(table.rows as string[][]) ? table.rows as string[][] : [...(table.rows as readonly (readonly string[])[])])
+                                                : [];
+                                            return rows.map((row: string[] | readonly string[], rowIndex: number) => {
+                                                const rowArray = Array.isArray(row) ? row : [...(row as readonly string[])];
+                                                return (
+                                                    <tr key={rowIndex}>
+                                                        {rowArray.map((cell: string, cellIndex: number) => (
+                                                            <td key={cellIndex} className="border border-gray-300 px-2 py-1">
+                                                                <input
+                                                                    type="text"
+                                                                    value={cell}
+                                                                    onChange={(e) => updateTableRow(tableIndex, rowIndex, cellIndex, e.target.value)}
+                                                                    placeholder="Cell"
+                                                                    className="w-full text-xs border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                                                                />
+                                                            </td>
+                                                        ))}
+                                                        <td className="border border-gray-300 px-2 py-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeTableRow(tableIndex, rowIndex)}
+                                                                className="text-red-600 hover:text-red-700"
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            });
+                                        })()}
+                                    </tbody>
+                                </table>
+                                <button
+                                    type="button"
+                                    onClick={() => addTableRow(tableIndex)}
+                                    className="mt-2 text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                >
+                                    <PlusIcon className="h-3 w-3" />
+                                    Add Row
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Impression */}
+            <div className="bg-white p-4 rounded-md border border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-700">Impression</h3>
+                    <button
+                        type="button"
+                        onClick={addImpression}
+                        className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                        <PlusIcon className="h-3 w-3" />
+                        Add Statement
+                    </button>
+                </div>
+                <div className="space-y-2">
+                    {(data.impression || []).map((item: string, index: number) => (
+                        <div key={index} className="flex items-center gap-2">
+                            <span className="text-gray-500 text-xs">{index + 1}.</span>
+                            <input
+                                type="text"
+                                value={item}
+                                onChange={(e) => updateImpression(index, e.target.value)}
+                                placeholder="Impression statement"
+                                className="flex-1 border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => removeImpression(index)}
+                                className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Follow-up */}
+            <div className="bg-white p-4 rounded-md border border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Follow-up Instructions</h3>
+                <textarea
+                    value={data.followUp || ""}
+                    onChange={(e) => updateField("followUp", e.target.value)}
+                    placeholder="Follow-up instructions or recommendations"
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+            </div>
+        </div>
+    );
+};
+
 const AddExistingTestReferance = ({
     handleAddExistingReferanceRecord,
     handleChangeRef,
@@ -62,17 +602,46 @@ const AddExistingTestReferance = ({
 }: TestAddReferanceProps) => {
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
+    // Helper function to check if min/max ranges should be hidden
+    // Hides ranges for all DROPDOWN types and DETAILED REPORT
+    const shouldHideRanges = (testDescription: string | undefined): boolean => {
+        if (!testDescription) return false;
+        const desc = testDescription.toUpperCase();
+        return desc === "DETAILED REPORT" || desc.startsWith("DROPDOWN");
+    };
+
+    // Parse detailed report JSON or return template
+    const getDetailedReportData = () => {
+        try {
+            if (existingTestReferanceRecord.reportJson && existingTestReferanceRecord.reportJson.trim()) {
+                const parsed = JSON.parse(existingTestReferanceRecord.reportJson);
+                return parsed;
+            }
+        } catch (e) {
+            // If invalid JSON, return template
+        }
+        return { ...DETAILED_REPORT_JSON_TEMPLATE };
+    };
+
+    // Update detailed report JSON
+    const updateDetailedReportJson = (updates: Partial<typeof DETAILED_REPORT_JSON_TEMPLATE>) => {
+        const current = getDetailedReportData();
+        const updated = { ...current, ...updates };
+        setExistingTestReferanceRecord(prev => ({
+            ...prev,
+            reportJson: JSON.stringify(updated, null, 2)
+        }));
+    };
+
     // Custom validation function
     const validateForm = (recordToValidate?: TestReferancePoint) => {
         const record = recordToValidate || existingTestReferanceRecord;
         const errors: Record<string, string> = {};
+        const desc = (record.testDescription || "").toUpperCase();
 
         // Required fields validation
         if (!record.testDescription?.trim()) {
             errors.testDescription = "Test description is required";
-        }
-        if (!record.units?.trim()) {
-            errors.units = "Units are required";
         }
         if (!record.gender) {
             errors.gender = "Gender selection is required";
@@ -81,12 +650,32 @@ const AddExistingTestReferance = ({
         if (record.ageMin === undefined || record.ageMin === null) {
             errors.ageMin = "Minimum age is required";
         }
-        // Allow minReferenceRange to be 0, only check for undefined/null
-        if (record.minReferenceRange === undefined || record.minReferenceRange === null) {
-            errors.minReferenceRange = "Minimum reference range is required";
+
+        // Skip units and range validation for DETAILED REPORT and DROPDOWN types
+        if (desc !== "DETAILED REPORT" && !desc.startsWith("DROPDOWN")) {
+            if (!record.units?.trim()) {
+                errors.units = "Units are required";
+            }
+            // Allow minReferenceRange to be 0, only check for undefined/null
+            if (record.minReferenceRange === undefined || record.minReferenceRange === null) {
+                errors.minReferenceRange = "Minimum reference range is required";
+            }
+            if (record.maxReferenceRange === undefined || record.maxReferenceRange === null) {
+                errors.maxReferenceRange = "Maximum reference range is required";
+            }
         }
-        if (record.maxReferenceRange === undefined || record.maxReferenceRange === null) {
-            errors.maxReferenceRange = "Maximum reference range is required";
+
+        // For DETAILED REPORT, validate reportJson is present
+        if (desc === "DETAILED REPORT") {
+            if (!record.reportJson || !record.reportJson.trim()) {
+                errors.reportJson = "Report JSON is required for DETAILED REPORT";
+            } else {
+                try {
+                    JSON.parse(record.reportJson);
+                } catch (e) {
+                    errors.reportJson = "Report JSON must be valid JSON";
+                }
+            }
         }
 
         // Age validation - allow 0 as valid value
@@ -109,24 +698,27 @@ const AddExistingTestReferance = ({
         }
 
         // Range validation - convert to numbers for proper comparison
-        const minRangeNum = typeof record.minReferenceRange === 'string' 
-            ? parseFloat(record.minReferenceRange) 
-            : record.minReferenceRange;
-        const maxRangeNum = typeof record.maxReferenceRange === 'string' 
-            ? parseFloat(record.maxReferenceRange) 
-            : record.maxReferenceRange;
-        
-        if (minRangeNum !== undefined && minRangeNum !== null && maxRangeNum !== undefined && maxRangeNum !== null && 
-            !isNaN(minRangeNum) && !isNaN(maxRangeNum)) {
-            if (minRangeNum < 0) {
-                errors.minReferenceRange = "Minimum reference range cannot be negative";
-            }
-            if (maxRangeNum < 0) {
-                errors.maxReferenceRange = "Maximum reference range cannot be negative";
-            }
-            // Check if max is greater than min (allowing equal values might be needed, but typically max should be > min)
-            if (maxRangeNum <= minRangeNum) {
-                errors.maxReferenceRange = "Maximum range must be greater than minimum range";
+        // Skip range validation for DETAILED REPORT and DROPDOWN types
+        if (desc !== "DETAILED REPORT" && !desc.startsWith("DROPDOWN")) {
+            const minRangeNum = typeof record.minReferenceRange === 'string' 
+                ? parseFloat(record.minReferenceRange) 
+                : record.minReferenceRange;
+            const maxRangeNum = typeof record.maxReferenceRange === 'string' 
+                ? parseFloat(record.maxReferenceRange) 
+                : record.maxReferenceRange;
+            
+            if (minRangeNum !== undefined && minRangeNum !== null && maxRangeNum !== undefined && maxRangeNum !== null && 
+                !isNaN(minRangeNum) && !isNaN(maxRangeNum)) {
+                if (minRangeNum < 0) {
+                    errors.minReferenceRange = "Minimum reference range cannot be negative";
+                }
+                if (maxRangeNum < 0) {
+                    errors.maxReferenceRange = "Maximum reference range cannot be negative";
+                }
+                // Check if max is greater than min (allowing equal values might be needed, but typically max should be > min)
+                if (maxRangeNum <= minRangeNum) {
+                    errors.maxReferenceRange = "Maximum range must be greater than minimum range";
+                }
             }
         }
 
@@ -203,10 +795,29 @@ const AddExistingTestReferance = ({
     // Custom handler for description field to ensure uppercase
     const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setExistingTestReferanceRecord(prev => ({
-            ...prev,
-            [name]: value.toUpperCase()
-        }));
+        const uppercaseValue = value.toUpperCase();
+        setExistingTestReferanceRecord(prev => {
+            const updates: Partial<TestReferancePoint> = {
+                ...prev,
+                [name]: uppercaseValue,
+            };
+            
+            // Handle reportJson based on test description
+            if (name === "testDescription") {
+                if (uppercaseValue === "DETAILED REPORT") {
+                    // When switching to DETAILED REPORT and no JSON is present yet,
+                    // pre-fill with the standard template so users can edit/remove as needed.
+                    if (!prev.reportJson || prev.reportJson.trim() === "") {
+                        updates.reportJson = JSON.stringify(DETAILED_REPORT_JSON_TEMPLATE, null, 2);
+                    }
+                } else {
+                    // When switching away from DETAILED REPORT, clear reportJson
+                    updates.reportJson = undefined;
+                }
+            }
+            
+            return updates as TestReferancePoint;
+        });
         
         // Clear validation error when user starts typing
         if (validationErrors[name]) {
@@ -316,295 +927,270 @@ const AddExistingTestReferance = ({
     }, [existingTestReferanceRecord.minAgeUnit, existingTestReferanceRecord.maxAgeUnit, setExistingTestReferanceRecord]); // Set defaults when age units are undefined
 
     return (
-        <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-200">
-            <h2 className="text-lg font-semibold mb-4 text-blue-700">Add Existing Test Reference</h2>
+        <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
+            <h2 className="text-lg font-semibold mb-6 text-gray-900">Add Existing Test Reference</h2>
 
-            {/* Selected Test Preview */}
-            {existingTestReferanceRecord?.testName && (
-                <div className="mb-4 p-3 bg-blue-50 rounded-md border border-blue-100 text-sm">
-                    <div className="flex justify-between items-center">
-                    <div>
-                            <div className="font-medium">{existingTestReferanceRecord?.testName}</div>
-                            <div className="text-xs text-blue-600">{existingTestReferanceRecord?.category}</div>
-                        </div>
-                    </div>
-                        </div>
-            )}
-
-            {/* Validation Errors Summary */}
-            {Object.keys(validationErrors).length > 0 && Object.values(validationErrors).some(msg => msg) && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                    <div className="flex items-start gap-2">
-                        <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div className="flex-1">
-                            <h3 className="text-sm font-semibold text-red-800 mb-2">
-                                Please fix the following {Object.values(validationErrors).filter(msg => msg).length} error(s):
-                            </h3>
-                            <ul className="space-y-1">
-                                {Object.entries(validationErrors)
-                                    .filter(([, message]) => message)
-                                    .map(([field, message]) => {
-                                        const fieldName = field
-                                            .replace(/([A-Z])/g, ' $1')
-                                            .replace(/^./, str => str.toUpperCase())
-                                            .trim();
-                                        return (
-                                            <li key={field} className="text-sm text-red-700 flex items-start gap-2">
-                                                <span className="text-red-500 mt-1">•</span>
-                                                <span>
-                                                    <strong className="font-medium">{fieldName}:</strong> {message}
-                                                </span>
-                                            </li>
-                                        );
-                                    })}
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Form Section */}
-            <form onSubmit={handleFormSubmit} className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex flex-col col-span-2">
-                    <label className="text-gray-700 mb-1">Test Reference Description</label>
-                        <input
-                            type="text"
-                            name="testDescription"
-                            list="existingTestDescriptionOptions"
-                        placeholder="Type or select test description (will be converted to uppercase)"
-                            value={existingTestReferanceRecord.testDescription || ""}
-                        onChange={handleDescriptionChange}
-                        className={`w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500 uppercase-input ${validationErrors.testDescription ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
-                        />
-                        {validationErrors.testDescription && (
-                            <p className="text-xs text-red-500 mt-1">{validationErrors.testDescription}</p>
-                        )}
-                        <datalist id="existingTestDescriptionOptions">
-                            <option value="DESCRIPTION">Description</option>
-                            <option value="DROPDOWN">Dropdown</option>
-                            <option value="DROPDOWN-POSITIVE/NEGATIVE">Dropdown - Positive/Negative</option>
-                            <option value="DROPDOWN-PRESENT/ABSENT">Dropdown - Present/Absent</option>
-                            <option value="DROPDOWN-REACTIVE/NONREACTIVE">Dropdown - Reactive/Nonreactive</option>
-                            <option value="DROPDOWN-PERCENTAGE">Dropdown - Percentage</option>
-                            <option value="DROPDOWN-COMPATIBLE/INCOMPATIBLE">Dropdown - Compatible/Incompatible</option>
-                            <option value="DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE">Dropdown with Description - Reactive/Nonreactive</option>
-                            <option value="DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT">Dropdown with Description - Present/Absent</option>
-                        </datalist>
-                    <p className="text-xs text-gray-500 mt-1">Type custom description or select from suggestions</p>
-                    </div>
-
-                <div className="flex flex-col">
-                    <label className="text-gray-700 mb-1">Gender</label>
-                        <select
-                            name="gender"
-                            value={existingTestReferanceRecord.gender === "MF" ? "B" : (existingTestReferanceRecord.gender || "")}
-                            onChange={handleGenderChange}
-                        className={`w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500 ${validationErrors.gender ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
-                        >
-                        <option value="" disabled selected>Select Gender</option>
-                            <option value="M">Male</option>
-                            <option value="F">Female</option>
-                            <option value="B">Both</option>
-                        </select>
-                        {validationErrors.gender && (
-                            <p className="text-xs text-red-500 mt-1">{validationErrors.gender}</p>
-                        )}
-                    </div>
-
-                <div className="flex flex-col">
-                    <label className="text-gray-700 mb-1">Units</label>
-                    <input
-                        type="text"
-                        name="units"
-                        placeholder="Units"
-                        value={existingTestReferanceRecord.units || ""}
-                        onChange={handleChangeWithValidation}
-                        className={`w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500 ${validationErrors.units ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
-                    />
-                    {validationErrors.units && (
-                        <p className="text-xs text-red-500 mt-1">{validationErrors.units}</p>
-                    )}
-                </div>
-
-                <div className="flex flex-col">
-                    <label className="text-gray-700 mb-1">Min Age</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="number"
-                                name="ageMin"
-                                min={0}
-                                max={100}
-                            placeholder="Minimum Age"
-                                value={existingTestReferanceRecord.ageMin || ""}
-                                onChange={handleAgeChange}
-                            className={`w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500 ${validationErrors.ageMin ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
-                            />
-                            <select
-                                name="minAgeUnit"
-                                value={existingTestReferanceRecord.minAgeUnit || "YEARS"}
-                                onChange={handleChangeWithValidation}
-                            className="w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500"
-                            >
-                                <option value="YEARS">Years</option>
-                                <option value="MONTHS">Months</option>
-                                <option value="WEEKS">Weeks</option>
-                                <option value="DAYS">Days</option>
-                            </select>
-                        </div>
-                        {validationErrors.ageMin && (
-                            <p className="text-xs text-red-500 mt-1">{validationErrors.ageMin}</p>
-                        )}
-                    </div>
-
-                <div className="flex flex-col">
-                    <label className="text-gray-700 mb-1">Max Age</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="number"
-                                name="ageMax"
-                                min={0}
-                                max={100}
-                            placeholder="Maximum Age"
-                                value={existingTestReferanceRecord.ageMax || ""}
-                                onChange={handleAgeChange}
-                            className={`w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500 ${validationErrors.ageMax ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
-                            />
-                            <select
-                                name="maxAgeUnit"
-                                value={existingTestReferanceRecord.maxAgeUnit || "YEARS"}
-                                onChange={handleChangeWithValidation}
-                            className="w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500"
-                            >
-                                <option value="YEARS">Years</option>
-                                <option value="MONTHS">Months</option>
-                                <option value="WEEKS">Weeks</option>
-                                <option value="DAYS">Days</option>
-                            </select>
-                        </div>
-                        {validationErrors.ageMax && (
-                            <p className="text-xs text-red-500 mt-1">{validationErrors.ageMax}</p>
-                        )}
-                    </div>
-
-                <div className="flex flex-col">
-                    <label className="text-gray-700 mb-1">Min Range</label>
-                    <input
-                        type="number"
-                        name="minReferenceRange"
-                        placeholder="Minimum Range"
-                        min={0}
-                        value={existingTestReferanceRecord.minReferenceRange || ""}
-                        onChange={handleChangeWithValidation}
-                        className={`w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500 ${validationErrors.minReferenceRange ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
-                    />
-                    {validationErrors.minReferenceRange && (
-                        <p className="text-xs text-red-500 mt-1">{validationErrors.minReferenceRange}</p>
-                    )}
-                </div>
-
-                <div className="flex flex-col">
-                    <label className="text-gray-700 mb-1">Max Range</label>
-                            <input
-                                type="number"
-                        name="maxReferenceRange"
-                        placeholder="Maximum Range"
-                                 min={0}
-                        value={existingTestReferanceRecord.maxReferenceRange || ""}
-                                onChange={handleChangeWithValidation}
-                        className={`w-full bg-white border px-2.5 py-2 rounded-md focus:ring-1 focus:ring-blue-500 ${validationErrors.maxReferenceRange ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
-                    />
-                    {validationErrors.maxReferenceRange && (
-                        <p className="text-xs text-red-500 mt-1">{validationErrors.maxReferenceRange}</p>
-                    )}
-                </div>
-
-                {/* Report Content Editor */}
-                <div className="flex flex-col col-span-2 mb-3">
-                    <label className="text-gray-700 mb-1">Report Content (Optional)</label>
-                                                                    <RichTextEditor
-                            value={existingTestReferanceRecord.reportJson || ''}
-                            onChange={(value) => {
-                                setExistingTestReferanceRecord(prev => ({ ...prev, reportJson: value }));
-                            }}
-                            placeholder="Test Name: ULTRASOUND WHOLE ABDOMEN
-
-Note: Fasting for at least 6 hours prior to scan.
-
-Impression:
-Mild fatty infiltration of liver. No focal hepatic lesions. Other abdominal organs appear normal.
-
-Findings:
-
-Liver:
-- Size: Normal
-- Echotexture: Mildly increased (Grade I fatty change)
-- Intrahepatic biliary radicals: Not dilated
-- No focal lesions seen
-
-Gall Bladder:
-- Normal in size and wall thickness
-- No calculi or sludge
-- Common bile duct: Normal caliber (4 mm)
-
-Pancreas:
-- Normal size and echotexture
-- No focal mass or ductal dilatation
-
-Spleen:
-- Normal in size (10.5 cm)
-- Homogeneous echotexture
-
-Kidneys:
-Right kidney: 10.8 cm, normal cortical echotexture, no hydronephrosis
-Left kidney: 10.6 cm, normal cortical echotexture, no hydronephrosis
-
-Urinary Bladder:
-- Well distended, normal wall thickness
-- No intraluminal mass or calculus
-
-Prostate (in males):
-- Normal size and echotexture (Volume: 18 cc)
-
-Uterus & Ovaries (in females):
-- Uterus anteverted, normal size and myometrial echotexture
-- Endometrial thickness: 8 mm
-- Ovaries normal in size and follicular pattern
-
-Additional Observations:
-- No free fluid in abdomen or pelvis
-- Bowel loops appear normal
-
-Impression Summary:
-Mild fatty liver. Rest of the abdominal organs appear within normal limits."
-                            height="280px"
-                        />
-                    <p className="text-xs text-gray-600 mt-1">
-                        Use the rich text editor to format your report content with headings, lists, and other formatting options.
-                    </p>
-                </div>
-
-                {/* Reference Ranges Field */}
-                <div className="flex flex-col col-span-2 mt-1">
-                    <div className="flex items-center justify-between mb-2">
-                        <label className="text-gray-700">Reference Ranges JSON (Optional)</label>
-                    </div>
-
-                    {
-                        <div className="space-y-2 border border-gray-200 rounded-md p-3">
-                            <div className="flex items-center justify-between">
-                                <h5 className="text-sm font-semibold text-blue-700">Reference Ranges Builder</h5>
-                                <span className="text-[11px] text-gray-500">Use rows per age/gender</span>
+            <div className="space-y-4">
+                {/* Selected Test Preview - Test Information (Green) */}
+                {existingTestReferanceRecord?.testName && (
+                    <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+                        <h4 className="font-semibold text-green-800 mb-2">Test Information</h4>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <span className="font-medium text-gray-600">Test Name:</span>
+                                <span className="ml-2 text-gray-900">{existingTestReferanceRecord?.testName}</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-600">Ranges</span>
+                            <div>
+                                <span className="font-medium text-gray-600">Category:</span>
+                                <span className="ml-2 text-gray-900">{existingTestReferanceRecord?.category}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Validation Errors Summary - Warning (Yellow) */}
+                {Object.keys(validationErrors).length > 0 && Object.values(validationErrors).some(msg => msg) && (
+                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
+                        <h4 className="font-semibold text-yellow-800 mb-2">
+                            Please fix the following {Object.values(validationErrors).filter(msg => msg).length} error(s):
+                        </h4>
+                        <ul className="space-y-1">
+                            {Object.entries(validationErrors)
+                                .filter(([, message]) => message)
+                                .map(([field, message]) => {
+                                    const fieldName = field
+                                        .replace(/([A-Z])/g, ' $1')
+                                        .replace(/^./, str => str.toUpperCase())
+                                        .trim();
+                                    return (
+                                        <li key={field} className="text-xs text-gray-700 flex items-start gap-2">
+                                            <span className="text-yellow-600 mt-1">•</span>
+                                            <span>
+                                                <strong className="font-medium text-gray-900">{fieldName}:</strong> {message}
+                                            </span>
+                                        </li>
+                                    );
+                                })}
+                        </ul>
+                    </div>
+                )}
+
+                {/* Form Section */}
+                <form onSubmit={handleFormSubmit} className="space-y-4">
+                    {/* Test Reference Description Section - Purple */}
+                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                        <h4 className="font-semibold text-purple-800 mb-2">Test Reference Description</h4>
+                        <div className="flex flex-col">
+                            <input
+                                type="text"
+                                name="testDescription"
+                                list="existingTestDescriptionOptions"
+                                placeholder="Type or select test description (will be converted to uppercase)"
+                                value={existingTestReferanceRecord.testDescription || ""}
+                                onChange={handleDescriptionChange}
+                                className={`w-full bg-white border px-3 py-2 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-sm ${validationErrors.testDescription ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
+                            />
+                            {validationErrors.testDescription && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors.testDescription}</p>
+                            )}
+                            <datalist id="existingTestDescriptionOptions">
+                                <option value="DESCRIPTION">Description</option>
+                                <option value="DROPDOWN">Dropdown</option>
+                                <option value="DROPDOWN-POSITIVE/NEGATIVE">Dropdown - Positive/Negative</option>
+                                <option value="DROPDOWN-PRESENT/ABSENT">Dropdown - Present/Absent</option>
+                                <option value="DROPDOWN-REACTIVE/NONREACTIVE">Dropdown - Reactive/Nonreactive</option>
+                                <option value="DROPDOWN-PERCENTAGE">Dropdown - Percentage</option>
+                                <option value="DROPDOWN-COMPATIBLE/INCOMPATIBLE">Dropdown - Compatible/Incompatible</option>
+                                <option value="DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE">Dropdown with Description - Reactive/Nonreactive</option>
+                                <option value="DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT">Dropdown with Description - Present/Absent</option>
+                                <option value="DETAILED REPORT">Detailed Report</option>
+                            </datalist>
+                            <p className="text-xs text-gray-500 mt-1">Type custom description or select from suggestions</p>
+                        </div>
+                    </div>
+
+                    {/* Basic Information Section - Blue */}
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                        <h4 className="font-semibold text-blue-800 mb-2">Basic Information</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col">
+                                <label className="font-medium text-gray-600 mb-1 text-sm">Gender</label>
+                                <select
+                                    name="gender"
+                                    value={existingTestReferanceRecord.gender === "MF" ? "B" : (existingTestReferanceRecord.gender || "")}
+                                    onChange={handleGenderChange}
+                                    className={`w-full bg-white border px-3 py-2 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm ${validationErrors.gender ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
+                                >
+                                    <option value="" disabled>Select Gender</option>
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                    <option value="B">Both</option>
+                                </select>
+                                {validationErrors.gender && (
+                                    <p className="text-xs text-red-500 mt-1">{validationErrors.gender}</p>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="font-medium text-gray-600 mb-1 text-sm">Units</label>
+                                <input
+                                    type="text"
+                                    name="units"
+                                    placeholder="Units"
+                                    value={existingTestReferanceRecord.units || ""}
+                                    onChange={handleChangeWithValidation}
+                                    className={`w-full bg-white border px-3 py-2 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm ${validationErrors.units ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
+                                />
+                                {validationErrors.units && (
+                                    <p className="text-xs text-red-500 mt-1">{validationErrors.units}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Age Range Section - Orange */}
+                    <div className="bg-orange-50 p-3 rounded-lg border border-orange-100">
+                        <h4 className="font-semibold text-orange-800 mb-2">Age Range</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col">
+                                <label className="font-medium text-gray-600 mb-1 text-sm">Min Age</label>
                                 <div className="flex gap-2">
-                                    <Button type="button" text="Add Row" onClick={addRangeRow} className="bg-gray-100 text-gray-700 px-2 py-1 rounded-md hover:bg-gray-200 border border-gray-300 text-xs" />
-                                    {/* <Button type="button" text="Load from JSON" onClick={loadRangesFromJson} className="bg-gray-100 text-gray-700 px-2 py-1 rounded-md hover:bg-gray-200 border border-gray-300 text-xs" />
-                                    <Button type="button" text="Apply to JSON" onClick={applyRangesToJson} className="bg-blue-600 text-white px-2 py-1 rounded-md hover:bg-blue-700 text-xs" /> */}
+                                    <input
+                                        type="number"
+                                        name="ageMin"
+                                        min={0}
+                                        max={100}
+                                        placeholder="Minimum Age"
+                                        value={existingTestReferanceRecord.ageMin || ""}
+                                        onChange={handleAgeChange}
+                                        className={`flex-1 bg-white border px-3 py-2 rounded-md focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm ${validationErrors.ageMin ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
+                                    />
+                                    <select
+                                        name="minAgeUnit"
+                                        value={existingTestReferanceRecord.minAgeUnit || "YEARS"}
+                                        onChange={handleChangeWithValidation}
+                                        className="w-32 bg-white border border-gray-300 px-3 py-2 rounded-md focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm"
+                                    >
+                                        <option value="YEARS">Years</option>
+                                        <option value="MONTHS">Months</option>
+                                        <option value="WEEKS">Weeks</option>
+                                        <option value="DAYS">Days</option>
+                                    </select>
+                                </div>
+                                {validationErrors.ageMin && (
+                                    <p className="text-xs text-red-500 mt-1">{validationErrors.ageMin}</p>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="font-medium text-gray-600 mb-1 text-sm">Max Age</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="number"
+                                        name="ageMax"
+                                        min={0}
+                                        max={100}
+                                        placeholder="Maximum Age"
+                                        value={existingTestReferanceRecord.ageMax || ""}
+                                        onChange={handleAgeChange}
+                                        className={`flex-1 bg-white border px-3 py-2 rounded-md focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm ${validationErrors.ageMax ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
+                                    />
+                                    <select
+                                        name="maxAgeUnit"
+                                        value={existingTestReferanceRecord.maxAgeUnit || "YEARS"}
+                                        onChange={handleChangeWithValidation}
+                                        className="w-32 bg-white border border-gray-300 px-3 py-2 rounded-md focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-sm"
+                                    >
+                                        <option value="YEARS">Years</option>
+                                        <option value="MONTHS">Months</option>
+                                        <option value="WEEKS">Weeks</option>
+                                        <option value="DAYS">Days</option>
+                                    </select>
+                                </div>
+                                {validationErrors.ageMax && (
+                                    <p className="text-xs text-red-500 mt-1">{validationErrors.ageMax}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Reference Range Section - Green (Hidden for special types) */}
+                    {!shouldHideRanges(existingTestReferanceRecord.testDescription) && (
+                        <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+                            <h4 className="font-semibold text-green-800 mb-2">Reference Range</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="flex flex-col">
+                                    <label className="font-medium text-gray-600 mb-1 text-sm">Min Range</label>
+                                    <input
+                                        type="number"
+                                        name="minReferenceRange"
+                                        placeholder="Minimum Range"
+                                        min={0}
+                                        value={existingTestReferanceRecord.minReferenceRange || ""}
+                                        onChange={handleChangeWithValidation}
+                                        className={`w-full bg-white border px-3 py-2 rounded-md focus:ring-1 focus:ring-green-500 focus:border-green-500 text-sm ${validationErrors.minReferenceRange ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
+                                    />
+                                    {validationErrors.minReferenceRange && (
+                                        <p className="text-xs text-red-500 mt-1">{validationErrors.minReferenceRange}</p>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-col">
+                                    <label className="font-medium text-gray-600 mb-1 text-sm">Max Range</label>
+                                    <input
+                                        type="number"
+                                        name="maxReferenceRange"
+                                        placeholder="Maximum Range"
+                                        min={0}
+                                        value={existingTestReferanceRecord.maxReferenceRange || ""}
+                                        onChange={handleChangeWithValidation}
+                                        className={`w-full bg-white border px-3 py-2 rounded-md focus:ring-1 focus:ring-green-500 focus:border-green-500 text-sm ${validationErrors.maxReferenceRange ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
+                                    />
+                                    {validationErrors.maxReferenceRange && (
+                                        <p className="text-xs text-red-500 mt-1">{validationErrors.maxReferenceRange}</p>
+                                    )}
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* Report Content Editor / Report JSON - Only for DETAILED REPORT */}
+                    {existingTestReferanceRecord.testDescription === "DETAILED REPORT" && (
+                        <div className="bg-white p-3 rounded-lg border border-gray-200">
+                            <h4 className="font-semibold text-gray-800 mb-2">Detailed Report Configuration</h4>
+                            <DetailedReportFormEditor
+                                reportData={getDetailedReportData()}
+                                onUpdate={updateDetailedReportJson}
+                            />
+                            {validationErrors.reportJson && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors.reportJson}</p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Reference Ranges Field - Structured/Raw (hidden for DETAILED REPORT and all DROPDOWN types) */}
+                    {!shouldHideRanges(existingTestReferanceRecord.testDescription) && (
+                        <div className="bg-orange-50 p-3 rounded-lg border border-orange-100">
+                            <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-semibold text-orange-800">Reference Ranges JSON (Optional)</h4>
+                            </div>
+
+                            <div className="space-y-2 bg-white border border-gray-200 rounded-md p-3">
+                                <div className="flex items-center justify-between">
+                                    <h5 className="text-sm font-semibold text-orange-800">Reference Ranges Builder</h5>
+                                    <span className="text-xs text-gray-500">Use rows per age/gender</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-gray-600 font-medium">Ranges</span>
+                                    <div className="flex gap-2">
+                                        <Button 
+                                            type="button" 
+                                            text="Add Row" 
+                                            onClick={addRangeRow} 
+                                            className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 border border-gray-200" 
+                                        />
+                                    </div>
+                                </div>
 
                             <div className="overflow-auto">
                                 <div className="min-w-[720px]">
@@ -665,49 +1251,42 @@ Mild fatty liver. Rest of the abdominal organs appear within normal limits."
                                 </div>
                             </div>
 
-                            {/* Live Preview */}
-                            <div className="border-t border-gray-200 pt-3">
-                                <h6 className="text-xs font-semibold text-blue-700 mb-2">Live Preview</h6>
-                                {rangesRows.filter(r => r.ReferenceRange).length === 0 ? (
-                                    <p className="text-[11px] text-gray-500">No ranges added yet.</p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {rangesRows.filter(r => r.ReferenceRange).map((r, i) => (
-                                            <div key={i} className="bg-green-50 border border-green-200 rounded p-2 text-sm">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="text-green-800 font-medium">{r.Gender === 'M' ? 'Male' : r.Gender === 'F' ? 'Female' : 'Both'}</div>
-                                                    <div className="text-green-900 font-semibold">{r.ReferenceRange}</div>
+                                {/* Live Preview */}
+                                <div className="border-t border-gray-200 pt-3 mt-3">
+                                    <h6 className="text-xs font-semibold text-orange-800 mb-2">Live Preview</h6>
+                                    {rangesRows.filter(r => r.ReferenceRange).length === 0 ? (
+                                        <p className="text-xs text-gray-500">No ranges added yet.</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {rangesRows.filter(r => r.ReferenceRange).map((r, i) => (
+                                                <div key={i} className="bg-green-50 border border-green-200 rounded-lg p-2 text-xs">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="text-green-800 font-medium">{r.Gender === 'M' ? 'Male' : r.Gender === 'F' ? 'Female' : 'Both'}</div>
+                                                        <div className="text-green-900 font-semibold">{r.ReferenceRange}</div>
+                                                    </div>
+                                                    <div className="text-xs text-gray-700 mt-1">Age: {String(r.AgeMin)} {r.AgeMinUnit} {r.AgeMax !== '' && <>- {String(r.AgeMax)} {r.AgeMaxUnit}</>}</div>
                                                 </div>
-                                                <div className="text-[12px] text-gray-700 mt-1">Age: {String(r.AgeMin)} {r.AgeMinUnit} {r.AgeMax !== '' && <>- {String(r.AgeMax)} {r.AgeMaxUnit}</>}</div>
-                        </div>
-                    ))}
-                                    </div>
-                                )}
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    }
-                </div>
+                    )}
 
-                {/* Action Buttons */}
-                <div className="col-span-2 flex justify-end gap-2 mt-4">
-                    {/* <Button
-                        text="Clear"
-                        type="button"
-                        onClick={() => setExistingTestReferanceRecord({} as TestReferancePoint)}
-                        className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-200 border border-gray-300 text-sm"
-                    >
-                        <TrashIcon />
-                    </Button> */}
-                    <Button
-                        text="Add Reference"
-                        type="submit"
-                        onClick={() => { }}
-                        className="bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 text-sm"
-                    >
-                        <PlusIcon className="h-4 w-4 mr-1" />
-                    </Button>
-                </div>
-            </form>
+                    {/* Action Buttons */}
+                    <div className="flex justify-end space-x-3 pt-4">
+                        <button
+                            type="submit"
+                            className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                            style={{ background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)` }}
+                        >
+                            <PlusIcon className="h-4 w-4 mr-1.5" />
+                            <span>Add Reference</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 };
