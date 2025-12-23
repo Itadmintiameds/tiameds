@@ -127,31 +127,55 @@ export const transformApiDataToTableFormat = (apiData: PatientApiResponse[]): Am
     }
     
     // Create a row for each transaction (including zero received amounts)
-    billing.transactions?.forEach((transaction) => {
-      // Calculate net received for this specific transaction
-      const netReceived = transaction.received_amount - (transaction.refund_amount || 0);
+    if (billing.transactions && billing.transactions.length > 0) {
+      billing.transactions.forEach((transaction) => {
+        // Calculate net received for this specific transaction
+        const netReceived = transaction.received_amount - (transaction.refund_amount || 0);
 
-      allRows.push({
-      id: `${visit.visitId}-${transaction.id}`,
-      slNo: slNo++,
-      receiptNo: billing.billingId.toString(),
-      receiptDate: transaction.payment_date,
-      patientName: patient.firstName,
-      billNo: billing.billingId.toString(),
-      billType: billing.paymentMethod.toLowerCase(),
-      type: visit.visitType === 'Out-Patient' ? 'OP' : visit.visitType === 'In-Patient' ? 'IP' : visit.visitType,
-      paymentType: transaction.payment_method,
-      paymentAmount: transaction.received_amount,
-      billedDate: billing.billingDate,
-      totalAmount: billing.totalAmount,
-      discount: billing.discount,
-      due: minDue, // Use minimum due amount instead of transaction.due_amount
-      received: transaction.received_amount,
-      netReceived: netReceived,
-      receivedBy: transaction.createdBy,
-      refund: transaction.refund_amount > 0 ? transaction.refund_amount : undefined
+        allRows.push({
+        id: `${visit.visitId}-${transaction.id}`,
+        slNo: slNo++,
+        receiptNo: billing.billingId.toString(),
+        receiptDate: transaction.payment_date,
+        patientName: patient.firstName,
+        billNo: billing.billingId.toString(),
+        billType: billing.paymentMethod.toLowerCase(),
+        type: visit.visitType === 'Out-Patient' ? 'OP' : visit.visitType === 'In-Patient' ? 'IP' : visit.visitType,
+        paymentType: transaction.payment_method,
+        paymentAmount: transaction.received_amount,
+        billedDate: billing.billingDate,
+        totalAmount: billing.totalAmount,
+        discount: billing.discount,
+        due: minDue, // Use minimum due amount instead of transaction.due_amount
+        received: transaction.received_amount,
+        netReceived: netReceived,
+        receivedBy: transaction.createdBy,
+        refund: transaction.refund_amount > 0 ? transaction.refund_amount : undefined
+        });
       });
-    });
+    } else {
+      // Create a row for visits with no transactions
+      allRows.push({
+        id: `${visit.visitId}-no-transaction`,
+        slNo: slNo++,
+        receiptNo: billing.billingId.toString(),
+        receiptDate: billing.billingDate || billing.paymentDate,
+        patientName: patient.firstName,
+        billNo: billing.billingId.toString(),
+        billType: billing.paymentMethod.toLowerCase(),
+        type: visit.visitType === 'Out-Patient' ? 'OP' : visit.visitType === 'In-Patient' ? 'IP' : visit.visitType,
+        paymentType: billing.paymentMethod || 'N/A',
+        paymentAmount: 0,
+        billedDate: billing.billingDate,
+        totalAmount: billing.totalAmount,
+        discount: billing.discount,
+        due: minDue,
+        received: 0,
+        netReceived: 0,
+        receivedBy: billing.createdBy || 'N/A',
+        refund: undefined
+      });
+    }
   });
 
   return allRows;
@@ -332,247 +356,283 @@ const AmountReceivedTable: React.FC<AmountReceivedTableProps> = ({
     };
   }, [rawApiData]); // Only recalculate when rawApiData changes
 
+  // Format date range for display
+  const formatDateRange = () => {
+    if (selectedDate) {
+      // Single date selected
+      const date = new Date(selectedDate);
+      return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } else if (startDate && endDate) {
+      // Date range selected
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const startFormatted = start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const endFormatted = end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      return `${startFormatted} - ${endFormatted}`;
+    } else if (startDate) {
+      // Only start date
+      const start = new Date(startDate);
+      return `From ${start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+    } else if (endDate) {
+      // Only end date
+      const end = new Date(endDate);
+      return `Until ${end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+    }
+    return null;
+  };
+
+  const dateRangeDisplay = formatDateRange();
+
   return (
     <div className={className}>
       {showTitle && (
-        <div className="mb-6">
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">{title}</h3>
-          <p className="text-sm text-gray-600">Financial transaction details and payment summaries</p>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">{title}</h3>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+            <p className="text-xs text-gray-600">Financial transaction details and payment summaries</p>
+            {dateRangeDisplay && (
+              <>
+                <span className="hidden sm:inline text-xs text-gray-400">•</span>
+                <p className="text-xs font-medium text-purple-600">{dateRangeDisplay}</p>
+              </>
+            )}
+          </div>
         </div>
       )}
       
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-                 <thead className="bg-gradient-to-r from-indigo-50 to-blue-50">
+            <thead 
+              className="border-b border-gray-200"
+              style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
+            >
               <tr>
-                     <th scope="col" className="px-2 sm:px-4 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                       #
+                <th scope="col" className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                  #
                 </th>
-                     <th scope="col" className="px-2 sm:px-4 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                       <span className="hidden sm:inline">Receipt Details</span>
-                       <span className="sm:hidden">Receipt</span>
+                <th scope="col" className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                  <span className="hidden sm:inline">Receipt Details</span>
+                  <span className="sm:hidden">Receipt</span>
                 </th>
-                     <th scope="col" className="px-2 sm:px-4 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                       Patient
+                <th scope="col" className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                  Patient
                 </th>
-                     <th scope="col" className="px-2 sm:px-4 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                       <span className="hidden lg:inline">Bill Info</span>
-                       <span className="lg:hidden">Bill</span>
+                <th scope="col" className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                  <span className="hidden lg:inline">Bill Info</span>
+                  <span className="lg:hidden">Bill</span>
                 </th>
-                     <th scope="col" className="px-2 sm:px-4 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                       Payment
+                <th scope="col" className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                  Payment
                 </th>
-                     <th scope="col" className="px-2 sm:px-4 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider hidden lg:table-cell">
-                       <span className="hidden xl:inline">Billed Date</span>
-                       <span className="xl:hidden">Date</span>
+                <th scope="col" className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider hidden lg:table-cell">
+                  <span className="hidden xl:inline">Billed Date</span>
+                  <span className="xl:hidden">Date</span>
                 </th>
-                     <th scope="col" className="px-2 sm:px-4 py-3 sm:py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                       <span className="hidden sm:inline">Total Amount</span>
-                       <span className="sm:hidden">Total</span>
+                <th scope="col" className="px-2 py-2 text-right text-xs font-semibold text-white uppercase tracking-wider">
+                  <span className="hidden sm:inline">Total Amount</span>
+                  <span className="sm:hidden">Total</span>
                 </th>
-                     <th scope="col" className="px-2 sm:px-4 py-3 sm:py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider hidden md:table-cell">
+                <th scope="col" className="px-2 py-2 text-right text-xs font-semibold text-white uppercase tracking-wider hidden md:table-cell">
                   Discount
                 </th>
-                     <th scope="col" className="px-2 sm:px-4 py-3 sm:py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th scope="col" className="px-2 py-2 text-right text-xs font-semibold text-white uppercase tracking-wider">
                   Due
                 </th>
-                     <th scope="col" className="px-2 sm:px-4 py-3 sm:py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                       <span className="hidden sm:inline">Received</span>
-                       <span className="sm:hidden">Recv</span>
+                <th scope="col" className="px-2 py-2 text-right text-xs font-semibold text-white uppercase tracking-wider">
+                  <span className="hidden sm:inline">Received</span>
+                  <span className="sm:hidden">Recv</span>
                 </th>
-                     <th scope="col" className="px-2 sm:px-4 py-3 sm:py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider hidden lg:table-cell">
-                       <span className="hidden xl:inline">Net Received</span>
-                       <span className="xl:hidden">Net</span>
+                <th scope="col" className="px-2 py-2 text-right text-xs font-semibold text-white uppercase tracking-wider hidden lg:table-cell">
+                  <span className="hidden xl:inline">Net Received</span>
+                  <span className="xl:hidden">Net</span>
                 </th>
-                     <th scope="col" className="px-2 sm:px-4 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider hidden xl:table-cell">
-                       Received By
+                <th scope="col" className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider hidden xl:table-cell">
+                  Received By
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {data.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-6 py-12 text-center">
+                  <td colSpan={12} className="px-4 py-8 text-center">
                     <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <svg 
-                          className="w-8 h-8 text-gray-400" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24" 
-                      >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={1.5} 
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                        <svg 
+                          className="w-6 h-6 text-gray-400" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24" 
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={1.5} 
                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
-                        />
-                      </svg>
+                          />
+                        </svg>
                       </div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-1">No transactions found</h3>
-                      <p className="text-sm text-gray-500">No amount received data available for the selected date range</p>
+                      <h3 className="text-sm font-semibold text-gray-900 mb-1">No transactions found</h3>
+                      <p className="text-xs text-gray-600">No amount received data available for the selected date range</p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 data.map((item, rowIndex) => (
-                       <tr key={item.id} className={`group hover:bg-gray-50 transition-colors duration-150 ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
-                         <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                             <span className="inline-flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 bg-indigo-100 text-indigo-800 text-xs sm:text-sm font-semibold rounded-full">
-                               {item.slNo}
-                             </span>
+                  <tr key={item.id} className={`group hover:bg-gray-50 transition-colors duration-150 ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <span className="inline-flex items-center justify-center w-5 h-5 bg-purple-100 text-purple-800 text-xs font-semibold rounded-full">
+                          {item.slNo}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      <div className="space-y-0.5">
+                        <div className="text-xs font-semibold text-gray-900">{item.receiptNo}</div>
+                        <div className="text-xs text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-md inline-block">
+                          {formatDate(item.receiptDate)}
                         </div>
-                      </td>
-                         <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
-                           <div className="space-y-1">
-                             <div className="text-xs sm:text-sm font-semibold text-gray-900">{item.receiptNo}</div>
-                             <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md inline-block">
-                               {formatDate(item.receiptDate)}
+                      </div>
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      <div className="text-xs font-medium text-gray-900 truncate max-w-[120px] sm:max-w-none">{item.patientName}</div>
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      <div className="space-y-0.5">
+                        <div className="text-xs font-semibold text-gray-900">{item.billNo}</div>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {item.billType}
+                          </span>
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            {item.type}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      <div className="space-y-0.5">
+                        <div className="text-xs font-medium text-gray-900">{item.paymentType}</div>
+                        <div className="text-xs text-gray-600">₹{formatAmount(item.paymentAmount)}</div>
+                      </div>
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap hidden lg:table-cell">
+                      <div className="text-xs text-gray-900">{formatDate(item.billedDate)}</div>
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap text-right">
+                      <div className="text-xs font-semibold text-green-600">₹{formatAmount(item.totalAmount)}</div>
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap text-right hidden md:table-cell">
+                      <div className="text-xs text-gray-900">₹{formatAmount(item.discount)}</div>
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap text-right">
+                      <div className="space-y-0.5">
+                        <div className="text-xs font-medium text-gray-900">₹{formatAmount(item.due)}</div>
+                        {item.refund && item.refund > 0 && (
+                          <div className="text-xs text-red-600 bg-red-50 px-1.5 py-0.5 rounded-md">
+                            Refund: ₹{formatAmount(item.refund)}
                           </div>
-                        </div>
-                      </td>
-                         <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
-                           <div className="text-xs sm:text-sm font-medium text-gray-900 truncate max-w-[120px] sm:max-w-none">{item.patientName}</div>
-                      </td>
-                         <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
-                           <div className="space-y-1">
-                             <div className="text-xs sm:text-sm font-semibold text-gray-900">{item.billNo}</div>
-                             <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-                               <span className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                 {item.billType}
-                               </span>
-                               <span className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                 {item.type}
-                               </span>
-                          </div>
-                        </div>
-                      </td>
-                         <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
-                           <div className="space-y-1">
-                             <div className="text-xs sm:text-sm font-medium text-gray-900">{item.paymentType}</div>
-                             <div className="text-xs text-gray-500">₹{formatAmount(item.paymentAmount)}</div>
-                        </div>
-                      </td>
-                         <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap hidden lg:table-cell">
-                           <div className="text-xs sm:text-sm text-gray-900">{formatDate(item.billedDate)}</div>
-                      </td>
-                         <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-right">
-                           <div className="text-xs sm:text-sm font-semibold text-green-600">₹{formatAmount(item.totalAmount)}</div>
-                      </td>
-                         <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-right hidden md:table-cell">
-                           <div className="text-xs sm:text-sm text-gray-900">₹{formatAmount(item.discount)}</div>
-                      </td>
-                         <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-right">
-                           <div className="space-y-1">
-                             <div className="text-xs sm:text-sm font-medium text-gray-900">₹{formatAmount(item.due)}</div>
-                             {item.refund && item.refund > 0 && (
-                               <div className="text-xs text-red-600 bg-red-50 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md">
-                                 Refund: ₹{formatAmount(item.refund)}
-                          </div>
-                             )}
-                        </div>
-                      </td>
-                         <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-right">
-                           <div className="text-xs sm:text-sm font-semibold text-green-600">₹{formatAmount(item.received)}</div>
-                      </td>
-                         <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-right hidden lg:table-cell">
-                           <div className="text-xs sm:text-sm font-semibold text-green-600">₹{formatAmount(item.netReceived)}</div>
-                      </td>
-                         <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap hidden xl:table-cell">
-                           <div className="text-xs sm:text-sm text-gray-900 truncate max-w-[100px]">{item.receivedBy}</div>
-                      </td>
-                    </tr>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap text-right">
+                      <div className="text-xs font-semibold text-green-600">₹{formatAmount(item.received)}</div>
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap text-right hidden lg:table-cell">
+                      <div className="text-xs font-semibold text-green-600">₹{formatAmount(item.netReceived)}</div>
+                    </td>
+                    <td className="px-2 py-2 whitespace-nowrap hidden xl:table-cell">
+                      <div className="text-xs text-gray-900 truncate max-w-[100px]">{item.receivedBy}</div>
+                    </td>
+                  </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
         
-        {/* Modern Summary Footer */}
+        {/* Compact Summary Footer */}
         {data.length > 0 && (
-          <div className="bg-gradient-to-r from-slate-50 to-gray-50 border-t border-gray-200 p-6">
-                 {/* Financial Summary Cards */}
-                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+          <div className="border-t border-gray-200 p-3">
+            {/* Financial Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
+              <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Discount</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">₹{formatAmount(totals.discount)}</p>
+                    <p className="text-xs font-medium text-gray-600 mb-1">Discount</p>
+                    <p className="text-lg font-bold text-gray-900">₹{formatAmount(totals.discount)}</p>
                   </div>
-                  <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
+                  <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <span className="text-yellow-600 text-lg font-bold">₹</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+              <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Due Amount</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">₹{formatAmount(totals.due)}</p>
+                    <p className="text-xs font-medium text-gray-600 mb-1">Due Amount</p>
+                    <p className="text-lg font-bold text-gray-900">₹{formatAmount(totals.due)}</p>
                     {totals.refund > 0 && (
-                      <p className="text-xs text-red-600 mt-1">Refund: ₹{formatAmount(totals.refund)}</p>
+                      <p className="text-xs text-red-600 mt-0.5">Refund: ₹{formatAmount(totals.refund)}</p>
                     )}
                   </div>
-                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                     </svg>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+              <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Received</p>
-                    <p className="text-2xl font-bold text-green-600 mt-1">₹{formatAmount(totals.received)}</p>
+                    <p className="text-xs font-medium text-gray-600 mb-1">Received</p>
+                    <p className="text-lg font-bold text-green-600">₹{formatAmount(totals.received)}</p>
                   </div>
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+              <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Net Received</p>
-                    <p className="text-2xl font-bold text-green-600 mt-1">₹{formatAmount(totals.netReceived)}</p>
-                </div>
-                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <p className="text-xs font-medium text-gray-600 mb-1">Net Received</p>
+                    <p className="text-lg font-bold text-green-600">₹{formatAmount(totals.netReceived)}</p>
+                  </div>
+                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
-                </div>
-                </div>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* Payment Methods Breakdown */}
-            <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
-              <h4 className="text-sm font-semibold text-gray-900 mb-4">Payment Methods Breakdown</h4>
-              <div className="flex flex-wrap items-center justify-center gap-6">
-                   <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-                     <span className="text-sm font-medium text-gray-700">Cash:</span>
-                  <span className="text-lg font-bold text-blue-600">₹{formatAmount(totals.cashTotal)}</span>
-                   </div>
-                   <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
-                     <span className="text-sm font-medium text-gray-700">Card:</span>
-                  <span className="text-lg font-bold text-purple-600">₹{formatAmount(totals.cardTotal)}</span>
-                   </div>
-                   <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
-                     <span className="text-sm font-medium text-gray-700">UPI:</span>
-                  <span className="text-lg font-bold text-orange-600">₹{formatAmount(totals.upiTotal)}</span>
+            {/* Payment Methods Breakdown */}
+            <div className="bg-white p-3 rounded-lg border border-gray-200">
+              <h4 className="text-xs font-semibold text-gray-900 mb-2">Payment Methods Breakdown</h4>
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span className="text-xs font-medium text-gray-700">Cash:</span>
+                  <span className="text-sm font-bold text-blue-600">₹{formatAmount(totals.cashTotal)}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  <span className="text-xs font-medium text-gray-700">Card:</span>
+                  <span className="text-sm font-bold text-purple-600">₹{formatAmount(totals.cardTotal)}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                  <span className="text-xs font-medium text-gray-700">UPI:</span>
+                  <span className="text-sm font-bold text-orange-600">₹{formatAmount(totals.upiTotal)}</span>
                 </div>
               </div>
             </div>

@@ -428,10 +428,10 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="bg-gray-50 rounded-lg p-6">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="space-y-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
+          <div className="flex justify-center items-center h-48">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
           </div>
         </div>
       </div>
@@ -440,16 +440,16 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
 
   if (!loading && !hasData) {
     return (
-      <div className="space-y-6">
-        <div className="bg-gray-50 rounded-lg p-6">
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="text-gray-400 mb-4">
-              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="space-y-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="text-gray-400 mb-3">
+              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Available</h3>
-            <p className="text-sm text-gray-500 text-center">
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">No Data Available</h3>
+            <p className="text-xs text-gray-600 text-center">
               Receipt summary data is not available for the selected date range.
             </p>
           </div>
@@ -459,72 +459,56 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
   }
 
   return (
-    <div className="space-y-8">
-      {/* Modern Header */}
-      {/* <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-6 border border-gray-200">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-100 rounded-lg">
-            <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold text-gray-900">Receipts Summary</h3>
-            <p className="text-sm text-gray-600">Daily financial receipts and payment analysis</p>
-          </div>
-        </div>
-      </div> */}
-
+    <div className="space-y-4">
       {/* Receipt Summary Cards */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-slate-50 to-gray-50 px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full"></div>
-            <h4 className="text-xl font-bold text-gray-900">Financial Summary</h4>
+        <div 
+          className="px-4 py-3 border-b border-gray-200"
+          style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-6 bg-white/30 rounded-full"></div>
+            <h4 className="text-xs font-semibold text-white">Financial Summary</h4>
           </div>
         </div>
         
-        <div className="p-6">
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="p-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             {/* Total Sales */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 shadow-sm">
+            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-600 uppercase tracking-wide">Total Sales</p>
-                  <p className="text-2xl font-bold text-blue-900 mt-1">₹{formatCurrency(receiptSummaryData.totalSales)}</p>
+                  <p className="text-xs font-medium text-gray-600 mb-1">Total Sales</p>
+                  <p className="text-lg font-bold text-gray-900">₹{formatCurrency(receiptSummaryData.totalSales)}</p>
                 </div>
-                <div className="w-10 h-10 bg-blue-200 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
+                <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                  <span className="text-yellow-600 text-lg font-bold">₹</span>
                 </div>
               </div>
             </div>
 
             {/* Total Discount */}
-            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200 shadow-sm">
+            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-yellow-600 uppercase tracking-wide">Total Discount</p>
-                  <p className="text-2xl font-bold text-yellow-900 mt-1">₹{formatCurrency(receiptSummaryData.totalDiscount)}</p>
+                  <p className="text-xs font-medium text-gray-600 mb-1">Total Discount</p>
+                  <p className="text-lg font-bold text-gray-900">₹{formatCurrency(receiptSummaryData.totalDiscount)}</p>
                 </div>
-                <div className="w-10 h-10 bg-yellow-200 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                  </svg>
+                <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                  <span className="text-yellow-600 text-lg font-bold">₹</span>
                 </div>
               </div>
             </div>
 
             {/* Net Amount */}
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200 shadow-sm">
+            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-green-600 uppercase tracking-wide">Net Amount</p>
-                  <p className="text-2xl font-bold text-green-900 mt-1">₹{formatCurrency(receiptSummaryData.netAmount)}</p>
+                  <p className="text-xs font-medium text-gray-600 mb-1">Net Amount</p>
+                  <p className="text-lg font-bold text-green-600">₹{formatCurrency(receiptSummaryData.netAmount)}</p>
                 </div>
-                <div className="w-10 h-10 bg-green-200 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
@@ -532,14 +516,14 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
             </div>
 
             {/* Total Receipts */}
-            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 rounded-xl border border-indigo-200 shadow-sm">
+            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-indigo-600 uppercase tracking-wide">Total Receipts</p>
-                  <p className="text-2xl font-bold text-indigo-900 mt-1">₹{formatCurrency(receiptSummaryData.totalReceipts)}</p>
+                  <p className="text-xs font-medium text-gray-600 mb-1">Total Receipts</p>
+                  <p className="text-lg font-bold text-gray-900">₹{formatCurrency(receiptSummaryData.totalReceipts)}</p>
                 </div>
-                <div className="w-10 h-10 bg-indigo-200 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
@@ -547,30 +531,30 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
             </div>
           </div>
 
-               {/* Additional Metrics */}
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mt-6">
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+          {/* Additional Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
+            <div className="bg-white p-2 rounded-lg border border-gray-200">
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-600 mb-1">Cash Sales</p>
-                <p className="text-xl font-bold text-gray-900">₹{formatCurrency(receiptSummaryData.cashSales)}</p>
+                <p className="text-xs font-medium text-gray-600 mb-1">Cash Sales</p>
+                <p className="text-sm font-bold text-gray-900">₹{formatCurrency(receiptSummaryData.cashSales)}</p>
               </div>
             </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            <div className="bg-white p-2 rounded-lg border border-gray-200">
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-600 mb-1">Credit Sales</p>
-                <p className="text-xl font-bold text-gray-900">₹{formatCurrency(receiptSummaryData.creditSales)}</p>
+                <p className="text-xs font-medium text-gray-600 mb-1">Credit Sales</p>
+                <p className="text-sm font-bold text-gray-900">₹{formatCurrency(receiptSummaryData.creditSales)}</p>
               </div>
             </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            <div className="bg-white p-2 rounded-lg border border-gray-200">
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-600 mb-1">Due Amount</p>
-                <p className="text-xl font-bold text-gray-900">₹{formatCurrency(receiptSummaryData.due)}</p>
+                <p className="text-xs font-medium text-gray-600 mb-1">Due Amount</p>
+                <p className="text-sm font-bold text-gray-900">₹{formatCurrency(receiptSummaryData.due)}</p>
               </div>
             </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            <div className="bg-white p-2 rounded-lg border border-gray-200">
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-600 mb-1">Net Receipts</p>
-                <p className="text-xl font-bold text-green-600">₹{formatCurrency(receiptSummaryData.netReceipts)}</p>
+                <p className="text-xs font-medium text-gray-600 mb-1">Net Receipts</p>
+                <p className="text-sm font-bold text-green-600">₹{formatCurrency(receiptSummaryData.netReceipts)}</p>
               </div>
             </div>
           </div>
@@ -579,130 +563,130 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
 
       {/* Mode of Payment Analysis */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-slate-50 to-gray-50 px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-full"></div>
-            <h4 className="text-xl font-bold text-gray-900">Payment Methods Analysis</h4>
+        <div 
+          className="px-4 py-3 border-b border-gray-200"
+          style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-6 bg-white/30 rounded-full"></div>
+            <h4 className="text-xs font-semibold text-white">Payment Methods Analysis</h4>
+          </div>
         </div>
-      </div>
 
-        <div className="p-6">
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white rounded-lg border border-gray-200">
-              <thead className="bg-gradient-to-r from-indigo-50 to-blue-50">
+        <div className="p-3">
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white rounded-lg border border-gray-200">
+              <thead 
+                className="border-b border-gray-200"
+                style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
+              >
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment Method</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Cash</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Card</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">UPI</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Total</th>
-              </tr>
-            </thead>
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Payment Method</th>
+                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Cash</th>
+                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Card</th>
+                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">UPI</th>
+                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Total</th>
+                </tr>
+              </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-              {/* Receipt Details Section */}
-              <tr className="bg-blue-50">
-                  <td className="px-6 py-4 text-sm font-bold text-gray-900" colSpan={5}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      Receipt Details
-                    </div>
+                {/* Receipt Details Section */}
+                <tr className="bg-purple-50">
+                  <td className="px-2 py-2 text-xs font-semibold text-gray-900" colSpan={5}>
+                    Receipt Details
                   </td>
-              </tr>
+                </tr>
                 
                 <tr className="hover:bg-gray-50 transition-colors duration-150">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 pl-8">Current Cash Bills</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.receiptForCurrentBills.cash)}</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.receiptForCurrentBills.card)}</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.receiptForCurrentBills.upi)}</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-indigo-600">₹{formatCurrency(modeOfPaymentData.receiptForCurrentBills.total)}</td>
-              </tr>
+                  <td className="px-2 py-2 text-xs font-medium text-gray-900 pl-4">Current Cash Bills</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.receiptForCurrentBills.cash)}</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.receiptForCurrentBills.card)}</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.receiptForCurrentBills.upi)}</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-purple-600">₹{formatCurrency(modeOfPaymentData.receiptForCurrentBills.total)}</td>
+                </tr>
                 
                 <tr className="hover:bg-gray-50 transition-colors duration-150">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 pl-8">Current Credit Bills</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-500">₹0.00</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-500">₹0.00</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-500">₹0.00</td>
-                  <td className="px-6 py-4 text-sm text-center font-semibold text-gray-500">₹0.00</td>
-              </tr>
+                  <td className="px-2 py-2 text-xs font-medium text-gray-900 pl-4">Current Credit Bills</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-500">₹0.00</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-500">₹0.00</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-500">₹0.00</td>
+                  <td className="px-2 py-2 text-xs text-center font-semibold text-gray-500">₹0.00</td>
+                </tr>
                 
                 <tr className="hover:bg-gray-50 transition-colors duration-150">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 pl-8">Past Cash Bills</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.receiptForPastBills.cash)}</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.receiptForPastBills.card)}</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.receiptForPastBills.upi)}</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-indigo-600">₹{formatCurrency(modeOfPaymentData.receiptForPastBills.total)}</td>
-              </tr>
+                  <td className="px-2 py-2 text-xs font-medium text-gray-900 pl-4">Past Cash Bills</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.receiptForPastBills.cash)}</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.receiptForPastBills.card)}</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.receiptForPastBills.upi)}</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-purple-600">₹{formatCurrency(modeOfPaymentData.receiptForPastBills.total)}</td>
+                </tr>
                 
                 <tr className="hover:bg-gray-50 transition-colors duration-150">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 pl-8">Past Credit Bills</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-500">₹0.00</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-500">₹0.00</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-500">₹0.00</td>
-                  <td className="px-6 py-4 text-sm text-center font-semibold text-gray-500">₹0.00</td>
-              </tr>
+                  <td className="px-2 py-2 text-xs font-medium text-gray-900 pl-4">Past Credit Bills</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-500">₹0.00</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-500">₹0.00</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-500">₹0.00</td>
+                  <td className="px-2 py-2 text-xs text-center font-semibold text-gray-500">₹0.00</td>
+                </tr>
                 
                 <tr className="hover:bg-gray-50 transition-colors duration-150">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 pl-8">Advance Receipt</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-500">₹0.00</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-500">₹0.00</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-500">₹0.00</td>
-                  <td className="px-6 py-4 text-sm text-center font-semibold text-gray-500">₹0.00</td>
-              </tr>
+                  <td className="px-2 py-2 text-xs font-medium text-gray-900 pl-4">Advance Receipt</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-500">₹0.00</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-500">₹0.00</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-500">₹0.00</td>
+                  <td className="px-2 py-2 text-xs text-center font-semibold text-gray-500">₹0.00</td>
+                </tr>
                 
-                <tr className="bg-gradient-to-r from-gray-100 to-gray-200 font-bold">
-                  <td className="px-6 py-4 text-sm font-bold text-gray-900 pl-8">Total Receipt</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.totalReceipt.cash)}</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.totalReceipt.card)}</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.totalReceipt.upi)}</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-indigo-600 text-lg">₹{formatCurrency(modeOfPaymentData.totalReceipt.total)}</td>
-              </tr>
+                <tr className="bg-gray-100 font-bold">
+                  <td className="px-2 py-2 text-xs font-bold text-gray-900 pl-4">Total Receipt</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.totalReceipt.cash)}</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.totalReceipt.card)}</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.totalReceipt.upi)}</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-purple-600 text-sm">₹{formatCurrency(modeOfPaymentData.totalReceipt.total)}</td>
+                </tr>
 
-              {/* Empty row for spacing */}
-              <tr>
-                  <td className="px-6 py-2" colSpan={5}></td>
-              </tr>
+                {/* Empty row for spacing */}
+                <tr>
+                  <td className="px-2 py-1" colSpan={5}></td>
+                </tr>
 
-              {/* Payment Details Section */}
-                <tr className="bg-red-50">
-                  <td className="px-6 py-4 text-sm font-bold text-gray-900" colSpan={5}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      Payment Details
-                    </div>
+                {/* Payment Details Section */}
+                <tr className="bg-purple-50">
+                  <td className="px-2 py-2 text-xs font-semibold text-gray-900" colSpan={5}>
+                    Payment Details
                   </td>
-              </tr>
+                </tr>
                 
                 <tr className="hover:bg-gray-50 transition-colors duration-150">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 pl-8">Refund</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.refund.cash)}</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.refund.card)}</td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.refund.upi)}</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-red-600">₹{formatCurrency(modeOfPaymentData.refund.total)}</td>
-              </tr>
+                  <td className="px-2 py-2 text-xs font-medium text-gray-900 pl-4">Refund</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.refund.cash)}</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.refund.card)}</td>
+                  <td className="px-2 py-2 text-xs text-center text-gray-900 font-semibold">₹{formatCurrency(modeOfPaymentData.refund.upi)}</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-red-600">₹{formatCurrency(modeOfPaymentData.refund.total)}</td>
+                </tr>
                 
-                <tr className="bg-gradient-to-r from-gray-100 to-gray-200 font-bold">
-                  <td className="px-6 py-4 text-sm font-bold text-gray-900 pl-8">Total Payment</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.totalPayment.cash)}</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.totalPayment.card)}</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.totalPayment.upi)}</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-red-600 text-lg">₹{formatCurrency(modeOfPaymentData.totalPayment.total)}</td>
-              </tr>
+                <tr className="bg-gray-100 font-bold">
+                  <td className="px-2 py-2 text-xs font-bold text-gray-900 pl-4">Total Payment</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.totalPayment.cash)}</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.totalPayment.card)}</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.totalPayment.upi)}</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-red-600 text-sm">₹{formatCurrency(modeOfPaymentData.totalPayment.total)}</td>
+                </tr>
 
-              {/* Empty row for spacing */}
-              <tr>
-                  <td className="px-6 py-2" colSpan={5}></td>
-              </tr>
+                {/* Empty row for spacing */}
+                <tr>
+                  <td className="px-2 py-1" colSpan={5}></td>
+                </tr>
 
-              {/* Net Amount Row */}
-                <tr className="bg-gradient-to-r from-green-50 to-emerald-50 font-bold border-2 border-green-200">
-                  <td className="px-6 py-4 text-sm font-bold text-gray-900 pl-8">Net Amount</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.netAmount.cash)}</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.netAmount.card)}</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.netAmount.upi)}</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold text-green-600 text-xl">₹{formatCurrency(modeOfPaymentData.netAmount.total)}</td>
-              </tr>
-            </tbody>
-          </table>
+                {/* Net Amount Row */}
+                <tr className="bg-purple-100 font-bold">
+                  <td className="px-2 py-2 text-xs font-bold text-gray-900 pl-4">Net Amount</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.netAmount.cash)}</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.netAmount.card)}</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(modeOfPaymentData.netAmount.upi)}</td>
+                  <td className="px-2 py-2 text-xs text-center font-bold text-green-600 text-sm">₹{formatCurrency(modeOfPaymentData.netAmount.total)}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

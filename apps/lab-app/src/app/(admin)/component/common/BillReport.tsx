@@ -138,6 +138,56 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Format date range for display in header
+  const formatDateRange = () => {
+    if (selectedDate) {
+      const date = new Date(selectedDate);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    }
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const startFormatted = start.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+      const endFormatted = end.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+      return `${startFormatted} - ${endFormatted}`;
+    }
+
+    if (startDate) {
+      const start = new Date(startDate);
+      return `From ${start.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })}`;
+    }
+
+    if (endDate) {
+      const end = new Date(endDate);
+      return `Until ${end.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })}`;
+    }
+
+    return null;
+  };
+
+  const dateRangeDisplay = formatDateRange();
+
   // Transform API data to BillSummaryData format
   const transformApiData = (): BillSummaryData => {
     // Initialize totals
@@ -535,12 +585,12 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
   // Show loading state
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
         <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="space-y-3">
+          <div className="h-4 bg-gray-200 rounded w-1/4 mb-3"></div>
+          <div className="space-y-2">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-4 bg-gray-200 rounded"></div>
+              <div key={i} className="h-3 bg-gray-200 rounded"></div>
             ))}
           </div>
         </div>
@@ -551,11 +601,11 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
   // Show error state
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
         <div className="text-center text-red-600">
-          <FaFileInvoice className="h-12 w-12 mx-auto mb-4 text-red-300" />
-          <p className="text-lg font-medium">Error loading bill data</p>
-          <p className="text-sm">{error}</p>
+          <FaFileInvoice className="h-8 w-8 mx-auto mb-2 text-red-300" />
+          <p className="text-sm font-semibold">Error loading bill data</p>
+          <p className="text-xs">{error}</p>
         </div>
       </div>
     );
@@ -564,11 +614,11 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
   // Show empty state
   if (!billData) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
         <div className="text-center text-gray-500">
-          <FaFileInvoice className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-          <p className="text-lg font-medium">No bill data available</p>
-          <p className="text-sm">Please select a date range to view bill summary</p>
+          <FaFileInvoice className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+          <p className="text-sm font-semibold">No bill data available</p>
+          <p className="text-xs">Please select a date range to view bill summary</p>
         </div>
       </div>
     );
@@ -584,86 +634,97 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      {/* Modern Header */}
-      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-6 border-b border-gray-200">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-100 rounded-lg">
-            <FaFileInvoice className="w-6 h-6 text-indigo-600" />
+      {/* Compact Header with Design System Gradient */}
+      <div 
+        className="px-4 py-3 border-b border-gray-200"
+        style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-white/20 rounded-lg">
+            <FaFileInvoice className="w-3.5 h-3.5 text-white" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-gray-900">Bill Summary</h3>
-            <p className="text-sm text-gray-600">Comprehensive billing analysis and test breakdown</p>
+            <h3 className="text-base font-semibold text-white">Bill Summary</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+              <p className="text-xs text-white/80">
+                Comprehensive billing analysis and test breakdown
+              </p>
+              {dateRangeDisplay && (
+                <>
+                  <span className="hidden sm:inline text-xs text-white/60">•</span>
+                  <p className="text-[11px] font-medium text-white/90">
+                    {dateRangeDisplay}
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Modern Summary Cards */}
-      <div className="p-6 border-b border-gray-200">
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+      {/* Compact Summary Cards - Design System Colors */}
+      <div className="p-3 border-b border-gray-200">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2">
+          <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm font-medium text-blue-600 uppercase tracking-wide">Total</div>
-                <div className="text-2xl font-bold text-blue-900 mt-1">₹{billData.total.toFixed(1)}</div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Total</p>
+                <p className="text-lg font-bold text-gray-900">₹{billData.total.toFixed(1)}</p>
               </div>
-              <div className="w-10 h-10 bg-blue-200 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                </svg>
+              <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <span className="text-yellow-600 text-lg font-bold">₹</span>
               </div>
             </div>
           </div>
           
-          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm font-medium text-yellow-600 uppercase tracking-wide">Discount</div>
-                <div className="text-2xl font-bold text-yellow-900 mt-1">₹{billData.totalDiscount.toFixed(1)}</div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Discount</p>
+                <p className="text-lg font-bold text-gray-900">₹{billData.totalDiscount.toFixed(1)}</p>
               </div>
-              <div className="w-10 h-10 bg-yellow-200 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
+              <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <span className="text-yellow-600 text-lg font-bold">₹</span>
               </div>
             </div>
           </div>
           
-          <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
         <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm font-medium text-green-600 uppercase tracking-wide">Net Amount</div>
-                <div className="text-2xl font-bold text-green-900 mt-1">₹{billData.netAmount.toFixed(1)}</div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Net Amount</p>
+                <p className="text-lg font-bold text-green-600">₹{billData.netAmount.toFixed(1)}</p>
               </div>
-              <div className="w-10 h-10 bg-green-200 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
         </div>
       </div>
 
-          <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm font-medium text-red-600 uppercase tracking-wide">Refund</div>
-                <div className="text-2xl font-bold text-red-900 mt-1">₹{billData.refundAmount.toFixed(1)}</div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Refund</p>
+                <p className="text-lg font-bold text-red-600">₹{billData.refundAmount.toFixed(1)}</p>
               </div>
-              <div className="w-10 h-10 bg-red-200 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m5 14v-5a2 2 0 00-2-2H6a2 2 0 00-2 2v5a2 2 0 002 2h12a2 2 0 002-2z" />
                 </svg>
               </div>
             </div>
           </div>
           
-          <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm font-medium text-gray-600 uppercase tracking-wide">Write Off</div>
-                <div className="text-2xl font-bold text-gray-900 mt-1">₹{billData.totalWriteOff.toFixed(1)}</div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Write Off</p>
+                <p className="text-lg font-bold text-gray-900">₹{billData.totalWriteOff.toFixed(1)}</p>
           </div>
-              <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
           </div>
@@ -673,45 +734,45 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
       </div>
 
       {/* Main Content */}
-      <div className="p-6 space-y-8">
-        {/* Lab Tests Section */}
+      <div className="p-3 space-y-4">
+        {/* Lab Tests Section - Design System Green */}
         <div>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full"></div>
-            <h4 className="text-xl font-bold text-gray-900">Lab Tests Analysis</h4>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1 h-6 bg-green-500 rounded-full"></div>
+            <h4 className="text-sm font-semibold text-gray-900">Lab Tests Analysis</h4>
           </div>
           
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
-              <div className="grid grid-cols-4 gap-4">
-                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide">Category</div>
-                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide">Test Name</div>
-                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide text-right">Amount</div>
-                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide text-right">Count</div>
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+            <div className="bg-green-50 px-3 py-2 border-b border-green-100">
+              <div className="grid grid-cols-4 gap-2">
+                <div className="font-semibold text-gray-900 text-xs uppercase tracking-wide">Category</div>
+                <div className="font-semibold text-gray-900 text-xs uppercase tracking-wide">Test Name</div>
+                <div className="font-semibold text-gray-900 text-xs uppercase tracking-wide text-right">Amount</div>
+                <div className="font-semibold text-gray-900 text-xs uppercase tracking-wide text-right">Count</div>
               </div>
             </div>
             
-            <div className="p-6">
-              <div className="space-y-4">
+            <div className="p-3">
+              <div className="space-y-2">
                 {billData.labTests.map((category, categoryIndex) => (
-                  <div key={categoryIndex} className="space-y-2">
+                  <div key={categoryIndex} className="space-y-1">
                     {category.tests.map((test, testIndex) => (
-                      <div key={`${categoryIndex}-${testIndex}`} className="grid grid-cols-4 gap-4 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors duration-150">
-                        <div className="text-sm text-gray-700 font-medium">
+                      <div key={`${categoryIndex}-${testIndex}`} className="grid grid-cols-4 gap-2 py-2 px-2 rounded-lg hover:bg-gray-50 transition-colors duration-150">
+                        <div className="text-xs text-gray-700 font-medium">
                           {testIndex === 0 ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
                               {category.category}
                             </span>
                           ) : ''}
                         </div>
-                        <div className="text-sm text-gray-700 font-medium">
+                        <div className="text-xs text-gray-700 font-medium">
                           {test.name}
                         </div>
-                        <div className="text-sm text-gray-700 text-right font-semibold">
+                        <div className="text-xs text-gray-700 text-right font-semibold">
                           ₹{test.amount.toFixed(1)}
                         </div>
-                        <div className="text-sm text-gray-700 text-right">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <div className="text-xs text-gray-700 text-right">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                           {test.count}
                           </span>
                         </div>
@@ -719,13 +780,13 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
                     ))}
                     
                     {/* Category Total Row */}
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-                      <div className="grid grid-cols-4 gap-4">
-                        <div className="font-bold text-blue-900 text-sm">Total for {category.category}</div>
-                        <div className="text-blue-900 text-sm">-</div>
-                      <div className="text-right font-bold text-blue-900 text-lg">₹{category.total.amount.toFixed(1)}</div>
-                      <div className="text-right font-bold text-blue-900">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-blue-200 text-blue-900">
+                    <div className="bg-green-50 rounded-lg p-2 border border-green-100">
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="font-bold text-green-900 text-xs">Total for {category.category}</div>
+                        <div className="text-green-900 text-xs">-</div>
+                        <div className="text-right font-bold text-green-900 text-sm">₹{category.total.amount.toFixed(1)}</div>
+                        <div className="text-right font-bold text-green-900">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-200 text-green-900">
                         {category.total.count}
                           </span>
                         </div>
@@ -734,21 +795,21 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
                     
                     {/* Separator */}
                     {categoryIndex < billData.labTests.length - 1 && (
-                      <div className="border-t border-gray-200 my-4"></div>
+                      <div className="border-t border-gray-200 my-2"></div>
                     )}
                   </div>
                 ))}
               </div>
               
               {/* Grand Total */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-4 border border-indigo-200">
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="font-bold text-indigo-900 text-sm">Grand Total</div>
-                    <div className="text-indigo-900 text-sm">-</div>
-                    <div className="text-right text-indigo-900 font-bold text-xl">₹{labTestsGrandTotal.toFixed(1)}</div>
-                    <div className="text-right text-indigo-900 font-bold">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-indigo-200 text-indigo-900">
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="bg-green-50 rounded-lg p-2 border border-green-100">
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="font-bold text-green-900 text-xs">Grand Total</div>
+                    <div className="text-green-900 text-xs">-</div>
+                    <div className="text-right text-green-900 font-bold text-base">₹{labTestsGrandTotal.toFixed(1)}</div>
+                    <div className="text-right text-green-900 font-bold">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-200 text-green-900">
                         {labTestsGrandCount}
                       </span>
                     </div>
@@ -759,37 +820,37 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
           </div>
         </div>
 
-        {/* Doctors Section */}
+        {/* Doctors Section - Design System Purple */}
         <div>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-full"></div>
-            <h4 className="text-xl font-bold text-gray-900">Doctors Analysis</h4>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1 h-6 bg-purple-500 rounded-full"></div>
+            <h4 className="text-sm font-semibold text-gray-900">Doctors Analysis</h4>
           </div>
           
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-200">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide">Doctor Name</div>
-                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide text-center">Test Count</div>
-                <div className="font-semibold text-gray-900 text-sm uppercase tracking-wide text-right">Total Amount</div>
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+            <div className="bg-purple-50 px-3 py-2 border-b border-purple-100">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="font-semibold text-gray-900 text-xs uppercase tracking-wide">Doctor Name</div>
+                <div className="font-semibold text-gray-900 text-xs uppercase tracking-wide text-center">Test Count</div>
+                <div className="font-semibold text-gray-900 text-xs uppercase tracking-wide text-right">Total Amount</div>
               </div>
             </div>
             
-            <div className="p-6">
-              <div className="space-y-2">
+            <div className="p-3">
+              <div className="space-y-1">
                 {billData.doctors.map((doctor, index) => (
-                  <div key={index} className={`grid grid-cols-3 gap-4 py-4 px-4 rounded-lg hover:bg-gray-50 transition-colors duration-150 ${
+                  <div key={index} className={`grid grid-cols-3 gap-2 py-2 px-2 rounded-lg hover:bg-gray-50 transition-colors duration-150 ${
                     index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                   }`}>
-                    <div className="text-sm text-gray-800 font-semibold">
+                    <div className="text-xs text-gray-800 font-semibold">
                       {doctor.name}
                     </div>
-                    <div className="text-sm text-gray-700 text-center">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <div className="text-xs text-gray-700 text-center">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                         {doctor.count} tests
                       </span>
                     </div>
-                    <div className="text-sm text-gray-800 text-right font-bold">
+                    <div className="text-xs text-gray-800 text-right font-bold">
                       ₹{doctor.amount.toFixed(1)}
                     </div>
                   </div>
@@ -797,16 +858,16 @@ const BillReport: React.FC<BillReportProps> = ({ data, rawApiData, startDate, en
               </div>
               
               {/* Doctors Total */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="font-bold text-green-900 text-sm">Total</div>
-                    <div className="text-center text-green-900 font-bold">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-green-200 text-green-900">
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="bg-purple-50 rounded-lg p-2 border border-purple-100">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="font-bold text-purple-900 text-xs">Total</div>
+                    <div className="text-center text-purple-900 font-bold">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-purple-200 text-purple-900">
                         {doctorsCount} tests
                       </span>
                     </div>
-                    <div className="text-right text-green-900 text-xl font-bold">₹{doctorsTotal.toFixed(1)}</div>
+                    <div className="text-right text-purple-900 text-sm font-bold">₹{doctorsTotal.toFixed(1)}</div>
                   </div>
                 </div>
               </div>
