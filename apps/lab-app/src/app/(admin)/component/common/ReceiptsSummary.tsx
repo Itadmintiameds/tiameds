@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getDatewiseTransactionDetails } from '../../../../../services/patientServices';
+import { getDatewiseTransactionDetails, getDatewisePaymentDetails } from '../../../../../services/patientServices';
 import { useLabs } from '../../../../context/LabContext';
 
 // Interface for Transaction Data (same as DayClosingSummary)
@@ -159,6 +159,7 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
     totalPayment: { cash: 0, card: 0, upi: 0, total: 0 },
     netAmount: { cash: 0, card: 0, upi: 0, total: 0 },
   });
+  const [pastBillPaymentRawData, setPastBillPaymentRawData] = useState<TransactionData[]>([]);
 
   // Calculate receipt summary data from API (same logic as DayClosingSummary)
   const calculateReceiptSummary = (data: TransactionData[]): ReceiptSummaryData => {
@@ -256,8 +257,13 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
     };
   };
 
+  // Helper function to check if it's a single date selection
+  const isSingleDaySelection = (start: string | undefined, end: string | undefined): boolean => {
+    return start !== undefined && end !== undefined && start === end;
+  };
+
   // Calculate mode of payment data from API (comprehensive structure)
-  const calculateModeOfPayment = (data: TransactionData[]): ModeOfPaymentData => {
+  const calculateModeOfPayment = (data: TransactionData[], pastBillPaymentData?: TransactionData[]): ModeOfPaymentData => {
     if (!data || data.length === 0) {
       return {
         receiptForCurrentBills: { cash: 0, card: 0, upi: 0, total: 0 },
@@ -272,13 +278,60 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
       };
     }
 
-    // Filter for current bills only (visits with billing date matching selected date)
-    const filteredDate = startDate || new Date().toISOString().split('T')[0];
+    // Helper function to check if billing date is within range
+    const isBillingDateInRange = (billingDate: string): boolean => {
+      if (startDate && endDate) {
+        return billingDate >= startDate && billingDate <= endDate;
+      }
+      if (startDate) {
+        return billingDate >= startDate;
+      }
+      if (endDate) {
+        return billingDate <= endDate;
+      }
+      // If no dates provided, default to today
+      const today = new Date().toISOString().split('T')[0];
+      return billingDate === today;
+    };
+
+    // Helper function to check if billing date is outside range (for past bills)
+    const isBillingDateOutsideRange = (billingDate: string): boolean => {
+      if (startDate && endDate) {
+        return billingDate < startDate || billingDate > endDate;
+      }
+      if (startDate) {
+        return billingDate < startDate;
+      }
+      if (endDate) {
+        return billingDate > endDate;
+      }
+      // If no dates provided, default to today
+      const today = new Date().toISOString().split('T')[0];
+      return billingDate !== today;
+    };
+
+    // Helper function to check if transaction date is within range
+    const isTransactionDateInRange = (transactionDate: string): boolean => {
+      if (startDate && endDate) {
+        return transactionDate >= startDate && transactionDate <= endDate;
+      }
+      if (startDate) {
+        return transactionDate >= startDate;
+      }
+      if (endDate) {
+        return transactionDate <= endDate;
+      }
+      // If no dates provided, default to today
+      const today = new Date().toISOString().split('T')[0];
+      return transactionDate === today;
+    };
+
+    // Filter for current bills (bills with billing date within selected date range)
     const currentBillsData = data.filter(patient => 
-      patient.visit.billing.billingDate === filteredDate
+      isBillingDateInRange(patient.visit.billing.billingDate)
     );
     
-    // Calculate Receipt for Current bills (only current billing date visits with received payments)
+    // Calculate Receipt for Current bills (bills created within date range with received payments)
     const receiptForCurrentBills = { cash: 0, card: 0, upi: 0, total: 0 };
     
     currentBillsData.forEach(patient => {
@@ -301,18 +354,43 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
       });
     });
 
-    // Calculate Receipt for Past bills (bills with past billing date but transactions from today/filtered date)
+    // Calculate Receipt for Past bills
+    // If past bill payment data is provided (from new API), use it; otherwise use existing logic
     const receiptForPastBills = { cash: 0, card: 0, upi: 0, total: 0 };
     
-    data.forEach(patient => {
-      const billingDate = patient.visit.billing.billingDate;
+    if (pastBillPaymentData && pastBillPaymentData.length > 0) {
+      // Use past bill payment data from new API (for single date selection)
+      pastBillPaymentData.forEach(patient => {
       const transactions = patient.visit.billing.transactions || [];
-      
-      // Check if billing date is different from filtered date (past bill) but has transactions from filtered date
-      if (billingDate !== filteredDate) {
         transactions.forEach(transaction => {
-          const transactionDate = transaction.created_at.split('T')[0];
-          if (transactionDate === filteredDate && transaction.received_amount > 0) {
+          if (transaction.received_amount > 0) {
+            const paymentMethod = transaction.payment_method?.toLowerCase() || '';
+            const amount = transaction.received_amount;
+            
+            if (paymentMethod.includes('cash')) {
+              receiptForPastBills.cash += amount;
+            } else if (paymentMethod.includes('card')) {
+              receiptForPastBills.card += amount;
+            } else if (paymentMethod.includes('upi') || paymentMethod.includes('imps')) {
+              receiptForPastBills.upi += amount;
+            }
+            
+            receiptForPastBills.total += amount;
+          }
+        });
+      });
+    } else {
+      // Use existing logic (for date range selection)
+      // Past bills: bills created outside date range but with transactions within date range
+      data.forEach(patient => {
+        const billingDate = patient.visit.billing.billingDate;
+        const transactions = patient.visit.billing.transactions || [];
+        
+        // Check if billing date is outside range (past bill) but has transactions within range
+        if (isBillingDateOutsideRange(billingDate)) {
+          transactions.forEach(transaction => {
+            const transactionDate = transaction.created_at.split('T')[0];
+            if (isTransactionDateInRange(transactionDate) && transaction.received_amount > 0) {
             const paymentMethod = transaction.payment_method?.toLowerCase() || '';
             const amount = transaction.received_amount;
             
@@ -329,6 +407,7 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
         });
       }
     });
+    }
 
     // Set other receipt types to 0 (no data available for these)
     const advanceReceipt = { cash: 0, card: 0, upi: 0, total: 0 };
@@ -341,13 +420,29 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
       total: receiptForCurrentBills.total + receiptForPastBills.total + advanceReceipt.total + otherReceipt.total
     };
     
-    // Calculate Refund (transactions with refund_amount > 0)
+    // Calculate Refund (transactions with refund_amount > 0 within date range)
     const refund = { cash: 0, card: 0, upi: 0, total: 0 };
+    
+    // Helper function to check if transaction date is within range (reuse from above)
+    const isTransactionDateInRangeForRefund = (transactionDate: string): boolean => {
+      if (startDate && endDate) {
+        return transactionDate >= startDate && transactionDate <= endDate;
+      }
+      if (startDate) {
+        return transactionDate >= startDate;
+      }
+      if (endDate) {
+        return transactionDate <= endDate;
+      }
+      const today = new Date().toISOString().split('T')[0];
+      return transactionDate === today;
+    };
     
     data.forEach(patient => {
       const transactions = patient.visit.billing.transactions || [];
       transactions.forEach(transaction => {
-        if (transaction.refund_amount > 0) {
+        const transactionDate = transaction.created_at.split('T')[0];
+        if (transaction.refund_amount > 0 && isTransactionDateInRangeForRefund(transactionDate)) {
           const paymentMethod = transaction.payment_method?.toLowerCase() || '';
           const amount = transaction.refund_amount;
           
@@ -405,7 +500,8 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
         
         const data = Array.isArray(response) ? response : response?.data || [];
         const receiptSummary = calculateReceiptSummary(data);
-        const modeOfPayment = calculateModeOfPayment(data);
+        // Pass past bill payment raw data if available (for single date selection)
+        const modeOfPayment = calculateModeOfPayment(data, pastBillPaymentRawData);
         
         setReceiptSummaryData(receiptSummary);
         setModeOfPaymentData(modeOfPayment);
@@ -418,6 +514,37 @@ const ReceiptsSummary: React.FC<ReceiptsSummaryProps> = ({
     };
 
     fetchData();
+  }, [currentLab?.id, startDate, endDate, pastBillPaymentRawData]);
+
+  // Fetch past bill payment details (only for single date selection)
+  useEffect(() => {
+    const fetchPastBillPayments = async () => {
+      // Only fetch when it's a single date selection (startDate === endDate)
+      if (!currentLab?.id || !startDate || !endDate || !isSingleDaySelection(startDate, endDate)) {
+        // Reset state when not a single date
+        setPastBillPaymentRawData([]);
+        return;
+      }
+
+      try {
+        const response = await getDatewisePaymentDetails(
+          currentLab.id,
+          startDate,
+          endDate
+        );
+
+        const data = Array.isArray(response) ? response : response?.data || [];
+        
+        // Store raw data for mode of payment calculation
+        setPastBillPaymentRawData(data);
+      } catch (error) {
+        console.error('Error fetching past bill payment details:', error);
+        // Reset to empty on error
+        setPastBillPaymentRawData([]);
+      }
+    };
+
+    fetchPastBillPayments();
   }, [currentLab?.id, startDate, endDate]);
 
   // Check if we have any data to display (same logic as DayClosingSummary)

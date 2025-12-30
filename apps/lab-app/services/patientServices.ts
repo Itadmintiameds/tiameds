@@ -216,3 +216,21 @@ export const getDatewiseTransactionDetails = async (labId: number, startDate: st
         throw new Error('An error occurred while fetching datewise transaction details.');
     }
 }
+
+// New API endpoint for datewise payment details (past bill payments)
+export const getDatewisePaymentDetails = async (labId: number, startDate: string, endDate: string) => {
+    try {
+        
+        const response = await api.get(`/lab/statistics/${labId}/datewise-paymentdetails`, {
+            params: {
+                startDate,
+                endDate
+            }
+        });
+     
+        return response.data;
+    } catch (error: unknown) {
+       
+        throw new Error('An error occurred while fetching datewise payment details.');
+    }
+}

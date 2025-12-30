@@ -318,9 +318,10 @@ const AmountReceivedTable: React.FC<AmountReceivedTableProps> = ({
         });
       }
       acc.due += minDue;
+      acc.total += billing.totalAmount || 0;
       
       return acc;
-    }, { discount: 0, due: 0 });
+    }, { discount: 0, due: 0, total: 0 });
     
     // Then, calculate received amounts using ALL transactions from ALL patients
     const receivedTotals = rawApiData.reduce((acc, patient) => {
@@ -556,7 +557,19 @@ const AmountReceivedTable: React.FC<AmountReceivedTableProps> = ({
         {data.length > 0 && (
           <div className="border-t border-gray-200 p-3">
             {/* Financial Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-3">
+              <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-1">Total</p>
+                    <p className="text-lg font-bold text-gray-900">₹{formatAmount(totals.total)}</p>
+                  </div>
+                  <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <span className="text-yellow-600 text-lg font-bold">₹</span>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
                 <div className="flex items-center justify-between">
                   <div>

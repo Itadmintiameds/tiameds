@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getDatewiseTransactionDetails } from '@/../services/patientServices';
+import { getDatewiseTransactionDetails, getDatewisePaymentDetails } from '@/../services/patientServices';
 import { useLabs } from '@/context/LabContext';
 
 
@@ -303,7 +303,6 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
   });
 
   const [calculatedCurrentBillDetails, setCalculatedCurrentBillDetails] = useState<BillDetail[]>([]);
-  const [calculatedPastBillDetails, setCalculatedPastBillDetails] = useState<BillDetail[]>([]);
   const [calculatedCurrentBillTotals, setCalculatedCurrentBillTotals] = useState<BillDetailsTotals>({
     amount: 0,
     discount: 0,
@@ -314,7 +313,9 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
     advance: 0,
     due: 0
   });
-  const [calculatedPastBillTotals, setCalculatedPastBillTotals] = useState<BillDetailsTotals>({
+  // State for past bill payment details from new API
+  const [pastBillPaymentDetails, setPastBillPaymentDetails] = useState<BillDetail[]>([]);
+  const [pastBillPaymentTotals, setPastBillPaymentTotals] = useState<BillDetailsTotals>({
     amount: 0,
     discount: 0,
     netAmount: 0,
@@ -324,6 +325,8 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
     advance: 0,
     due: 0
   });
+  const [pastBillPaymentRawData, setPastBillPaymentRawData] = useState<TransactionData[]>([]);
+  const [loadingPastPayments, setLoadingPastPayments] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const formatCurrency = (amount: number): string => {
@@ -386,31 +389,36 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
 
   // Function to calculate bill counts from API data
   const calculateBillCounts = (data: TransactionData[]): BillCountData => {
+    // Helper function to check if date is within range
+    const isDateInRange = (date: string): boolean => {
+      if (startDate && endDate) {
+        return date >= startDate && date <= endDate;
+      }
+      if (startDate) {
+        return date >= startDate;
+      }
+      if (endDate) {
+        return date <= endDate;
+      }
+      // If no dates provided, default to today
+      const today = new Date().toISOString().split('T')[0];
+      return date === today;
+    };
+
     // Filter data by billingDate to only include bills from the selected date range
     const filteredBills = data.filter(item => {
       const billingDate = item.visit.billing.billingDate;
-      
-      // If we have startDate and endDate props, use them for filtering
-      if (startDate && endDate) {
-        return billingDate >= startDate && billingDate <= endDate;
-      }
-      
-      // Otherwise, default to today's bills only
-      const today = new Date().toISOString().split('T')[0];
-      return billingDate === today;
+      return isDateInRange(billingDate);
     });
 
     // Get unique visit IDs for the filtered bills only
     const uniqueVisitIds = new Set(filteredBills.map(item => item.visit.visitId));
     const totalBills = uniqueVisitIds.size;
 
-    // Count cash bills - bills with received amount > 0 from selected date's billing date
+    // Count cash bills - bills with received amount > 0 from selected date range
     const cashBills = filteredBills.filter(item => {
       const receivedAmount = item.visit.billing.received_amount || 0;
-      const billingDate = item.visit.billing.billingDate;
-      
-      // Check if has some amount collected AND is selected date's bill
-      return receivedAmount > 0 && billingDate === (startDate || new Date().toISOString().split('T')[0]);
+      return receivedAmount > 0;
     }).length;
 
     // Credit bills are static 0 for now
@@ -425,12 +433,42 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
 
   // Function to calculate amount billed from API data
   const calculateAmountBilled = (data: TransactionData[]): AmountBilledData => {
-    // Use the selected date range instead of hardcoded "today"
-    const selectedDate = startDate || new Date().toISOString().split('T')[0];
+    // Helper function to check if billing date is within range
+    const isBillingDateInRange = (billingDate: string): boolean => {
+      if (startDate && endDate) {
+        return billingDate >= startDate && billingDate <= endDate;
+      }
+      if (startDate) {
+        return billingDate >= startDate;
+      }
+      if (endDate) {
+        return billingDate <= endDate;
+      }
+      // If no dates provided, default to today
+      const today = new Date().toISOString().split('T')[0];
+      return billingDate === today;
+    };
+
+    // Helper function to check if billing date is outside range (for past bills)
+    const isBillingDateOutsideRange = (billingDate: string): boolean => {
+      if (startDate && endDate) {
+        return billingDate < startDate || billingDate > endDate;
+      }
+      if (startDate) {
+        return billingDate < startDate;
+      }
+      if (endDate) {
+        return billingDate > endDate;
+      }
+      // If no dates provided, default to today
+      const today = new Date().toISOString().split('T')[0];
+      return billingDate !== today;
+    };
     
+    // Filter bills by billingDate within the selected date range
     const selectedDateBills = data.filter(item => {
       const billingDate = item.visit.billing.billingDate;
-      return billingDate === selectedDate;
+      return isBillingDateInRange(billingDate);
     });
 
     // Get unique visits by visitId to avoid counting duplicates
@@ -449,7 +487,7 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
     const discount = uniqueBills.reduce((sum, item) => sum + (item.visit.billing.discount || 0), 0);
     const netSales = uniqueBills.reduce((sum, item) => sum + (item.visit.billing.netAmount || 0), 0);
     
-    // Calculate cash bills amount (total received amount from all transactions of selected date visits)
+    // Calculate cash bills amount (total received amount from all transactions of selected date range bills)
     const currentDateCashBills = selectedDateBills.reduce((sum, item) => {
       const transactions = item.visit.billing.transactions || [];
       const totalReceived = transactions.reduce((transactionSum, transaction) => {
@@ -458,10 +496,10 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
       return sum + totalReceived;
     }, 0);
 
-    // Calculate previous bills amount (visits that are NOT from selected date)
+    // Calculate previous bills amount (bills that are NOT from selected date range)
     const previousBillsAmount = data.filter(item => {
-      const visitDate = item.visit.visitDate;
-      return visitDate !== selectedDate;
+      const billingDate = item.visit.billing.billingDate;
+      return isBillingDateOutsideRange(billingDate);
     }).reduce((sum, item) => {
       const transactions = item.visit.billing.transactions || [];
       const totalReceived = transactions.reduce((transactionSum, transaction) => {
@@ -491,11 +529,24 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
 
   // Function to calculate bill due amount from API data (using same logic as AmountReceivedTable)
   const calculateBillDueAmount = (data: TransactionData[]): BillDueAmountData => {
-    // Use the selected date range instead of hardcoded "today"
-    const selectedDate = startDate || new Date().toISOString().split('T')[0];
+    // Helper function to check if billing date is within range
+    const isBillingDateInRange = (billingDate: string): boolean => {
+      if (startDate && endDate) {
+        return billingDate >= startDate && billingDate <= endDate;
+      }
+      if (startDate) {
+        return billingDate >= startDate;
+      }
+      if (endDate) {
+        return billingDate <= endDate;
+      }
+      // If no dates provided, default to today
+      const today = new Date().toISOString().split('T')[0];
+      return billingDate === today;
+    };
     
-    // Filter for selected date visits (same as Current Bill Details)
-    const selectedDateVisits = data.filter(item => item.visit.visitDate === selectedDate);
+    // Filter for selected date range bills (using billingDate for consistency)
+    const selectedDateVisits = data.filter(item => isBillingDateInRange(item.visit.billing.billingDate));
     
     // Deduplicate by visitId to avoid counting same visit multiple times
     const uniqueVisits = new Map();
@@ -564,15 +615,41 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
   };
 
   // Function to calculate mode of payment data from API data
-  const calculateModeOfPayment = (data: TransactionData[]): ModeOfPaymentData => {
-    // Use the selected date range instead of hardcoded "today"
-    const selectedDate = startDate || new Date().toISOString().split('T')[0];
+  const calculateModeOfPayment = (data: TransactionData[], pastBillPaymentData?: TransactionData[]): ModeOfPaymentData => {
+    // Helper function to check if billing date is within range
+    const isBillingDateInRange = (billingDate: string): boolean => {
+      if (startDate && endDate) {
+        return billingDate >= startDate && billingDate <= endDate;
+      }
+      if (startDate) {
+        return billingDate >= startDate;
+      }
+      if (endDate) {
+        return billingDate <= endDate;
+      }
+      // If no dates provided, default to today
+      const today = new Date().toISOString().split('T')[0];
+      return billingDate === today;
+    };
+
+    // Helper function to check if billing date is outside range (for past bills)
+    const isBillingDateOutsideRange = (billingDate: string): boolean => {
+      if (startDate && endDate) {
+        return billingDate < startDate || billingDate > endDate;
+      }
+      if (startDate) {
+        return billingDate < startDate;
+      }
+      if (endDate) {
+        return billingDate > endDate;
+      }
+      // If no dates provided, default to today
+      const today = new Date().toISOString().split('T')[0];
+      return billingDate !== today;
+    };
     
-    // Filter data for selected date visits only
-    const selectedDateVisits = data.filter(item => {
-      const visitDate = item.visit.visitDate;
-      return visitDate === selectedDate;
-    });
+    // Filter data for selected date range bills only (using billingDate for consistency)
+    const selectedDateVisits = data.filter(item => isBillingDateInRange(item.visit.billing.billingDate));
 
     // Calculate Receipt for Current bills (selected date visits with received payments)
     const receiptForCurrentBills = { cash: 0, card: 0, cheque: 0, imps: 0, wallet: 0, total: 0 };
@@ -601,37 +678,63 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
       });
     });
 
-    // Calculate Receipt for Past bills (visits that are NOT from selected date)
-    const pastVisits = data.filter(item => {
-      const visitDate = item.visit.visitDate;
-      return visitDate !== selectedDate;
-    });
-
+    // Calculate Receipt for Past bills
+    // If past bill payment data is provided (from new API), use it; otherwise use existing logic
     const receiptForPastBills = { cash: 0, card: 0, cheque: 0, imps: 0, wallet: 0, total: 0 };
     
-    pastVisits.forEach(patient => {
-      const transactions = patient.visit.billing.transactions || [];
-      transactions.forEach(transaction => {
-        if (transaction.received_amount > 0) {
-          const paymentMethod = transaction.payment_method?.toLowerCase() || '';
-          const amount = transaction.received_amount;
-          
-          if (paymentMethod.includes('cash')) {
-            receiptForPastBills.cash += amount;
-          } else if (paymentMethod.includes('card')) {
-            receiptForPastBills.card += amount;
-          } else if (paymentMethod.includes('upi') || paymentMethod.includes('imps')) {
-            receiptForPastBills.imps += amount;
-          } else if (paymentMethod.includes('cheque')) {
-            receiptForPastBills.cheque += amount;
-          } else if (paymentMethod.includes('wallet')) {
-            receiptForPastBills.wallet += amount;
+    if (pastBillPaymentData && pastBillPaymentData.length > 0) {
+      // Use past bill payment data from new API (for single date selection)
+      pastBillPaymentData.forEach(patient => {
+        const transactions = patient.visit.billing.transactions || [];
+        transactions.forEach(transaction => {
+          if (transaction.received_amount > 0) {
+            const paymentMethod = transaction.payment_method?.toLowerCase() || '';
+            const amount = transaction.received_amount;
+            
+            if (paymentMethod.includes('cash')) {
+              receiptForPastBills.cash += amount;
+            } else if (paymentMethod.includes('card')) {
+              receiptForPastBills.card += amount;
+            } else if (paymentMethod.includes('upi') || paymentMethod.includes('imps')) {
+              receiptForPastBills.imps += amount;
+            } else if (paymentMethod.includes('cheque')) {
+              receiptForPastBills.cheque += amount;
+            } else if (paymentMethod.includes('wallet')) {
+              receiptForPastBills.wallet += amount;
+            }
+            
+            receiptForPastBills.total += amount;
           }
-          
-          receiptForPastBills.total += amount;
-        }
+        });
       });
-    });
+    } else {
+      // Use existing logic (for date range selection)
+      const pastVisits = data.filter(item => isBillingDateOutsideRange(item.visit.billing.billingDate));
+      
+      pastVisits.forEach(patient => {
+        const transactions = patient.visit.billing.transactions || [];
+        transactions.forEach(transaction => {
+          if (transaction.received_amount > 0) {
+            const paymentMethod = transaction.payment_method?.toLowerCase() || '';
+            const amount = transaction.received_amount;
+            
+            if (paymentMethod.includes('cash')) {
+              receiptForPastBills.cash += amount;
+            } else if (paymentMethod.includes('card')) {
+              receiptForPastBills.card += amount;
+            } else if (paymentMethod.includes('upi') || paymentMethod.includes('imps')) {
+              receiptForPastBills.imps += amount;
+            } else if (paymentMethod.includes('cheque')) {
+              receiptForPastBills.cheque += amount;
+            } else if (paymentMethod.includes('wallet')) {
+              receiptForPastBills.wallet += amount;
+            }
+            
+            receiptForPastBills.total += amount;
+          }
+        });
+      });
+    }
     const otherReceipt = { cash: 0, card: 0, cheque: 0, imps: 0, wallet: 0, total: 0 };
     const advanceReceipt = { cash: 0, card: 0, cheque: 0, imps: 0, wallet: 0, total: 0 };
     const totalReceipt = {
@@ -702,11 +805,27 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
   };
 
   const calculateCurrentBillDetails = (data: TransactionData[]): { details: BillDetail[], totals: BillDetailsTotals } => {
-    // Use the selected date range instead of hardcoded "today"
+    // Helper function to check if billing date is within range
+    const isBillingDateInRange = (billingDate: string): boolean => {
+      if (startDate && endDate) {
+        return billingDate >= startDate && billingDate <= endDate;
+      }
+      if (startDate) {
+        return billingDate >= startDate;
+      }
+      if (endDate) {
+        return billingDate <= endDate;
+      }
+      // If no dates provided, default to today
+      const today = new Date().toISOString().split('T')[0];
+      return billingDate === today;
+    };
+
+    // Use startDate for fallback date formatting (if needed)
     const selectedDate = startDate || new Date().toISOString().split('T')[0];
     
-    // Filter for selected date visits
-    const selectedDateVisits = data.filter(item => item.visit.visitDate === selectedDate);
+    // Filter for selected date range bills (using billingDate for consistency)
+    const selectedDateVisits = data.filter(item => isBillingDateInRange(item.visit.billing.billingDate));
     
     // First, calculate the minimum due amount for each visit
     const visitMinDue = new Map();
@@ -841,27 +960,17 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
     return { details, totals };
   };
 
-  const calculatePastBillDetails = (data: TransactionData[]): { details: BillDetail[], totals: BillDetailsTotals } => {
-    // Use the selected date range instead of hardcoded "today"
+  // Function to calculate past bill payment details (no date filtering - API already filtered)
+  const calculatePastBillPaymentDetails = (data: TransactionData[]): { details: BillDetail[], totals: BillDetailsTotals } => {
+    // Use startDate for fallback date formatting (if needed)
     const selectedDate = startDate || new Date().toISOString().split('T')[0];
     
-    // Filter for past visits (not selected date)
-    const pastVisits = data.filter(item => item.visit.visitDate !== selectedDate);
+    // Process ALL data from API (no filtering by billingDate - API already returns correct bills)
+    const allVisits = data;
     
-    // Deduplicate by visitId to avoid counting same visit multiple times
-    const uniqueVisits = new Map();
-    pastVisits.forEach(item => {
-      const visitId = item.visit.visitId;
-      if (!uniqueVisits.has(visitId)) {
-        uniqueVisits.set(visitId, item);
-      }
-    });
-    
-    const uniquePastVisits = Array.from(uniqueVisits.values());
-    
-    // For due calculation, use the minimum due amount for each visit (same logic as Current Bill Details)
+    // First, calculate the minimum due amount for each visit
     const visitMinDue = new Map();
-    pastVisits.forEach(item => {
+    allVisits.forEach(item => {
       const visitId = item.visit.visitId;
       const currentDue = item.visit.billing.due_amount || 0;
       
@@ -870,50 +979,123 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
       }
     });
     
-    // Convert to BillDetail format
-    const details: BillDetail[] = uniquePastVisits.map((item, index) => {
+    // Create details for each transaction, not just unique visits
+    const details: BillDetail[] = [];
+    let slNo = 1;
+    
+    allVisits.forEach((item) => {
       const billing = item.visit.billing;
       const patient = item;
-      const visitId = item.visit.visitId;
       
-      // Calculate total refund for this visit
-      const totalRefund = (billing.transactions || []).reduce((sum: number, transaction: BillingTransaction) => sum + (transaction.refund_amount || 0), 0);
-      
-      // Calculate total received amount for this visit
-      const totalReceived = (billing.transactions || []).reduce((sum: number, transaction: BillingTransaction) => sum + (transaction.received_amount || 0), 0);
-      
-      return {
-        slNo: index + 1,
-        billNo: billing.billingId?.toString() || `BILL-${billing.id}`,
-        billName: `${patient.firstName} ${patient.lastName}`.trim(),
-        regLabNo: currentLab?.id?.toString() || 'Lab ID',
-        refCenter: patient.doctor?.name || 'N/A',
-        billedAt: formatDate(billing.billingDate || item.visit.visitDate),
-        visitType: item.visit.visitType || 'N/A',
-        type: billing.paymentMethod || 'Cash',
-        amount: billing.totalAmount || 0,
-        discount: billing.discount || 0,
-        netAmount: billing.netAmount || 0,
-        refund: totalRefund,
-        writeoff: 0, // Static for now
-        received: totalReceived,
-        advance: 0, // Static for now
-        due: visitMinDue.get(visitId) || 0 // Use minimum due for this visit
-      };
+      // If there are transactions, create a row for each transaction
+      if (billing.transactions && billing.transactions.length > 0) {
+        let runningDue = billing.netAmount || 0; // Start with net amount as initial due
+        
+        // Sort transactions by created_at to ensure correct order
+        const sortedTransactions = [...billing.transactions].sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        
+        sortedTransactions.forEach((transaction: BillingTransaction, transactionIndex: number) => {
+          // Use the due_amount from the transaction if available, otherwise calculate
+          let dueAmount;
+          if (transaction.due_amount !== undefined && transaction.due_amount !== null) {
+            dueAmount = transaction.due_amount;
+          } else {
+            // Calculate due amount after this transaction
+            const receivedAmount = transaction.received_amount || 0;
+            const refundAmount = transaction.refund_amount || 0;
+            const netTransaction = receivedAmount - refundAmount;
+            runningDue = Math.max(0, runningDue - netTransaction);
+            dueAmount = runningDue;
+          }
+          
+          details.push({
+            slNo: slNo++,
+            billNo: billing.billingId?.toString() || `BILL-${billing.billingId}`,
+            billName: `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Unknown Patient',
+            regLabNo: currentLab?.id?.toString() || 'Lab ID',
+            refCenter: patient.doctor?.name || 'N/A',
+            billedAt: formatDate(billing.billingDate || selectedDate),
+            visitType: item.visit.visitType || 'N/A',
+            type: transaction.payment_method || billing.paymentMethod || 'Cash',
+            amount: transactionIndex === 0 ? (billing.totalAmount || 0) : 0, // Only show amount for first transaction
+            discount: transactionIndex === 0 ? (billing.discount || 0) : 0, // Only show discount for first transaction
+            netAmount: transactionIndex === 0 ? (billing.netAmount || 0) : 0, // Only show net amount for first transaction
+            refund: transaction.refund_amount || 0,
+            writeoff: 0, // Static for now
+            received: transaction.received_amount || 0,
+            advance: 0, // Static for now
+            due: dueAmount // Use transaction due_amount or calculated due
+          });
+        });
+      } else {
+        // If no transactions, create one row for the visit
+        details.push({
+          slNo: slNo++,
+          billNo: billing.billingId?.toString() || `BILL-${billing.billingId}`,
+          billName: `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Unknown Patient',
+          regLabNo: currentLab?.id?.toString() || 'Lab ID',
+          refCenter: patient.doctor?.name || 'N/A',
+          billedAt: formatDate(billing.billingDate || selectedDate),
+          visitType: item.visit.visitType || 'N/A',
+          type: billing.paymentMethod || 'Cash',
+          amount: billing.totalAmount || 0,
+          discount: billing.discount || 0,
+          netAmount: billing.netAmount || 0,
+          refund: 0,
+          writeoff: 0, // Static for now
+          received: 0,
+          advance: 0, // Static for now
+          due: billing.due_amount || 0
+        });
+      }
     });
     
-    // Calculate totals
+    // Calculate totals - for amount, discount, netAmount, and due, we need to deduplicate by visitId
+    // since these values are per visit, not per transaction
+    const uniqueVisits = new Map();
+    allVisits.forEach(item => {
+      const visitId = item.visit.visitId;
+      if (!uniqueVisits.has(visitId)) {
+        uniqueVisits.set(visitId, item);
+      }
+    });
+    
+    const uniqueAllVisits = Array.from(uniqueVisits.values());
+    
+    // Calculate final due amount for each visit (minimum due amount)
+    const visitFinalDue = new Map();
+    allVisits.forEach(item => {
+      const visitId = item.visit.visitId;
+      const billing = item.visit.billing;
+      
+      if (billing.transactions && billing.transactions.length > 0) {
+        // Find the minimum due amount from all transactions
+        let minDue = billing.netAmount || 0;
+        billing.transactions.forEach((transaction: BillingTransaction) => {
+          if (transaction.due_amount !== undefined && transaction.due_amount !== null) {
+            minDue = Math.min(minDue, transaction.due_amount);
+          }
+        });
+        visitFinalDue.set(visitId, minDue);
+      } else {
+        visitFinalDue.set(visitId, billing.due_amount || 0);
+      }
+    });
+    
     const totals: BillDetailsTotals = {
-      amount: details.reduce((sum, item) => sum + item.amount, 0),
-      discount: details.reduce((sum, item) => sum + item.discount, 0),
-      netAmount: details.reduce((sum, item) => sum + item.netAmount, 0),
+      // These are per visit (deduplicated)
+      amount: uniqueAllVisits.reduce((sum, item) => sum + (item.visit.billing.totalAmount || 0), 0),
+      discount: uniqueAllVisits.reduce((sum, item) => sum + (item.visit.billing.discount || 0), 0),
+      netAmount: uniqueAllVisits.reduce((sum, item) => sum + (item.visit.billing.netAmount || 0), 0),
+      due: Array.from(visitFinalDue.values()).reduce((sum, due) => sum + due, 0),
+      // These are per transaction (sum all transactions)
       refund: details.reduce((sum, item) => sum + item.refund, 0),
       writeoff: details.reduce((sum, item) => sum + item.writeoff, 0),
       received: details.reduce((sum, item) => sum + item.received, 0),
-      advance: details.reduce((sum, item) => sum + item.advance, 0),
-      due: Array.from(visitMinDue.values()).reduce((sum, due) => sum + due, 0) // Use minimum due amounts
+      advance: details.reduce((sum, item) => sum + item.advance, 0)
     };
-    
     
     return { details, totals };
   };
@@ -935,9 +1117,9 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
         const billCounts = calculateBillCounts(data);
         const amountBilled = calculateAmountBilled(data);
         const billDueAmount = calculateBillDueAmount(data);
-        const modeOfPayment = calculateModeOfPayment(data);
+        // Pass past bill payment raw data if available (for single date selection)
+        const modeOfPayment = calculateModeOfPayment(data, pastBillPaymentRawData);
         const currentBillDetails = calculateCurrentBillDetails(data);
-        const pastBillDetails = calculatePastBillDetails(data);
         
         setCalculatedBillCount(billCounts);
         setCalculatedAmountBilled(amountBilled);
@@ -945,8 +1127,6 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
         setCalculatedModeOfPayment(modeOfPayment);
         setCalculatedCurrentBillDetails(currentBillDetails.details);
         setCalculatedCurrentBillTotals(currentBillDetails.totals);
-        setCalculatedPastBillDetails(pastBillDetails.details);
-        setCalculatedPastBillTotals(pastBillDetails.totals);
       } catch (error) {
         console.error('Error fetching data:', error);
         // Keep default values on error
@@ -956,6 +1136,69 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
     };
 
     fetchData();
+  }, [currentLab?.id, startDate, endDate, pastBillPaymentRawData]);
+
+  // Fetch past bill payment details (only for single date selection)
+  useEffect(() => {
+    const fetchPastBillPayments = async () => {
+      // Only fetch when it's a single date selection (startDate === endDate)
+      if (!currentLab?.id || !startDate || !endDate || startDate !== endDate) {
+        // Reset state when not a single date
+        setPastBillPaymentDetails([]);
+        setPastBillPaymentRawData([]);
+        setPastBillPaymentTotals({
+          amount: 0,
+          discount: 0,
+          netAmount: 0,
+          refund: 0,
+          writeoff: 0,
+          received: 0,
+          advance: 0,
+          due: 0
+        });
+        return;
+      }
+
+      try {
+        setLoadingPastPayments(true);
+        const response = await getDatewisePaymentDetails(
+          currentLab.id,
+          startDate,
+          endDate
+        );
+
+        const data = Array.isArray(response) ? response : response?.data || [];
+        
+        // Store raw data for mode of payment calculation
+        setPastBillPaymentRawData(data);
+        
+        // Use calculatePastBillPaymentDetails to transform the data (no date filtering)
+        // API already returns bills with payments made on the selected date
+        const pastBillPaymentDetailsData = calculatePastBillPaymentDetails(data);
+        
+        setPastBillPaymentDetails(pastBillPaymentDetailsData.details);
+        setPastBillPaymentTotals(pastBillPaymentDetailsData.totals);
+      } catch (error) {
+        console.error('Error fetching past bill payment details:', error);
+        // Reset to empty on error
+        setPastBillPaymentDetails([]);
+        setPastBillPaymentRawData([]);
+        setPastBillPaymentTotals({
+          amount: 0,
+          discount: 0,
+          netAmount: 0,
+          refund: 0,
+          writeoff: 0,
+          received: 0,
+          advance: 0,
+          due: 0
+        });
+      } finally {
+        setLoadingPastPayments(false);
+      }
+    };
+
+    fetchPastBillPayments();
   }, [currentLab?.id, startDate, endDate]);
 
   // Use calculated data only - no fallback to static props
@@ -965,15 +1208,12 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
   const finalModeOfPaymentData = calculatedModeOfPayment;
   const finalCurrentBillDetails = calculatedCurrentBillDetails;
   const finalCurrentBillTotals = calculatedCurrentBillTotals;
-  const finalPastBillDetails = calculatedPastBillDetails;
-  const finalPastBillTotals = calculatedPastBillTotals;
 
   // Check if we have any data to display
   const hasData = finalBillCountData.totalBills > 0 || 
                   finalAmountBilledData.totalSales > 0 || 
                   finalBillDueAmountData.totalBillDue > 0 ||
-                  finalCurrentBillDetails.length > 0 ||
-                  finalPastBillDetails.length > 0;
+                  finalCurrentBillDetails.length > 0;
 
   if (!loading && !hasData) {
     return (
@@ -1284,9 +1524,9 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
         </div>
 
 
-        {/* Current Bill Details Section */}
+        {/* Bill Details Section */}
         <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-100">
-          <h3 className="text-xs font-semibold text-gray-900 mb-2">Current Bill Details</h3>
+          <h3 className="text-xs font-semibold text-gray-900 mb-2">Bill Details</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full bg-white rounded-lg border border-gray-200">
               <thead 
@@ -1357,78 +1597,90 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
           </div>
         </div>
 
-        {/* Past Bill Details Section */}
-        <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-100">
-          <h3 className="text-xs font-semibold text-gray-900 mb-2">Past Bill Details</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white rounded-lg border border-gray-200">
-              <thead 
-                className="border-b border-gray-200"
-                style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
-              >
-                <tr>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Sl no.</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Bill No.</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Bill name</th>
-                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Visit Type</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Reg/Lab no</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Ref by</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Billed at</th>
-                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Type</th>
-                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Amount</th>
-                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Discount</th>
-                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Net Amount</th>
-                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Refund</th>
-                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Writeoff</th>
-                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Received</th>
-                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Advance</th>
-                  <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Due</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {finalPastBillDetails.length > 0 ? (
-                  finalPastBillDetails.map((bill, index) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                      <td className="px-2 py-2 text-xs text-gray-900">{bill.slNo}</td>
-                      <td className="px-2 py-2 text-xs text-gray-900">{bill.billNo}</td>
-                      <td className="px-2 py-2 text-xs text-gray-900">{bill.billName}</td>
-                      <td className="px-2 py-2 text-xs text-center text-gray-900">{bill.visitType}</td>
-                      <td className="px-2 py-2 text-xs text-gray-900">{bill.regLabNo}</td>
-                      <td className="px-2 py-2 text-xs text-gray-900">{bill.refCenter}</td>
-                      <td className="px-2 py-2 text-xs text-gray-900">{bill.billedAt}</td>
-                      <td className="px-2 py-2 text-xs text-center text-gray-900">{bill.type}</td>
-                      <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.amount)}</td>
-                      <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.discount)}</td>
-                      <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.netAmount)}</td>
-                      <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.refund)}</td>
-                      <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.writeoff)}</td>
-                      <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.received)}</td>
-                      <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.advance)}</td>
-                      <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.due)}</td>
+        {/* Past Bill Details Section - Only shown for single date selection */}
+        {startDate === endDate && (
+          <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-100">
+            <h3 className="text-xs font-semibold text-gray-900 mb-2">Past Bill Details</h3>
+            <div className="overflow-x-auto">
+              {loadingPastPayments ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    <span className="text-xs text-gray-600 font-medium">Loading past bill payments...</span>
+                  </div>
+                </div>
+              ) : (
+                <table className="min-w-full bg-white rounded-lg border border-gray-200">
+                  <thead 
+                    className="border-b border-gray-200"
+                    style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
+                  >
+                    <tr>
+                      <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Sl no.</th>
+                      <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Bill No.</th>
+                      <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Bill name</th>
+                      <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Visit Type</th>
+                      <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Reg/Lab no</th>
+                      <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Ref by</th>
+                      <th className="px-2 py-2 text-left text-xs font-semibold text-white uppercase tracking-wider">Billed at</th>
+                      <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Type</th>
+                      <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Amount</th>
+                      <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Discount</th>
+                      <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Net Amount</th>
+                      <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Refund</th>
+                      <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Writeoff</th>
+                      <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Received</th>
+                      <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Advance</th>
+                      <th className="px-2 py-2 text-center text-xs font-semibold text-white uppercase tracking-wider">Due</th>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={16} className="px-4 py-6 text-center text-xs text-gray-500">No past bill details available</td>
-                  </tr>
-                )}
-                {finalPastBillDetails.length > 0 && (
-                  <tr className="bg-gray-100 font-semibold">
-                    <td className="px-2 py-2 text-xs font-bold text-gray-900" colSpan={8}>Total</td>
-                    <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(finalPastBillTotals.amount)}</td>
-                    <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(finalPastBillTotals.discount)}</td>
-                    <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(finalPastBillTotals.netAmount)}</td>
-                    <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(finalPastBillTotals.refund)}</td>
-                    <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(finalPastBillTotals.writeoff)}</td>
-                    <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(finalPastBillTotals.received)}</td>
-                    <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(finalPastBillTotals.advance)}</td>
-                    <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(finalPastBillTotals.due)}</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {pastBillPaymentDetails.length > 0 ? (
+                      pastBillPaymentDetails.map((bill, index) => (
+                        <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                          <td className="px-2 py-2 text-xs text-gray-900">{bill.slNo}</td>
+                          <td className="px-2 py-2 text-xs text-gray-900">{bill.billNo}</td>
+                          <td className="px-2 py-2 text-xs text-gray-900">{bill.billName}</td>
+                          <td className="px-2 py-2 text-xs text-center text-gray-900">{bill.visitType}</td>
+                          <td className="px-2 py-2 text-xs text-gray-900">{bill.regLabNo}</td>
+                          <td className="px-2 py-2 text-xs text-gray-900">{bill.refCenter}</td>
+                          <td className="px-2 py-2 text-xs text-gray-900">{bill.billedAt}</td>
+                          <td className="px-2 py-2 text-xs text-center text-gray-900">{bill.type}</td>
+                          <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.amount)}</td>
+                          <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.discount)}</td>
+                          <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.netAmount)}</td>
+                          <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.refund)}</td>
+                          <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.writeoff)}</td>
+                          <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.received)}</td>
+                          <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.advance)}</td>
+                          <td className="px-2 py-2 text-xs text-center text-gray-900">₹{formatCurrency(bill.due)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={16} className="px-4 py-6 text-center text-xs text-gray-500">No past bill payments found for this date</td>
+                      </tr>
+                    )}
+                    {pastBillPaymentDetails.length > 0 && (
+                      <tr className="bg-gray-100 font-semibold">
+                        <td className="px-2 py-2 text-xs font-bold text-gray-900" colSpan={8}>Total</td>
+                        <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(pastBillPaymentTotals.amount)}</td>
+                        <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(pastBillPaymentTotals.discount)}</td>
+                        <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(pastBillPaymentTotals.netAmount)}</td>
+                        <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(pastBillPaymentTotals.refund)}</td>
+                        <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(pastBillPaymentTotals.writeoff)}</td>
+                        <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(pastBillPaymentTotals.received)}</td>
+                        <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(pastBillPaymentTotals.advance)}</td>
+                        <td className="px-2 py-2 text-xs text-center font-bold text-gray-900">₹{formatCurrency(pastBillPaymentTotals.due)}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
       </div>
     </div>
   );
