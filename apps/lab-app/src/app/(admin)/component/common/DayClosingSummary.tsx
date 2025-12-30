@@ -313,6 +313,8 @@ const DayClosingSummary: React.FC<DayClosingSummaryProps> = ({
     advance: 0,
     due: 0
   });
+
+  
   // State for past bill payment details from new API
   const [pastBillPaymentDetails, setPastBillPaymentDetails] = useState<BillDetail[]>([]);
   const [pastBillPaymentTotals, setPastBillPaymentTotals] = useState<BillDetailsTotals>({
