@@ -284,7 +284,7 @@ const PatientVisitListTable: React.FC = () => {
       header: 'Patient Name',
       accessor: (row: Patient) => (
         <div className="flex flex-col min-w-[120px]">
-          <span className="font-medium text-gray-900 truncate">{`${row?.firstName}`}</span>
+          <span className="font-medium text-gray-900 truncate">{`${row?.firstName} ${row?.lastName}`}</span>
           <span className="text-xs text-gray-500">{row?.phone}</span>
         </div>
       ),
@@ -746,7 +746,7 @@ const PatientVisitListTable: React.FC = () => {
             viewReportDetailsbyId={viewReportDetails.visit?.visitId ?? 0}
             viewPatient={{
               visitId: viewReportDetails.visit?.visitId ?? 0,
-              patientname: `${viewReportDetails.firstName}`,
+              patientname: `${viewReportDetails.firstName} ${viewReportDetails.lastName}`.trim(),
               contactNumber: viewReportDetails.phone,
               visitDate: viewReportDetails.visit?.visitDate ?? '',
               visitStatus: viewReportDetails.visit?.visitStatus ?? VisitStatus.PENDING,

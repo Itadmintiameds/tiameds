@@ -65,7 +65,7 @@ const HbA1cComponent: React.FC<HbA1cComponentProps> = ({
     const hba1c = parseFloat(inputValues[testName]?.[hba1cIndex] || '0');
 
     // Calculate MEAN BLOOD GLUCOSE: (HbA1c × 28.7) - 42.7
-    const calculatedMeanBloodGlucose = hba1c > 0 ? (hba1c * 28.7) - 42.7 : 0;
+    const calculatedMeanBloodGlucose = hba1c > 0 ? (hba1c * 28.7) - 46.7 : 0;
 
     return {
       hba1cIndex,

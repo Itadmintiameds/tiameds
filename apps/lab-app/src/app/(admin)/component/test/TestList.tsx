@@ -21,7 +21,7 @@ import TableComponent from '../common/TableComponent';
 import AddTest from './AddTest';
 import TestEditComponent from './TestEditComponent';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 500;
 
 const TestLists = () => {
   const [tests, setTests] = useState<TestList[]>([]);
