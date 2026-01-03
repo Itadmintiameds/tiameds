@@ -62,6 +62,7 @@ const HbA1cComponent: React.FC<HbA1cComponentProps> = ({
     const hba1cIndex = findIndexByDescription('HbA1c (GLYCOSYLATED Hb)');
     const meanBloodGlucoseIndex = findIndexByDescription('MEAN BLOOD GLUCOSE');
 
+    
     const hba1c = parseFloat(inputValues[testName]?.[hba1cIndex] || '0');
 
     // Calculate MEAN BLOOD GLUCOSE: (HbA1c × 28.7) - 42.7
