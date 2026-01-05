@@ -625,6 +625,7 @@ const CommonReportView2 = ({
                             // Parse format: YYYY-MM-DDTHH:mm:ss.SSSSSS or YYYY-MM-DDTHH:mm:ss
                             const isoMatch = dateTimeString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/);
                             
+                            
                             if (isoMatch) {
                                 // Extract components (month is 0-indexed in Date constructor)
                                 const year = parseInt(isoMatch[1], 10);
@@ -634,6 +635,7 @@ const CommonReportView2 = ({
                                 const minute = parseInt(isoMatch[5], 10);
                                 const second = parseInt(isoMatch[6], 10);
                                 
+
                                 // Create date in local timezone (avoids timezone conversion)
                                 dateObj = new Date(year, month, day, hour, minute, second);
                                 
