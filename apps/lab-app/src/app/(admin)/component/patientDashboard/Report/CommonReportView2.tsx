@@ -618,12 +618,37 @@ const CommonReportView2 = ({
                     const referenceRangesContent = renderReferenceRanges(report.referenceRanges);
 
                     const formatReportDateTime = (dateTimeString?: string): { date: string; time: string } => {
-                        const now = Date.now();
-                        const dateValue = dateTimeString ? new Date(dateTimeString) : new Date(now);
+                        let dateObj: Date;
                         
-                        // Validate date
-                        const isValidDate = !isNaN(dateValue.getTime());
-                        const dateObj = isValidDate ? dateValue : new Date(now);
+                        if (dateTimeString) {
+                            // Manual parsing of ISO format "2026-01-05T13:23:38.886342" to avoid timezone issues
+                            // Parse format: YYYY-MM-DDTHH:mm:ss.SSSSSS or YYYY-MM-DDTHH:mm:ss
+                            const isoMatch = dateTimeString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/);
+                            
+                            if (isoMatch) {
+                                // Extract components (month is 0-indexed in Date constructor)
+                                const year = parseInt(isoMatch[1], 10);
+                                const month = parseInt(isoMatch[2], 10) - 1;
+                                const day = parseInt(isoMatch[3], 10);
+                                const hour = parseInt(isoMatch[4], 10);
+                                const minute = parseInt(isoMatch[5], 10);
+                                const second = parseInt(isoMatch[6], 10);
+                                
+                                // Create date in local timezone (avoids timezone conversion)
+                                dateObj = new Date(year, month, day, hour, minute, second);
+                                
+                                // Validate the created date
+                                if (isNaN(dateObj.getTime())) {
+                                    dateObj = new Date();
+                                }
+                            } else {
+                                // Fallback to standard Date parsing for other formats
+                                const parsedDate = new Date(dateTimeString);
+                                dateObj = !isNaN(parsedDate.getTime()) ? parsedDate : new Date();
+                            }
+                        } else {
+                            dateObj = new Date();
+                        }
                         
                         // Format date
                         let formattedDate: string;
