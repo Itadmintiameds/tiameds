@@ -617,17 +617,118 @@ const CommonReportView2 = ({
                         : quantitativeRows.map((row) => ({ type: "row", row }));
                     const referenceRangesContent = renderReferenceRanges(report.referenceRanges);
 
+                    const formatReportDateTime = (dateTimeString?: string): { date: string; time: string } => {
+                        const now = Date.now();
+                        const dateValue = dateTimeString ? new Date(dateTimeString) : new Date(now);
+                        
+                        // Validate date
+                        const isValidDate = !isNaN(dateValue.getTime());
+                        const dateObj = isValidDate ? dateValue : new Date(now);
+                        
+                        // Format date
+                        let formattedDate: string;
+                        try {
+                            formattedDate = dateObj.toLocaleDateString('en-GB');
+                            if (!formattedDate || formattedDate === 'Invalid Date') {
+                                throw new Error('Invalid date format');
+                            }
+                        } catch {
+                            // Fallback date formatting
+                            const day = String(dateObj.getDate()).padStart(2, '0');
+                            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                            const year = dateObj.getFullYear();
+                            formattedDate = `${day}/${month}/${year}`;
+                        }
+                        
+                        // Format time with fallback
+                        let formattedTime: string;
+                        try {
+                            formattedTime = dateObj.toLocaleTimeString('en-US', { 
+                                hour: '2-digit', 
+                                minute: '2-digit', 
+                                hour12: true 
+                            });
+                            
+                            // Check if formatting returned incomplete result (e.g., only "AM" or "PM")
+                            if (!formattedTime || formattedTime.length < 5 || (!formattedTime.includes(':') && !formattedTime.match(/\d/))) {
+                                throw new Error('Incomplete time format');
+                            }
+                        } catch {
+                            // Manual fallback time formatting
+                            let hours = dateObj.getHours();
+                            const minutes = dateObj.getMinutes();
+                            const period = hours >= 12 ? 'PM' : 'AM';
+                            hours = hours % 12 || 12;
+                            const hoursStr = String(hours).padStart(2, '0');
+                            const minutesStr = String(minutes).padStart(2, '0');
+                            formattedTime = `${hoursStr}:${minutesStr} ${period}`;
+                        }
+                        
+                        return { date: formattedDate, time: formattedTime };
+                    };
+
+                    const isValueOutOfRange = (enteredValue?: string, normalRange?: string): boolean => {
+                        if (!enteredValue || !normalRange || enteredValue === "N/A" || normalRange === "N/A") {
+                            return false;
+                        }
+
+                        const value = parseFloat(enteredValue);
+                        if (isNaN(value)) {
+                            return false;
+                        }
+
+                        const range = normalRange.trim();
+
+                        // Format 1: "1000 - 4800" or "1000-4800" (min-max range)
+                        const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+                        if (rangeMatch) {
+                            const min = parseFloat(rangeMatch[1]);
+                            const max = parseFloat(rangeMatch[2]);
+                            return value < min || value > max;
+                        }
+
+                        // Format 2: "< 5.0" or "<5.0" (less than threshold)
+                        const lessThanMatch = range.match(/<\s*(\d+(?:\.\d+)?)/);
+                        if (lessThanMatch) {
+                            const threshold = parseFloat(lessThanMatch[1]);
+                            return value >= threshold;
+                        }
+
+                        // Format 3: "> 10.0" or ">10.0" (greater than threshold)
+                        const greaterThanMatch = range.match(/>\s*(\d+(?:\.\d+)?)/);
+                        if (greaterThanMatch) {
+                            const threshold = parseFloat(greaterThanMatch[1]);
+                            return value <= threshold;
+                        }
+
+                        // Format 4: Qualitative ranges (Normal, Negative, Positive, etc.)
+                        const lowerRange = range.toLowerCase();
+                        if (lowerRange.includes('normal') || 
+                            lowerRange.includes('negative') || 
+                            lowerRange.includes('positive') ||
+                            lowerRange.includes('reactive') ||
+                            lowerRange.includes('non-reactive') ||
+                            lowerRange.includes('present') ||
+                            lowerRange.includes('absent')) {
+                            return false;
+                        }
+
+                        return false;
+                    };
+
                     const formatResultContent = (row: TestRow) => {
                         const value = row.enteredValue || "N/A";
+                        const isOutOfRange = isValueOutOfRange(row.enteredValue, row.normalRange);
+                        const boldClass = isOutOfRange ? "font-semibold" : "";
+
                         if (!isCBCTest) {
-                            return value;
+                            return isOutOfRange ? (
+                                <span className={`${boldClass} text-gray-800`}>{value}</span>
+                            ) : value;
                         }
                         return (
-                            <span className="font-semibold text-gray-900">
+                            <span className={`${boldClass} text-gray-900`}>
                                 {value}
-                                {row.enteredValue && row.unit && row.unit.trim() !== "" && (
-                                    <span className="ml-1 text-[11px] font-medium uppercase text-gray-500">{row.unit}</span>
-                                )}
                             </span>
                         );
                     };
@@ -640,9 +741,6 @@ const CommonReportView2 = ({
                         return (
                             <span className="text-gray-800">
                                 {rangeValue}
-                                {row.normalRange && row.unit && row.unit.trim() !== "" && (
-                                    <span className="ml-1 text-[11px] font-medium uppercase text-gray-500">{row.unit}</span>
-                                )}
                             </span>
                         );
                     };
@@ -651,7 +749,7 @@ const CommonReportView2 = ({
                         if (quantitativeRows.length === 0) {
                             renderedRows.push(
                                 <tr key={`no-quant-${report.reportId}`} className="border-t border-blue-100">
-                                    <td colSpan={3} className="p-4 text-center text-gray-500">
+                                    <td colSpan={4} className="p-4 text-center text-gray-500">
                                         {qualitativeRows.length > 0
                                             ? "Qualitative results for this report are listed below."
                                             : "No quantitative results available."}
@@ -666,7 +764,7 @@ const CommonReportView2 = ({
                                             key={`cbc-header-${report.reportId}-${entry.key}-${idx}`}
                                             className="bg-blue-50 text-left text-xs font-bold text-blue-800 border-t border-b border-blue-200"
                                         >
-                                            <td className="p-2" colSpan={3}>
+                                            <td className="p-2" colSpan={4}>
                                                 {entry.key}
                                             </td>
                                         </tr>
@@ -682,10 +780,11 @@ const CommonReportView2 = ({
                                         <td className="p-2 font-medium text-gray-800">
                                             {parameterLabel}
                                         </td>
-                                        <td className="p-2 text-center font-semibold text-gray-800">
+                                        <td className="p-2 text-center text-gray-800">
                                             {formatResultContent(row)}
                                         </td>
                                         <td className="p-2 text-gray-700">{formatReferenceContent(row)}</td>
+                                        <td className="p-2 text-gray-700">{row.unit || "N/A"}</td>
                                     </tr>
                                 );
                             });
@@ -738,8 +837,10 @@ const CommonReportView2 = ({
                                                     <div className="flex items-center">
                                                         <span className="font-medium text-black w-24 text-left">DATE & TIME:</span>
                                                         <span className="font-bold text-black ml-1">
-                                                            {new Date(report.createdDateTime || Date.now()).toLocaleDateString('en-GB')} at{" "}
-                                                            {new Date(report.createdDateTime || Date.now()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                            {(() => {
+                                                                const { date, time } = formatReportDateTime(report.createdDateTime);
+                                                                return `${date} at ${time}`;
+                                                            })()}
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center">
@@ -796,6 +897,7 @@ const CommonReportView2 = ({
                                                     <th className="p-2 text-left font-semibold text-black">TEST PARAMETER</th>
                                                     <th className="p-2 text-center font-semibold text-black">RESULT</th>
                                                     <th className="p-2 text-left font-semibold text-black">REFERENCE RANGE</th>
+                                                    <th className="p-2 text-left font-semibold text-black">UNITS</th>
                                                 </tr>
                                             </thead>
                                             <tbody>{renderedRows}</tbody>
@@ -880,7 +982,10 @@ const CommonReportView2 = ({
                                             </span>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-xs text-gray-500">Generated on:  {new Date(report.createdDateTime || Date.now()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                                            <p className="text-xs text-gray-500">Generated on:  {(() => {
+                                                const { date, time } = formatReportDateTime(report.createdDateTime);
+                                                return `${date} at ${time}`;
+                                            })()}</p>
                                         </div>
                                     </div>
                                 </div>
