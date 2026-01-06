@@ -290,7 +290,7 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                             .replace(/style="\s*"/gi, '');
                         return `
                             <div style="margin-bottom: 8px;">
-                                ${section.title ? `<h4 style="font-size: 11px; font-weight: 600; margin: 4px 0; color: #000;">${section.title}</h4>` : ''}
+                                 ${section.title ? `<h4 style="font-size: 11px; font-weight: 600; margin: 4px 0; color: #000;"></h4>` : ''}
                                 <div style="font-size: 11px; line-height: 1.4;">${cleanedContent}</div>
                             </div>
                         `;
