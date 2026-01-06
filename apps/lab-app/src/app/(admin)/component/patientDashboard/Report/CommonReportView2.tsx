@@ -666,6 +666,7 @@ const CommonReportView2 = ({
 
                         const range = normalRange.trim();
 
+                        
                         // Format 1: "1000 - 4800" or "1000-4800" (min-max range)
                         const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
                         if (rangeMatch) {
