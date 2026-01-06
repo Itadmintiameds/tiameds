@@ -624,12 +624,24 @@ const CommonReportView2 = ({
                             return { date: '--/--/----', time: '--:--' };
                         }
 
-                        // Treat backend time as LOCAL time (IST already)
-                        const dateObj = new Date(dateTimeString);
-
-                        if (isNaN(dateObj.getTime())) {
+                        // Backend sends IST without timezone → treat as LOCAL time
+                        const [datePart, timePart] = dateTimeString.split('T');
+                        if (!datePart || !timePart) {
                             return { date: '--/--/----', time: '--:--' };
                         }
+
+                        const [year, month, day] = datePart.split('-').map(Number);
+                        const [hour, minute, second] = timePart.split(':').map(Number);
+
+                        // Local Date constructor (NO timezone shift)
+                        const dateObj = new Date(
+                            year,
+                            month - 1,
+                            day,
+                            hour,
+                            minute,
+                            second || 0
+                        );
 
                         const date = dateObj.toLocaleDateString('en-IN', {
                             day: '2-digit',
@@ -645,6 +657,7 @@ const CommonReportView2 = ({
 
                         return { date, time };
                     };
+
 
 
                     const isValueOutOfRange = (enteredValue?: string, normalRange?: string): boolean => {
