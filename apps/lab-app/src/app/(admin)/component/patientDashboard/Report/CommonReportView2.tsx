@@ -617,82 +617,42 @@ const CommonReportView2 = ({
                         : quantitativeRows.map((row) => ({ type: "row", row }));
                     const referenceRangesContent = renderReferenceRanges(report.referenceRanges);
 
-                    const formatReportDateTime = (dateTimeString?: string): { date: string; time: string } => {
-                        let dateObj: Date;
-                        
-                        if (dateTimeString) {
-                            // Manual parsing of ISO format "2026-01-05T13:23:38.886342" to avoid timezone issues
-                            // Parse format: YYYY-MM-DDTHH:mm:ss.SSSSSS or YYYY-MM-DDTHH:mm:ss
-                            const isoMatch = dateTimeString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/);
-                            
-                            
-                            if (isoMatch) {
-                                // Extract components (month is 0-indexed in Date constructor)
-                                const year = parseInt(isoMatch[1], 10);
-                                const month = parseInt(isoMatch[2], 10) - 1;
-                                const day = parseInt(isoMatch[3], 10);
-                                const hour = parseInt(isoMatch[4], 10);
-                                const minute = parseInt(isoMatch[5], 10);
-                                const second = parseInt(isoMatch[6], 10);
-                                
-
-                                // Create date in local timezone (avoids timezone conversion)
-                                dateObj = new Date(year, month, day, hour, minute, second);
-                                
-                                // Validate the created date
-                                if (isNaN(dateObj.getTime())) {
-                                    dateObj = new Date();
-                                }
-                            } else {
-                                // Fallback to standard Date parsing for other formats
-                                const parsedDate = new Date(dateTimeString);
-                                dateObj = !isNaN(parsedDate.getTime()) ? parsedDate : new Date();
-                            }
-                        } else {
-                            dateObj = new Date();
+                    const formatReportDateTime = (
+                        dateTimeString?: string
+                      ): { date: string; time: string } => {
+                        if (!dateTimeString) {
+                          return { date: '--/--/----', time: '--:--' };
                         }
-                        
-                        // Format date
-                        let formattedDate: string;
-                        try {
-                            formattedDate = dateObj.toLocaleDateString('en-GB');
-                            if (!formattedDate || formattedDate === 'Invalid Date') {
-                                throw new Error('Invalid date format');
-                            }
-                        } catch {
-                            // Fallback date formatting
-                            const day = String(dateObj.getDate()).padStart(2, '0');
-                            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                            const year = dateObj.getFullYear();
-                            formattedDate = `${day}/${month}/${year}`;
+                      
+                        // If backend did not send timezone, assume IST
+                        const hasTimezone = /Z$|[+-]\d{2}:\d{2}$/.test(dateTimeString);
+                        const normalized = hasTimezone
+                          ? dateTimeString
+                          : `${dateTimeString}+05:30`;
+                      
+                        const dateObj = new Date(normalized);
+                      
+                        if (isNaN(dateObj.getTime())) {
+                          return { date: '--/--/----', time: '--:--' };
                         }
-                        
-                        // Format time with fallback
-                        let formattedTime: string;
-                        try {
-                            formattedTime = dateObj.toLocaleTimeString('en-US', { 
-                                hour: '2-digit', 
-                                minute: '2-digit', 
-                                hour12: true 
-                            });
-                            
-                            // Check if formatting returned incomplete result (e.g., only "AM" or "PM")
-                            if (!formattedTime || formattedTime.length < 5 || (!formattedTime.includes(':') && !formattedTime.match(/\d/))) {
-                                throw new Error('Incomplete time format');
-                            }
-                        } catch {
-                            // Manual fallback time formatting
-                            let hours = dateObj.getHours();
-                            const minutes = dateObj.getMinutes();
-                            const period = hours >= 12 ? 'PM' : 'AM';
-                            hours = hours % 12 || 12;
-                            const hoursStr = String(hours).padStart(2, '0');
-                            const minutesStr = String(minutes).padStart(2, '0');
-                            formattedTime = `${hoursStr}:${minutesStr} ${period}`;
-                        }
-                        
-                        return { date: formattedDate, time: formattedTime };
-                    };
+                      
+                        const date = dateObj.toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          timeZone: 'Asia/Kolkata'
+                        });
+                      
+                        const time = dateObj.toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true,
+                          timeZone: 'Asia/Kolkata'
+                        });
+                      
+                        return { date, time };
+                      };
+                      
 
                     const isValueOutOfRange = (enteredValue?: string, normalRange?: string): boolean => {
                         if (!enteredValue || !normalRange || enteredValue === "N/A" || normalRange === "N/A") {
