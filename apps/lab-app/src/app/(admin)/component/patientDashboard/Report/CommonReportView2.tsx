@@ -302,7 +302,6 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
             return `<div style="margin-bottom: 8px;">${htmlParts.join('')}</div>`;
         }
         
-        
         // Fallback to formatter if structure is not as expected
         return `<div>${formatMedicalReportToHTML(reportJson) || ''}</div>`;
     } catch {
