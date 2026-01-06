@@ -17,7 +17,7 @@ type Html2CanvasEnhancedOptions = Html2CanvasBaseOptions & {
 };
 
 const DEFAULT_FONT_FAMILY = '"Inter", "Helvetica Neue", Arial, sans-serif';
-const BASE_TEXT_COLOR = "#0f172a"; 
+const BASE_TEXT_COLOR = "#0f172a";
 
 const normalizeFieldKey = (value?: string) =>
     (value || "")
@@ -224,26 +224,26 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
     if (!reportJson) return '';
     try {
         const parsed = JSON.parse(reportJson) as DetailedReport;
-        
+
         // Check if this is a structured report with tables, sections, or impression
-        const hasStructuredData = 
+        const hasStructuredData =
             (parsed.tables && Array.isArray(parsed.tables) && parsed.tables.length > 0) ||
             (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) ||
             (parsed.impression && Array.isArray(parsed.impression) && parsed.impression.length > 0);
-        
+
         if (parsed && hasStructuredData) {
             const htmlParts: string[] = [];
-            
+
             // Add description if present
             if (parsed.description) {
                 htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #374151;">${parsed.description}</p>`);
             }
-            
+
             // Render Impression (array of strings)
             if (parsed.impression && Array.isArray(parsed.impression) && parsed.impression.length > 0) {
                 htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;"><strong>Impression:</strong> ${parsed.impression.join(', ')}</p>`);
             }
-            
+
             // Render Tables
             if (parsed.tables && Array.isArray(parsed.tables) && parsed.tables.length > 0) {
                 parsed.tables.forEach((table) => {
@@ -272,7 +272,7 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                     }
                 });
             }
-            
+
             // Render Sections
             if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
                 const sectionsHtml = parsed.sections
@@ -298,10 +298,10 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                     .join('');
                 htmlParts.push(sectionsHtml);
             }
-            
+
             return `<div style="margin-bottom: 8px;">${htmlParts.join('')}</div>`;
         }
-        
+
         // Fallback to formatter if structure is not as expected
         return `<div>${formatMedicalReportToHTML(reportJson) || ''}</div>`;
     } catch {
@@ -604,10 +604,10 @@ const CommonReportView2 = ({
                     const isCBCTest = (report.testName || "").toUpperCase().includes("CBC");
 
                     const shouldHideResultTable = rows.length > 0 && isExcludedQualitativeRow(rows[0]);
-                    
+
                     // Check for detailed report - either reportJson exists on report or testRow has DETAILED REPORT
                     const hasDetailedReportRow = rows.some(row => (row.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
-                    const detailedEntry = (report.reportJson || hasDetailedReportRow) 
+                    const detailedEntry = (report.reportJson || hasDetailedReportRow)
                         ? { reportJson: report.reportJson, referenceRanges: report.referenceRanges }
                         : null;
 
@@ -619,40 +619,33 @@ const CommonReportView2 = ({
 
                     const formatReportDateTime = (
                         dateTimeString?: string
-                      ): { date: string; time: string } => {
+                    ): { date: string; time: string } => {
                         if (!dateTimeString) {
-                          return { date: '--/--/----', time: '--:--' };
+                            return { date: '--/--/----', time: '--:--' };
                         }
-                      
-                        // If backend did not send timezone, assume IST
-                        const hasTimezone = /Z$|[+-]\d{2}:\d{2}$/.test(dateTimeString);
-                        const normalized = hasTimezone
-                          ? dateTimeString
-                          : `${dateTimeString}+05:30`;
-                      
-                        const dateObj = new Date(normalized);
-                      
+
+                        // Treat backend time as LOCAL time (IST already)
+                        const dateObj = new Date(dateTimeString);
+
                         if (isNaN(dateObj.getTime())) {
-                          return { date: '--/--/----', time: '--:--' };
+                            return { date: '--/--/----', time: '--:--' };
                         }
-                      
+
                         const date = dateObj.toLocaleDateString('en-IN', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          timeZone: 'Asia/Kolkata'
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
                         });
-                      
+
                         const time = dateObj.toLocaleTimeString('en-IN', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true,
-                          timeZone: 'Asia/Kolkata'
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
                         });
-                      
+
                         return { date, time };
-                      };
-                      
+                    };
+
 
                     const isValueOutOfRange = (enteredValue?: string, normalRange?: string): boolean => {
                         if (!enteredValue || !normalRange || enteredValue === "N/A" || normalRange === "N/A") {
@@ -666,7 +659,7 @@ const CommonReportView2 = ({
 
                         const range = normalRange.trim();
 
-                        
+
                         // Format 1: "1000 - 4800" or "1000-4800" (min-max range)
                         const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
                         if (rangeMatch) {
@@ -691,8 +684,8 @@ const CommonReportView2 = ({
 
                         // Format 4: Qualitative ranges (Normal, Negative, Positive, etc.)
                         const lowerRange = range.toLowerCase();
-                        if (lowerRange.includes('normal') || 
-                            lowerRange.includes('negative') || 
+                        if (lowerRange.includes('normal') ||
+                            lowerRange.includes('negative') ||
                             lowerRange.includes('positive') ||
                             lowerRange.includes('reactive') ||
                             lowerRange.includes('non-reactive') ||
@@ -849,7 +842,7 @@ const CommonReportView2 = ({
                                     </div>
                                     <div className="mt-1.5 mb-1.5 h-0.5 w-full rounded bg-blue-600" />
                                 </div>
-                                
+
                                 {/* Test Name Heading */}
                                 <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center">{report.testName}</h3>
 
@@ -861,7 +854,7 @@ const CommonReportView2 = ({
                                             <div className="p-2 bg-white">
                                                 <div
                                                     className="report-html"
-                                                    style={{ 
+                                                    style={{
                                                         background: '#ffffff',
                                                         fontSize: '11px',
                                                         lineHeight: '1.4'
