@@ -623,7 +623,7 @@ const CompletedTable: React.FC<CompletedTableProps> = ({ closeModal }) => {
                                     visitType: viewPatient.visitType ?? '',
                                     visitStatus: viewPatient.visitStatus ?? ''
                                 }}
-                                hidePrintButton={true}
+                                hidePrintButton={false}
                             />
                         </Modal>
                     )}

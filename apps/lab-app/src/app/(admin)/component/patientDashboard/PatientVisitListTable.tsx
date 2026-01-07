@@ -499,7 +499,7 @@ const PatientVisitListTable: React.FC = () => {
             {!isCancelled && isReportPending && (
               <>
                 {/* Edit Button - Only visible for SUPERADMIN role */}
-                {isSuperAdmin || isAdmin|| isDeskRole && (
+             
                   <Button 
                     text=""
                     className="px-2 py-1 text-white bg-amber-600 rounded hover:bg-amber-700 transition-colors duration-200"
@@ -507,7 +507,7 @@ const PatientVisitListTable: React.FC = () => {
                   >
                     <FaEdit size={14} />
                   </Button>
-                )}
+              
                 <Button
                   text=""
                   className="px-2 py-1 text-white bg-red-600 rounded hover:bg-red-700 transition-colors duration-200"
@@ -761,6 +761,10 @@ const PatientVisitListTable: React.FC = () => {
                 ? Number(viewReportDetails.visit?.doctorId)
                 : 0,
             }}
+            doctorName={
+              ((viewReportDetails as unknown) as { doctorName?: string }).doctorName ||
+              ((viewReportDetails.visit as unknown) as { doctorName?: string })?.doctorName
+            }
           />
         )}
       </Modal>
