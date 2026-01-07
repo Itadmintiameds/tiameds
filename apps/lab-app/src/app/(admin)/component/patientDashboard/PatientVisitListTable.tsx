@@ -768,6 +768,7 @@ const PatientVisitListTable: React.FC = () => {
           />
         )}
       </Modal>
+      
 
       <Modal
         isOpen={deletePatientModal}
