@@ -624,8 +624,13 @@ const CommonReportView2 = ({
                             return { date: '--/--/----', time: '--:--' };
                         }
 
-                        // 🔥 Force JS to read it as IST
-                        const dateObj = new Date(`${dateTimeString}+05:30`);
+                        // Check if dateTimeString already has a timezone (Z, +HH:MM, +HHMM, -HH:MM, -HHMM)
+                        const hasTimezone = /[Z+-]\d{2}:?\d{2}$|[Z+-]\d{4}$/.test(dateTimeString);
+                        
+                        // Only append +05:30 if no timezone exists
+                        const dateStrWithTimezone = hasTimezone ? dateTimeString : `${dateTimeString}+05:30`;
+                        
+                        const dateObj = new Date(dateStrWithTimezone);
 
                         if (isNaN(dateObj.getTime())) {
                             return { date: '--/--/----', time: '--:--' };
@@ -634,13 +639,15 @@ const CommonReportView2 = ({
                         const date = dateObj.toLocaleDateString('en-IN', {
                             day: '2-digit',
                             month: '2-digit',
-                            year: 'numeric'
+                            year: 'numeric',
+                            timeZone: 'Asia/Kolkata'
                         });
 
                         const time = dateObj.toLocaleTimeString('en-IN', {
                             hour: '2-digit',
                             minute: '2-digit',
-                            hour12: true
+                            hour12: true,
+                            timeZone: 'Asia/Kolkata'
                         });
 
                         return { date, time };
