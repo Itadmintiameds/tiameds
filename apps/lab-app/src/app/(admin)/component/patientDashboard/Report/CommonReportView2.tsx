@@ -807,23 +807,24 @@ const CommonReportView2 = ({
                                     <div className="w-full border border-gray-300 bg-white">
                                         <div className="grid grid-cols-2">
                                             {/* Left Section */}
+                                            {/* Left Section */}
                                             <div className="p-3">
                                                 <div className="space-y-1.5 text-xs">
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-gray-900 font-normal">NAME:</span>
-                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{patientData?.patientname || 'N/A'}</span>
+                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{patientData?.patientname || 'N/A'}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-gray-900 font-normal">REFERRED BY:</span>
-                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{displayDoctorName}</span>
+                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{displayDoctorName}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-gray-900 font-normal">LAB NO:</span>
-                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{currentLab?.id || 'N/A'}</span>
+                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{currentLab?.id || 'N/A'}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-gray-900 font-normal">OPD/IPD:</span>
-                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{patientData?.visitType || 'N/A'}</span>
+                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{patientData?.visitType || 'N/A'}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -833,11 +834,11 @@ const CommonReportView2 = ({
                                                 <div className="space-y-1.5 text-xs">
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-gray-900 font-normal">AGE/SEX:</span>
-                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
+                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-gray-900 font-normal">DATE & TIME:</span>
-                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">
+                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">
                                                             {(() => {
                                                                 const { date, time } = formatReportDateTime(report.createdDateTime);
                                                                 return `${date} ${time}`;
@@ -846,15 +847,15 @@ const CommonReportView2 = ({
                                                     </div>
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-gray-900 font-normal">REPORT NO:</span>
-                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{report.reportCode || "N/A"}</span>
+                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{report.reportCode || "N/A"}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-gray-900 font-normal">PATIENT NO:</span>
-                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{report.patientCode || "N/A"}</span>
+                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{report.patientCode || "N/A"}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-gray-900 font-normal">VISIT NO:</span>
-                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{report.visitCode || "N/A"}</span>
+                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{report.visitCode || "N/A"}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -998,7 +999,7 @@ const CommonReportView2 = ({
                                                 Powered by Tiameds Technologies Pvt.Ltd
                                             </span>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-left">
                                             <p className="text-xs text-gray-500">Generated on:  {(() => {
                                                 const { date, time } = formatReportDateTime(report.createdDateTime);
                                                 return `${date} at ${time}`;
