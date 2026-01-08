@@ -883,6 +883,7 @@ const CommonReportView2 = ({
                                             </div>
                                         </div>
 
+
                                         {/* Reference Ranges Table */}
                                         {renderReferenceRanges(detailedEntry.referenceRanges)}
 
