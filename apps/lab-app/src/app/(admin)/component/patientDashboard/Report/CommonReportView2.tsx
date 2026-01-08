@@ -784,72 +784,82 @@ const CommonReportView2 = ({
                     return (
                         <section key={report.reportId} data-report-id={report.reportId} className="mb-10 page-break">
                             <div className="flex flex-col min-h-[297mm]">
-                                <div className="mb-4 bg-white pt-2">
-                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-2">
-                                        <div className="flex flex-col gap-0.5">
+                                <div className="mb-4 bg-white pt-4 pb-4 border-b-2 border-blue-600">
+                                    {/* Top Section - Logo and Lab Info */}
+                                    <div className="flex flex-row items-center gap-4 mb-4">
+                                        {/* Logo - Larger height */}
+                                        <div className="flex-shrink-0">
                                             <Image src="/CUREPLUS HOSPITALS (1).png"
-                                                alt="Lab Logo" width={90} height={56}
-                                                className="h-12 w-12" priority loading="eager"
+                                                alt="Lab Logo" width={120} height={120}
+                                                className="w-28 h-28 object-contain" priority loading="eager"
                                                 unoptimized crossOrigin="anonymous" data-print-logo="true"
                                                 quality={100}
                                             />
-                                            <h1 className="text-lg font-bold text-black leading-tight">{currentLab?.name}</h1>
-                                            <p className="text-xs text-gray-600 leading-tight">{currentLab?.address}</p>
                                         </div>
-                                        <div className="text-right flex-1 sm:flex-initial">
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
-                                                {/* Left Column */}
-                                                <div>
-                                                    <div className="flex items-center">
-                                                        <span className="font-medium text-black w-24 text-left">NAME:</span>
-                                                        <span className="font-bold text-black ml-1">{patientData?.patientname || 'N/A'}</span>
+                                        {/* Lab Name and Address - smaller text, uniform design */}
+                                        <div className="flex flex-col justify-center gap-0.5 flex-1">
+                                            <h1 className="text-base font-bold text-black leading-tight uppercase tracking-wide">{currentLab?.name}</h1>
+                                            <p className="text-[10px] text-gray-600 leading-tight uppercase">{currentLab?.address}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Patient Details Box - Single container, compact, no divider */}
+                                    <div className="w-full border border-gray-300 bg-white">
+                                        <div className="grid grid-cols-2">
+                                            {/* Left Section */}
+                                            <div className="p-3">
+                                                <div className="space-y-1.5 text-xs">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-gray-900 font-normal">NAME:</span>
+                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{patientData?.patientname || 'N/A'}</span>
                                                     </div>
-                                                    <div className="flex items-center">
-                                                        <span className="font-medium text-black w-24 text-left">REFERRED BY:</span>
-                                                        <span className="font-bold text-black ml-1">{displayDoctorName}</span>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-gray-900 font-normal">REFERRED BY:</span>
+                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{displayDoctorName}</span>
                                                     </div>
-                                                    <div className="flex items-center">
-                                                        <span className="font-medium text-black w-24 text-left">LAB NO:</span>
-                                                        <span className="font-bold text-black ml-1">{currentLab?.id || 'N/A'}</span>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-gray-900 font-normal">LAB NO:</span>
+                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{currentLab?.id || 'N/A'}</span>
                                                     </div>
-                                                    <div className="flex items-center">
-                                                        <span className="font-medium text-black w-24 text-left">OPD/IPD:</span>
-                                                        <span className="font-bold text-black ml-1">{patientData?.visitType || 'N/A'}</span>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-gray-900 font-normal">OPD/IPD:</span>
+                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{patientData?.visitType || 'N/A'}</span>
                                                     </div>
                                                 </div>
+                                            </div>
 
-                                                {/* Right Column */}
-                                                <div>
-                                                    <div className="flex items-center">
-                                                        <span className="font-medium text-black w-24 text-left">AGE/SEX:</span>
-                                                        <span className="font-bold text-black ml-1">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
+                                            {/* Right Section */}
+                                            <div className="p-3">
+                                                <div className="space-y-1.5 text-xs">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-gray-900 font-normal">AGE/SEX:</span>
+                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
                                                     </div>
-                                                    <div className="flex items-center">
-                                                        <span className="font-medium text-black w-24 text-left">DATE & TIME:</span>
-                                                        <span className="font-bold text-black ml-1">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-gray-900 font-normal">DATE & TIME:</span>
+                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">
                                                             {(() => {
                                                                 const { date, time } = formatReportDateTime(report.createdDateTime);
-                                                                return `${date} at ${time}`;
+                                                                return `${date} ${time}`;
                                                             })()}
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center">
-                                                        <span className="font-medium text-black w-24 text-left">REPORT No:</span>
-                                                        <span className="font-bold text-black ml-1">{report.reportCode || "N/A"}</span>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-gray-900 font-normal">REPORT NO:</span>
+                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{report.reportCode || "N/A"}</span>
                                                     </div>
-                                                    <div className="flex items-center">
-                                                        <span className="font-medium text-black w-24 text-left">PATIENT No:</span>
-                                                        <span className="font-bold text-black ml-1">{report.patientCode || "N/A"}</span>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-gray-900 font-normal">PATIENT NO:</span>
+                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{report.patientCode || "N/A"}</span>
                                                     </div>
-                                                    <div className="flex items-center">
-                                                        <span className="font-medium text-black w-24 text-left">VISIT No:</span>
-                                                        <span className="font-bold text-black ml-1">{report.visitCode || "N/A"}</span>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-gray-900 font-normal">VISIT NO:</span>
+                                                        <span className="text-gray-900 font-normal text-right ml-3 flex-1">{report.visitCode || "N/A"}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="mt-1.5 mb-1.5 h-0.5 w-full rounded bg-blue-600" />
                                 </div>
 
                                 {/* Test Name Heading */}
@@ -875,6 +885,20 @@ const CommonReportView2 = ({
 
                                         {/* Reference Ranges Table */}
                                         {renderReferenceRanges(detailedEntry.referenceRanges)}
+
+                                        {/* Signature Block - appears right after detailed report content */}
+                                        <div className="grid grid-cols-2 gap-4 pt-4 mt-4">
+                                            <div className="text-center">
+                                                <div className="h-12 flex items-center justify-center">
+                                                    <span className="text-xs text-gray-700 font-medium">Lab Technician</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-center">
+                                                <div className="h-12 flex items-center justify-center">
+                                                    <span className="text-xs text-gray-700 font-medium">Authorized Pathologist</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
@@ -926,28 +950,30 @@ const CommonReportView2 = ({
                                         </div>
                                     </div>
                                 )}
-                                <h4 className="text-xs font-bold text-black mt-4 mb-1 text-left">Disclaimer</h4>
-                                <p className="text-xs text-gray-600 italic text-left">
-                                    *This laboratory report is intended for clinical correlation only. Results should be interpreted by a qualified medical professional. Laboratory values may vary based on methodology and biological variance. The diagnostic center is not responsible for misinterpretation or misuse of results.*
-                                </p>
 
-                                <div data-footer-section className="  border-gray-200" style={{ marginTop: "auto" }}>
-                                    <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
+                                {/* Signature Block - appears right after report content (only for non-detailed reports) */}
+                                {!detailedEntry && (
+                                    <div className="grid grid-cols-2 gap-4 pt-4 mt-4">
                                         <div className="text-center">
-                                            <p className="text-xs font-medium text-gray-700 mb-2">Lab Technician</p>
-                                            <div className="h-12 border-t border-gray-300 flex items-center justify-center">
-                                                <span className="text-xs text-gray-500">Signature/Stamp</span>
+                                            <div className="h-12 flex items-center justify-center">
+                                                <span className="text-xs text-gray-700 font-medium">Lab Technician</span>
                                             </div>
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-xs font-medium text-gray-700 mb-2">Authorized Pathologist</p>
-                                            <div className="h-12 border-t border-gray-300 flex items-center justify-center">
-                                                <span className="text-xs text-gray-500">Dr. Signature/Stamp</span>
+                                            <div className="h-12 flex items-center justify-center">
+                                                <span className="text-xs text-gray-700 font-medium">Authorized Pathologist</span>
                                             </div>
                                         </div>
                                     </div>
+                                )}
+
+                                <div data-footer-section className="  border-gray-200" style={{ marginTop: "auto" }}>
 
                                     <div className="mt-4 text-center">
+                                        <h4 className="text-[9px] font-bold text-black mt-4 mb-1 text-left italic">Disclaimer</h4>
+                                        <p className="text-[9px] text-gray-600 italic text-left mb-4">
+                                            *This laboratory report is intended for clinical correlation only. Results should be interpreted by a qualified medical professional. Laboratory values may vary based on methodology and biological variance. The diagnostic center is not responsible for misinterpretation or misuse of results.*
+                                        </p>
                                         <p className="text-xs text-gray-600 mb-1">
                                             This is an electronically generated report. No physical signature required.
                                         </p>
