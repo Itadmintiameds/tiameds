@@ -807,7 +807,7 @@ const CommonReportView2 = ({
                                     <div className="w-full border border-gray-300 bg-white">
                                         <div className="grid grid-cols-2">
                                             {/* Left Section */}
-                                            {/* Left Section */}
+                                           
                                             <div className="p-3">
                                                 <div className="space-y-1.5 text-xs">
                                                     <div className="flex justify-between items-center">
