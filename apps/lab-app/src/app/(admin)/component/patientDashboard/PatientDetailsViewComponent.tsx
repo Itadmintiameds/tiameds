@@ -445,11 +445,30 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                   <div>
                     <span className="font-semibold text-black">Date:</span>
                     <span className="ml-1 text-black">
-                      {summaryTxn
-                        ? (summaryTxn.created_at ? formatInvoiceDateTime(summaryTxn.created_at) : (summaryTxn.payment_date || 'N/A'))
-                        : (patient?.visit?.billing?.paymentDate
+                      {(() => {
+                        // Prioritize transaction created_at for accurate date and time
+                        if (summaryTxn?.created_at) {
+                          return formatInvoiceDateTime(summaryTxn.created_at);
+                        }
+                        // If no summaryTxn, get the most recent transaction's created_at
+                        const transactions = patient?.visit?.billing?.transactions || [];
+                        if (transactions.length > 0) {
+                          // Sort by created_at to get the most recent transaction
+                          const sortedTransactions = [...transactions].sort((a, b) => {
+                            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                            return dateB - dateA; // Most recent first
+                          });
+                          const latestTxn = sortedTransactions[0];
+                          if (latestTxn?.created_at) {
+                            return formatInvoiceDateTime(latestTxn.created_at);
+                          }
+                        }
+                        // Fallback to paymentDate only if no transactions exist
+                        return patient?.visit?.billing?.paymentDate
                           ? formatInvoiceDateTime(patient.visit.billing.paymentDate)
-                          : 'N/A')}
+                          : 'N/A';
+                      })()}
                     </span>
                   </div>
                 </div>
