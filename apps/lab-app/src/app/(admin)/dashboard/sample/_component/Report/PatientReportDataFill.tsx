@@ -13,6 +13,7 @@ import TestComponentFactory from './TestSpecificComponents/TestComponentFactory'
 import DetailedReportEditor from './DetailedReportEditor';
 import { formatMedicalReportToHTML } from '@/utils/reportFormatter';
 import ConfirmationDialog from '@/app/(admin)/component/common/ConfirmationDialog';
+import { hasValidDropdown } from '@/utils/dropdownParser';
 
 export interface Patient {
   visitId: number;
@@ -395,6 +396,9 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
 
           const descriptionKey = `${index}_description`;
           const hasDescription = testInputs[descriptionKey] && testInputs[descriptionKey].trim();
+          
+          // Check if point has valid dropdown field (API-driven) - takes priority over testDescription
+          const hasApiDropdown = hasValidDropdown(point.dropdown);
 
           if (point.testDescription === "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE" ||
             point.testDescription === "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT") {
@@ -402,8 +406,9 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
             description = hasDescription ? testInputs[descriptionKey] : "N/A";
             finalValue = testInputs[index] || "N/A";
             referenceRange = "N/A";
-          } else if (["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
+          } else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
             "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DROPDOWN-COMPATIBLE/INCOMPATIBLE"].includes(point.testDescription)) {
+            // Handle both API-driven dropdowns and hardcoded dropdown types
             unit = "N/A";
             description = "N/A";
             finalValue = testInputs[index] || "N/A";

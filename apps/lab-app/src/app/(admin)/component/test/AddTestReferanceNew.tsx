@@ -101,6 +101,7 @@ export const testReferancePointSchema = z
   maxAgeUnit: z.string().default("YEARS").optional(),
   reportJson: z.string().optional(),
   referenceRanges: z.string().optional(),
+  dropdown: z.string().optional(),
   createdBy: z.string().optional(),
   updatedBy: z.string().optional(),
   createdAt: z.string().optional(),
@@ -171,6 +172,396 @@ import { getTests } from "../../../../../services/testService";
 import { toast } from "react-toastify";
 import { TestList } from "@/types/test/testlist";
 import Loader from "../common/Loader";
+
+// Dropdown Editor Component
+interface DropdownItem {
+    value: string;
+    label: string;
+}
+
+interface DropdownEditorProps {
+    dropdownData: DropdownItem[];
+    onUpdate: (items: DropdownItem[]) => void;
+    onClose: () => void;
+}
+
+const DropdownEditor: React.FC<DropdownEditorProps> = ({ dropdownData, onUpdate, onClose }) => {
+    const [items, setItems] = useState<DropdownItem[]>(dropdownData.length > 0 ? dropdownData : [{ value: "", label: "" }]);
+
+    const addItem = () => {
+        setItems([...items, { value: "", label: "" }]);
+    };
+
+    const updateItem = (index: number, field: "value" | "label", value: string) => {
+        const updated = [...items];
+        updated[index] = { ...updated[index], [field]: value };
+        setItems(updated);
+    };
+
+    const removeItem = (index: number) => {
+        const updated = items.filter((_, i) => i !== index);
+        setItems(updated.length > 0 ? updated : [{ value: "", label: "" }]);
+    };
+
+    const handleSave = () => {
+        const validItems = items.filter(item => item.value.trim() !== "" || item.label.trim() !== "");
+        onUpdate(validItems);
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div 
+                    className="px-6 py-4 border-b border-gray-200"
+                    style={{ background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)` }}
+                >
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-white">Configure Dropdown Values</h3>
+                        <button
+                            onClick={onClose}
+                            className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+                </div>
+                
+                <div className="p-6 space-y-4">
+                    <p className="text-sm text-gray-600 mb-4">
+                        Add dropdown options. Each option requires a value and label. Value is used internally, label is displayed to users.
+                    </p>
+                    
+                    <div className="space-y-3">
+                        {items.map((item, index) => (
+                            <div key={index} className="flex gap-2 items-start p-3 border border-gray-200 rounded-lg bg-gray-50">
+                                <div className="flex-1 grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="text-xs text-gray-600 mb-1 block">Value</label>
+                                        <input
+                                            type="text"
+                                            value={item.value}
+                                            onChange={(e) => updateItem(index, "value", e.target.value)}
+                                            placeholder="e.g., A+"
+                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-gray-600 mb-1 block">Label</label>
+                                        <input
+                                            type="text"
+                                            value={item.label}
+                                            onChange={(e) => updateItem(index, "label", e.target.value)}
+                                            placeholder="e.g., A Positive"
+                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                                        />
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => removeItem(index)}
+                                    className="mt-6 p-1 text-red-600 hover:bg-red-50 rounded"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <button
+                        type="button"
+                        onClick={addItem}
+                        className="flex items-center gap-2 px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 border border-gray-300 transition-all duration-200"
+                    >
+                        <PlusIcon className="h-4 w-4" />
+                        Add Option
+                    </button>
+                    
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSave}
+                            className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
+                            style={{ background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)` }}
+                        >
+                            Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Types for Reference Ranges
+type AgeUnit = "YEARS" | "MONTHS" | "WEEKS" | "DAYS";
+type GenderOption = "M" | "F" | "MF";
+
+interface RangeRow {
+    Gender: GenderOption;
+    AgeMin: number | "";
+    AgeMinUnit: AgeUnit;
+    AgeMax: number | "";
+    AgeMaxUnit: AgeUnit;
+    ReferenceRange: string;
+}
+
+// Reference Ranges Editor Component
+interface ReferenceRangesEditorProps {
+    rangesRows: RangeRow[];
+    rangesTab: "structured" | "raw";
+    onRangesRowsChange: (rows: RangeRow[]) => void;
+    onRangesTabChange: (tab: "structured" | "raw") => void;
+    onReferenceRangesChange: (jsonString: string | undefined) => void;
+    referenceRangesJson: string | undefined;
+    onClose: () => void;
+}
+
+const ReferenceRangesEditor: React.FC<ReferenceRangesEditorProps> = ({
+    rangesRows,
+    rangesTab,
+    onRangesRowsChange,
+    onRangesTabChange,
+    onReferenceRangesChange,
+    referenceRangesJson,
+    onClose
+}) => {
+    const addRangeRow = () => {
+        const newRow: RangeRow = {
+            Gender: "MF",
+            AgeMin: "",
+            AgeMinUnit: "YEARS",
+            AgeMax: "",
+            AgeMaxUnit: "YEARS",
+            ReferenceRange: "",
+        };
+        onRangesRowsChange([...rangesRows, newRow]);
+    };
+
+    const removeRangeRow = (idx: number) => {
+        onRangesRowsChange(rangesRows.filter((_, i) => i !== idx));
+    };
+
+    const updateRangeRow = <K extends keyof RangeRow>(idx: number, field: K, value: RangeRow[K]) => {
+        const updated = rangesRows.map((r, i) => (i === idx ? ({ ...r, [field]: value } as RangeRow) : r));
+        onRangesRowsChange(updated);
+    };
+
+    const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        onReferenceRangesChange(e.target.value || undefined);
+    };
+
+    const validateJson = (jsonString?: string): boolean => {
+        if (!jsonString || !jsonString.trim()) return true;
+        try { JSON.parse(jsonString); return true; } catch { return false; }
+    };
+
+    const handleSave = () => {
+        if (rangesTab === 'structured') {
+            const filteredRows = rangesRows.filter(r => r.ReferenceRange);
+            onReferenceRangesChange(filteredRows.length > 0 ? JSON.stringify(filteredRows) : undefined);
+        }
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div 
+                    className="px-6 py-4 border-b border-gray-200"
+                    style={{ background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)` }}
+                >
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-white">Configure Reference Ranges</h3>
+                        <button
+                            onClick={onClose}
+                            className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+                </div>
+                
+                <div className="p-6 space-y-4">
+                    <div className="flex items-center justify-between mb-4">
+                        <p className="text-sm text-gray-600">
+                            Configure reference ranges for different age groups and genders.
+                        </p>
+                        <div className="inline-flex rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                            <button 
+                                type="button" 
+                                className={`px-3 py-1.5 text-xs font-medium transition-all duration-200 ${rangesTab === 'structured' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`} 
+                                onClick={() => onRangesTabChange('structured')}
+                            >
+                                Structured
+                            </button>
+                            <button 
+                                type="button" 
+                                className={`px-3 py-1.5 text-xs font-medium transition-all duration-200 ${rangesTab === 'raw' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`} 
+                                onClick={() => onRangesTabChange('raw')}
+                            >
+                                Raw
+                            </button>
+                        </div>
+                    </div>
+
+                    {rangesTab === 'structured' ? (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h5 className="text-sm font-semibold text-gray-800">Reference Ranges Builder</h5>
+                                <span className="text-xs text-gray-500">Use rows per age/gender</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-600 font-medium">Ranges</span>
+                                <div className="flex gap-2">
+                                    <button 
+                                        type="button" 
+                                        onClick={addRangeRow} 
+                                        className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 border border-gray-300 transition-all duration-200"
+                                    >
+                                        Add Row
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="overflow-auto">
+                                <div className="min-w-[720px]">
+                                    <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-600 mb-2">
+                                        <div className="col-span-1">Gender</div>
+                                        <div className="col-span-2">Age Min</div>
+                                        <div className="col-span-2">Age Max</div>
+                                        <div className="col-span-6">Reference Range</div>
+                                        <div className="col-span-1"></div>
+                                    </div>
+                                    {rangesRows.map((row, idx) => (
+                                        <div key={idx} className="grid grid-cols-12 gap-2 mb-2 items-center">
+                                            <select
+                                                className="col-span-1 border border-gray-300 rounded p-2 text-xs"
+                                                value={row.Gender}
+                                                onChange={(e) => updateRangeRow(idx, "Gender", e.target.value as GenderOption)}
+                                            >
+                                                <option value="M">Male</option>
+                                                <option value="F">Female</option>
+                                                <option value="MF">Both</option>
+                                            </select>
+                                            <div className="col-span-2 grid grid-cols-2 gap-2">
+                                                <input
+                                                    className="border border-gray-300 rounded p-2 text-xs"
+                                                    type="number"
+                                                    min={0}
+                                                    value={row.AgeMin === "" ? "" : row.AgeMin}
+                                                    onChange={(e) => updateRangeRow(idx, "AgeMin", e.target.value === "" ? "" : Number(e.target.value))}
+                                                    placeholder="0"
+                                                />
+                                                <select
+                                                    className="border border-gray-300 rounded p-2 text-xs"
+                                                    value={row.AgeMinUnit}
+                                                    onChange={(e) => updateRangeRow(idx, "AgeMinUnit", e.target.value as AgeUnit)}
+                                                >
+                                                    <option value="YEARS">YEARS</option>
+                                                    <option value="MONTHS">MONTHS</option>
+                                                    <option value="WEEKS">WEEKS</option>
+                                                    <option value="DAYS">DAYS</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-span-2 grid grid-cols-2 gap-2">
+                                                <input
+                                                    className="border border-gray-300 rounded p-2 text-xs"
+                                                    type="number"
+                                                    min={0}
+                                                    value={row.AgeMax === "" ? "" : row.AgeMax}
+                                                    onChange={(e) => updateRangeRow(idx, "AgeMax", e.target.value === "" ? "" : Number(e.target.value))}
+                                                    placeholder=""
+                                                />
+                                                <select
+                                                    className="border border-gray-300 rounded p-2 text-xs"
+                                                    value={row.AgeMaxUnit}
+                                                    onChange={(e) => updateRangeRow(idx, "AgeMaxUnit", e.target.value as AgeUnit)}
+                                                >
+                                                    <option value="YEARS">YEARS</option>
+                                                    <option value="MONTHS">MONTHS</option>
+                                                    <option value="WEEKS">WEEKS</option>
+                                                    <option value="DAYS">DAYS</option>
+                                                </select>
+                                            </div>
+                                            <input
+                                                className="col-span-6 border border-gray-300 rounded p-2 text-xs"
+                                                placeholder="e.g., 12.0 - 16.0 g/dL / 4.5 - 11.0 x 10³/μL"
+                                                value={row.ReferenceRange}
+                                                onChange={(e) => updateRangeRow(idx, "ReferenceRange", e.target.value)}
+                                            />
+                                            <button type="button" className="col-span-1 text-xs text-red-600 hover:text-red-700" onClick={() => removeRangeRow(idx)}>Remove</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="border-t border-gray-200 pt-3 mt-3">
+                                <h6 className="text-xs font-semibold text-gray-800 mb-2">Live Preview</h6>
+                                {rangesRows.filter(r => r.ReferenceRange).length === 0 ? (
+                                    <p className="text-xs text-gray-500">No ranges added yet.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {rangesRows.filter(r => r.ReferenceRange).map((r, i) => (
+                                            <div key={i} className="bg-green-50 border border-green-200 rounded-lg p-2 text-xs">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="text-green-800 font-medium">{r.Gender === 'M' ? 'Male' : r.Gender === 'F' ? 'Female' : 'Both'}</div>
+                                                    <div className="text-green-900 font-semibold">{r.ReferenceRange}</div>
+                                                </div>
+                                                <div className="text-xs text-gray-700 mt-1">Age: {String(r.AgeMin)} {r.AgeMinUnit} {r.AgeMax !== '' && <>- {String(r.AgeMax)} {r.AgeMaxUnit}</>}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <div>
+                            <textarea
+                                name="referenceRanges"
+                                value={referenceRangesJson || ""}
+                                onChange={handleJsonChange}
+                                rows={8}
+                                className={`w-full border p-3 rounded-lg focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-sm font-mono ${
+                                    referenceRangesJson && !validateJson(referenceRangesJson) 
+                                        ? 'border-red-300 focus:ring-red-500' 
+                                        : 'border-gray-300'
+                                }`}
+                                placeholder="Enter reference ranges JSON data (e.g., age-specific ranges, gender-specific ranges)"
+                            />
+                            {referenceRangesJson && !validateJson(referenceRangesJson) && (
+                                <p className="text-xs text-red-500 mt-2">Invalid JSON format. Please check your syntax.</p>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSave}
+                            className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
+                            style={{ background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)` }}
+                        >
+                            Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // Detailed Report Form Editor Component
 interface ReportSectionType {
@@ -796,24 +1187,17 @@ const AddTestReferanceNew = ({
         }
     };
 
-  // Reference ranges state
-  const [rangesTab, setRangesTab] = useState<"structured" | "raw">("structured");
+  // Dropdown editor state
+  const [isDropdownEditorOpen, setIsDropdownEditorOpen] = useState(false);
 
-  type AgeUnit = "YEARS" | "MONTHS" | "WEEKS" | "DAYS";
-  type GenderOption = "M" | "F" | "MF";
-
-  interface RangeRow {
-      Gender: GenderOption;
-      AgeMin: number | "";
-      AgeMinUnit: AgeUnit;
-      AgeMax: number | "";
-      AgeMaxUnit: AgeUnit;
-      ReferenceRange: string;
-  }
+  // Reference Ranges editor state
+  const [isReferenceRangesEditorOpen, setIsReferenceRangesEditorOpen] = useState(false);
+  const [modalRangesRows, setModalRangesRows] = useState<RangeRow[]>([]);
+  const [modalRangesTab, setModalRangesTab] = useState<"structured" | "raw">("structured");
 
   const DEFAULT_RANGE_ROW = (): RangeRow => ({
       Gender: "MF",
-      AgeMin: 0,
+      AgeMin: "",
       AgeMinUnit: "YEARS",
       AgeMax: "",
       AgeMaxUnit: "YEARS",
@@ -829,54 +1213,68 @@ const AddTestReferanceNew = ({
   const isAgeUnit = (unit: unknown): unit is AgeUnit =>
       unit === "YEARS" || unit === "MONTHS" || unit === "WEEKS" || unit === "DAYS";
 
-  const isGenderOption = (gender: unknown): gender is GenderOption =>
-      gender === "M" || gender === "F" || gender === "MF";
+  const isGenderOption = (gender: unknown): gender is GenderOption | "M/F" =>
+      gender === "M" || gender === "F" || gender === "MF" || gender === "M/F";
 
-  const normalizeRangeRow = (row: Partial<RangeRow>): RangeRow => ({
-      Gender: isGenderOption(row.Gender) ? row.Gender : "MF",
-      AgeMin: normalizeRangeValue(row.AgeMin),
-      AgeMinUnit: isAgeUnit(row.AgeMinUnit) ? row.AgeMinUnit : "YEARS",
-      AgeMax: normalizeRangeValue(row.AgeMax),
-      AgeMaxUnit: isAgeUnit(row.AgeMaxUnit) ? row.AgeMaxUnit : "YEARS",
-      ReferenceRange: row.ReferenceRange ?? "",
-  });
-
-  const [rangesRows, setRangesRows] = useState<RangeRow[]>([DEFAULT_RANGE_ROW()]);
-
-
-  // Helpers: Reference ranges builder
-  const addRangeRow = () => setRangesRows(prev => [...prev, DEFAULT_RANGE_ROW()]);
-  const removeRangeRow = (idx: number) => setRangesRows(prev => prev.filter((_, i) => i !== idx));
-  const updateRangeRow = <K extends keyof RangeRow>(idx: number, field: K, value: RangeRow[K]) =>
-      setRangesRows(prev =>
-          prev.map((r, i) => (i === idx ? ({ ...r, [field]: value } as RangeRow) : r))
-      );
-
-  const applyRangesToJson = () => {
-      const rows = rangesRows.filter(r => r.ReferenceRange);
-      setNewReferanceRecord(prev => ({ ...prev, referenceRanges: JSON.stringify(rows) }));
+  const normalizeRangeRow = (row: Partial<RangeRow>): RangeRow => {
+      let gender: GenderOption = "MF";
+      const rawGender = row.Gender as unknown;
+      if (isGenderOption(rawGender)) {
+          gender = (rawGender === "M/F" || rawGender === "MF") ? "MF" : rawGender as GenderOption;
+      }
+      return {
+          Gender: gender,
+          AgeMin: normalizeRangeValue(row.AgeMin),
+          AgeMinUnit: isAgeUnit(row.AgeMinUnit) ? row.AgeMinUnit : "YEARS",
+          AgeMax: normalizeRangeValue(row.AgeMax),
+          AgeMaxUnit: isAgeUnit(row.AgeMaxUnit) ? row.AgeMaxUnit : "YEARS",
+          ReferenceRange: row.ReferenceRange ?? "",
+      };
   };
 
-  const loadRangesFromJson = useCallback(() => {
-      if (!newReferanceRecord.referenceRanges) return;
+  // Handler to open reference ranges editor and load existing data
+  const handleOpenReferenceRangesEditor = () => {
+      if (newReferanceRecord.referenceRanges) {
+          try {
+              const parsed = JSON.parse(newReferanceRecord.referenceRanges as string);
+              if (Array.isArray(parsed)) {
+                  const normalized = parsed.map((row: unknown) =>
+                      normalizeRangeRow(
+                          typeof row === "object" && row !== null ? (row as Partial<RangeRow>) : {}
+                      )
+                  );
+                  setModalRangesRows(normalized.length > 0 ? normalized : [DEFAULT_RANGE_ROW()]);
+                  setModalRangesTab('structured');
+              } else {
+                  setModalRangesRows([DEFAULT_RANGE_ROW()]);
+                  setModalRangesTab('raw');
+              }
+          } catch {
+              setModalRangesRows([DEFAULT_RANGE_ROW()]);
+              setModalRangesTab('raw');
+          }
+      } else {
+          setModalRangesRows([DEFAULT_RANGE_ROW()]);
+          setModalRangesTab('structured');
+      }
+      setIsReferenceRangesEditorOpen(true);
+  };
+
+  // Get current reference ranges for preview
+  const getCurrentReferenceRanges = (): RangeRow[] => {
+      if (!newReferanceRecord.referenceRanges) return [];
       try {
           const parsed = JSON.parse(newReferanceRecord.referenceRanges as string);
           if (Array.isArray(parsed)) {
-              const normalized = parsed.map((row: unknown) =>
+              return parsed.map((row: unknown) =>
                   normalizeRangeRow(
                       typeof row === "object" && row !== null ? (row as Partial<RangeRow>) : {}
                   )
-              );
-              setRangesRows(normalized.length ? normalized : [DEFAULT_RANGE_ROW()]);
+              ).filter(r => r.ReferenceRange);
           }
       } catch {}
-  }, [newReferanceRecord.referenceRanges, DEFAULT_RANGE_ROW, normalizeRangeRow]);
-
-  useEffect(() => {
-      if (newReferanceRecord.referenceRanges) {
-          loadRangesFromJson();
-      }
-  }, [newReferanceRecord.referenceRanges, loadRangesFromJson]);
+      return [];
+  };
 
   // Helper function to check if min/max ranges should be hidden
   // Hides ranges for all DROPDOWN types and DETAILED REPORT
@@ -907,6 +1305,31 @@ const AddTestReferanceNew = ({
           ...prev,
           reportJson: JSON.stringify(updated, null, 2)
       }));
+  };
+
+  // Parse dropdown JSON or return empty array
+  const getDropdownData = (): DropdownItem[] => {
+      try {
+          const dropdownValue = (newReferanceRecord as any).dropdown;
+          if (dropdownValue && typeof dropdownValue === 'string' && dropdownValue.trim()) {
+              const parsed = JSON.parse(dropdownValue);
+              if (Array.isArray(parsed)) {
+                  return parsed.filter((item: any) => item && typeof item === 'object' && (item.value || item.label));
+              }
+          }
+      } catch (e) {
+          // If invalid JSON, return empty array
+      }
+      return [];
+  };
+
+  // Update dropdown JSON
+  const updateDropdownJson = (items: DropdownItem[]) => {
+      const jsonString = items.length > 0 ? JSON.stringify(items) : undefined;
+      setNewReferanceRecord(prev => ({
+          ...prev,
+          dropdown: jsonString
+      } as TestReferancePoint & { dropdown?: string }));
   };
 
   if (isLoading) {
@@ -1051,6 +1474,40 @@ const AddTestReferanceNew = ({
                     </div>
                 </div>
 
+                {/* Dropdown Configuration Section - Optional */}
+                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                    <div className="flex items-center justify-between mb-3">
+                        <div>
+                            <h4 className="font-semibold text-indigo-800">Dropdown Options (Optional)</h4>
+                            <p className="text-xs text-gray-600 mt-1">Configure dropdown values for this test reference</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsDropdownEditorOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
+                            style={{ background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)` }}
+                        >
+                            <PlusIcon className="h-4 w-4" />
+                            {getDropdownData().length > 0 ? 'Edit Options' : 'Add Options'}
+                        </button>
+                    </div>
+                    {getDropdownData().length > 0 && (
+                        <div className="mt-3 bg-white rounded-lg border border-gray-200 p-3">
+                            <div className="text-xs text-gray-600 mb-2 font-medium">Current Options:</div>
+                            <div className="flex flex-wrap gap-2">
+                                {getDropdownData().map((item, index) => (
+                                    <div
+                                        key={index}
+                                        className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-md text-xs font-medium"
+                                    >
+                                        {item.label || item.value}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 {/* Age Information Section - Orange */}
                 <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
                     <h4 className="font-semibold text-orange-800 mb-3">Age Range</h4>
@@ -1156,182 +1613,41 @@ const AddTestReferanceNew = ({
                 </div>
                 )}
 
-                {/* Reference Ranges Field - Structured/Raw (hidden for DETAILED REPORT and all DROPDOWN types) */}
+                {/* Reference Ranges Section - Yellow (hidden for DETAILED REPORT and all DROPDOWN types) */}
                 {!shouldHideRanges(newReferanceRecord.testDescription) && (
                     <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
                         <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-semibold text-yellow-800">Reference Ranges JSON (Optional)</h4>
-                            <div className="inline-flex rounded-lg overflow-hidden border border-gray-200 shadow-sm">
-                                <button 
-                                    type="button" 
-                                    className={`px-3 py-1.5 text-xs font-medium transition-all duration-200 ${rangesTab === 'structured' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`} 
-                                    onClick={() => setRangesTab('structured')}
-                                >
-                                    Structured
-                                </button>
-                                <button 
-                                    type="button" 
-                                    className={`px-3 py-1.5 text-xs font-medium transition-all duration-200 ${rangesTab === 'raw' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`} 
-                                    onClick={() => setRangesTab('raw')}
-                                >
-                                    Raw
-                                </button>
+                            <div>
+                                <h4 className="font-semibold text-yellow-800">Reference Ranges (Optional)</h4>
+                                <p className="text-xs text-gray-600 mt-1">Configure reference ranges for this test reference</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleOpenReferenceRangesEditor}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
+                                style={{ background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)` }}
+                            >
+                                <PlusIcon className="h-4 w-4" />
+                                {getCurrentReferenceRanges().length > 0 ? 'Edit Ranges' : 'Add Ranges'}
+                            </button>
                         </div>
-                    </div>
-
-                    {rangesTab === 'structured' ? (
-                            <div className="space-y-3 bg-white rounded-lg border border-gray-200 p-4">
-                            <div className="flex items-center justify-between">
-                                    <h5 className="text-sm font-semibold text-gray-800">Reference Ranges Builder</h5>
-                                    <span className="text-xs text-gray-500">Use rows per age/gender</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                    <span className="text-xs text-gray-600 font-medium">Ranges</span>
-                                <div className="flex gap-2">
-                                        <button 
-                                            type="button" 
-                                            onClick={addRangeRow} 
-                                            className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 border border-gray-300 transition-all duration-200"
-                                        >
-                                            Add Row
-                                        </button>
-                                        <button 
-                                            type="button" 
-                                            onClick={loadRangesFromJson} 
-                                            className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 border border-gray-300 transition-all duration-200"
-                                        >
-                                            Load from JSON
-                                        </button>
-                                        <button 
-                                            type="button" 
-                                            onClick={applyRangesToJson} 
-                                            className="px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-all duration-200"
-                                            style={{ background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)` }}
-                                        >
-                                            Apply to JSON
-                                        </button>
-                                </div>
-                            </div>
-
-                            <div className="overflow-auto">
-                                <div className="min-w-[720px]">
-                                    <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-600 mb-2">
-                                        <div className="col-span-1">Gender</div>
-                                        <div className="col-span-2">Age Min</div>
-                                        <div className="col-span-2">Age Max</div>
-                                        <div className="col-span-6">Reference Range</div>
-                                        <div className="col-span-1"></div>
-                                    </div>
-                                    {rangesRows.map((row, idx) => (
-                                        <div key={idx} className="grid grid-cols-12 gap-2 mb-2 items-center">
-                                            <select
-                                                className="col-span-1 border border-gray-300 rounded p-2 text-xs"
-                                                value={row.Gender}
-                                                onChange={(e) => updateRangeRow(idx, "Gender", e.target.value as GenderOption)}
-                                            >
-                                                <option value="M">Male</option>
-                                                <option value="F">Female</option>
-                                                <option value="MF">Both</option>
-                                            </select>
-                                            <div className="col-span-2 grid grid-cols-2 gap-2">
-                                                <input
-                                                    className="border border-gray-300 rounded p-2 text-xs"
-                                                    type="number"
-                                                    min={0}
-                                                    value={row.AgeMin === "" ? "" : row.AgeMin}
-                                                    onChange={(e) =>
-                                                        updateRangeRow(
-                                                            idx,
-                                                            "AgeMin",
-                                                            e.target.value === "" ? "" : Number(e.target.value)
-                                                        )
-                                                    }
-                                                    placeholder="0"
-                                                />
-                                                <select
-                                                    className="border border-gray-300 rounded p-2 text-xs"
-                                                    value={row.AgeMinUnit}
-                                                    onChange={(e) => updateRangeRow(idx, "AgeMinUnit", e.target.value as AgeUnit)}
-                                                >
-                                                    <option value="YEARS">YEARS</option>
-                                                    <option value="MONTHS">MONTHS</option>
-                                                    <option value="WEEKS">WEEKS</option>
-                                                    <option value="DAYS">DAYS</option>
-                                                </select>
+                        {getCurrentReferenceRanges().length > 0 && (
+                            <div className="mt-3 bg-white rounded-lg border border-gray-200 p-3">
+                                <div className="text-xs text-gray-600 mb-2 font-medium">Current Ranges:</div>
+                                <div className="space-y-2">
+                                    {getCurrentReferenceRanges().map((r, i) => (
+                                        <div key={i} className="bg-green-50 border border-green-200 rounded-lg p-2 text-xs">
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-green-800 font-medium">{r.Gender === 'M' ? 'Male' : r.Gender === 'F' ? 'Female' : 'Both'}</div>
+                                                <div className="text-green-900 font-semibold">{r.ReferenceRange}</div>
                                             </div>
-                                            <div className="col-span-2 grid grid-cols-2 gap-2">
-                                                <input
-                                                    className="border border-gray-300 rounded p-2 text-xs"
-                                                    type="number"
-                                                    min={0}
-                                                    value={row.AgeMax === "" ? "" : row.AgeMax}
-                                                    onChange={(e) =>
-                                                        updateRangeRow(
-                                                            idx,
-                                                            "AgeMax",
-                                                            e.target.value === "" ? "" : Number(e.target.value)
-                                                        )
-                                                    }
-                                                    placeholder=""
-                                                />
-                                                <select
-                                                    className="border border-gray-300 rounded p-2 text-xs"
-                                                    value={row.AgeMaxUnit}
-                                                    onChange={(e) => updateRangeRow(idx, "AgeMaxUnit", e.target.value as AgeUnit)}
-                                                >
-                                                    <option value="YEARS">YEARS</option>
-                                                    <option value="MONTHS">MONTHS</option>
-                                                    <option value="WEEKS">WEEKS</option>
-                                                    <option value="DAYS">DAYS</option>
-                                                </select>
-                                            </div>
-                                            <input className="col-span-6 border border-gray-300 rounded p-2 text-xs" placeholder="e.g., 12.0 - 16.0 g/dL / 4.5 - 11.0 x 10³/μL" value={row.ReferenceRange} onChange={(e) => updateRangeRow(idx, 'ReferenceRange', e.target.value)} />
-                                            <button type="button" className="col-span-1 text-xs text-red-600" onClick={() => removeRangeRow(idx)}>Remove</button>
+                                            <div className="text-xs text-gray-700 mt-1">Age: {String(r.AgeMin)} {r.AgeMinUnit} {r.AgeMax !== '' && <>- {String(r.AgeMax)} {r.AgeMaxUnit}</>}</div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-
-                            {/* Live Preview */}
-                                <div className="border-t border-gray-200 pt-3 mt-3">
-                                    <h6 className="text-xs font-semibold text-gray-800 mb-2">Live Preview</h6>
-                                {rangesRows.filter(r => r.ReferenceRange).length === 0 ? (
-                                        <p className="text-xs text-gray-500">No ranges added yet.</p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {rangesRows.filter(r => r.ReferenceRange).map((r, i) => (
-                                                <div key={i} className="bg-green-50 border border-green-200 rounded-lg p-2 text-xs">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="text-green-800 font-medium">{r.Gender === 'M' ? 'Male' : r.Gender === 'F' ? 'Female' : 'Both'}</div>
-                                                    <div className="text-green-900 font-semibold">{r.ReferenceRange}</div>
-                                                </div>
-                                                    <div className="text-xs text-gray-700 mt-1">Age: {String(r.AgeMin)} {r.AgeMinUnit} {r.AgeMax !== '' && <>- {String(r.AgeMax)} {r.AgeMaxUnit}</>}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ) : (
-                            <div className="bg-white rounded-lg border border-gray-200 p-4">
-                            <textarea
-                                name="referenceRanges"
-                                placeholder="Enter reference ranges JSON data (e.g., age-specific ranges, gender-specific ranges)"
-                                value={newReferanceRecord.referenceRanges || ""}
-                                onChange={handleJsonChange}
-                                rows={8}
-                                    className={`w-full border p-3 rounded-lg focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-sm font-mono ${
-                                    newReferanceRecord.referenceRanges && !validateJson(newReferanceRecord.referenceRanges) 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300'
-                                }`}
-                            />
-                            {newReferanceRecord.referenceRanges && !validateJson(newReferanceRecord.referenceRanges) && (
-                                    <p className="text-xs text-red-500 mt-2">Invalid JSON format. Please check your syntax.</p>
-                            )}
-                            </div>
-                    )}
-                </div>
+                        )}
+                    </div>
                 )}
 
                 {/* Action Buttons */}
@@ -1355,6 +1671,68 @@ const AddTestReferanceNew = ({
                 </div>
             </form>
             </div>
+
+            {/* Dropdown Editor Modal */}
+            {isDropdownEditorOpen && (
+                <DropdownEditor
+                    dropdownData={getDropdownData()}
+                    onUpdate={updateDropdownJson}
+                    onClose={() => setIsDropdownEditorOpen(false)}
+                />
+            )}
+
+            {/* Reference Ranges Editor Modal */}
+            {isReferenceRangesEditorOpen && (
+                <ReferenceRangesEditor
+                    rangesRows={modalRangesRows}
+                    rangesTab={modalRangesTab}
+                    onRangesRowsChange={(rows) => {
+                        setModalRangesRows(rows);
+                    }}
+                    onRangesTabChange={(tab) => {
+                        setModalRangesTab(tab);
+                        if (tab === 'raw' && newReferanceRecord.referenceRanges) {
+                            // Keep the raw JSON when switching to raw tab
+                        } else if (tab === 'structured') {
+                            // When switching to structured, parse and update rows
+                            if (newReferanceRecord.referenceRanges) {
+                                try {
+                                    const parsed = JSON.parse(newReferanceRecord.referenceRanges as string);
+                                    if (Array.isArray(parsed)) {
+                                        const normalized = parsed.map((row: unknown) =>
+                                            normalizeRangeRow(
+                                                typeof row === "object" && row !== null ? (row as Partial<RangeRow>) : {}
+                                            )
+                                        );
+                                        setModalRangesRows(normalized.length > 0 ? normalized : [DEFAULT_RANGE_ROW()]);
+                                    }
+                                } catch {
+                                    setModalRangesRows([DEFAULT_RANGE_ROW()]);
+                                }
+                            }
+                        }
+                    }}
+                    onReferenceRangesChange={(jsonString) => {
+                        setNewReferanceRecord(prev => ({ ...prev, referenceRanges: jsonString } as TestReferancePoint));
+                        if (jsonString && modalRangesTab === 'raw') {
+                            // When raw JSON is updated, try to parse and update rows
+                            try {
+                                const parsed = JSON.parse(jsonString);
+                                if (Array.isArray(parsed)) {
+                                    const normalized = parsed.map((row: unknown) =>
+                                        normalizeRangeRow(
+                                            typeof row === "object" && row !== null ? (row as Partial<RangeRow>) : {}
+                                        )
+                                    );
+                                    setModalRangesRows(normalized.length > 0 ? normalized : [DEFAULT_RANGE_ROW()]);
+                                }
+                            } catch {}
+                        }
+                    }}
+                    referenceRangesJson={newReferanceRecord.referenceRanges}
+                    onClose={() => setIsReferenceRangesEditorOpen(false)}
+                />
+            )}
         </div>
     );
 };
