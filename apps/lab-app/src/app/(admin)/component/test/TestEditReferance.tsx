@@ -3,7 +3,6 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import React, { useState, useEffect, useCallback } from "react";
 import DetailedReportTiptapEditor from "@/components/ui/detailed-report-tiptap-editor";
 import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
-import Button from "../common/Button";
 import { toast } from "react-toastify";
 import { X } from "lucide-react";
 
@@ -649,16 +648,6 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
         handleChangeWithValidation(syntheticEvent);
     };
 
-    // JSON fields handlers
-    const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value } as TestReferancePoint));
-    };
-
-    const validateJson = (jsonString?: string): boolean => {
-        if (!jsonString || !jsonString.trim()) return true;
-        try { JSON.parse(jsonString); return true; } catch { return false; }
-    };
 
     // Dropdown editor state
     const [isDropdownEditorOpen, setIsDropdownEditorOpen] = useState(false);
@@ -671,11 +660,13 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
     // Parse dropdown JSON or return empty array
     const getDropdownData = (): DropdownItem[] => {
         try {
-            const dropdownValue = (formData as any).dropdown;
+            const dropdownValue = (formData as TestReferancePoint & { dropdown?: string }).dropdown;
             if (dropdownValue && typeof dropdownValue === 'string' && dropdownValue.trim()) {
                 const parsed = JSON.parse(dropdownValue);
                 if (Array.isArray(parsed)) {
-                    return parsed.filter((item: any) => item && typeof item === 'object' && (item.value || item.label));
+                    return parsed.filter((item: unknown): item is DropdownItem => 
+                        typeof item === 'object' && item !== null && ('value' in item || 'label' in item)
+                    );
                 }
             }
         } catch (e) {

@@ -167,7 +167,7 @@ import { TrashIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { PlusIcon, X } from "lucide-react";
 import React from "react";
 import { useLabs } from "@/context/LabContext";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { getTests } from "../../../../../services/testService";
 import { toast } from "react-toastify";
 import { TestList } from "@/types/test/testlist";
@@ -1169,24 +1169,6 @@ const AddTestReferanceNew = ({
         }));
     };
 
-    const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setNewReferanceRecord(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
-
-    const validateJson = (jsonString: string): boolean => {
-        if (!jsonString.trim()) return true; // Empty is valid (optional field)
-        try {
-            JSON.parse(jsonString);
-            return true;
-        } catch {
-            return false;
-        }
-    };
-
   // Dropdown editor state
   const [isDropdownEditorOpen, setIsDropdownEditorOpen] = useState(false);
 
@@ -1310,11 +1292,13 @@ const AddTestReferanceNew = ({
   // Parse dropdown JSON or return empty array
   const getDropdownData = (): DropdownItem[] => {
       try {
-          const dropdownValue = (newReferanceRecord as any).dropdown;
+          const dropdownValue = (newReferanceRecord as TestReferancePoint & { dropdown?: string }).dropdown;
           if (dropdownValue && typeof dropdownValue === 'string' && dropdownValue.trim()) {
               const parsed = JSON.parse(dropdownValue);
               if (Array.isArray(parsed)) {
-                  return parsed.filter((item: any) => item && typeof item === 'object' && (item.value || item.label));
+                  return parsed.filter((item: unknown): item is DropdownItem => 
+                      typeof item === 'object' && item !== null && ('value' in item || 'label' in item)
+                  );
               }
           }
       } catch (e) {

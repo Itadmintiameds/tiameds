@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { TestReferancePoint } from "@/types/test/testlist";
-import Button from "../common/Button";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
 import { X } from "lucide-react";
@@ -1029,11 +1028,13 @@ const AddExistingTestReferance = ({
     // Parse dropdown JSON or return empty array
     const getDropdownData = (): DropdownItem[] => {
         try {
-            const dropdownValue = (existingTestReferanceRecord as any).dropdown;
+            const dropdownValue = (existingTestReferanceRecord as TestReferancePoint & { dropdown?: string }).dropdown;
             if (dropdownValue && typeof dropdownValue === 'string' && dropdownValue.trim()) {
                 const parsed = JSON.parse(dropdownValue);
                 if (Array.isArray(parsed)) {
-                    return parsed.filter((item: any) => item && typeof item === 'object' && (item.value || item.label));
+                    return parsed.filter((item: unknown): item is DropdownItem => 
+                        typeof item === 'object' && item !== null && ('value' in item || 'label' in item)
+                    );
                 }
             }
         } catch (e) {
