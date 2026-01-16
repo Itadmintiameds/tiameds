@@ -603,7 +603,12 @@ const CommonReportView2 = ({
                     const quantitativeRows = rows.filter((row) => !isExcludedQualitativeRow(row));
                     const isCBCTest = (report.testName || "").toUpperCase().includes("CBC");
 
-                    const shouldHideResultTable = rows.length > 0 && isExcludedQualitativeRow(rows[0]);
+                    const firstRow = rows[0];
+                    const shouldHideResultTable = rows.length > 0 && isExcludedQualitativeRow(firstRow);
+                    const shouldHideTestNameHeading =
+                        rows.length > 0 &&
+                        isExcludedQualitativeRow(firstRow) &&
+                        !shouldShowQualitativeDescriptionRow(firstRow);
 
                     // Check for detailed report - either reportJson exists on report or testRow has DETAILED REPORT
                     const hasDetailedReportRow = rows.some(row => (row.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
@@ -864,7 +869,9 @@ const CommonReportView2 = ({
                                 </div>
 
                                 {/* Test Name Heading */}
-                                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center">{report.testName}</h3>
+                                {!shouldHideTestNameHeading && (
+                                    <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center">{report.testName}</h3>
+                                )}
 
                                 {/* If DETAILED REPORT -> render reportJson content and optional reference ranges, skip table */}
                                 {detailedEntry && detailedEntry.reportJson && (
@@ -978,7 +985,7 @@ const CommonReportView2 = ({
 
                                                                     return (
                                                                         <div key={`qual-desc-${report.reportId}-${idx}`} className="text-xs">
-                                                                            <p className="text-gray-800 font-semibold">{resultValue}</p>
+                                                                            <p className="text-gray-800 font-semibold whitespace-pre-wrap">{resultValue}</p>
                                                                             {showDescription && (
                                                                                 <p className="text-gray-600 mt-1">{row.description}</p>
                                                                             )}
