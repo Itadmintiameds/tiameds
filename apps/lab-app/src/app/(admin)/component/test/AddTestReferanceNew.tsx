@@ -144,22 +144,7 @@ export const testReferancePointSchema = z
       return;
     }
 
-    // For all other descriptions, enforce that min and max reference ranges are present
-    if (data.minReferenceRange === undefined || data.minReferenceRange === null) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["minReferenceRange"],
-        message: "Minimum reference range is required",
-      });
-    }
-
-    if (data.maxReferenceRange === undefined || data.maxReferenceRange === null) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["maxReferenceRange"],
-        message: "Maximum reference range is required",
-      });
-    }
+    // For all other descriptions, min/max reference ranges are optional
 });
 
 import { TestReferancePoint } from "@/types/test/testlist";

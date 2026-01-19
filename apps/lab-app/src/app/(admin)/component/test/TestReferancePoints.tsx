@@ -46,18 +46,24 @@ export const TestReferancePointSchema = z.object({
   gender: z.enum(["M", "F", "B", "MF"], {
     errorMap: () => ({ message: "Gender must be M (Male), F (Female), B (Both), or MF (Both)" })
   }),
-  minReferenceRange: z.union([
-    z.number().min(0, "Minimum reference range must be 0 or greater"),
-    z.string().min(1, "Minimum reference range is required")
-      .transform(val => parseFloat(val))
-      .refine(val => !isNaN(val), "Must be a valid number")
-  ]).nullish(),
-  maxReferenceRange: z.union([
-    z.number().min(0, "Maximum reference range must be 0 or greater"),
-    z.string().min(1, "Maximum reference range is required")
-      .transform(val => parseFloat(val))
-      .refine(val => !isNaN(val), "Must be a valid number")
-  ]).nullish(),
+  minReferenceRange: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.union([
+      z.number().min(0, "Minimum reference range must be 0 or greater"),
+      z.string()
+        .transform(val => parseFloat(val))
+        .refine(val => !isNaN(val), "Must be a valid number")
+    ]).optional()
+  ),
+  maxReferenceRange: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.union([
+      z.number().min(0, "Maximum reference range must be 0 or greater"),
+      z.string()
+        .transform(val => parseFloat(val))
+        .refine(val => !isNaN(val), "Must be a valid number")
+    ]).optional()
+  ),
   ageMin: z.union([
     z.number().min(0, "Minimum age must be 0 or greater").max(100, "Minimum age must be 100 or less"),
     z.string().min(1, "Minimum age is required")
@@ -102,21 +108,7 @@ export const TestReferancePointSchema = z.object({
     });
   }
   
-  if (data.minReferenceRange === undefined || data.minReferenceRange === null) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["minReferenceRange"],
-      message: "Minimum reference range is required",
-    });
-  }
-  
-  if (data.maxReferenceRange === undefined || data.maxReferenceRange === null) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["maxReferenceRange"],
-      message: "Maximum reference range is required",
-    });
-  }
+  // Min/Max reference ranges are optional for all types
 }).refine(data => {
   const desc = (data.testDescription || "").toUpperCase();
   // Skip age validation for DETAILED REPORT and DROPDOWN types
