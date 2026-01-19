@@ -953,7 +953,7 @@ const CommonReportView2 = ({
                                                         {otherQualitativeRows.length > 0 && (
                                                             <div className="overflow-hidden rounded-lg border border-gray-200">
                                                                 <table className="w-full text-xs border-collapse">
-                                                                    <thead className="bg-gray-50">
+                                                                    <thead className="bg-blue-50">
                                                                         <tr>
                                                                             <th className="p-2 text-left font-semibold text-black">Test Name</th>
                                                                             <th className="p-2 text-left font-semibold text-black">Result</th>

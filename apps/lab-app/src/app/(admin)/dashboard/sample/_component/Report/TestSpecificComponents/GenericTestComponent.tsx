@@ -203,7 +203,7 @@ const GenericTestComponent: React.FC<GenericTestComponentProps> = ({
       case 'DESCRIPTION':
         return (
           <textarea
-            className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300 min-h-[80px] resize-none"
+            className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300 min-h-[240px] resize-none"
             placeholder="Enter description"
             value={currentValue}
             onChange={(e) => onInputChange(testName, index, e.target.value)}

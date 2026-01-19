@@ -403,6 +403,14 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
           let description = "N/A";
           let unit = "N/A";
           let referenceRange = "N/A";
+          const hasReferenceRange =
+            point.minReferenceRange !== null &&
+            point.minReferenceRange !== undefined ||
+            point.maxReferenceRange !== null &&
+            point.maxReferenceRange !== undefined;
+          const resolvedReferenceRange = hasReferenceRange
+            ? `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`
+            : "N/A";
 
           const descriptionKey = `${index}_description`;
           const hasDescription = testInputs[descriptionKey] && testInputs[descriptionKey].trim();
@@ -412,17 +420,17 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
 
           if (point.testDescription === "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE" ||
             point.testDescription === "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT") {
-            unit = "N/A";
+            unit = point.units || "N/A";
             description = hasDescription ? testInputs[descriptionKey] : "N/A";
             finalValue = testInputs[index] || "N/A";
-            referenceRange = "N/A";
+            referenceRange = resolvedReferenceRange;
           } else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
             "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DROPDOWN-COMPATIBLE/INCOMPATIBLE"].includes(point.testDescription)) {
             // Handle both API-driven dropdowns and hardcoded dropdown types
-            unit = "N/A";
+            unit = point.units || "N/A";
             description = "N/A";
             finalValue = testInputs[index] || "N/A";
-            referenceRange = "N/A";
+            referenceRange = resolvedReferenceRange;
           } else if (point.testDescription === "DESCRIPTION") {
             unit = "N/A";
             description = testInputs[index] || "N/A";  // Save the actual description text here
