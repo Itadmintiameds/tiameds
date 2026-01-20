@@ -49,19 +49,19 @@ export const TestReferancePointSchema = z.object({
   minReferenceRange: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.union([
-      z.number().min(0, "Minimum reference range must be 0 or greater"),
+    z.number().min(0, "Minimum reference range must be 0 or greater"),
       z.string()
-        .transform(val => parseFloat(val))
-        .refine(val => !isNaN(val), "Must be a valid number")
+      .transform(val => parseFloat(val))
+      .refine(val => !isNaN(val), "Must be a valid number")
     ]).optional()
   ),
   maxReferenceRange: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.union([
-      z.number().min(0, "Maximum reference range must be 0 or greater"),
+    z.number().min(0, "Maximum reference range must be 0 or greater"),
       z.string()
-        .transform(val => parseFloat(val))
-        .refine(val => !isNaN(val), "Must be a valid number")
+      .transform(val => parseFloat(val))
+      .refine(val => !isNaN(val), "Must be a valid number")
     ]).optional()
   ),
   ageMin: z.union([

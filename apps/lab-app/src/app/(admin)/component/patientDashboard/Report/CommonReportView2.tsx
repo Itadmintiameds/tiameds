@@ -870,7 +870,7 @@ const CommonReportView2 = ({
 
                                 {/* Test Name Heading */}
                                 {!shouldHideTestNameHeading && (
-                                    <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center">{report.testName}</h3>
+                                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center">{report.testName}</h3>
                                 )}
 
                                 {/* If DETAILED REPORT -> render reportJson content and optional reference ranges, skip table */}
@@ -977,21 +977,21 @@ const CommonReportView2 = ({
                                                         {descriptionRows.length > 0 && (
                                                             <div className="space-y-3 mt-3">
                                                                 {descriptionRows.map((row, idx) => {
-                                                                    const resultValue = row.enteredValue || "N/A";
-                                                                    const normalizedResult = resultValue.toString().trim().toLowerCase();
-                                                                    const normalizedDescription = (row.description || "").toString().trim().toLowerCase();
-                                                                    const showDescription =
+                                                const resultValue = row.enteredValue || "N/A";
+                                                const normalizedResult = resultValue.toString().trim().toLowerCase();
+                                                const normalizedDescription = (row.description || "").toString().trim().toLowerCase();
+                                                const showDescription =
                                                                         !!row.description && normalizedDescription !== normalizedResult;
 
-                                                                    return (
+                                                return (
                                                                         <div key={`qual-desc-${report.reportId}-${idx}`} className="text-xs">
                                                                             <p className="text-gray-800 font-semibold whitespace-pre-wrap">{resultValue}</p>
-                                                                            {showDescription && (
-                                                                                <p className="text-gray-600 mt-1">{row.description}</p>
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                })}
+                                                        {showDescription && (
+                                                            <p className="text-gray-600 mt-1">{row.description}</p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                                             </div>
                                                         )}
                                                     </>
