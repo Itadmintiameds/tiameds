@@ -74,6 +74,16 @@ interface StructuredReport {
   significance?: string;
 }
 
+
+const escapeHtmlWithBreaks = (text: string) =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    // preserve spaces (CRITICAL)
+    .replace(/ /g, '&nbsp;')
+    .replace(/\r?\n/g, '<br/>');
+
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -105,7 +115,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   const [hasMissingDescriptions, setHasMissingDescriptions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
- 
+
 
   // Function to determine value status based on reference range
   const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
@@ -174,13 +184,13 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
       const toMonths = (value: number | null | undefined, unit: string | null | undefined): number => {
         if (value === null || value === undefined) return 0;
         const u = (unit || 'YEARS').toUpperCase();
-        
+
         // Special case: if unit is "MONTHS" but value is 1, treat it as 1 year (12 months)
         // This handles the case where 0-1 means 0 to 1 year (0-12 months)
         if (u === 'MONTHS' && value === 1) {
           return 12; // 1 month = 1 year = 12 months
         }
-        
+
         // Normal conversion: MONTHS = months, YEARS = years * 12
         return u === 'MONTHS' ? value : value * 12;
       };
@@ -195,7 +205,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
         // Make ranges non-overlapping by using exclusive upper bound for most ranges
         // Only the last range (highest age) uses inclusive upper bound
         const isLastRange = maxMonths === Number.MAX_SAFE_INTEGER || maxMonths >= 1200; // 100+ years
-        
+
         if (isLastRange) {
           // For the highest age range, use inclusive upper bound
           return patientAgeMonths >= minMonths && patientAgeMonths <= maxMonths;
@@ -235,7 +245,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
         }));
       }
     } catch (error) {
-  
+
       toast.error('Failed to fetch test reference data');
     } finally {
       setLoading(false);
@@ -252,7 +262,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   const handleInputChange = (testName: string, index: number | string, value: string) => {
     // Check if the value is negative for numeric inputs
     const numericValue = parseFloat(value);
-    
+
     // Only show error for negative values if it's not an auto-calculated field
     // Auto-calculated fields are identified by checking if the field is read-only
     // We'll allow negative values to pass through and let the individual components handle validation
@@ -261,17 +271,17 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
       // Check if this might be an auto-calculated field by looking at the reference data
       const referenceData = referencePoints[testName] || [];
       const point = referenceData[typeof index === 'number' ? index : 0];
-      
+
       // If it's a known auto-calculated field type, allow negative values
       const isAutoCalculatedField = point?.testDescription?.toUpperCase().includes('GLOBULIN') ||
-                                   point?.testDescription?.toUpperCase().includes('INDIRECT BILIRUBIN') ||
-                                   point?.testDescription?.toUpperCase().includes('A/G RATIO') ||
-                                   point?.testDescription?.toUpperCase().includes('MEAN BLOOD GLUCOSE') ||
-                                   point?.testDescription?.toUpperCase().includes('ABSOLUTE EOSINOPHIL COUNT') ||
-                                   point?.testDescription?.toUpperCase().includes('HDL CHOLESTEROL - DIRECT') ||
-                                   point?.testDescription?.toUpperCase().includes('LDL CHOLESTEROL - DIRECT') ||
-                                   point?.testDescription?.toUpperCase().includes('VLDL CHOLESTEROL');
-      
+        point?.testDescription?.toUpperCase().includes('INDIRECT BILIRUBIN') ||
+        point?.testDescription?.toUpperCase().includes('A/G RATIO') ||
+        point?.testDescription?.toUpperCase().includes('MEAN BLOOD GLUCOSE') ||
+        point?.testDescription?.toUpperCase().includes('ABSOLUTE EOSINOPHIL COUNT') ||
+        point?.testDescription?.toUpperCase().includes('HDL CHOLESTEROL - DIRECT') ||
+        point?.testDescription?.toUpperCase().includes('LDL CHOLESTEROL - DIRECT') ||
+        point?.testDescription?.toUpperCase().includes('VLDL CHOLESTEROL');
+
       if (!isAutoCalculatedField) {
         toast.error('Negative values are not allowed');
         return; // Don't update the state with negative values
@@ -337,8 +347,8 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     allTests.forEach((test) => {
       // Handle radiology tests differently - create minimal report data
       if (test.category === 'RADIOLOGY') {
-     
-        
+
+
         const formattedTestName = test.name
           .split(' ')
           .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -366,7 +376,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
           referenceRanges: detailedReportPoint?.referenceRanges || undefined,
           reportJson: detailedReportPoint?.reportJson || undefined
         });
-        
+
         return; // Skip the regular reference data processing
       }
 
@@ -393,38 +403,46 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
           let description = "N/A";
           let unit = "N/A";
           let referenceRange = "N/A";
+          const hasReferenceRange =
+            point.minReferenceRange !== null &&
+            point.minReferenceRange !== undefined ||
+            point.maxReferenceRange !== null &&
+            point.maxReferenceRange !== undefined;
+          const resolvedReferenceRange = hasReferenceRange
+            ? `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`
+            : "N/A";
 
           const descriptionKey = `${index}_description`;
           const hasDescription = testInputs[descriptionKey] && testInputs[descriptionKey].trim();
-          
+
           // Check if point has valid dropdown field (API-driven) - takes priority over testDescription
           const hasApiDropdown = hasValidDropdown(point.dropdown);
 
           if (point.testDescription === "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE" ||
             point.testDescription === "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT") {
-            unit = "N/A";
+            unit = point.units || "N/A";
             description = hasDescription ? testInputs[descriptionKey] : "N/A";
             finalValue = testInputs[index] || "N/A";
-            referenceRange = "N/A";
+            referenceRange = resolvedReferenceRange;
           } else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
             "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DROPDOWN-COMPATIBLE/INCOMPATIBLE"].includes(point.testDescription)) {
             // Handle both API-driven dropdowns and hardcoded dropdown types
-            unit = "N/A";
+            unit = point.units || "N/A";
             description = "N/A";
             finalValue = testInputs[index] || "N/A";
-            referenceRange = "N/A";
+            referenceRange = resolvedReferenceRange;
           } else if (point.testDescription === "DESCRIPTION") {
             unit = "N/A";
             description = testInputs[index] || "N/A";  // Save the actual description text here
             finalValue = testInputs[index] || "N/A";  // Also save it in enteredValue for consistency
             referenceRange = "N/A";
           }
-           else if (point.testDescription === "DETAILED REPORT") {
+          else if (point.testDescription === "DETAILED REPORT") {
             unit = "N/A";
             description = "Imaging test - Results provided separately";
             finalValue = "Hard copy will be provided";
             referenceRange = "N/A";
-          } 
+          }
           else {
             unit = point.units || "N/A";
             description = "N/A";
@@ -466,24 +484,24 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   const submitReport = async () => {
     try {
       setIsSubmitting(true);
-     
+
       const response = await createReportWithTestResult(currentLab?.id.toString() || '', reportPreview);
-     
+
 
       // Check if response exists and is valid
       // The API returns ReportData[] which can be empty array on success
       if (response !== undefined && response !== null) {
-       
+
         toast.success('Report submitted successfully!');
         setShowConfirmation(false);
         setUpdateCollectionTable(prev => !prev);
         setShowModal(false); // Close the main modal
       } else {
-       
+
         toast.error('Failed to submit report');
       }
     } catch (error) {
-     
+
       toast.error('Failed to submit report');
     } finally {
       setIsSubmitting(false);
@@ -506,9 +524,9 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
             ? parsed.sections
             : isPlainObject(parsed.sections)
               ? Object.entries(parsed.sections as Record<string, unknown>).map(([title, content]) => ({
-                  title,
-                  content: String(content ?? ''),
-                }))
+                title,
+                content: String(content ?? ''),
+              }))
               : [];
           if (parsed && parsed.title && parsedSections.length > 0) {
             const sectionsHtml = [...parsedSections]
@@ -574,7 +592,23 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
           const label = (item.referenceDescription || 'Test Parameter');
           const value = (() => {
             const t = (item.referenceDescription || '').toUpperCase();
-            if (t === 'DESCRIPTION') return item.description || 'N/A';
+            // if (t === 'DESCRIPTION') return item.description || 'N/A';
+            if (t === 'DESCRIPTION') {
+              return `
+      <li class="mb-1 text-sm text-gray-700 ml-4">
+        <div style="
+          padding-left: 100px;
+          text-indent: -100px;
+          white-space: normal;
+          word-break: break-word;
+        ">
+          <strong>${label}:</strong>
+          ${escapeHtmlWithBreaks(item.description || 'N/A')}
+        </div>
+      </li>
+    `;
+            }
+
             if (t.includes('DROPDOWN')) return item.enteredValue || 'N/A';
             return `${item.enteredValue} ${item.unit}`.trim();
           })();
@@ -653,11 +687,11 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
         {allTests.map((test) => {
           // Check if any reference point has DETAILED REPORT description
           const hasDetailedReport = referencePoints[test.name]?.some(point => point.testDescription === "DETAILED REPORT");
-          
+
           if (hasDetailedReport) {
             // Find the reference point with DETAILED REPORT
             const detailedReportPoint = referencePoints[test.name]?.find(point => point.testDescription === "DETAILED REPORT");
-            
+
             if (detailedReportPoint) {
               return (
                 <DetailedReportEditor
@@ -665,12 +699,12 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
                   point={detailedReportPoint}
                   onReportJsonChange={(reportJson) => {
                     // Update the reference point with new reportJson
-                    const updatedPoints = referencePoints[test.name]?.map(point => 
-                      point.id === detailedReportPoint.id 
+                    const updatedPoints = referencePoints[test.name]?.map(point =>
+                      point.id === detailedReportPoint.id
                         ? { ...point, reportJson }
                         : point
                     ) || [];
-                    
+
                     setReferencePoints(prev => ({
                       ...prev,
                       [test.name]: updatedPoints
@@ -680,7 +714,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
               );
             }
           }
-          
+
           // Default rendering for other test types
           return (
             <TestComponentFactory
@@ -717,7 +751,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
         onClose={() => setShowConfirmation(false)}
         onConfirm={submitReport}
         title={hasMissingDescriptions ? "Important Note About Test References" : "Confirm Report Submission"}
-        message={hasMissingDescriptions 
+        message={hasMissingDescriptions
           ? "Some tests don't have digital references available. Please review the details below before submitting."
           : "All test references have complete descriptions. Please review the data before submitting."}
         confirmText="Confirm Submission"

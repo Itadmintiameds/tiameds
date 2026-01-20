@@ -1119,13 +1119,7 @@ const AddExistingTestReferance = ({
             if (!record.units?.trim()) {
                 errors.units = "Units are required";
             }
-            // Allow minReferenceRange to be 0, only check for undefined/null
-            if (record.minReferenceRange === undefined || record.minReferenceRange === null) {
-                errors.minReferenceRange = "Minimum reference range is required";
-            }
-            if (record.maxReferenceRange === undefined || record.maxReferenceRange === null) {
-                errors.maxReferenceRange = "Maximum reference range is required";
-            }
+            // Min/Max reference ranges are optional
         }
 
         // For DETAILED REPORT, validate reportJson is present

@@ -250,7 +250,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
             <div className="flex items-center">
               <h3 className="text-sm font-medium text-gray-700 flex items-center">
                 <FaFlask className="mr-2 text-purple-600" />
-                Available Tests
+                Available Tests 
               </h3>
               <button
                 onClick={() => setShowTestList(!showTestList)}

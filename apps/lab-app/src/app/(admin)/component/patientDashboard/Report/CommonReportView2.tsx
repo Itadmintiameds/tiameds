@@ -603,7 +603,12 @@ const CommonReportView2 = ({
                     const quantitativeRows = rows.filter((row) => !isExcludedQualitativeRow(row));
                     const isCBCTest = (report.testName || "").toUpperCase().includes("CBC");
 
-                    const shouldHideResultTable = rows.length > 0 && isExcludedQualitativeRow(rows[0]);
+                    const firstRow = rows[0];
+                    const shouldHideResultTable = rows.length > 0 && isExcludedQualitativeRow(firstRow);
+                    const shouldHideTestNameHeading =
+                        rows.length > 0 &&
+                        isExcludedQualitativeRow(firstRow) &&
+                        !shouldShowQualitativeDescriptionRow(firstRow);
 
                     // Check for detailed report - either reportJson exists on report or testRow has DETAILED REPORT
                     const hasDetailedReportRow = rows.some(row => (row.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
@@ -864,7 +869,9 @@ const CommonReportView2 = ({
                                 </div>
 
                                 {/* Test Name Heading */}
+                                {!shouldHideTestNameHeading && (
                                 <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center">{report.testName}</h3>
+                                )}
 
                                 {/* If DETAILED REPORT -> render reportJson content and optional reference ranges, skip table */}
                                 {detailedEntry && detailedEntry.reportJson && (
@@ -925,30 +932,71 @@ const CommonReportView2 = ({
 
                                 {!detailedEntry && qualitativeRows.length > 0 && (
                                     <div className="mt-4">
-                                        <h4 className="text-xs font-bold text-black mb-2">Qualitative Results</h4>
-                                        <p className="text-xs text-gray-600 mb-2">
-                                            The following tests are reported as final qualitative outcomes. Please refer to the treating
-                                            physician for clinical correlation.
-                                        </p>
                                         <div className="space-y-3">
-                                            {qualitativeRows.map((row, idx) => {
+                                            {(() => {
+                                                const descriptionRows = qualitativeRows.filter((row) =>
+                                                    shouldShowQualitativeDescriptionRow(row)
+                                                );
+                                                const otherQualitativeRows = qualitativeRows.filter(
+                                                    (row) => !shouldShowQualitativeDescriptionRow(row)
+                                                );
+                                                const getQualitativeDisplayName = (row: TestRow) => {
+                                                    const candidate = row.testParameter || row.referenceDescription || "";
+                                                    if (!candidate) return report.testName || "Test";
+                                                    return doesRowMatchFieldType(row, EXCLUDED_FIELD_TYPES)
+                                                        ? (report.testName || candidate)
+                                                        : candidate;
+                                                };
+
+                                                return (
+                                                    <>
+                                                        {otherQualitativeRows.length > 0 && (
+                                                            <div className="overflow-hidden rounded-lg border border-gray-200">
+                                                                <table className="w-full text-xs border-collapse">
+                                                                    <thead className="bg-blue-50">
+                                                                        <tr>
+                                                                            <th className="p-2 text-left font-semibold text-black">Test Name</th>
+                                                                            <th className="p-2 text-left font-semibold text-black">Result</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {otherQualitativeRows.map((row, idx) => (
+                                                                            <tr key={`qual-row-${report.reportId}-${idx}`} className="border-t border-gray-100">
+                                                                                <td className="p-2 text-black">
+                                                                                    {getQualitativeDisplayName(row)}
+                                                                                </td>
+                                                                                <td className="p-2 text-black font-semibold">
+                                                                                    {row.enteredValue || "N/A"}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        )}
+                                                        {descriptionRows.length > 0 && (
+                                                            <div className="space-y-3 mt-3">
+                                                                {descriptionRows.map((row, idx) => {
                                                 const resultValue = row.enteredValue || "N/A";
                                                 const normalizedResult = resultValue.toString().trim().toLowerCase();
                                                 const normalizedDescription = (row.description || "").toString().trim().toLowerCase();
                                                 const showDescription =
-                                                    shouldShowQualitativeDescriptionRow(row) &&
-                                                    !!row.description &&
-                                                    normalizedDescription !== normalizedResult;
+                                                                        !!row.description && normalizedDescription !== normalizedResult;
 
                                                 return (
-                                                    <div key={`qual-result-${report.reportId}-${idx}`} className="text-xs">
-                                                        <p className="text-gray-800 font-semibold">{resultValue}</p>
+                                                                        <div key={`qual-desc-${report.reportId}-${idx}`} className="text-xs">
+                                                                            <p className="text-gray-800 font-semibold whitespace-pre-wrap">{resultValue}</p>
                                                         {showDescription && (
                                                             <p className="text-gray-600 mt-1">{row.description}</p>
                                                         )}
                                                     </div>
                                                 );
                                             })}
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 )}

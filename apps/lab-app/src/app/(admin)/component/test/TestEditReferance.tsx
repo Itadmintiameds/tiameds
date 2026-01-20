@@ -474,16 +474,7 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
         if (record.ageMin === undefined || record.ageMin === null) {
             errors.ageMin = "Minimum age is required";
         }
-        // Reference range validation only for non-special test descriptions
-        if (!isSpecial) {
-            // Allow minReferenceRange to be 0, only check for undefined/null
-            if (record.minReferenceRange === undefined || record.minReferenceRange === null) {
-                errors.minReferenceRange = "Minimum reference range is required";
-            }
-            if (record.maxReferenceRange === undefined || record.maxReferenceRange === null) {
-                errors.maxReferenceRange = "Maximum reference range is required";
-            }
-        }
+        // Reference ranges are optional for all test descriptions
 
         // Age validation - allow 0 as valid value
         if (record.ageMin !== undefined && record.ageMin !== null && record.ageMin < 0) {
