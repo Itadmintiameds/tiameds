@@ -898,14 +898,26 @@ const CommonReportView2 = ({
                                         {/* Signature Block - appears right after detailed report content */}
                                         <div className="grid grid-cols-2 gap-4 pt-4 mt-4">
                                             <div className="text-center">
-                                                <div className="h-12 flex items-center justify-center">
-                                                    <span className="text-xs text-gray-700 font-medium">Lab Technician</span>
-                                                </div>
+                                            <div className="h-14 flex items-center justify-center"></div>
+                                            <div className="mt-2 h-12 flex items-center justify-center">
+                                                <span className="text-xs text-gray-700 font-medium">Lab Technician</span>
+                                            </div>
                                             </div>
                                             <div className="text-center">
-                                                <div className="h-12 flex items-center justify-center">
-                                                    <span className="text-xs text-gray-700 font-medium">Authorized Pathologist</span>
-                                                </div>
+                                            <div className="flex items-center justify-center">
+                                                <Image
+                                                    src="/signature.png"
+                                                    alt="Authorized Pathologist Signature"
+                                                    width={180}
+                                                    height={70}
+                                                    className="h-14 w-auto object-contain"
+                                                    unoptimized
+                                                    crossOrigin="anonymous"
+                                                />
+                                            </div>
+                                            <div className="mt-2 h-12 flex items-center justify-center">
+                                                <span className="text-xs text-gray-700 font-medium">Authorized Pathologist</span>
+                                            </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1005,12 +1017,24 @@ const CommonReportView2 = ({
                                 {!detailedEntry && (
                                     <div className="grid grid-cols-2 gap-4 pt-4 mt-4">
                                         <div className="text-center">
-                                            <div className="h-12 flex items-center justify-center">
+                                            <div className="h-14 flex items-center justify-center"></div>
+                                            <div className="mt-2 h-12 flex items-center justify-center">
                                                 <span className="text-xs text-gray-700 font-medium">Lab Technician</span>
                                             </div>
                                         </div>
                                         <div className="text-center">
-                                            <div className="h-12 flex items-center justify-center">
+                                            <div className="flex items-center justify-center">
+                                                <Image
+                                                    src="/signature.png"
+                                                    alt="Authorized Pathologist Signature"
+                                                    width={180}
+                                                    height={70}
+                                                    className="h-14 w-auto object-contain"
+                                                    unoptimized
+                                                    crossOrigin="anonymous"
+                                                />
+                                            </div>
+                                            <div className="mt-2 h-12 flex items-center justify-center">
                                                 <span className="text-xs text-gray-700 font-medium">Authorized Pathologist</span>
                                             </div>
                                         </div>
