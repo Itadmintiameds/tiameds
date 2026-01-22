@@ -915,9 +915,14 @@ const CommonReportView2 = ({
                                                     crossOrigin="anonymous"
                                                 />
                                             </div>
-                                            <div className="mt-2 h-12 flex items-center justify-center">
-                                                <span className="text-xs text-gray-700 font-medium">Authorized Pathologist</span>
+                                            <div className="mt-1 text-[9px] leading-tight text-gray-700">
+                                                <p>Dr. Sini Arjun</p>
+                                                <p>MBBS, MD (Pathology)</p>
+                                                <p>Consultant Pathologist</p>
                                             </div>
+                                            {/* <div className="mt-2 h-12 flex items-center justify-center">
+                                                <span className="text-xs text-gray-700 font-medium">Authorized Pathologist</span>
+                                            </div> */}
                                             </div>
                                         </div>
                                     </div>
@@ -1034,9 +1039,14 @@ const CommonReportView2 = ({
                                                     crossOrigin="anonymous"
                                                 />
                                             </div>
-                                            <div className="mt-2 h-12 flex items-center justify-center">
-                                                <span className="text-xs text-gray-700 font-medium">Authorized Pathologist</span>
+                                            <div className="mt-1 text-[9px] leading-tight text-gray-700">
+                                                <p>Dr. Sini Arjun</p>
+                                                <p>MBBS, MD (Pathology)</p>
+                                                <p>Consultant Pathologist</p>
                                             </div>
+                                            {/* <div className="mt-2 h-12 flex items-center justify-center">
+                                                <span className="text-xs text-gray-700 font-medium">Authorized Pathologist</span>
+                                            </div> */}
                                         </div>
                                     </div>
                                 )}
