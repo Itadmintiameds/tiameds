@@ -899,9 +899,7 @@ const CommonReportView2 = ({
                                         <div className="grid grid-cols-2 gap-4 pt-4 mt-4">
                                             <div className="text-center">
                                             <div className="h-14 flex items-center justify-center"></div>
-                                            <div className="mt-2 h-12 flex items-center justify-center">
-                                                <span className="text-xs text-gray-700 font-medium">Lab Technician</span>
-                                            </div>
+                                            <div className="mt-1 text-xs text-gray-700 font-medium">Lab Technician</div>
                                             </div>
                                             <div className="text-center">
                                             <div className="flex items-center justify-center">
@@ -915,7 +913,7 @@ const CommonReportView2 = ({
                                                     crossOrigin="anonymous"
                                                 />
                                             </div>
-                                            <div className="mt-1 text-[9px] leading-tight text-gray-700">
+                                            <div className="mt-1 text-xs leading-tight text-gray-700">
                                                 <p>Dr. Sini Arjun</p>
                                                 <p>MBBS, MD (Pathology)</p>
                                                 <p>Consultant Pathologist</p>
@@ -1023,9 +1021,7 @@ const CommonReportView2 = ({
                                     <div className="grid grid-cols-2 gap-4 pt-4 mt-4">
                                         <div className="text-center">
                                             <div className="h-14 flex items-center justify-center"></div>
-                                            <div className="mt-2 h-12 flex items-center justify-center">
-                                                <span className="text-xs text-gray-700 font-medium">Lab Technician</span>
-                                            </div>
+                                            <div className="mt-1 text-xs text-gray-700 font-medium">Lab Technician</div>
                                         </div>
                                         <div className="text-center">
                                             <div className="flex items-center justify-center">
@@ -1039,7 +1035,7 @@ const CommonReportView2 = ({
                                                     crossOrigin="anonymous"
                                                 />
                                             </div>
-                                            <div className="mt-1 text-[9px] leading-tight text-gray-700">
+                                            <div className="mt-1 text-xs leading-tight text-gray-700">
                                                 <p>Dr. Sini Arjun</p>
                                                 <p>MBBS, MD (Pathology)</p>
                                                 <p>Consultant Pathologist</p>
