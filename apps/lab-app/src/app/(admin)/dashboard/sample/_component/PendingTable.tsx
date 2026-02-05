@@ -1,6 +1,5 @@
 import { getHealthPackageById } from '@/../services/packageServices';
 import { getVisitsByDate } from '@/../services/patientServices';
-import { getTestById } from '@/../services/testService';
 import Loader from '@/app/(admin)/component/common/Loader';
 import Modal from '@/app/(admin)/component/common/Model';
 import Pagination from '@/app/(admin)/component/common/Pagination';
@@ -10,7 +9,6 @@ import { useLabs } from '@/context/LabContext';
 import { HealthPackage, Patient } from '@/types/pendingTable/PendingTatbleDataType';
 import { calculateAgeInYears } from '@/utils/ageUtils';
 import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, formatDisplayDateWithWeekday, getDateRange } from '@/utils/dateUtils';
-import { TestList } from '@/types/test/testlist';
 import React, { useEffect, useState } from 'react';
 import { FaCalendarAlt } from 'react-icons/fa';
 import { PiTestTubeFill } from 'react-icons/pi';
@@ -23,7 +21,6 @@ const PendingTable: React.FC = () => {
   const [patientList, setPatientList] = useState<Patient[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedVisitId, setSelectedVisitId] = useState<number | null>(null);
-  const [tests, setTests] = useState<TestList[]>([]);
   const [healthPackages, setHealthPackages] = useState<HealthPackage[]>([]);
   const [samples, setSamples] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -61,19 +58,20 @@ const PendingTable: React.FC = () => {
 
       const visits = response?.data || [];
       const pendingVisits = visits.filter((visit: Patient) => visit.visitDetailDto.visitStatus === 'Pending');
+      const normalizedVisits = pendingVisits.map((visit: Patient) => ({
+        ...visit,
+        visitDetailDto: {
+          ...visit.visitDetailDto,
+          testIds: visit.visitDetailDto.testIds ?? [],
+          tests: visit.visitDetailDto.tests ?? [],
+        },
+      }));
 
-      pendingVisits.sort((a: Patient, b: Patient) =>
+      normalizedVisits.sort((a: Patient, b: Patient) =>
         new Date(b.visitDetailDto.visitDate).getTime() - new Date(a.visitDetailDto.visitDate).getTime()
       );
 
-      setPatientList(pendingVisits);
-
-      const testIds = pendingVisits.flatMap((visit: Patient) => visit.visitDetailDto.testIds);
-      const uniqueTestIds = Array.from(new Set(testIds));
-      const fetchedTests = await Promise.all(
-        uniqueTestIds.map((testId) => getTestById(currentLab.id.toString(), testId as number))
-      );
-      setTests(fetchedTests);
+      setPatientList(normalizedVisits);
 
       const packageIds = pendingVisits.flatMap((visit: Patient) => visit.visitDetailDto.packageIds);
       const uniquePackageIds = Array.from(new Set(packageIds));
@@ -155,8 +153,8 @@ const PendingTable: React.FC = () => {
   const columns = [
     {
       header: 'ID',
-      accessor: (row: Patient) => row.visitDetailDto.visitId,
-      cell: (value: number) => <span className="font-semibold text-primary">#{value}</span>
+      accessor: (row: Patient) => row.visitDetailDto.visitCode || row.visitDetailDto.visitId,
+      cell: (value: number | string) => <span className="font-semibold text-primary">#{value}</span>
     },
     {
       header: 'Patient',
@@ -194,47 +192,39 @@ const PendingTable: React.FC = () => {
           if (packageDetails) {
             // Add all test IDs from this package to the set
             packageDetails.tests.forEach(test => {
-              // Since the Test interface doesn't have an id, we need to find the test by name
-              const matchingTest = tests.find(t => t.name === test.name);
-              if (matchingTest) {
-                packageTestIds.add(matchingTest.id);
-              }
+              packageTestIds.add(test.id);
             });
           }
         });
 
+        const visitTests = row.visitDetailDto.tests || [];
         // Filter out tests that belong to packages
-        const individualTestIds = row.visitDetailDto.testIds.filter(testId => 
-          !packageTestIds.has(testId)
-        );
+        const individualTests = visitTests.filter(test => !packageTestIds.has(test.id));
 
-        if (individualTestIds.length === 0) {
+        if (individualTests.length === 0) {
           return (
             <div className="text-gray-400 text-xs italic">No tests</div>
           );
         }
 
         const isExpanded = expandedRows.has(`${row.visitDetailDto.visitId}-tests`);
-        const displayTests = isExpanded ? individualTestIds : individualTestIds.slice(0, 3);
-        const hasMoreTests = individualTestIds.length > 3;
+        const displayTests = isExpanded ? individualTests : individualTests.slice(0, 3);
+        const hasMoreTests = individualTests.length > 3;
 
         return (
           <div className="flex flex-col gap-1">
-            {displayTests.map((testId) => {
-              const test = tests.find((t) => t.id === testId);
-              return test ? (
-                <span key={test.id} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs inline-block w-fit">
-                  {test.name}
-                </span>
-              ) : null;
-            }).filter(Boolean)}
+            {displayTests.map((test) => (
+              <span key={test.id} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs inline-block w-fit">
+                {test.name}
+              </span>
+            ))}
             
             {hasMoreTests && (
               <button
                 onClick={() => toggleRowExpansion(row.visitDetailDto.visitId!, 'tests')}
                 className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
               >
-                {isExpanded ? 'Show Less' : `View All (${individualTestIds.length})`}
+                {isExpanded ? 'Show Less' : `View All (${individualTests.length})`}
               </button>
             )}
           </div>

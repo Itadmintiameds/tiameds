@@ -1,1700 +1,32 @@
-// import React, { useEffect, useState } from 'react';
-// import {
-//   TbArrowDownCircle, TbArrowUpCircle, TbCalendarTime, TbCategory,
-//   TbChartLine, TbClipboardText, TbGenderAgender, TbGenderFemale,
-//   TbGenderMale, TbInfoCircle, TbNumbers, TbReportMedical,
-//   TbRuler, TbSquareRoundedCheck, TbTestPipe
-// } from "react-icons/tb";
-// import { toast } from 'react-toastify';
-// import Loader from '@/app/(admin)/component/common/Loader';
-// import { useLabs } from '@/context/LabContext';
-// import { getHealthPackageById } from '@/../services/packageServices';
-// import { getReportData, updateReports } from '@/../services/reportServices';
-// import { getTestById, getTestReferanceRangeByTestName } from '@/../services/testService';
-// import PatientBasicInfo from './PatientBasicInfo';
-// import ReportHeader from './ReportHeader';
-
-// interface Patient {
-//   visitId: number;
-//   patientname: string;
-//   visitDate: string;
-//   visitStatus: string;
-//   sampleNames: string[];
-//   testIds: number[];
-//   packageIds: number[];
-//   contactNumber?: string;
-//   gender?: string;
-//   email?: string;
-//   dateOfBirth?: string;
-//   id?: string;
-// }
-
-// interface ReportData {
-//   report_id?: string;
-//   visit_id: string;
-//   testName: string;
-//   testCategory: string;
-//   patientName: string;
-//   referenceDescription: string;
-//   referenceRange: string;
-//   referenceAgeRange: string;
-//   enteredValue: string;
-//   unit: string;
-// }
-
-// interface TestReferancePoint {
-//   testDescription: string;
-//   minReferenceRange: number | null;
-//   maxReferenceRange: number | null;
-//   ageMin: number | null;
-//   ageMax: number | null;
-//   gender: string;
-//   units: string;
-// }
-
-// interface TestList {
-//   id: number;
-//   name: string;
-//   category: string;
-// }
-
-// interface PatientReportDataEditProps {
-//   editPatient: Patient;
-//   setShowModal: (value: React.SetStateAction<boolean>) => void;
-//   refreshReports: () => void;
-// }
-
-// const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
-//   editPatient,
-//   setShowModal,
-//   refreshReports
-// }) => {
-//   const { currentLab } = useLabs();
-//   const [loading, setLoading] = useState(false);
-//   const [referencePoints, setReferencePoints] = useState<Record<string, TestReferancePoint[]>>({});
-//   const [inputValues, setInputValues] = useState<Record<string, Record<number, string>>>({});
-//   const [allTests, setAllTests] = useState<TestList[]>([]);
-//   const [existingReportData, setExistingReportData] = useState<ReportData[]>([]);
-
-//   const RangeIndicatorLegend = () => (
-//     <div className="flex flex-wrap items-center justify-center gap-4 mb-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
-//       <div className="flex items-center text-sm">
-//         <TbSquareRoundedCheck className="text-green-500 mr-2" size={18} />
-//         <span>Normal Range</span>
-//       </div>
-//       <div className="flex items-center text-sm">
-//         <TbArrowDownCircle className="text-yellow-500 mr-2" size={18} />
-//         <span>Below Normal</span>
-//       </div>
-//       <div className="flex items-center text-sm">
-//         <TbArrowUpCircle className="text-red-500 mr-2" size={18} />
-//         <>Above Normal</>
-//       </div>
-//       <div className="flex items-center text-sm">
-//         <TbInfoCircle className="text-blue-500 mr-2" size={18} />
-//         <span>No Reference</span>
-//       </div>
-//     </div>
-//   );
-
-//   const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
-//     if (!value || isNaN(Number(value))) return 'no-reference';
-//     const numValue = parseFloat(value);
-
-//     if (minRef === null || maxRef === null) return 'no-reference';
-//     if (numValue < minRef) return 'below';
-//     if (numValue > maxRef) return 'above';
-//     return 'normal';
-//   };
-
-//   const getStatusColor = (status: string) => {
-//     switch (status) {
-//       case 'below': return 'bg-yellow-50 border-yellow-200';
-//       case 'above': return 'bg-red-50 border-red-200';
-//       case 'normal': return 'bg-green-50 border-green-200';
-//       default: return 'bg-blue-50 border-blue-200';
-//     }
-//   };
-
-//   const getStatusIcon = (status: string) => {
-//     switch (status) {
-//       case 'below': return <TbArrowDownCircle className="text-yellow-500 mr-1" size={18} />;
-//       case 'above': return <TbArrowUpCircle className="text-red-500 mr-1" size={18} />;
-//       case 'normal': return <TbSquareRoundedCheck className="text-green-500 mr-1" size={18} />;
-//       default: return <TbInfoCircle className="text-blue-500 mr-1" size={18} />;
-//     }
-//   };
-
-//   const getGenderIcon = (gender: string) => {
-//     switch (gender) {
-//       case 'M': return <TbGenderMale className="text-blue-500 mr-1" size={18} />;
-//       case 'F': return <TbGenderFemale className="text-pink-500 mr-1" size={18} />;
-//       default: return <TbGenderAgender className="text-gray-500 mr-1" size={18} />;
-//     }
-//   };
-
-
-//   const fetchTestDataAndReport = async () => {
-//     try {
-//       if (!currentLab?.id) return;
-//       setLoading(true);
-
-//       // 1. First fetch the existing report data
-//       const existingReport = await getReportData(currentLab.id.toString(), editPatient.visitId.toString());
-//       const mappedReportData: ReportData[] = existingReport.map((item) => ({
-//         report_id: item.reportId !== undefined && item.reportId !== null ? String(item.reportId) : '',
-//         visit_id: item.visit_id ?? item.visitId?.toString() ?? editPatient.visitId.toString(),
-//         testName: item.testName,
-//         testCategory: item.testCategory ?? '',
-//         patientName: item.patientName ?? editPatient.patientname,
-//         referenceDescription: item.referenceDescription ?? '',
-//         referenceRange: item.referenceRange ?? '',
-//         referenceAgeRange: item.referenceAgeRange ?? '',
-//         enteredValue: item.enteredValue ?? '',
-//         unit: item.unit ?? '',
-//       }));
-//       setExistingReportData(mappedReportData);
-
-//       // 2. Fetch test data
-//       const uniqueTestIds = Array.from(new Set(editPatient.testIds));
-//       const fetchedTests = await Promise.all(
-//         uniqueTestIds.map(testId => getTestById(currentLab.id.toString(), testId))
-//       );
-
-//       // 3. Fetch package data if any
-//       const uniquePackageIds = Array.from(new Set(editPatient.packageIds));
-//       const fetchedPackages = await Promise.all(
-//         uniquePackageIds.map(packageId => getHealthPackageById(currentLab.id, packageId))
-//       );
-
-//       const packageTests = fetchedPackages.flatMap(pkg => pkg.data.tests);
-//       const combinedTests = [...fetchedTests, ...packageTests.filter(
-//         pkgTest => !fetchedTests.some(test => test.id === pkgTest.id)
-//       )];
-//       setAllTests(combinedTests);
-
-//       // 4. Get reference ranges for all tests
-//       const allTestNames = combinedTests.map(test => test.name);
-//       const referenceData: Record<string, TestReferancePoint[]> = {};
-
-//       await Promise.all(
-//         allTestNames.map(async testName => {
-//           const refPoints = await getTestReferanceRangeByTestName(currentLab.id.toString(), testName);
-//           referenceData[testName] = Array.isArray(refPoints) ? refPoints : [refPoints];
-//         })
-//       );
-
-//       // 5. Filter reference data based on patient gender
-//       const filteredReferenceData: Record<string, TestReferancePoint[]> = {};
-//       Object.keys(referenceData).forEach(testName => {
-//         filteredReferenceData[testName] = referenceData[testName].filter(point => {
-//           const patientGender = (editPatient.gender ?? 'U').toLowerCase();
-//           const referenceGender = point.gender === 'M' ? 'male' : point.gender === 'F' ? 'female' : 'U';
-//           return referenceGender === patientGender || referenceGender === 'U';
-//         });
-//       });
-//       setReferencePoints(filteredReferenceData);
-
-//       // 6. Now that we have all data, initialize the input values
-//       const initialInputValues: Record<string, Record<number, string>> = {};
-
-//       mappedReportData.forEach(reportItem => {
-//         const refPoints = filteredReferenceData[reportItem.testName] || [];
-//         const pointIndex = refPoints.findIndex(
-//           point => point.testDescription === reportItem.referenceDescription
-//         );
-
-//         if (pointIndex >= 0) {
-//           if (!initialInputValues[reportItem.testName]) {
-//             initialInputValues[reportItem.testName] = {};
-//           }
-//           initialInputValues[reportItem.testName][pointIndex] = reportItem.enteredValue;
-//         }
-//       });
-
-//       setInputValues(initialInputValues);
-//     } catch (error) {
-//       // Handle error
-//       toast.error("Failed to load test and report data");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchTestDataAndReport();
-//   }, [editPatient]);
-
-//   const handleInputChange = (testName: string, index: number, value: string) => {
-//     setInputValues(prev => ({
-//       ...prev,
-//       [testName]: {
-//         ...prev[testName],
-//         [index]: value
-//       }
-//     }));
-//   };
-
-//   const handleUpdateData = async () => {
-//     if (!Object.keys(inputValues).length) {
-//       toast.warn("Please enter values before submitting");
-//       return;
-//     }
-
-//     setLoading(true);
-//     try {
-//       const updatedReportData: ReportData[] = [];
-
-//       allTests.forEach(test => {
-//         const testInputs = inputValues[test.name] || {};
-//         const referenceData = referencePoints[test.name] || [];
-
-//         referenceData.forEach((point, index) => {
-//           const enteredValue = testInputs[index];
-//           if (!enteredValue) return;
-
-//           // Find existing report item to get its ID
-//           const existingItem = existingReportData.find(
-//             item => item.testName === test.name &&
-//               item.referenceDescription === point.testDescription
-//           );
-
-//           updatedReportData.push({
-//             report_id: existingItem?.report_id || '', // Required for updates
-//             visit_id: editPatient.visitId.toString(),
-//             testName: test.name,
-//             testCategory: test.category,
-//             patientName: editPatient.patientname,
-//             referenceDescription: point.testDescription || "N/A",
-//             referenceRange: `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`,
-//             referenceAgeRange: `${point.ageMin ?? "N/A"} - ${point.ageMax ?? "N/A"}`,
-//             enteredValue: enteredValue,
-//             unit: point.units || "N/A",
-//           });
-//         });
-//       });
-
-//       if (!currentLab?.id) {
-//         throw new Error("Lab ID is undefined");
-//       }
-
-//       // Send all updates in a single batch
-//       await updateReports(currentLab.id, updatedReportData);
-
-//       refreshReports();
-//       setShowModal(false);
-//       toast.success("Report updated successfully");
-//     } catch (error) {
-//       // Handle error
-//       toast.error("Failed to update report");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   if (loading) return <Loader />;
-
-//   return (
-//     <div className="bg-white shadow-lg rounded-xl overflow-hidden h-[500px] overflow-y-auto p-5">
-//       <ReportHeader />
-//       <PatientBasicInfo
-//         patient={{
-//           ...editPatient,
-//           gender: editPatient.gender ?? '',
-//           contactNumber: editPatient.contactNumber ?? '',
-//           email: editPatient.email ?? '',
-//           dateOfBirth: editPatient.dateOfBirth ?? ''
-//         }}
-//       />
-//       <RangeIndicatorLegend />
-//       <div className="space-y-5 mt-6">
-//         {allTests.map(test => (
-//           <div key={test.id} className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-//             <div className="flex items-center mb-4">
-//               <TbTestPipe className="text-blue-500 mr-2" size={20} />
-//               <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-//                 <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm mr-3 flex items-center">
-//                   <TbCategory className="mr-1" size={14} />
-//                   {test.category}
-//                 </span>
-//                 {test.name}
-//               </h3>
-//             </div>
-
-//             <div className="space-y-3">
-//               {referencePoints[test.name]?.map((point, index) => {
-//                 const currentValue = inputValues[test.name]?.[index] || '';
-//                 const status = getValueStatus(
-//                   currentValue,
-//                   point.minReferenceRange,
-//                   point.maxReferenceRange
-//                 );
-
-//                 return (
-//                   <div
-//                     key={index}
-//                     className={`p-4 rounded-lg border ${getStatusColor(status)} transition-all`}
-//                   >
-//                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
-//                       <div className="flex items-start">
-//                         <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                         <div>
-//                           <p className="font-medium text-gray-600">Description</p>
-//                           <p className="text-gray-800">{point.testDescription}</p>
-//                         </div>
-//                       </div>
-//                       <div className="flex items-start">
-//                         <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                         <div>
-//                           <p className="font-medium text-gray-600">Reference Range</p>
-//                           <p className="text-gray-800">
-//                             {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
-//                               <span className="text-gray-500 flex items-center">
-//                                 <TbRuler className="ml-1" size={14} />
-//                               </span>
-//                             )}
-//                           </p>
-//                         </div>
-//                       </div>
-//                       <div className="flex items-start">
-//                         <TbCalendarTime className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                         <div>
-//                           <p className="font-medium text-gray-600">Age Range</p>
-//                           <p className="text-gray-800">
-//                             {point.ageMin ?? 'N/A'} - {point.ageMax ?? 'N/A'} years
-//                           </p>
-//                         </div>
-//                       </div>
-//                       <div className="flex items-start">
-//                         {getGenderIcon(point.gender)}
-//                         <div>
-//                           <p className="font-medium text-gray-600">Gender</p>
-//                           <p className="text-gray-800">
-//                             {point.gender === 'M' ? 'Male' : point.gender === 'F' ? 'Female' : 'Unisex'}
-//                           </p>
-//                         </div>
-//                       </div>
-//                       <div className="flex items-center">
-//                         <div className="flex-1">
-//                           <div className="flex items-center mb-1">
-//                             <TbNumbers className="text-gray-500 mr-2" size={18} />
-//                             <p className="font-medium text-gray-600">Enter Value</p>
-//                           </div>
-//                           <div className="flex items-center">
-//                             {getStatusIcon(status)}
-//                             <input
-//                               type="text"
-//                               className={`w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300`}
-//                               placeholder="Enter value"
-//                               value={currentValue}
-//                               onChange={(e) => handleInputChange(test.name, index, e.target.value)}
-//                             />
-//                           </div>
-//                         </div>
-//                       </div>
-//                     </div>
-//                   </div>
-//                 );
-//               })}
-//             </div>
-//           </div>
-//         ))}
-//       </div>
-
-//       <div className="sticky bottom-0 bg-white pt-4 pb-2 border-t border-gray-200 mt-6">
-//         <button
-//           onClick={handleUpdateData}
-//           className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition-colors flex items-center justify-center"
-//           disabled={loading}
-//         >
-//           {loading ? (
-//             <div className="flex flex-col items-center justify-center h-64">
-//               <Loader type="progress" fullScreen={false} text= "Updating Report..." />
-//               <p className="mt-2 text-sm text-gray-500">Please wait while we update the report.</p>
-              
-//             </div>
-//           ) : (
-//             <>
-//               <TbReportMedical className="mr-2" size={18} />
-//               Update Report
-//             </>
-//           )}
-//         </button>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default PatientReportDataEdit;
-
-
-
-//================================
-
-
-// import React, { useEffect, useState } from 'react';
-// import {
-//   TbArrowDownCircle, TbArrowUpCircle, TbCalendarTime, TbCategory,
-//   TbChartLine, TbClipboardText, TbGenderAgender, TbGenderFemale,
-//   TbGenderMale, TbInfoCircle, TbNumbers, TbReportMedical,
-//   TbRuler, TbSquareRoundedCheck, TbTestPipe
-// } from "react-icons/tb";
-// import { toast } from 'react-toastify';
-// import Loader from '@/app/(admin)/component/common/Loader';
-// import { useLabs } from '@/context/LabContext';
-// import { getHealthPackageById } from '@/../services/packageServices';
-// import { getReportData, updateReports } from '@/../services/reportServices';
-// import { getTestById, getTestReferanceRangeByTestName } from '@/../services/testService';
-// import PatientBasicInfo from './PatientBasicInfo';
-// import ReportHeader from './ReportHeader';
-
-// interface Patient {
-//   visitId: number;
-//   patientname: string;
-//   visitDate: string;
-//   visitStatus: string;
-//   sampleNames: string[];
-//   testIds: number[];
-//   packageIds: number[];
-//   contactNumber?: string;
-//   gender?: string;
-//   email?: string;
-//   dateOfBirth?: string;
-//   id?: string;
-// }
-
-// interface ReportData {
-//   report_id?: string;
-//   visit_id: string;
-//   testName: string;
-//   testCategory: string;
-//   patientName: string;
-//   referenceDescription: string;
-//   referenceRange: string;
-//   referenceAgeRange: string;
-//   enteredValue: string;
-//   unit: string;
-// }
-
-// interface TestReferancePoint {
-//   testDescription: string;
-//   minReferenceRange: number | null;
-//   maxReferenceRange: number | null;
-//   ageMin: number | null;
-//   ageMax: number | null;
-//   gender: string;
-//   units: string;
-// }
-
-// interface TestList {
-//   id: number;
-//   name: string;
-//   category: string;
-// }
-
-// interface PatientReportDataEditProps {
-//   editPatient: Patient;
-//   setShowModal: (value: React.SetStateAction<boolean>) => void;
-//   refreshReports: () => void;
-// }
-
-// const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
-//   editPatient,
-//   setShowModal,
-//   refreshReports
-// }) => {
-//   const { currentLab } = useLabs();
-//   const [loading, setLoading] = useState(false);
-//   const [referencePoints, setReferencePoints] = useState<Record<string, TestReferancePoint[]>>({});
-//   const [inputValues, setInputValues] = useState<Record<string, Record<number, string>>>({});
-//   const [allTests, setAllTests] = useState<TestList[]>([]);
-//   const [existingReportData, setExistingReportData] = useState<ReportData[]>([]);
-
-//   const RangeIndicatorLegend = () => (
-//     <div className="flex flex-wrap items-center justify-center gap-4 mb-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
-//       <div className="flex items-center text-sm">
-//         <TbSquareRoundedCheck className="text-green-500 mr-2" size={18} />
-//         <span>Normal Range</span>
-//       </div>
-//       <div className="flex items-center text-sm">
-//         <TbArrowDownCircle className="text-yellow-500 mr-2" size={18} />
-//         <span>Below Normal</span>
-//       </div>
-//       <div className="flex items-center text-sm">
-//         <TbArrowUpCircle className="text-red-500 mr-2" size={18} />
-//         <>Above Normal</>
-//       </div>
-//       <div className="flex items-center text-sm">
-//         <TbInfoCircle className="text-blue-500 mr-2" size={18} />
-//         <span>No Reference</span>
-//       </div>
-//     </div>
-//   );
-
-//   const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
-//     if (!value || isNaN(Number(value))) return 'no-reference';
-//     const numValue = parseFloat(value);
-
-//     if (minRef === null || maxRef === null) return 'no-reference';
-//     if (numValue < minRef) return 'below';
-//     if (numValue > maxRef) return 'above';
-//     return 'normal';
-//   };
-
-//   const getStatusColor = (status: string) => {
-//     switch (status) {
-//       case 'below': return 'bg-yellow-50 border-yellow-200';
-//       case 'above': return 'bg-red-50 border-red-200';
-//       case 'normal': return 'bg-green-50 border-green-200';
-//       default: return 'bg-blue-50 border-blue-200';
-//     }
-//   };
-
-//   const getStatusIcon = (status: string) => {
-//     switch (status) {
-//       case 'below': return <TbArrowDownCircle className="text-yellow-500 mr-1" size={18} />;
-//       case 'above': return <TbArrowUpCircle className="text-red-500 mr-1" size={18} />;
-//       case 'normal': return <TbSquareRoundedCheck className="text-green-500 mr-1" size={18} />;
-//       default: return <TbInfoCircle className="text-blue-500 mr-1" size={18} />;
-//     }
-//   };
-
-//   const getGenderIcon = (gender: string) => {
-//     switch (gender) {
-//       case 'M': return <TbGenderMale className="text-blue-500 mr-1" size={18} />;
-//       case 'F': return <TbGenderFemale className="text-pink-500 mr-1" size={18} />;
-//       default: return <TbGenderAgender className="text-gray-500 mr-1" size={18} />;
-//     }
-//   };
-
-
-//   const fetchTestDataAndReport = async () => {
-//     try {
-//       if (!currentLab?.id) return;
-//       setLoading(true);
-
-//       // 1. First fetch the existing report data
-//       const existingReport = await getReportData(currentLab.id.toString(), editPatient.visitId.toString());
-//       const mappedReportData: ReportData[] = existingReport.map((item) => ({
-//         report_id: item.reportId !== undefined && item.reportId !== null ? String(item.reportId) : '',
-//         visit_id: item.visit_id ?? item.visitId?.toString() ?? editPatient.visitId.toString(),
-//         testName: item.testName,
-//         testCategory: item.testCategory ?? '',
-//         patientName: item.patientName ?? editPatient.patientname,
-//         referenceDescription: item.referenceDescription ?? '',
-//         referenceRange: item.referenceRange ?? '',
-//         referenceAgeRange: item.referenceAgeRange ?? '',
-//         enteredValue: item.enteredValue ?? '',
-//         unit: item.unit ?? '',
-//       }));
-//       setExistingReportData(mappedReportData);
-
-//       // 2. Fetch test data
-//       const uniqueTestIds = Array.from(new Set(editPatient.testIds));
-//       const fetchedTests = await Promise.all(
-//         uniqueTestIds.map(testId => getTestById(currentLab.id.toString(), testId))
-//       );
-
-//       // 3. Fetch package data if any
-//       const uniquePackageIds = Array.from(new Set(editPatient.packageIds));
-//       const fetchedPackages = await Promise.all(
-//         uniquePackageIds.map(packageId => getHealthPackageById(currentLab.id, packageId))
-//       );
-
-//       const packageTests = fetchedPackages.flatMap(pkg => pkg.data.tests);
-//       const combinedTests = [...fetchedTests, ...packageTests.filter(
-//         pkgTest => !fetchedTests.some(test => test.id === pkgTest.id)
-//       )];
-//       setAllTests(combinedTests);
-
-//       // 4. Get reference ranges for all tests
-//       const allTestNames = combinedTests.map(test => test.name);
-//       const referenceData: Record<string, TestReferancePoint[]> = {};
-
-//       await Promise.all(
-//         allTestNames.map(async testName => {
-//           const refPoints = await getTestReferanceRangeByTestName(currentLab.id.toString(), testName);
-//           referenceData[testName] = Array.isArray(refPoints) ? refPoints : [refPoints];
-//         })
-//       );
-
-//       // 5. Filter reference data based on patient gender
-//       const filteredReferenceData: Record<string, TestReferancePoint[]> = {};
-//       Object.keys(referenceData).forEach(testName => {
-//         filteredReferenceData[testName] = referenceData[testName].filter(point => {
-//           const patientGender = (editPatient.gender ?? 'U').toLowerCase();
-//           const referenceGender = point.gender === 'M' ? 'male' : point.gender === 'F' ? 'female' : 'U';
-//           return referenceGender === patientGender || referenceGender === 'U';
-//         });
-//       });
-//       setReferencePoints(filteredReferenceData);
-
-//       // 6. Now that we have all data, initialize the input values
-//       const initialInputValues: Record<string, Record<number, string>> = {};
-
-//       mappedReportData.forEach(reportItem => {
-//         const refPoints = filteredReferenceData[reportItem.testName] || [];
-//         const pointIndex = refPoints.findIndex(
-//           point => point.testDescription === reportItem.referenceDescription
-//         );
-
-//         if (pointIndex >= 0) {
-//           if (!initialInputValues[reportItem.testName]) {
-//             initialInputValues[reportItem.testName] = {};
-//           }
-//           initialInputValues[reportItem.testName][pointIndex] = reportItem.enteredValue;
-//         }
-//       });
-
-//       setInputValues(initialInputValues);
-//     } catch (error) {
-//       // Handle error
-//       toast.error("Failed to load test and report data");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchTestDataAndReport();
-//   }, [editPatient]);
-
-//   const handleInputChange = (testName: string, index: number, value: string) => {
-//     setInputValues(prev => ({
-//       ...prev,
-//       [testName]: {
-//         ...prev[testName],
-//         [index]: value
-//       }
-//     }));
-//   };
-
-//   const handleUpdateData = async () => {
-//     if (!Object.keys(inputValues).length) {
-//       toast.warn("Please enter values before submitting");
-//       return;
-//     }
-
-//     setLoading(true);
-//     try {
-//       const updatedReportData: ReportData[] = [];
-
-//       allTests.forEach(test => {
-//         const testInputs = inputValues[test.name] || {};
-//         const referenceData = referencePoints[test.name] || [];
-
-//         referenceData.forEach((point, index) => {
-//           const enteredValue = testInputs[index];
-//           if (!enteredValue) return;
-
-//           // Find existing report item to get its ID
-//           const existingItem = existingReportData.find(
-//             item => item.testName === test.name &&
-//               item.referenceDescription === point.testDescription
-//           );
-
-//           updatedReportData.push({
-//             report_id: existingItem?.report_id || '', // Required for updates
-//             visit_id: editPatient.visitId.toString(),
-//             testName: test.name,
-//             testCategory: test.category,
-//             patientName: editPatient.patientname,
-//             referenceDescription: point.testDescription || "N/A",
-//             referenceRange: `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`,
-//             referenceAgeRange: `${point.ageMin ?? "N/A"} - ${point.ageMax ?? "N/A"}`,
-//             enteredValue: enteredValue,
-//             unit: point.units || "N/A",
-//           });
-//         });
-//       });
-
-//       if (!currentLab?.id) {
-//         throw new Error("Lab ID is undefined");
-//       }
-
-//       // Send all updates in a single batch
-//       await updateReports(currentLab.id, updatedReportData);
-
-//       refreshReports();
-//       setShowModal(false);
-//       toast.success("Report updated successfully");
-//     } catch (error) {
-//       // Handle error
-//       toast.error("Failed to update report");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   if (loading) return <Loader />;
-
-//   return (
-//     <div className="bg-white shadow-lg rounded-xl overflow-hidden h-[500px] overflow-y-auto p-5">
-//       <ReportHeader />
-//       <PatientBasicInfo
-//         patient={{
-//           ...editPatient,
-//           gender: editPatient.gender ?? '',
-//           contactNumber: editPatient.contactNumber ?? '',
-//           email: editPatient.email ?? '',
-//           dateOfBirth: editPatient.dateOfBirth ?? ''
-//         }}
-//       />
-//       <RangeIndicatorLegend />
-//       <div className="space-y-5 mt-6">
-//         {allTests.map(test => (
-//           <div key={test.id} className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-//             <div className="flex items-center mb-4">
-//               <TbTestPipe className="text-blue-500 mr-2" size={20} />
-//               <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-//                 <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm mr-3 flex items-center">
-//                   <TbCategory className="mr-1" size={14} />
-//                   {test.category}
-//                 </span>
-//                 {test.name}
-//               </h3>
-//             </div>
-
-//             <div className="space-y-3">
-//               {referencePoints[test.name]?.map((point, index) => {
-//                 const currentValue = inputValues[test.name]?.[index] || '';
-//                 const status = getValueStatus(
-//                   currentValue,
-//                   point.minReferenceRange,
-//                   point.maxReferenceRange
-//                 );
-
-//                 return (
-//                   <div
-//                     key={index}
-//                     className={`p-4 rounded-lg border ${getStatusColor(status)} transition-all`}
-//                   >
-//                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
-//                       <div className="flex items-start">
-//                         <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                         <div>
-//                           <p className="font-medium text-gray-600">Description</p>
-//                           <p className="text-gray-800">{point.testDescription}</p>
-//                         </div>
-//                       </div>
-//                       <div className="flex items-start">
-//                         <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                         <div>
-//                           <p className="font-medium text-gray-600">Reference Range</p>
-//                           <p className="text-gray-800">
-//                             {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
-//                               <span className="text-gray-500 flex items-center">
-//                                 <TbRuler className="ml-1" size={14} />
-//                               </span>
-//                             )}
-//                           </p>
-//                         </div>
-//                       </div>
-//                       <div className="flex items-start">
-//                         <TbCalendarTime className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                         <div>
-//                           <p className="font-medium text-gray-600">Age Range</p>
-//                           <p className="text-gray-800">
-//                             {point.ageMin ?? 'N/A'} - {point.ageMax ?? 'N/A'} years
-//                           </p>
-//                         </div>
-//                       </div>
-//                       <div className="flex items-start">
-//                         {getGenderIcon(point.gender)}
-//                         <div>
-//                           <p className="font-medium text-gray-600">Gender</p>
-//                           <p className="text-gray-800">
-//                             {point.gender === 'M' ? 'Male' : point.gender === 'F' ? 'Female' : 'Unisex'}
-//                           </p>
-//                         </div>
-//                       </div>
-//                       <div className="flex items-center">
-//                         <div className="flex-1">
-//                           <div className="flex items-center mb-1">
-//                             <TbNumbers className="text-gray-500 mr-2" size={18} />
-//                             <p className="font-medium text-gray-600">Enter Value</p>
-//                           </div>
-//                           <div className="flex items-center">
-//                             {getStatusIcon(status)}
-//                             <input
-//                               type="text"
-//                               className={`w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300`}
-//                               placeholder="Enter value"
-//                               value={currentValue}
-//                               onChange={(e) => handleInputChange(test.name, index, e.target.value)}
-//                             />
-//                           </div>
-//                         </div>
-//                       </div>
-//                     </div>
-//                   </div>
-//                 );
-//               })}
-//             </div>
-//           </div>
-//         ))}
-//       </div>
-
-//       <div className="sticky bottom-0 bg-white pt-4 pb-2 border-t border-gray-200 mt-6">
-//         <button
-//           onClick={handleUpdateData}
-//           className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition-colors flex items-center justify-center"
-//           disabled={loading}
-//         >
-//           {loading ? (
-//             <div className="flex flex-col items-center justify-center h-64">
-//               <Loader type="progress" fullScreen={false} text= "Updating Report..." />
-//               <p className="mt-2 text-sm text-gray-500">Please wait while we update the report.</p>
-              
-//             </div>
-//           ) : (
-//             <>
-//               <TbReportMedical className="mr-2" size={18} />
-//               Update Report
-//             </>
-//           )}
-//         </button>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default PatientReportDataEdit; 
-
-
-
-
-// import React, { useEffect, useState } from 'react';
-// import {
-//   TbArrowDownCircle, TbArrowUpCircle, TbCalendarTime, TbCategory,
-//   TbChartLine, TbClipboardText, TbGenderAgender, TbGenderFemale,
-//   TbGenderMale, TbInfoCircle, TbNumbers, TbReportMedical,
-//   TbRuler, TbSquareRoundedCheck, TbTestPipe, TbX
-// } from "react-icons/tb";
-// import { toast } from 'react-toastify';
-// import Loader from '@/app/(admin)/component/common/Loader';
-// import { useLabs } from '@/context/LabContext';
-// import { getHealthPackageById } from '@/../services/packageServices';
-// import { getReportData, updateReports } from '@/../services/reportServices';
-// import { getTestById, getTestReferanceRangeByTestName } from '@/../services/testService';
-// import PatientBasicInfo from './PatientBasicInfo';
-// import ReportHeader from './ReportHeader';
-
-// interface Patient {
-//   visitId: number;
-//   patientname: string;
-//   visitDate: string;
-//   visitStatus: string;
-//   sampleNames: string[];
-//   testIds: number[];
-//   packageIds: number[];
-//   contactNumber?: string;
-//   gender?: string;
-//   email?: string;
-//   dateOfBirth?: string;
-//   id?: string;
-// }
-
-// interface ReportData {
-//   report_id?: string;
-//   visit_id: string;
-//   testName: string;
-//   testCategory: string;
-//   patientName: string;
-//   referenceDescription: string;
-//   referenceRange: string;
-//   referenceAgeRange: string;
-//   enteredValue: string;
-//   unit: string;
-// }
-
-// interface TestReferancePoint {
-//   testDescription: string;
-//   minReferenceRange: number | null;
-//   maxReferenceRange: number | null;
-//   ageMin: number | null;
-//   ageMax: number | null;
-//   minAgeUnit?: string;
-//   maxAgeUnit?: string;
-//   gender: string;
-//   units: string;
-// }
-
-// interface TestList {
-//   id: number;
-//   name: string;
-//   category: string;
-// }
-
-// interface PatientReportDataEditProps {
-//   editPatient: Patient;
-//   setShowModal: (value: React.SetStateAction<boolean>) => void;
-//   refreshReports: () => void;
-// }
-
-// const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
-//   editPatient,
-//   setShowModal,
-//   refreshReports
-// }) => {
-//   const { currentLab } = useLabs();
-//   const [loading, setLoading] = useState(false);
-//   const [referencePoints, setReferencePoints] = useState<Record<string, TestReferancePoint[]>>({});
-//   const [inputValues, setInputValues] = useState<Record<string, Record<number, string>>>({});
-//   const [allTests, setAllTests] = useState<TestList[]>([]);
-//   const [existingReportData, setExistingReportData] = useState<ReportData[]>([]);
-//   const [removedReferences, setRemovedReferences] = useState<Record<string, number[]>>({});
-//   const [showConfirmation, setShowConfirmation] = useState(false);
-//   const [reportPreview, setReportPreview] = useState<ReportData[]>([]);
-//   const [hasMissingDescriptions, setHasMissingDescriptions] = useState(false);
-
-//   const calculateAge = (dob: string) => {
-//     if (!dob) return { years: 0, months: 0, days: 0 };
-//     const birthDate = new Date(dob);
-//     const now = new Date();
-//     let years = now.getFullYear() - birthDate.getFullYear();
-//     let months = now.getMonth() - birthDate.getMonth();
-//     let days = now.getDate() - birthDate.getDate();
-
-//     if (days < 0) {
-//       months--;
-//       const lastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-//       days += lastMonth.getDate();
-//     }
-
-//     if (months < 0) {
-//       years--;
-//       months += 12;
-//     }
-
-//     return { years, months, days };
-//   };
-
-//   const formatAgeDisplay = (age: { years: number; months: number; days: number }) => {
-//     if (age.years > 0) {
-//       return `${age.years} year${age.years > 1 ? 's' : ''} ${age.months > 0 ? `${age.months} month${age.months > 1 ? 's' : ''}` : ''}`;
-//     } else if (age.months > 0) {
-//       return `${age.months} month${age.months > 1 ? 's' : ''} ${age.days > 0 ? `${age.days} day${age.days > 1 ? 's' : ''}` : ''}`;
-//     } else {
-//       return `${age.days} day${age.days !== 1 ? 's' : ''}`;
-//     }
-//   };
-
-//   const RangeIndicatorLegend = () => (
-//     <div className="flex flex-wrap items-center justify-center gap-4 mb-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
-//       <div className="flex items-center text-sm">
-//         <TbSquareRoundedCheck className="text-green-500 mr-2" size={18} />
-//         <span>Normal Range</span>
-//       </div>
-//       <div className="flex items-center text-sm">
-//         <TbArrowDownCircle className="text-yellow-500 mr-2" size={18} />
-//         <span>Below Normal</span>
-//       </div>
-//       <div className="flex items-center text-sm">
-//         <TbArrowUpCircle className="text-red-500 mr-2" size={18} />
-//         <span>Above Normal</span>
-//       </div>
-//       <div className="flex items-center text-sm">
-//         <TbInfoCircle className="text-blue-500 mr-2" size={18} />
-//         <span>No Reference</span>
-//       </div>
-//     </div>
-//   );
-
-//   const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
-//     if (!value || isNaN(Number(value))) return 'no-reference';
-//     const numValue = parseFloat(value);
-
-//     if (minRef === null || maxRef === null) return 'no-reference';
-//     if (numValue < minRef) return 'below';
-//     if (numValue > maxRef) return 'above';
-//     return 'normal';
-//   };
-
-//   const getStatusColor = (status: string) => {
-//     switch (status) {
-//       case 'below': return 'bg-yellow-50 border-yellow-200';
-//       case 'above': return 'bg-red-50 border-red-200';
-//       case 'normal': return 'bg-green-50 border-green-200';
-//       default: return 'bg-blue-50 border-blue-200';
-//     }
-//   };
-
-//   const getStatusIcon = (status: string) => {
-//     switch (status) {
-//       case 'below': return <TbArrowDownCircle className="text-yellow-500 mr-1" size={18} />;
-//       case 'above': return <TbArrowUpCircle className="text-red-500 mr-1" size={18} />;
-//       case 'normal': return <TbSquareRoundedCheck className="text-green-500 mr-1" size={18} />;
-//       default: return <TbInfoCircle className="text-blue-500 mr-1" size={18} />;
-//     }
-//   };
-
-//   const getGenderIcon = (gender: string) => {
-//     switch (gender) {
-//       case 'M': return <TbGenderMale className="text-blue-500 mr-1" size={18} />;
-//       case 'F': return <TbGenderFemale className="text-pink-500 mr-1" size={18} />;
-//       default: return <TbGenderAgender className="text-gray-500 mr-1" size={18} />;
-//     }
-//   };
-
-//   const removeReference = (testName: string, index: number) => {
-//     setRemovedReferences(prev => ({
-//       ...prev,
-//       [testName]: [...(prev[testName] || []), index]
-//     }));
-//   };
-
-//   const restoreReference = (testName: string, index: number) => {
-//     setRemovedReferences(prev => ({
-//       ...prev,
-//       [testName]: (prev[testName] || []).filter(i => i !== index)
-//     }));
-//   };
-
-//   const isReferenceRemoved = (testName: string, index: number) => {
-//     return (removedReferences[testName] || []).includes(index);
-//   };
-
-//   const fetchTestDataAndReport = async () => {
-//     try {
-//       if (!currentLab?.id) return;
-//       setLoading(true);
-
-//       // 1. First fetch the existing report data
-//       const existingReport = await getReportData(currentLab.id.toString(), editPatient.visitId.toString());
-//       const mappedReportData: ReportData[] = existingReport.map((item) => ({
-//         report_id: item.reportId !== undefined && item.reportId !== null ? String(item.reportId) : '',
-//         visit_id: item.visit_id ?? item.visitId?.toString() ?? editPatient.visitId.toString(),
-//         testName: item.testName,
-//         testCategory: item.testCategory ?? '',
-//         patientName: item.patientName ?? editPatient.patientname,
-//         referenceDescription: item.referenceDescription ?? '',
-//         referenceRange: item.referenceRange ?? '',
-//         referenceAgeRange: item.referenceAgeRange ?? '',
-//         enteredValue: item.enteredValue ?? '',
-//         unit: item.unit ?? '',
-//       }));
-//       setExistingReportData(mappedReportData);
-
-//       // 2. Fetch test data
-//       const uniqueTestIds = Array.from(new Set(editPatient.testIds));
-//       const fetchedTests = await Promise.all(
-//         uniqueTestIds.map(testId => getTestById(currentLab.id.toString(), testId))
-//       );
-
-//       // 3. Fetch package data if any
-//       const uniquePackageIds = Array.from(new Set(editPatient.packageIds));
-//       const fetchedPackages = await Promise.all(
-//         uniquePackageIds.map(packageId => getHealthPackageById(currentLab.id, packageId))
-//       );
-
-//       const packageTests = fetchedPackages.flatMap(pkg => pkg.data.tests);
-//       const combinedTests = [...fetchedTests, ...packageTests.filter(
-//         pkgTest => !fetchedTests.some(test => test.id === pkgTest.id)
-//       )];
-//       setAllTests(combinedTests);
-
-//       // 4. Get reference ranges for all tests
-//       const allTestNames = combinedTests.map(test => test.name);
-//       const referenceData: Record<string, TestReferancePoint[]> = {};
-
-//       await Promise.all(
-//         allTestNames.map(async testName => {
-//           const refPoints = await getTestReferanceRangeByTestName(currentLab.id.toString(), testName);
-//           referenceData[testName] = Array.isArray(refPoints) ? refPoints : [refPoints];
-//         })
-//       );
-
-//       // 5. Filter reference data based on patient gender
-//       const filteredReferenceData: Record<string, TestReferancePoint[]> = {};
-//       Object.keys(referenceData).forEach(testName => {
-//         filteredReferenceData[testName] = referenceData[testName].filter(point => {
-//           const patientGender = (editPatient.gender ?? 'U').toLowerCase();
-//           const referenceGender = point.gender === 'M' ? 'male' : point.gender === 'F' ? 'female' : 'U';
-//           return referenceGender === patientGender || referenceGender === 'U';
-//         });
-//       });
-//       setReferencePoints(filteredReferenceData);
-
-//       // 6. Now that we have all data, initialize the input values
-//       const initialInputValues: Record<string, Record<number, string>> = {};
-
-//       mappedReportData.forEach(reportItem => {
-//         const refPoints = filteredReferenceData[reportItem.testName] || [];
-//         const pointIndex = refPoints.findIndex(
-//           point => point.testDescription === reportItem.referenceDescription
-//         );
-
-//         if (pointIndex >= 0) {
-//           if (!initialInputValues[reportItem.testName]) {
-//             initialInputValues[reportItem.testName] = {};
-//           }
-//           initialInputValues[reportItem.testName][pointIndex] = reportItem.enteredValue;
-//         }
-//       });
-
-//       setInputValues(initialInputValues);
-//       setRemovedReferences({});
-//     } catch (error) {
-//       // Handle error
-//       toast.error("Failed to load test and report data");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchTestDataAndReport();
-//   }, [editPatient]);
-
-//   const handleInputChange = (testName: string, index: number, value: string) => {
-//     setInputValues(prev => ({
-//       ...prev,
-//       [testName]: {
-//         ...prev[testName],
-//         [index]: value
-//       }
-//     }));
-//   };
-
-//   const prepareReportPreview = () => {
-//     const generatedReportData: ReportData[] = [];
-//     let hasMissingDesc = false;
-
-//     allTests.forEach((test) => {
-//       const testInputs = inputValues[test.name] || {};
-//       const referenceData = referencePoints[test.name] || [];
-
-//       referenceData.forEach((point, index) => {
-//         if (isReferenceRemoved(test.name, index)) return;
-
-//         if (testInputs[index] || (point.testDescription && point.testDescription !== "No reference available for this test")) {
-//           if (!point.testDescription || point.testDescription === "No reference available for this test") {
-//             hasMissingDesc = true;
-//           }
-
-//           // Find existing report item to get its ID
-//           const existingItem = existingReportData.find(
-//             item => item.testName === test.name &&
-//               item.referenceDescription === point.testDescription
-//           );
-
-//           generatedReportData.push({
-//             report_id: existingItem?.report_id || '',
-//             visit_id: editPatient.visitId.toString(),
-//             testName: test.name,
-//             testCategory: test.category,
-//             patientName: editPatient.patientname,
-//             referenceDescription: point.testDescription || "No reference description available",
-//             referenceRange: `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`,
-//             referenceAgeRange: `${point.ageMin ?? "N/A"} ${point.minAgeUnit ?? "YEARS"} - ${point.ageMax ?? "N/A"} ${point.maxAgeUnit ?? "YEARS"}`,
-//             enteredValue: testInputs[index] || "N/A",
-//             unit: point.units || "N/A",
-//           });
-//         }
-//       });
-//     });
-
-//     setReportPreview(generatedReportData);
-//     setHasMissingDescriptions(hasMissingDesc);
-//     setShowConfirmation(true);
-//   };
-
-//   const handleUpdateData = async () => {
-//     setLoading(true);
-//     try {
-//       if (!currentLab?.id) {
-//         throw new Error("Lab ID is undefined");
-//       }
-
-//       await updateReports(currentLab.id, reportPreview);
-
-//       refreshReports();
-//       setShowModal(false);
-//       toast.success("Report updated successfully");
-//     } catch (error) {
-//       // Handle error
-//       toast.error("Failed to update report");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   if (loading) return (
-//     <div className="flex flex-col items-center justify-center h-64">
-//       <Loader type="progress" fullScreen={false} text="Loading report data..." />
-//       <p className="mt-4 text-sm text-gray-500">Fetching test and reference data...</p>
-//     </div>
-//   );
-
-//   const patientAge = editPatient.dateOfBirth ? calculateAge(editPatient.dateOfBirth) : { years: 0, months: 0, days: 0 };
-
-//   return (
-//     <div className="bg-white shadow-lg rounded-xl overflow-hidden h-[500px] overflow-y-auto p-5">
-//       <ReportHeader />
-//       <PatientBasicInfo patient={{
-//         ...editPatient,
-//         gender: editPatient.gender || '',
-//         contactNumber: editPatient.contactNumber || '',
-//         email: editPatient.email || '',
-//         dateOfBirth: editPatient.dateOfBirth || ''
-//       }} />
-
-//       {/* Highlighted Banner for Reference Range Selection */}
-//       <div className="relative bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 mb-6 shadow-md">
-//         <div className="text-white">
-//           <h3 className="text-lg font-bold mb-1 flex items-center">
-//             <TbInfoCircle className="mr-2" size={20} />
-//             Edit Report Data
-//           </h3>
-//           <p className="text-sm opacity-90">
-//             Update the test values as needed. You can remove reference ranges that aren&lsquo;t relevant.
-//           </p>
-//           {editPatient.dateOfBirth && (
-//             <p className="text-xs mt-2 bg-white/20 inline-block px-2 py-1 rounded">
-//               Patient Age: <span className="font-semibold">{formatAgeDisplay(patientAge)}</span>
-//             </p>
-//           )}
-//         </div>
-//       </div>
-
-//       <RangeIndicatorLegend />
-
-//       <div className="space-y-5 mt-6">
-//         {allTests.map((test) => (
-//           <div key={test.id} className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-//             <div className="flex items-center mb-4">
-//               <TbTestPipe className="text-blue-500 mr-2" size={20} />
-//               <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-//                 <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm mr-3 flex items-center">
-//                   <TbCategory className="mr-1" size={14} />
-//                   {test.category}
-//                 </span>
-//                 {test.name}
-//               </h3>
-//             </div>
-
-//             <div className="space-y-3">
-//               {referencePoints[test.name]?.length === 0 ? (
-//                 <div className="p-4 rounded-lg border bg-yellow-50 border-yellow-200">
-//                   <div className="flex items-center text-yellow-800">
-//                     <TbInfoCircle className="mr-2" size={18} />
-//                     <div>
-//                       <p className="font-medium">No reference ranges found for this patient&lsquo;s gender</p>
-//                       <p className="text-sm">Please check the test configuration or contact support</p>
-//                     </div>
-//                   </div>
-//                 </div>
-//               ) : (
-//                 referencePoints[test.name]?.map((point, index) => {
-//                   if (isReferenceRemoved(test.name, index)) {
-//                     return (
-//                       <div key={index} className="p-4 rounded-lg border bg-gray-100 border-gray-300 relative">
-//                         <div className="absolute top-2 right-2">
-//                           <button
-//                             onClick={() => restoreReference(test.name, index)}
-//                             className="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-50"
-//                             title="Restore this reference"
-//                           >
-//                             <TbX className="rotate-45" size={18} />
-//                           </button>
-//                         </div>
-//                         <div className="flex items-center text-gray-500">
-//                           <TbClipboardText className="mr-2" size={18} />
-//                           <p className="italic">Reference range removed</p>
-//                         </div>
-//                       </div>
-//                     );
-//                   }
-
-//                   if (point.testDescription === "No reference available for this test") {
-//                     const currentValue = inputValues[test.name]?.[index] || '';
-//                     const status = getValueStatus(
-//                       currentValue,
-//                       point.minReferenceRange,
-//                       point.maxReferenceRange
-//                     );
-
-//                     return (
-//                       <div
-//                         key={index}
-//                         className={`p-4 rounded-lg border ${getStatusColor(status)} transition-all relative`}
-//                       >
-//                         <div className="absolute top-2 right-2">
-//                           <button
-//                             onClick={() => removeReference(test.name, index)}
-//                             className="text-gray-500 hover:text-red-600 p-1 rounded-full hover:bg-gray-100"
-//                             title="Remove this reference"
-//                           >
-//                             <TbX size={18} />
-//                           </button>
-//                         </div>
-//                         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
-//                           <div className="flex items-start">
-//                             <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                             <div>
-//                               <p className="font-medium text-gray-600">Description</p>
-//                               <p className="text-gray-800 italic">This test doesn&lsquo;t have digital references. Results will be provided separately.</p>
-//                             </div>
-//                           </div>
-//                           <div className="flex items-start">
-//                             <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                             <div>
-//                               <p className="font-medium text-gray-600">Reference Range</p>
-//                               <p className="text-gray-800">
-//                                 {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
-//                                   <span className="text-gray-500 flex items-center">
-//                                     <TbRuler className="ml-1" size={14} />
-//                                   </span>
-//                                 )}
-//                               </p>
-//                             </div>
-//                           </div>
-//                           <div className="flex items-start">
-//                             <TbCalendarTime className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                             <div>
-//                               <p className="font-medium text-gray-600">Age Range</p>
-//                               <p className="text-gray-800">
-//                                 {point.ageMin ?? 'N/A'} {point.minAgeUnit ?? 'YEARS'} - {point.ageMax ?? 'N/A'} {point.maxAgeUnit ?? 'YEARS'}
-//                               </p>
-//                             </div>
-//                           </div>
-//                           <div className="flex items-start">
-//                             {getGenderIcon(point.gender)}
-//                             <div>
-//                               <p className="font-medium text-gray-600">Gender</p>
-//                               <p className="text-gray-800">
-//                                 {point.gender === 'M' ? 'Male' : point.gender === 'F' ? 'Female' : 'Unisex'}
-//                               </p>
-//                             </div>
-//                           </div>
-//                           <div className="flex items-center">
-//                             <div className="flex-1">
-//                               <div className="flex items-center mb-1">
-//                                 <TbNumbers className="text-gray-500 mr-2" size={18} />
-//                                 <p className="font-medium text-gray-600">Enter Value</p>
-//                               </div>
-//                               <div className="flex items-center">
-//                                 {getStatusIcon(status)}
-//                                 <input
-//                                   type="text"
-//                                   className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300"
-//                                   placeholder="Enter value"
-//                                   value={currentValue}
-//                                   onChange={(e) => handleInputChange(test.name, index, e.target.value)}
-//                                 />
-//                               </div>
-//                             </div>
-//                           </div>
-//                         </div>
-//                       </div>
-//                     );
-//                   }
-
-//                   if (!point.testDescription || point.testDescription.trim() === '') {
-//                     return (
-//                       <div key={index} className="p-4 rounded-lg border bg-gray-50 border-gray-200">
-//                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-//                           <div className="flex items-start">
-//                             <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                             <div>
-//                               <p className="font-medium text-gray-600">Description</p>
-//                               <p className="text-gray-800 italic">No description available</p>
-//                             </div>
-//                           </div>
-//                           <div className="flex items-start">
-//                             <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                             <div>
-//                               <p className="font-medium text-gray-600">Reference Range</p>
-//                               <p className="text-gray-800">
-//                                 {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
-//                                   <span className="text-gray-500 flex items-center">
-//                                     <TbRuler className="ml-1" size={14} />
-//                                   </span>
-//                                 )}
-//                               </p>
-//                             </div>
-//                           </div>
-//                           <div className="flex items-start">
-//                             <TbCalendarTime className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                             <div>
-//                               <p className="font-medium text-gray-600">Age Range</p>
-//                               <p className="text-gray-800">
-//                                 {point.ageMin ?? 'N/A'} {point.minAgeUnit ?? 'YEARS'} - {point.ageMax ?? 'N/A'} {point.maxAgeUnit ?? 'YEARS'}
-//                               </p>
-//                             </div>
-//                           </div>
-//                           <div className="flex items-start">
-//                             {getGenderIcon(point.gender)}
-//                             <div>
-//                               <p className="font-medium text-gray-600">Gender</p>
-//                               <p className="text-gray-800">
-//                                 {point.gender === 'M' ? 'Male' : point.gender === 'F' ? 'Female' : 'Unisex'}
-//                               </p>
-//                             </div>
-//                           </div>
-//                         </div>
-//                         <div className="mt-3 text-sm text-gray-600">
-//                           <p>This test has no reference description. You can:</p>
-//                           <ul className="list-disc pl-5 mt-1 space-y-1">
-//                             <li>Add the reference manually in the system</li>
-//                             <li>This test might be machine-generated with results provided separately</li>
-//                             <li>Check with the lab for the reference sheet or hard copy</li>
-//                           </ul>
-//                         </div>
-//                       </div>
-//                     );
-//                   }
-
-//                   const currentValue = inputValues[test.name]?.[index] || '';
-//                   const status = getValueStatus(
-//                     currentValue,
-//                     point.minReferenceRange,
-//                     point.maxReferenceRange
-//                   );
-
-//                   return (
-//                     <div
-//                       key={index}
-//                       className={`p-4 rounded-lg border ${getStatusColor(status)} transition-all relative`}
-//                     >
-//                       <div className="absolute top-2 right-2">
-//                         <button
-//                           onClick={() => removeReference(test.name, index)}
-//                           className="text-gray-500 hover:text-red-600 p-1 rounded-full hover:bg-gray-100"
-//                           title="Remove this reference"
-//                         >
-//                           <TbX size={18} />
-//                         </button>
-//                       </div>
-//                       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
-//                         <div className="flex items-start">
-//                           <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                           <div>
-//                             <p className="font-medium text-gray-600">Description</p>
-//                             <p className="text-gray-800">{point.testDescription}</p>
-//                           </div>
-//                         </div>
-//                         <div className="flex items-start">
-//                           <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                           <div>
-//                             <p className="font-medium text-gray-600">Reference Range</p>
-//                             <p className="text-gray-800">
-//                               {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
-//                                 <span className="text-gray-500 flex items-center">
-//                                   <TbRuler className="ml-1" size={14} />
-//                                 </span>
-//                               )}
-//                             </p>
-//                           </div>
-//                         </div>
-//                         <div className="flex items-start">
-//                           <TbCalendarTime className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-//                           <div>
-//                             <p className="font-medium text-gray-600">Age Range</p>
-//                             <p className="text-gray-800">
-//                               {point.ageMin ?? 'N/A'} {point.minAgeUnit ?? 'YEARS'} - {point.ageMax ?? 'N/A'} {point.maxAgeUnit ?? 'YEARS'}
-//                             </p>
-//                           </div>
-//                         </div>
-//                         <div className="flex items-start">
-//                           {getGenderIcon(point.gender)}
-//                           <div>
-//                             <p className="font-medium text-gray-600">Gender</p>
-//                             <p className="text-gray-800">
-//                               {point.gender === 'M' ? 'Male' : point.gender === 'F' ? 'Female' : 'Unisex'}
-//                             </p>
-//                           </div>
-//                         </div>
-//                         <div className="flex items-center">
-//                           <div className="flex-1">
-//                             <div className="flex items-center mb-1">
-//                               <TbNumbers className="text-gray-500 mr-2" size={18} />
-//                               <p className="font-medium text-gray-600">Enter Value</p>
-//                             </div>
-//                             <div className="flex items-center">
-//                               {getStatusIcon(status)}
-//                               <input
-//                                 type="text"
-//                                 className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300"
-//                                 placeholder="Enter value"
-//                                 value={currentValue}
-//                                 onChange={(e) => handleInputChange(test.name, index, e.target.value)}
-//                               />
-//                             </div>
-//                           </div>
-//                         </div>
-//                       </div>
-//                     </div>
-//                   );
-//                 })
-//               )}
-//             </div>
-//           </div>
-//         ))}
-//       </div>
-
-//       <div className="sticky bottom-0 bg-white pt-4 pb-2 border-t border-gray-200 mt-6">
-//         <button
-//           onClick={prepareReportPreview}
-//           className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition-colors flex items-center justify-center"
-//         >
-//           <TbReportMedical className="mr-2" size={18} />
-//           Preview Report Updates
-//         </button>
-//       </div>
-
-//       {/* Confirmation Modal */}
-//       {showConfirmation && (
-//         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-//           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-//             <div className="p-6">
-//               <h3 className="text-xl font-bold mb-4 flex items-center">
-//                 <TbInfoCircle className="text-blue-500 mr-2" size={24} />
-//                 {hasMissingDescriptions ? "Important Note About Test References" : "Confirm Report Updates"}
-//               </h3>
-
-//               {hasMissingDescriptions ? (
-//                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-//                   <div className="flex">
-//                     <div className="flex-shrink-0">
-//                       <TbInfoCircle className="h-5 w-5 text-yellow-400" />
-//                     </div>
-//                     <div className="ml-3">
-//                       <p className="text-sm text-yellow-700 font-medium mb-2">
-//                         Note about tests without reference descriptions:
-//                       </p>
-//                       <ul className="list-disc pl-5 space-y-1 text-sm text-yellow-700">
-//                         <li>Some tests ({reportPreview.filter(item => !item.referenceDescription || item.referenceDescription === "No reference description available").length}) don&lsquo;t have digital references available</li>
-//                         <li>These tests might be machine-generated or have hard copy references</li>
-//                         <li>The results will be provided separately at the reception</li>
-//                         <li>Please inform the patient to collect all results from the reception desk</li>
-//                       </ul>
-//                     </div>
-//                   </div>
-//                 </div>
-//               ) : (
-//                 <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
-//                   <div className="flex">
-//                     <div className="flex-shrink-0">
-//                       <TbSquareRoundedCheck className="h-5 w-5 text-green-400" />
-//                     </div>
-//                     <div className="ml-3">
-//                       <p className="text-sm text-green-700">
-//                         All test references have complete descriptions. Please review the updates before submitting.
-//                       </p>
-//                     </div>
-//                   </div>
-//                 </div>
-//               )}
-
-//               {reportPreview.length > 0 ? (
-//                 <div className="mb-6">
-//                   <h4 className="font-medium mb-2">Report Updates Preview:</h4>
-//                   <div className="border rounded-lg overflow-hidden">
-//                     <table className="min-w-full divide-y divide-gray-200">
-//                       <thead className="bg-gray-50">
-//                         <tr>
-//                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test</th>
-//                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-//                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-//                         </tr>
-//                       </thead>
-//                       <tbody className="bg-white divide-y divide-gray-200">
-//                         {reportPreview.map((item, idx) => (
-//                           <tr key={idx} className={!item.referenceDescription || item.referenceDescription === "No reference description available" ? "bg-yellow-50" : ""}>
-//                             <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{item.testName}</td>
-//                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-//                               {item.referenceDescription || "Reference details not available - will be provided separately"}
-//                             </td>
-//                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.enteredValue} {item.unit}</td>
-//                           </tr>
-//                         ))}
-//                       </tbody>
-//                     </table>
-//                   </div>
-//                 </div>
-//               ) : (
-//                 <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-//                   <div className="flex items-center">
-//                     <TbInfoCircle className="text-blue-500 mr-3" size={24} />
-//                     <div>
-//                       <h4 className="font-medium text-blue-800">No test values entered</h4>
-//                       <p className="text-sm text-blue-700 mt-1">
-//                         This report will be updated without any test data changes. 
-//                         The results might be provided separately as hard copies at the reception.
-//                       </p>
-//                     </div>
-//                   </div>
-//                 </div>
-//               )}
-
-//               <div className="flex justify-end space-x-3">
-//                 <button
-//                   onClick={() => setShowConfirmation(false)}
-//                   className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-//                 >
-//                   Cancel
-//                 </button>
-//                 <button
-//                   onClick={handleUpdateData}
-//                   className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
-//                 >
-//                   Confirm Updates
-//                 </button>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default PatientReportDataEdit;
-
-
-
-
-
-
-
-
-
-//------------------------------------------------------
-
-
-
-import React, { useEffect, useState } from 'react';
-import {
-  TbArrowDownCircle, TbArrowUpCircle, TbCalendarTime, TbCategory,
-  TbChartLine, TbClipboardText, TbGenderAgender, TbGenderFemale,
-  TbGenderMale, TbInfoCircle, TbNumbers, TbReportMedical,
-  TbRuler, TbSquareRoundedCheck, TbTestPipe, TbX
-} from "react-icons/tb";
-import { toast } from 'react-toastify';
+import { getReportDataById, updateReportById } from '@/../services/reportServices';
+import { getTestReferanceRangeByTestName } from '@/../services/testService';
 import Loader from '@/app/(admin)/component/common/Loader';
+import ConfirmationDialog from '@/app/(admin)/component/common/ConfirmationDialog';
 import { useLabs } from '@/context/LabContext';
+import { PatientData } from '@/types/sample/sample';
+import { TestList, TestReferancePoint } from '@/types/test/testlist';
 import { calculateAgeObject } from '@/utils/ageUtils';
-import { getHealthPackageById } from '@/../services/packageServices';
-import { getReportData, updateReports } from '@/../services/reportServices';
-import { getTestById, getTestReferanceRangeByTestName } from '@/../services/testService';
+import { hasValidDropdown } from '@/utils/dropdownParser';
+import { formatMedicalReportToHTML } from '@/utils/reportFormatter';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { TbInfoCircle, TbReportMedical, TbArrowDownCircle, TbArrowUpCircle, TbSquareRoundedCheck } from "react-icons/tb";
+import { toast } from 'react-toastify';
 import PatientBasicInfo from './PatientBasicInfo';
-import ReportHeader from './ReportHeader';
+import TestComponentFactory from './TestSpecificComponents/TestComponentFactory';
+import DetailedReportEditor from './DetailedReportEditor';
 
-interface Patient {
+export interface Patient {
   visitId: number;
   patientname: string;
+  gender?: string;
+  contactNumber?: string;
+  email?: string;
   visitDate: string;
   visitStatus: string;
   sampleNames: string[];
-  testIds: number[];
+  testIds?: number[];
   packageIds: number[];
-  contactNumber?: string;
-  gender?: string;
-  email?: string;
   dateOfBirth?: string;
-  id?: string;
 }
 
 interface ReportData {
@@ -1708,80 +40,98 @@ interface ReportData {
   referenceAgeRange: string;
   enteredValue: string;
   unit: string;
+  description?: string;
+  referenceRanges?: string;
+  reportJson?: string;
 }
 
-interface TestReferancePoint {
-  testDescription: string;
-  minReferenceRange: number | null;
-  maxReferenceRange: number | null;
-  ageMin: number | null;
-  ageMax: number | null;
-  minAgeUnit?: string;
-  maxAgeUnit?: string;
-  gender: string;
-  units: string;
+interface ReportRow {
+  testParameter?: string;
+  referenceDescription?: string;
+  normalRange?: string;
+  referenceRange?: string;
+  enteredValue?: string;
+  unit?: string;
+  description?: string;
 }
 
-interface TestList {
-  id: number;
-  name: string;
-  category: string;
+interface ReportApiItem {
+  reportId?: number | string;
+  reportid?: number | string;
+  report_id?: string;
+  visit_id?: string;
+  visitId?: number;
+  testName?: string;
+  testCategory?: string;
+  patientName?: string;
+  referenceDescription?: string;
+  referenceRange?: string;
+  referenceAgeRange?: string;
+  enteredValue?: string;
+  unit?: string;
+  description?: string;
+  reportJson?: string;
+  referenceRanges?: string;
+  testRows?: ReportRow[];
+}
+
+interface StructuredReportSection {
+  title?: string;
+  content?: string;
+  order?: number;
+}
+
+interface StructuredReport {
+  title?: string;
+  description?: string;
+  sections?: StructuredReportSection[] | Record<string, unknown>;
+  impression?: string[];
 }
 
 interface PatientReportDataEditProps {
   editPatient: Patient;
+  selectedTest: TestList;
+  reportId: number;
   setShowModal: (value: React.SetStateAction<boolean>) => void;
   refreshReports: () => void;
 }
 
+const normalizeKey = (value?: string) => (value || '').trim().toUpperCase();
+
+const escapeHtmlWithBreaks = (text: string) =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/ /g, '&nbsp;')
+    .replace(/\r?\n/g, '<br/>');
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
   editPatient,
+  selectedTest,
+  reportId,
   setShowModal,
-  refreshReports
+  refreshReports,
 }) => {
   const { currentLab } = useLabs();
   const [loading, setLoading] = useState(false);
   const [referencePoints, setReferencePoints] = useState<Record<string, TestReferancePoint[]>>({});
-  const [inputValues, setInputValues] = useState<Record<string, Record<number, string>>>({});
-  const [allTests, setAllTests] = useState<TestList[]>([]);
+  const [inputValues, setInputValues] = useState<Record<string, Record<string | number, string>>>({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
   const [existingReportData, setExistingReportData] = useState<ReportData[]>([]);
-  const [removedReferences, setRemovedReferences] = useState<Record<string, number[]>>({});
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [reportPreview, setReportPreview] = useState<ReportData[]>([]);
   const [hasMissingDescriptions, setHasMissingDescriptions] = useState(false);
-
-
-
-  const formatAgeDisplay = (age: { years: number; months: number; days: number }) => {
-    if (age.years > 0) {
-      return `${age.years} year${age.years > 1 ? 's' : ''} ${age.months > 0 ? `${age.months} month${age.months > 1 ? 's' : ''}` : ''}`;
-    } else if (age.months > 0) {
-      return `${age.months} month${age.months > 1 ? 's' : ''} ${age.days > 0 ? `${age.days} day${age.days > 1 ? 's' : ''}` : ''}`;
-    } else {
-      return `${age.days} day${age.days !== 1 ? 's' : ''}`;
-    }
-  };
-
-  const RangeIndicatorLegend = () => (
-    <div className="flex flex-wrap items-center justify-center gap-4 mb-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
-      <div className="flex items-center text-sm">
-        <TbSquareRoundedCheck className="text-green-500 mr-2" size={18} />
-        <span>Normal Range</span>
-      </div>
-      <div className="flex items-center text-sm">
-        <TbArrowDownCircle className="text-yellow-500 mr-2" size={18} />
-        <span>Below Normal</span>
-      </div>
-      <div className="flex items-center text-sm">
-        <TbArrowUpCircle className="text-red-500 mr-2" size={18} />
-        <span>Above Normal</span>
-      </div>
-      <div className="flex items-center text-sm">
-        <TbInfoCircle className="text-blue-500 mr-2" size={18} />
-        <span>No Reference</span>
-      </div>
-    </div>
-  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const patientForInfo: PatientData = useMemo(() => ({
+    ...(editPatient as PatientData),
+    gender: editPatient.gender ?? '',
+    contactNumber: editPatient.contactNumber ?? '',
+    email: editPatient.email ?? '',
+  }), [editPatient]);
 
   const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
     if (!value || isNaN(Number(value))) return 'no-reference';
@@ -1795,7 +145,7 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'below': return 'bg-yellow-50 border-yellow-200';
+      case 'below': return 'bg-red-50 border-red-200';
       case 'above': return 'bg-red-50 border-red-200';
       case 'normal': return 'bg-green-50 border-green-200';
       default: return 'bg-blue-50 border-blue-200';
@@ -1811,133 +161,196 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
     }
   };
 
-  const getGenderIcon = (gender: string) => {
-    switch (gender) {
-      case 'M': return <TbGenderMale className="text-blue-500 mr-1" size={18} />;
-      case 'F': return <TbGenderFemale className="text-pink-500 mr-1" size={18} />;
-      default: return <TbGenderAgender className="text-gray-500 mr-1" size={18} />;
-    }
-  };
+  const filterReferenceData = useCallback((referenceData: Record<string, TestReferancePoint[]>) => {
+    const filteredData: Record<string, TestReferancePoint[]> = {};
 
-  const removeReference = (testName: string, index: number) => {
-    setRemovedReferences(prev => ({
-      ...prev,
-      [testName]: [...(prev[testName] || []), index]
-    }));
-  };
+    Object.keys(referenceData).forEach((testName) => {
+      const testPoints = referenceData[testName];
 
-  const restoreReference = (testName: string, index: number) => {
-    setRemovedReferences(prev => ({
-      ...prev,
-      [testName]: (prev[testName] || []).filter(i => i !== index)
-    }));
-  };
+      const genderFilteredPoints = testPoints.filter((point) => {
+        const pointGender = point.gender?.toUpperCase() || '';
+        const patientGender = editPatient.gender?.toUpperCase() || '';
 
-  const isReferenceRemoved = (testName: string, index: number) => {
-    return (removedReferences[testName] || []).includes(index);
-  };
+        let mappedPatientGender = '';
+        if (patientGender === 'MALE') {
+          mappedPatientGender = 'M';
+        } else if (patientGender === 'FEMALE') {
+          mappedPatientGender = 'F';
+        }
 
-  const fetchTestDataAndReport = async () => {
+        return pointGender === 'MF' ||
+          pointGender === mappedPatientGender ||
+          !pointGender ||
+          pointGender === '';
+      });
+
+      const ageObj = editPatient.dateOfBirth ? calculateAgeObject(editPatient.dateOfBirth) : { years: 0, months: 0, days: 0 };
+      const patientAgeMonths = (ageObj.years || 0) * 12 + (ageObj.months || 0);
+
+      const toMonths = (value: number | null | undefined, unit: string | null | undefined): number => {
+        if (value === null || value === undefined) return 0;
+        const u = (unit || 'YEARS').toUpperCase();
+
+        if (u === 'MONTHS' && value === 1) {
+          return 12;
+        }
+
+        return u === 'MONTHS' ? value : value * 12;
+      };
+
+      const ageFilteredPoints = genderFilteredPoints.filter((point) => {
+        const minMonths = toMonths(point.ageMin, point.minAgeUnit);
+        const maxMonths = point.ageMax === null || point.ageMax === undefined
+          ? Number.MAX_SAFE_INTEGER
+          : toMonths(point.ageMax, point.maxAgeUnit);
+
+        const isLastRange = maxMonths === Number.MAX_SAFE_INTEGER || maxMonths >= 1200;
+        if (isLastRange) {
+          return patientAgeMonths >= minMonths && patientAgeMonths <= maxMonths;
+        }
+        return patientAgeMonths >= minMonths && patientAgeMonths < maxMonths;
+      });
+
+      filteredData[testName] = ageFilteredPoints.length > 0 ? ageFilteredPoints : genderFilteredPoints;
+    });
+
+    return filteredData;
+  }, [editPatient.dateOfBirth, editPatient.gender]);
+
+  const fetchReferenceData = useCallback(async () => {
+    if (!selectedTest || !currentLab) return;
+
+    setLoading(true);
     try {
-      if (!currentLab?.id) return;
-      setLoading(true);
+      const existingReport = await getReportDataById(currentLab.id.toString(), reportId.toString());
+      const reportItems: ReportApiItem[] = (Array.isArray(existingReport) ? existingReport : [existingReport]) as ReportApiItem[];
+      const mappedReportData: ReportData[] = reportItems
+        .flatMap((item) => {
+          const reportIdValue = item.reportId ?? item.reportid ?? item.report_id;
+          const baseItem = {
+            report_id: reportIdValue !== undefined && reportIdValue !== null ? String(reportIdValue) : '',
+            visit_id: item.visit_id ?? item.visitId?.toString() ?? editPatient.visitId.toString(),
+            testName: item.testName ?? selectedTest.name,
+            testCategory: item.testCategory ?? '',
+            patientName: item.patientName ?? editPatient.patientname,
+            referenceAgeRange: item.referenceAgeRange ?? '',
+            reportJson: item.reportJson,
+            referenceRanges: item.referenceRanges,
+          };
 
-      // 1. First fetch the existing report data
-      const existingReport = await getReportData(currentLab.id.toString(), editPatient.visitId.toString());
-      const mappedReportData: ReportData[] = existingReport.map((item) => ({
-        report_id: item.reportId !== undefined && item.reportId !== null ? String(item.reportId) : '',
-        visit_id: item.visit_id ?? item.visitId?.toString() ?? editPatient.visitId.toString(),
-        testName: item.testName,
-        testCategory: item.testCategory ?? '',
-        patientName: item.patientName ?? editPatient.patientname,
-        referenceDescription: item.referenceDescription ?? '',
-        referenceRange: item.referenceRange ?? '',
-        referenceAgeRange: item.referenceAgeRange ?? '',
-        enteredValue: item.enteredValue ?? '',
-        unit: item.unit ?? '',
-      }));
-      setExistingReportData(mappedReportData);
+          const rows = Array.isArray(item.testRows) ? item.testRows : [];
+          if (rows.length === 0) {
+            return [{
+              ...baseItem,
+              referenceDescription: item.referenceDescription ?? '',
+              referenceRange: item.referenceRange ?? '',
+              enteredValue: item.enteredValue ?? '',
+              unit: item.unit ?? '',
+              description: item.description,
+            }];
+          }
 
-      // 2. Fetch test data
-      const uniqueTestIds = Array.from(new Set(editPatient.testIds));
-      const fetchedTests = await Promise.all(
-        uniqueTestIds.map(testId => getTestById(currentLab.id.toString(), testId))
-      );
-
-      // 3. Fetch package data if any
-      const uniquePackageIds = Array.from(new Set(editPatient.packageIds));
-      const fetchedPackages = await Promise.all(
-        uniquePackageIds.map(packageId => getHealthPackageById(currentLab.id, packageId))
-      );
-
-      const packageTests = fetchedPackages.flatMap(pkg => pkg.data.tests);
-      const combinedTests = [...fetchedTests, ...packageTests.filter(
-        pkgTest => !fetchedTests.some(test => test.id === pkgTest.id)
-      )];
-      setAllTests(combinedTests);
-
-      // 4. Get reference ranges for all tests
-      const allTestNames = combinedTests.map(test => test.name);
-      const referenceData: Record<string, TestReferancePoint[]> = {};
-
-      await Promise.all(
-        allTestNames.map(async testName => {
-          const refPointsRaw = await getTestReferanceRangeByTestName(currentLab.id.toString(), testName);
-          const refPointsArr = Array.isArray(refPointsRaw) ? refPointsRaw : [refPointsRaw];
-          // Normalize all properties to match TestReferancePoint type
-          referenceData[testName] = refPointsArr.map((point) => ({
-            ...point,
-            ageMin: point.ageMin === undefined ? null : point.ageMin,
-            ageMax: point.ageMax === undefined ? null : point.ageMax,
-            minReferenceRange: point.minReferenceRange === undefined ? null : point.minReferenceRange,
-            maxReferenceRange: point.maxReferenceRange === undefined ? null : point.maxReferenceRange,
+          return rows.map((row) => ({
+            ...baseItem,
+            referenceDescription: row.testParameter ?? row.referenceDescription ?? '',
+            referenceRange: row.normalRange ?? row.referenceRange ?? '',
+            enteredValue: row.enteredValue ?? '',
+            unit: row.unit ?? '',
+            description: row.description,
           }));
         })
+        .filter(item => normalizeKey(item.testName) === normalizeKey(selectedTest.name));
+
+      setExistingReportData(mappedReportData);
+      const missingIds = mappedReportData.filter(item => !item.report_id);
+      if (missingIds.length > 0) {
+        toast.warn('Some report items are missing IDs and cannot be edited. Please contact support.');
+      }
+
+      const response = await getTestReferanceRangeByTestName(currentLab.id.toString(), selectedTest.name);
+      const refPointsRaw = Array.isArray(response) ? response : [response];
+      const filteredData = filterReferenceData({ [selectedTest.name]: refPointsRaw });
+      if ((filteredData[selectedTest.name] || []).length === 0) {
+        filteredData[selectedTest.name] = refPointsRaw;
+      }
+
+      const detailedPointIndex = filteredData[selectedTest.name]?.findIndex(
+        point => (point.testDescription || '').toUpperCase() === 'DETAILED REPORT'
       );
+      const existingDetailed = mappedReportData.find(item => (item.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
+      if (detailedPointIndex !== undefined && detailedPointIndex >= 0 && existingDetailed?.reportJson) {
+        const nextPoints = [...(filteredData[selectedTest.name] || [])];
+        nextPoints[detailedPointIndex] = { ...nextPoints[detailedPointIndex], reportJson: existingDetailed.reportJson };
+        filteredData[selectedTest.name] = nextPoints;
+      }
 
-      // 5. Filter reference data based on patient gender
-      const filteredReferenceData: Record<string, TestReferancePoint[]> = {};
-      Object.keys(referenceData).forEach(testName => {
-        filteredReferenceData[testName] = referenceData[testName].filter(point => {
-          const patientGender = (editPatient.gender ?? 'U').toLowerCase();
-          const referenceGender = point.gender === 'M' ? 'male' : point.gender === 'F' ? 'female' : 'U';
-          return referenceGender === patientGender || referenceGender === 'U';
-        });
-      });
-      setReferencePoints(filteredReferenceData);
+      setReferencePoints(filteredData);
 
-      // 6. Now that we have all data, initialize the input values
-      const initialInputValues: Record<string, Record<number, string>> = {};
+      const initialInputValues: Record<string, Record<string | number, string>> = {};
+      const refPoints = filteredData[selectedTest.name] || [];
 
-      mappedReportData.forEach(reportItem => {
-        const refPoints = filteredReferenceData[reportItem.testName] || [];
+      mappedReportData.forEach((reportItem) => {
+        const reportKey = normalizeKey(reportItem.referenceDescription);
         const pointIndex = refPoints.findIndex(
-          point => point.testDescription === reportItem.referenceDescription
+          point => normalizeKey(point.testDescription) === reportKey
         );
 
         if (pointIndex >= 0) {
-          if (!initialInputValues[reportItem.testName]) {
-            initialInputValues[reportItem.testName] = {};
+          if (!initialInputValues[selectedTest.name]) {
+            initialInputValues[selectedTest.name] = {};
           }
-          initialInputValues[reportItem.testName][pointIndex] = reportItem.enteredValue;
+
+          const descriptionKey = `${pointIndex}_description`;
+          const descriptionUpper = normalizeKey(refPoints[pointIndex]?.testDescription);
+          if (descriptionUpper === 'DESCRIPTION') {
+            initialInputValues[selectedTest.name][pointIndex] = reportItem.description || reportItem.enteredValue || '';
+          } else if (
+            descriptionUpper === 'DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE' ||
+            descriptionUpper === 'DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT'
+          ) {
+            initialInputValues[selectedTest.name][pointIndex] = reportItem.enteredValue || '';
+            if (reportItem.description) {
+              initialInputValues[selectedTest.name][descriptionKey] = reportItem.description;
+            }
+          } else {
+            initialInputValues[selectedTest.name][pointIndex] = reportItem.enteredValue || '';
+          }
         }
       });
 
       setInputValues(initialInputValues);
-      setRemovedReferences({});
+      setValidationErrors({});
     } catch (error) {
-      // Handle error
-      toast.error("Failed to load test and report data");
+      toast.error('Failed to load test and report data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTest, currentLab, editPatient, filterReferenceData]);
 
   useEffect(() => {
-    fetchTestDataAndReport();
-  }, [editPatient]);
+    fetchReferenceData();
+  }, [fetchReferenceData]);
 
-  const handleInputChange = (testName: string, index: number, value: string) => {
+  const handleInputChange = (testName: string, index: number | string, value: string) => {
+    const numericValue = parseFloat(value);
+    if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
+      const referenceData = referencePoints[testName] || [];
+      const point = referenceData[typeof index === 'number' ? index : 0];
+      const isAutoCalculatedField = point?.testDescription?.toUpperCase().includes('GLOBULIN') ||
+        point?.testDescription?.toUpperCase().includes('INDIRECT BILIRUBIN') ||
+        point?.testDescription?.toUpperCase().includes('A/G RATIO') ||
+        point?.testDescription?.toUpperCase().includes('MEAN BLOOD GLUCOSE') ||
+        point?.testDescription?.toUpperCase().includes('ABSOLUTE EOSINOPHIL COUNT') ||
+        point?.testDescription?.toUpperCase().includes('HDL CHOLESTEROL - DIRECT') ||
+        point?.testDescription?.toUpperCase().includes('LDL CHOLESTEROL - DIRECT') ||
+        point?.testDescription?.toUpperCase().includes('VLDL CHOLESTEROL');
+
+      if (!isAutoCalculatedField) {
+        toast.error('Negative values are not allowed');
+        return;
+      }
+    }
+
     setInputValues(prev => ({
       ...prev,
       [testName]: {
@@ -1945,45 +358,187 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
         [index]: value
       }
     }));
+
+    if (validationErrors[`${testName}-${index}`]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [`${testName}-${index}`]: false
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const errors: Record<string, boolean> = {};
+    let isValid = true;
+
+    if (selectedTest.category === 'RADIOLOGY') {
+      setValidationErrors({});
+      return true;
+    }
+
+    const testInputs = inputValues[selectedTest.name] || {};
+    const referenceData = referencePoints[selectedTest.name] || [];
+
+    referenceData.forEach((point, index) => {
+      const descriptionUpper = (point.testDescription || '').toUpperCase();
+      if (descriptionUpper === 'DETAILED REPORT') {
+        return;
+      }
+
+      if (!testInputs[index] || testInputs[index].trim() === '') {
+        errors[`${selectedTest.name}-${index}`] = true;
+        isValid = false;
+      }
+    });
+
+    setValidationErrors(errors);
+    return isValid;
   };
 
   const prepareReportPreview = () => {
+    if (!validateForm()) {
+      return;
+    }
+
     const generatedReportData: ReportData[] = [];
     let hasMissingDesc = false;
+    const missingReportIds: string[] = [];
+    const refPoints = referencePoints[selectedTest.name] || [];
+    const testInputs = inputValues[selectedTest.name] || {};
 
-    allTests.forEach((test) => {
-      const testInputs = inputValues[test.name] || {};
-      const referenceData = referencePoints[test.name] || [];
-
-      referenceData.forEach((point, index) => {
-        if (isReferenceRemoved(test.name, index)) return;
+    if (selectedTest.category === 'RADIOLOGY') {
+      const detailedReportPoint = refPoints.find(point => (point.testDescription || '').toUpperCase() === 'DETAILED REPORT');
+      const existingItem = existingReportData.find(item => {
+        const refKey = normalizeKey(item.referenceDescription);
+        return refKey === 'RADIOLOGY_TEST' || refKey === 'DETAILED REPORT';
+      }) || existingReportData[0];
+      if (!existingItem?.report_id) {
+        toast.error('Report ID missing for radiology test. Cannot update.');
+        return;
+      }
+      generatedReportData.push({
+        report_id: existingItem.report_id,
+        visit_id: editPatient.visitId.toString(),
+        testName: selectedTest.name,
+        testCategory: selectedTest.category,
+        patientName: editPatient.patientname,
+        referenceDescription: 'RADIOLOGY_TEST',
+        referenceRange: 'N/A',
+        enteredValue: 'Hard copy will be provided',
+        referenceAgeRange: 'N/A',
+        unit: 'N/A',
+        description: 'Imaging test - Results provided separately',
+        referenceRanges: detailedReportPoint?.referenceRanges,
+        reportJson: detailedReportPoint?.reportJson,
+      });
+    } else {
+      refPoints.forEach((point, index) => {
+        const descriptionUpper = (point.testDescription || '').toUpperCase();
+        if (descriptionUpper === 'DETAILED REPORT') {
+          const existingItem = existingReportData.find(
+            item => normalizeKey(item.referenceDescription) === normalizeKey(point.testDescription)
+          );
+          if (!existingItem?.report_id) {
+            missingReportIds.push(point.testDescription || 'DETAILED REPORT');
+            return;
+          }
+          generatedReportData.push({
+            report_id: existingItem.report_id,
+            visit_id: editPatient.visitId.toString(),
+            testName: selectedTest.name,
+            testCategory: selectedTest.category,
+            patientName: editPatient.patientname,
+            referenceDescription: point.testDescription || 'DETAILED REPORT',
+            referenceRange: 'N/A',
+            enteredValue: 'Hard copy will be provided',
+            referenceAgeRange: 'N/A',
+            unit: 'N/A',
+            description: 'Imaging test - Results provided separately',
+            reportJson: point.reportJson,
+            referenceRanges: point.referenceRanges,
+          });
+          return;
+        }
 
         if (testInputs[index] || (point.testDescription && point.testDescription !== "No reference available for this test")) {
-          if (!point.testDescription || point.testDescription === "No reference available for this test") {
+          if (!point.testDescription || point.testDescription === "No reference description available") {
             hasMissingDesc = true;
           }
 
-          // Find existing report item to get its ID
+          const descriptionKey = `${index}_description`;
+          const hasDescription = testInputs[descriptionKey] && testInputs[descriptionKey].trim();
+          const hasApiDropdown = hasValidDropdown(point.dropdown);
+          const resolvedReferenceRange =
+            point.minReferenceRange !== null && point.minReferenceRange !== undefined ||
+            point.maxReferenceRange !== null && point.maxReferenceRange !== undefined
+              ? `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`
+              : "N/A";
+
+          let finalValue = testInputs[index] || "N/A";
+          let description = "N/A";
+          let unit = "N/A";
+          let referenceRange = "N/A";
+
+          if (
+            descriptionUpper === "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE" ||
+            descriptionUpper === "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT"
+          ) {
+            unit = point.units || "N/A";
+            description = hasDescription ? testInputs[descriptionKey] : "N/A";
+            finalValue = testInputs[index] || "N/A";
+            referenceRange = resolvedReferenceRange;
+          } else if (
+            hasApiDropdown ||
+            ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
+              "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DROPDOWN-COMPATIBLE/INCOMPATIBLE"].includes(descriptionUpper)
+          ) {
+            unit = point.units || "N/A";
+            description = "N/A";
+            finalValue = testInputs[index] || "N/A";
+            referenceRange = resolvedReferenceRange;
+          } else if (descriptionUpper === "DESCRIPTION") {
+            unit = "N/A";
+            description = testInputs[index] || "N/A";
+            finalValue = testInputs[index] || "N/A";
+            referenceRange = "N/A";
+          } else {
+            unit = point.units || "N/A";
+            description = "N/A";
+            finalValue = testInputs[index] || "N/A";
+            referenceRange = resolvedReferenceRange;
+          }
+
           const existingItem = existingReportData.find(
-            item => item.testName === test.name &&
-              item.referenceDescription === point.testDescription
+            item => normalizeKey(item.referenceDescription) === normalizeKey(point.testDescription)
           );
+          if (!existingItem?.report_id) {
+            missingReportIds.push(point.testDescription || 'Unknown');
+            return;
+          }
 
           generatedReportData.push({
-            report_id: existingItem?.report_id || '',
+            report_id: existingItem.report_id,
             visit_id: editPatient.visitId.toString(),
-            testName: test.name,
-            testCategory: test.category,
+            testName: selectedTest.name,
+            testCategory: selectedTest.category,
             patientName: editPatient.patientname,
             referenceDescription: point.testDescription || "No reference description available",
-            referenceRange: `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`,
+            referenceRange: referenceRange,
+            enteredValue: finalValue,
             referenceAgeRange: `${point.ageMin ?? "N/A"} ${point.minAgeUnit ?? "YEARS"} - ${point.ageMax ?? "N/A"} ${point.maxAgeUnit ?? "YEARS"}`,
-            enteredValue: testInputs[index] || "N/A",
-            unit: point.units || "N/A",
+            unit: unit,
+            description: description,
+            referenceRanges: point.referenceRanges,
+            reportJson: point.reportJson,
           });
         }
       });
-    });
+    }
+
+    if (missingReportIds.length > 0) {
+      toast.error('Some report items are missing IDs. Please refresh and try again.');
+      return;
+    }
 
     setReportPreview(generatedReportData);
     setHasMissingDescriptions(hasMissingDesc);
@@ -1991,456 +546,323 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
   };
 
   const handleUpdateData = async () => {
-    setLoading(true);
+    setIsSubmitting(true);
     try {
       if (!currentLab?.id) {
-        throw new Error("Lab ID is undefined");
+        throw new Error('Lab ID is undefined');
       }
-
-      await updateReports(currentLab.id, reportPreview);
-
+      await updateReportById(currentLab.id, reportId.toString(), reportPreview);
       refreshReports();
       setShowModal(false);
-      toast.success("Report updated successfully");
+      toast.success('Report updated successfully');
     } catch (error) {
-      // Handle error
-      toast.error("Failed to update report");
+      toast.error('Failed to update report');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center h-64">
-      <Loader type="progress" fullScreen={false} text="Loading report data..." />
-      <p className="mt-4 text-sm text-gray-500">Fetching test and reference data...</p>
-    </div>
+  const buildReadablePreviewHTML = () => {
+    let htmlParts: string[] = [];
+
+    const detailedPoint = (referencePoints[selectedTest.name] || []).find(
+      p => (p.testDescription || '').toUpperCase() === 'DETAILED REPORT'
+    );
+    if (detailedPoint?.reportJson) {
+      try {
+        const parsed = JSON.parse(detailedPoint.reportJson) as StructuredReport;
+        const parsedSections: (StructuredReportSection & { title?: string; content?: string })[] = Array.isArray(parsed.sections)
+          ? parsed.sections
+          : isPlainObject(parsed.sections)
+            ? Object.entries(parsed.sections as Record<string, unknown>).map(([title, content]) => ({
+              title,
+              content: String(content ?? ''),
+            }))
+            : [];
+        if (parsed && parsed.title && parsedSections.length > 0) {
+          const sectionsHtml = [...parsedSections]
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            .map((section) => `
+              <div class="mb-3">
+                <h4 class="text-sm font-semibold text-gray-800">${section.title || ''}</h4>
+                <div>${section.content || ''}</div>
+        </div>
+            `)
+            .join('');
+          htmlParts.push(`
+            <div class="mb-6">
+              <h3 class="text-base font-bold text-gray-900">${parsed.title || selectedTest.name}</h3>
+              ${parsed.description ? `<p class="text-sm text-gray-700 mb-2">${parsed.description}</p>` : ''}
+              ${sectionsHtml}
+      </div>
+          `);
+        } else {
+          const formatted = formatMedicalReportToHTML(detailedPoint.reportJson) || '';
+          htmlParts.push(`
+            <div class="mb-6">
+              <h3 class="text-base font-bold text-gray-900">${selectedTest.name}</h3>
+              <div>${formatted}</div>
+            </div>
+          `);
+        }
+      } catch (_) {
+        const formatted = formatMedicalReportToHTML(detailedPoint.reportJson) || '';
+        htmlParts.push(`
+          <div class="mb-6">
+            <h3 class="text-base font-bold text-gray-900">${selectedTest.name}</h3>
+            <div>${formatted}</div>
+          </div>
+        `);
+      }
+    }
+
+    if (reportPreview.length > 0) {
+      const groupedByTest = reportPreview
+        .filter(item => (item.referenceDescription || '').toUpperCase() !== 'RADIOLOGY_TEST')
+        .reduce((acc, item) => {
+          const testName = item.testName.toUpperCase();
+          if (!acc[testName]) {
+            acc[testName] = [];
+          }
+          acc[testName].push(item);
+          return acc;
+        }, {} as Record<string, ReportData[]>);
+
+      const testGroups = Object.entries(groupedByTest).map(([testName, items]) => {
+        const parameters = items.map(item => {
+          const label = (item.referenceDescription || 'Test Parameter');
+          const value = (() => {
+            const t = (item.referenceDescription || '').toUpperCase();
+            if (t === 'DESCRIPTION') {
+              return `
+      <li class="mb-1 text-sm text-gray-700 ml-4">
+        <div style="
+          padding-left: 100px;
+          text-indent: -100px;
+          white-space: normal;
+          word-break: break-word;
+        ">
+          <strong>${label}:</strong>
+          ${escapeHtmlWithBreaks(item.description || item.enteredValue || 'N/A')}
+            </div>
+      </li>
+    `;
+            }
+            if (t.includes('DROPDOWN')) return item.enteredValue || 'N/A';
+            return `${item.enteredValue} ${item.unit}`.trim();
+          })();
+          const ref = (() => {
+            const t = (item.referenceDescription || '').toUpperCase();
+            if (t.includes('DROPDOWN') || t === 'DESCRIPTION') return '';
+            return `${item.referenceRange || 'N/A'} ${item.unit || ''}`.trim();
+          })();
+          if (typeof value === 'string' && value.includes('<li')) {
+            return value;
+          }
+          return `<li class="mb-1 text-sm text-gray-700 ml-4">
+            <span class="text-gray-800">${label}: ${value}</span>
+            ${ref ? `<span class="text-gray-500"> (Ref: ${ref})</span>` : ''}
+          </li>`;
+        }).join('');
+
+        return `
+          <div class="mb-4">
+            <h3 class="text-sm font-bold text-gray-900 mb-2">${testName}</h3>
+            <ul class="list-disc pl-5">${parameters}</ul>
+                    </div>
+        `;
+      }).join('');
+
+      if (testGroups) {
+        htmlParts.push(`
+          <div class="mt-4">
+            <h2 class="text-sm font-bold text-gray-900 mb-3">Updated Results</h2>
+            ${testGroups}
+                  </div>
+        `);
+      }
+    }
+
+    if (htmlParts.length === 0) {
+      htmlParts.push('<p class="text-sm text-gray-600">No data available to preview.</p>');
+    }
+
+    return htmlParts.join('\n');
+  };
+
+  const detailedPoint = useMemo(
+    () => referencePoints[selectedTest.name]?.find(point => point.testDescription === "DETAILED REPORT"),
+    [referencePoints, selectedTest.name]
   );
 
-  const patientAge = editPatient.dateOfBirth ? calculateAgeObject(editPatient.dateOfBirth) : { years: 0, months: 0, days: 0 };
+  if (loading) {
+                    return (
+      <div className="flex flex-col items-center justify-center p-6">
+        <Loader type="progress" fullScreen={false} text="Loading report data..." />
+        <p className="mt-4 text-sm text-gray-600">Fetching test and reference data...</p>
+                        </div>
+    );
+  }
 
   return (
-    <div className="bg-white shadow-lg rounded-xl overflow-hidden h-[500px] overflow-y-auto p-5">
-      <ReportHeader />
-      <PatientBasicInfo patient={{
-        ...editPatient,
-        gender: editPatient.gender || '',
-        contactNumber: editPatient.contactNumber || '',
-        email: editPatient.email || '',
-        dateOfBirth: editPatient.dateOfBirth || ''
-      }} />
+    <div className="bg-white shadow-lg rounded-xl overflow-hidden h-[500px] overflow-y-auto p-6">
+      <PatientBasicInfo patient={patientForInfo} />
 
-      {/* Highlighted Banner for Reference Range Selection */}
-      <div className="relative bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 mb-6 shadow-md">
-        <div className="text-white">
-          <h3 className="text-lg font-bold mb-1 flex items-center">
-            <TbInfoCircle className="mr-2" size={20} />
-            Edit Report Data
-          </h3>
-          <p className="text-sm opacity-90">
-            Update the test values as needed. You can remove reference ranges that aren&lsquo;t relevant.
-          </p>
-          {editPatient.dateOfBirth && (
-            <p className="text-xs mt-2 bg-white/20 inline-block px-2 py-1 rounded">
-              Patient Age: <span className="font-semibold">{formatAgeDisplay(patientAge)}</span>
-            </p>
-          )}
-        </div>
-      </div>
-
-      <RangeIndicatorLegend />
-
-      <div className="space-y-5 mt-6">
-        {allTests.map((test) => (
-          <div key={test.id} className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="flex items-center mb-4">
-              <TbTestPipe className="text-blue-500 mr-2" size={20} />
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm mr-3 flex items-center">
-                  <TbCategory className="mr-1" size={14} />
-                  {test.category}
-                </span>
-                {test.name}
-              </h3>
-            </div>
-
-            <div className="space-y-3">
-              {referencePoints[test.name]?.length === 0 ? (
-                <div className="p-4 rounded-lg border bg-yellow-50 border-yellow-200">
-                  <div className="flex items-center text-yellow-800">
-                    <TbInfoCircle className="mr-2" size={18} />
-                    <div>
-                      <p className="font-medium">No reference ranges found for this patient&lsquo;s gender</p>
-                      <p className="text-sm">Please check the test configuration or contact support</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                referencePoints[test.name]?.map((point, index) => {
-                  if (isReferenceRemoved(test.name, index)) {
-                    return (
-                      <div key={index} className="p-4 rounded-lg border bg-gray-100 border-gray-300 relative">
-                        <div className="absolute top-2 right-2">
-                          <button
-                            onClick={() => restoreReference(test.name, index)}
-                            className="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-50"
-                            title="Restore this reference"
-                          >
-                            <TbX className="rotate-45" size={18} />
-                          </button>
-                        </div>
-                        <div className="flex items-center text-gray-500">
-                          <TbClipboardText className="mr-2" size={18} />
-                          <p className="italic">Reference range removed</p>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  if (point.testDescription === "No reference available for this test") {
-                    const currentValue = inputValues[test.name]?.[index] || '';
-                    const status = getValueStatus(
-                      currentValue,
-                      point.minReferenceRange,
-                      point.maxReferenceRange
-                    );
-
-                    return (
-                      <div
-                        key={index}
-                        className={`p-4 rounded-lg border ${getStatusColor(status)} transition-all relative`}
-                      >
-                        <div className="absolute top-2 right-2">
-                          <button
-                            onClick={() => removeReference(test.name, index)}
-                            className="text-gray-500 hover:text-red-600 p-1 rounded-full hover:bg-gray-100"
-                            title="Remove this reference"
-                          >
-                            <TbX size={18} />
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
-                          <div className="flex items-start">
-                            <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="font-medium text-gray-600">Description</p>
-                              <p className="text-gray-800 italic">This test doesn&lsquo;t have digital references. Results will be provided separately.</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start">
-                            <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="font-medium text-gray-600">Reference Range</p>
-                              <p className="text-gray-800">
-                                {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
-                                  <span className="text-gray-500 flex items-center">
-                                    <TbRuler className="ml-1" size={14} />
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-start">
-                            <TbCalendarTime className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="font-medium text-gray-600">Age Range</p>
-                              <p className="text-gray-800">
-                                {point.ageMin ?? 'N/A'} {point.minAgeUnit ?? 'YEARS'} - {point.ageMax ?? 'N/A'} {point.maxAgeUnit ?? 'YEARS'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-start">
-                            {getGenderIcon(point.gender)}
-                            <div>
-                              <p className="font-medium text-gray-600">Gender</p>
-                              <p className="text-gray-800">
-                                {point.gender === 'M' ? 'Male' : point.gender === 'F' ? 'Female' : 'Unisex'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center">
-                            <div className="flex-1">
-                              <div className="flex items-center mb-1">
-                                <TbNumbers className="text-gray-500 mr-2" size={18} />
-                                <p className="font-medium text-gray-600">Enter Value
-
-
-
-                                </p>
+      <div className="flex flex-wrap items-center justify-center gap-4 mb-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
+        <div className="flex items-center text-sm text-gray-700">
+          <TbSquareRoundedCheck className="text-green-500 mr-2" size={18} />
+          <span className="font-medium">Normal Range</span>
                               </div>
-                              <div className="flex items-center">
-                                {getStatusIcon(status)}
-                                <input
-                                  type="text"
-                                  className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300"
-                                  placeholder="Enter value"
-                                  value={currentValue}
-                                  onChange={(e) => handleInputChange(test.name, index, e.target.value)}
-                                />
+        <div className="flex items-center text-sm text-gray-700">
+          <TbArrowDownCircle className="text-red-500 mr-2" size={18} />
+          <span className="font-medium">Below Normal</span>
                               </div>
+        <div className="flex items-center text-sm text-gray-700">
+          <TbArrowUpCircle className="text-red-500 mr-2" size={18} />
+          <span className="font-medium">Above Normal</span>
                             </div>
+        <div className="flex items-center text-sm text-gray-700">
+          <TbInfoCircle className="text-blue-500 mr-2" size={18} />
+          <span className="font-medium">No Reference</span>
                           </div>
                         </div>
-                      </div>
-                    );
-                  }
 
-                  if (!point.testDescription || point.testDescription.trim() === '') {
-                    return (
-                      <div key={index} className="p-4 rounded-lg border bg-gray-50 border-gray-200">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                          <div className="flex items-start">
-                            <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="font-medium text-gray-600">Description</p>
-                              <p className="text-gray-800 italic">No description available</p>
+      <div className="space-y-4 mt-6">
+        {detailedPoint ? (
+          <DetailedReportEditor
+            point={detailedPoint}
+            onReportJsonChange={(reportJson) => {
+              const updatedPoints = referencePoints[selectedTest.name]?.map(point =>
+                point.testDescription === "DETAILED REPORT"
+                  ? { ...point, reportJson }
+                  : point
+              ) || [];
+              setReferencePoints(prev => ({
+                ...prev,
+                [selectedTest.name]: updatedPoints
+              }));
+            }}
+          />
+        ) : (
+          <TestComponentFactory
+            test={selectedTest}
+            referencePoints={referencePoints[selectedTest.name] || []}
+            inputValues={inputValues}
+            onInputChange={handleInputChange}
+            getValueStatus={getValueStatus}
+            getStatusColor={getStatusColor}
+            getStatusIcon={getStatusIcon}
+          />
+        )}
                             </div>
-                          </div>
-                          <div className="flex items-start">
-                            <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="font-medium text-gray-600">Reference Range</p>
-                              <p className="text-gray-800">
-                                {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
-                                  <span className="text-gray-500 flex items-center">
-                                    <TbRuler className="ml-1" size={14} />
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-start">
-                            <TbCalendarTime className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="font-medium text-gray-600">Age Range</p>
-                              <p className="text-gray-800">
-                                {point.ageMin ?? 'N/A'} {point.minAgeUnit ?? 'YEARS'} - {point.ageMax ?? 'N/A'} {point.maxAgeUnit ?? 'YEARS'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-start">
-                            {getGenderIcon(point.gender)}
-                            <div>
-                              <p className="font-medium text-gray-600">Gender</p>
-                              <p className="text-gray-800">
-                                {point.gender === 'M' ? 'Male' : point.gender === 'F' ? 'Female' : 'Unisex'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-3 text-sm text-gray-600">
-                          <p>This test has no reference description. You can:</p>
-                          <ul className="list-disc pl-5 mt-1 space-y-1">
-                            <li>Add the reference manually in the system</li>
-                            <li>This test might be machine-generated with results provided separately</li>
-                            <li>Check with the lab for the reference sheet or hard copy</li>
-                          </ul>
-                        </div>
-                      </div>
-                    );
-                  }
 
-                  const currentValue = inputValues[test.name]?.[index] || '';
-                  const status = getValueStatus(
-                    currentValue,
-                    point.minReferenceRange,
-                    point.maxReferenceRange
-                  );
-
-                  return (
-                    <div
-                      key={index}
-                      className={`p-4 rounded-lg border ${getStatusColor(status)} transition-all relative`}
-                    >
-                      <div className="absolute top-2 right-2">
+      <div className="mt-8 text-center">
                         <button
-                          onClick={() => removeReference(test.name, index)}
-                          className="text-gray-500 hover:text-red-600 p-1 rounded-full hover:bg-gray-100"
-                          title="Remove this reference"
-                        >
-                          <TbX size={18} />
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
-                        <div className="flex items-start">
-                          <TbClipboardText className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-gray-600">Description</p>
-                            <p className="text-gray-800">{point.testDescription}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start">
-                          <TbChartLine className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-gray-600">Reference Range</p>
-                            <p className="text-gray-800">
-                              {point.minReferenceRange ?? 'N/A'} - {point.maxReferenceRange ?? 'N/A'} {point.units && (
-                                <span className="text-gray-500 flex items-center">
-                                  <TbRuler className="ml-1" size={14} />
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start">
-                          <TbCalendarTime className="text-gray-500 mr-2 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-gray-600">Age Range</p>
-                            <p className="text-gray-800">
-                              {point.ageMin ?? 'N/A'} {point.minAgeUnit ?? 'YEARS'} - {point.ageMax ?? 'N/A'} {point.maxAgeUnit ?? 'YEARS'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start">
-                          {getGenderIcon(point.gender)}
-                          <div>
-                            <p className="font-medium text-gray-600">Gender</p>
-                            <p className="text-gray-800">
-                              {point.gender === 'M' ? 'Male' : point.gender === 'F' ? 'Female' : 'Unisex'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center">
-                          <div className="flex-1">
-                            <div className="flex items-center mb-1">
-                              <TbNumbers className="text-gray-500 mr-2" size={18} />
-                              <p className="font-medium text-gray-600">Enter Value</p>
-                            </div>
-                            <div className="flex items-center">
-                              {getStatusIcon(status)}
-                              <input
-                                type="text"
-                                className="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 border-gray-300"
-                                placeholder="Enter value"
-                                value={currentValue}
-                                onChange={(e) => handleInputChange(test.name, index, e.target.value)}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="sticky bottom-0 bg-white pt-4 pb-2 border-t border-gray-200 mt-6">
-        <button
           onClick={prepareReportPreview}
-          className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg shadow-md transition-colors flex items-center justify-center"
+          className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center mx-auto"
+          style={{
+            background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+          }}
         >
           <TbReportMedical className="mr-2" size={18} />
-          Preview Report Updates
-        </button>
+          Confirm
+                        </button>
+                      </div>
+
+      <ConfirmationDialog
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={handleUpdateData}
+        title={hasMissingDescriptions ? "Important Note About Test References" : "Confirm Report Update"}
+        message={hasMissingDescriptions
+          ? "Some tests don't have digital references available. Please review the details below before submitting."
+          : "All test references have complete descriptions. Please review the data before submitting."}
+        confirmText="Confirm Update"
+        cancelText="Cancel"
+        isLoading={isSubmitting}
+      >
+        <div className="space-y-4 text-sm">
+          <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+            <h4 className="font-semibold text-blue-800 mb-2">Patient Information</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                <span className="font-medium text-gray-600">Name:</span>
+                <span className="ml-2 text-gray-900">{editPatient.patientname || 'N/A'}</span>
+                          </div>
+              <div>
+                <span className="font-medium text-gray-600">Phone:</span>
+                <span className="ml-2 text-gray-900">{editPatient.contactNumber || 'N/A'}</span>
+                        </div>
+                          <div>
+                <span className="font-medium text-gray-600">Email:</span>
+                <span className="ml-2 text-gray-900">{editPatient.email || 'N/A'}</span>
+                          </div>
+              <div>
+                <span className="font-medium text-gray-600">Gender:</span>
+                <span className="ml-2 text-gray-900 capitalize">{editPatient.gender || 'N/A'}</span>
+                        </div>
+                          <div>
+                <span className="font-medium text-gray-600">Date of Birth:</span>
+                <span className="ml-2 text-gray-900">{editPatient.dateOfBirth ? new Date(editPatient.dateOfBirth).toLocaleDateString() : 'N/A'}</span>
+                          </div>
+              <div>
+                <span className="font-medium text-gray-600">Visit Date:</span>
+                <span className="ml-2 text-gray-900">{editPatient.visitDate ? new Date(editPatient.visitDate).toLocaleDateString() : 'N/A'}</span>
+                        </div>
+                          <div>
+                <span className="font-medium text-gray-600">Visit Status:</span>
+                <span className="ml-2 text-gray-900 capitalize">{editPatient.visitStatus?.toLowerCase().replace('_', ' ') || 'N/A'}</span>
+                          </div>
+              <div>
+                <span className="font-medium text-gray-600">Visit ID:</span>
+                <span className="ml-2 text-gray-900">{editPatient.visitId || 'N/A'}</span>
+                        </div>
+                            </div>
+                            </div>
+
+          <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+            <h4 className="font-semibold text-purple-800 mb-2">Test Information</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="font-medium text-gray-600">Test Name:</span>
+                <span className="ml-2 text-gray-900">{selectedTest.name || 'N/A'}</span>
+                          </div>
+              <div>
+                <span className="font-medium text-gray-600">Category:</span>
+                <span className="ml-2 text-gray-900">{selectedTest.category || 'N/A'}</span>
+                        </div>
+              <div className="col-span-2">
+                <span className="font-medium text-gray-600">Total Test Points:</span>
+                <span className="ml-2 text-gray-900">{reportPreview.length}</span>
+                      </div>
+                    </div>
       </div>
 
-      {/* Confirmation Modal */}
-      {showConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
-              <h3 className="text-xl font-bold mb-4 flex items-center">
-                <TbInfoCircle className="text-blue-500 mr-2" size={24} />
-                {hasMissingDescriptions ? "Important Note About Test References" : "Confirm Report Updates"}
-              </h3>
-
-              {hasMissingDescriptions ? (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <TbInfoCircle className="h-5 w-5 text-yellow-400" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-yellow-700 font-medium mb-2">
-                        Note about tests without reference descriptions:
-                      </p>
-                      <ul className="list-disc pl-5 space-y-1 text-sm text-yellow-700">
+          {hasMissingDescriptions && (
+            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
+              <h4 className="font-semibold text-yellow-800 mb-2">Important Note</h4>
+              <ul className="list-disc pl-5 space-y-1 text-xs text-yellow-700">
                         <li>Some tests ({reportPreview.filter(item => !item.referenceDescription || item.referenceDescription === "No reference description available").length}) don&lsquo;t have digital references available</li>
                         <li>These tests might be machine-generated or have hard copy references</li>
                         <li>The results will be provided separately at the reception</li>
                         <li>Please inform the patient to collect all results from the reception desk</li>
                       </ul>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <TbSquareRoundedCheck className="h-5 w-5 text-green-400" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-green-700">
-                        All test references have complete descriptions. Please review the updates before submitting.
-                      </p>
-                    </div>
-                  </div>
                 </div>
               )}
 
-              {reportPreview.length > 0 ? (
-                <div className="mb-6">
-                  <h4 className="font-medium mb-2">Report Updates Preview:</h4>
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {reportPreview.map((item, idx) => (
-                          <tr key={idx} className={!item.referenceDescription || item.referenceDescription === "No reference description available" ? "bg-yellow-50" : ""}>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{item.testName}</td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                              {item.referenceDescription || "Reference details not available - will be provided separately"}
-                            </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{item.enteredValue} {item.unit}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+          <div className="bg-white p-3 rounded-lg border border-gray-200">
+            <h4 className="font-semibold text-gray-800 mb-2">Report Preview</h4>
+            <div className="border rounded-lg overflow-hidden bg-white">
+              <div className="p-4">
+                <div
+                  className="report-html prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
+                  dangerouslySetInnerHTML={{ __html: buildReadablePreviewHTML() }}
+                />
                   </div>
                 </div>
-              ) : (
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center">
-                    <TbInfoCircle className="text-blue-500 mr-3" size={24} />
-                    <div>
-                      <h4 className="font-medium text-blue-800">No test values entered</h4>
-                      <p className="text-sm text-blue-700 mt-1">
-                        This report will be updated without any test data changes. 
-                        The results might be provided separately as hard copies at the reception.
-                      </p>
                     </div>
                   </div>
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowConfirmation(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleUpdateData}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
-                >
-                  Confirm Updates
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </ConfirmationDialog>
     </div>
   );
 };

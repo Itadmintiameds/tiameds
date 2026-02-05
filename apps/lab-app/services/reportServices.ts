@@ -75,6 +75,28 @@ export const getReportData = async (labId: string, visitId: string): Promise<Rep
   }
 };
 
+export const getReportDataById = async (labId: string, reportId: string): Promise<Report | Report[]> => {
+  try {
+    const response = await api.get<{ data: Report | Report[]; message: string; status: string }>(
+      `/lab/${labId}/report/by-id/${reportId}`
+    );
+    return response.data.data;
+  } catch (error) {
+    let errorMessage = 'An error occurred while fetching report details.';
+
+    if (error && (error as AxiosError).isAxiosError) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
 
 /*  OLD ONE API FOR REPORT  */
 export const createReport = async (labId: string, reportData: ReportData[]): Promise<ReportData[]> => {
@@ -172,6 +194,31 @@ export const updateReports = async (labId: number, reports: ReportData[]): Promi
     }
   
     const response = await api.put<{ data: ReportData[] }>(`lab/${labId}/report`, reports);
+    return response.data.data;
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while updating the report.';
+
+    if (error instanceof Error) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+export const updateReportById = async (labId: number, reportId: string, reports: ReportData[]): Promise<ReportData[]> => {
+  try {
+    const invalidReports = reports.filter(report => !report.report_id);
+    if (invalidReports.length > 0) {
+      throw new Error('All reports must have report_id for updates');
+    }
+
+    const response = await api.put<{ data: ReportData[] }>(`/lab/${labId}/report/by-id/${reportId}`, reports);
     return response.data.data;
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while updating the report.';

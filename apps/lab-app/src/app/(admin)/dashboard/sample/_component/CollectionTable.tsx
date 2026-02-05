@@ -1,5 +1,4 @@
 import { getHealthPackageById } from '@/../services/packageServices';
-import { getTestById } from '@/../services/testService';
 import Loader from '@/app/(admin)/component/common/Loader';
 import Modal from '@/app/(admin)/component/common/Model';
 import Pagination from '@/app/(admin)/component/common/Pagination';
@@ -29,7 +28,12 @@ export interface Patient {
   visitDate: string;
   visitStatus: string;
   sampleNames: string[];
+  visitCode?: string;
   testIds: number[];
+  tests?: Array<{
+    id: number;
+    name: string;
+  }>;
   packageIds: number[];
   dateOfBirth?: string;
   testResult?: TestResult[]; // Add testResult array
@@ -71,7 +75,6 @@ interface CollectionTableProps {
 const CollectionTable: React.FC<CollectionTableProps> = ({ closeModal }) => {
   const { currentLab } = useLabs();
   const [patientList, setPatientList] = useState<Patient[]>([]);
-  const [tests, setTests] = useState<TestList[]>([]);
   const [healthPackages, setHealthPackages] = useState<HealthPackage[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
@@ -125,27 +128,26 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ closeModal }) => {
          });
 
       setPatientList(
-        collectedVisits.map((visit) => ({
-          visitId: visit.visitId,
-          patientname: visit.patientname,
-          gender: visit.gender ?? '',
-          contactNumber: visit.contactNumber ?? '',
-          email: visit.email ?? '',
-          visitDate: visit.visitDate,
-          visitStatus: visit.visitStatus,
-          sampleNames: visit.sampleNames,
-          testIds: visit.testIds,
-          packageIds: visit.packageIds,
-          dateOfBirth: visit.dateOfBirth ?? undefined,
-          testResult: visit.testResult ?? undefined, // Add testResult to the patient object
-        }))
+        collectedVisits.map((visit) => {
+          const visitTests = visit.tests ?? [];
+          return {
+            visitId: visit.visitId,
+            visitCode: visit.visitCode,
+            patientname: visit.patientname,
+            gender: visit.gender ?? '',
+            contactNumber: visit.contactNumber ?? '',
+            email: visit.email ?? '',
+            visitDate: visit.visitDate,
+            visitStatus: visit.visitStatus,
+            sampleNames: visit.sampleNames,
+            testIds: visit.testIds ?? visitTests.map((test) => test.id),
+            tests: visitTests,
+            packageIds: visit.packageIds,
+            dateOfBirth: visit.dateOfBirth ?? undefined,
+            testResult: visit.testResult ?? undefined, // Add testResult to the patient object
+          };
+        })
       );
-
-      const uniqueTestIds = Array.from(new Set(collectedVisits.flatMap((visit) => visit.testIds)));
-      const fetchedTests = await Promise.all(
-        uniqueTestIds.map((testId) => getTestById(currentLab.id.toString(), testId))
-      );
-      setTests(fetchedTests);
 
       const uniquePackageIds = Array.from(new Set(collectedVisits.flatMap((visit) => visit.packageIds)));
       const fetchedPackages = await Promise.all(
@@ -253,17 +255,25 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ closeModal }) => {
     if (!patient || !testId) return;
 
     // First try to find the test in individual tests
-    let test = tests.find((t) => t.id === testId);
+    const visitTest = patient.tests?.find((t) => t.id === testId);
+    let selected: TestList | null = visitTest
+      ? {
+          id: visitTest.id,
+          name: visitTest.name,
+          price: 0,
+          category: '',
+        }
+      : null;
     
     // If not found in individual tests, search in package tests
-    if (!test) {
+    if (!selected) {
       for (const packageId of patient.packageIds) {
         const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
         if (packageDetails) {
           const packageTest = packageDetails.tests.find((t) => t.id === testId);
           if (packageTest) {
             // Create a test object that matches the TestList interface
-            test = {
+            selected = {
               id: packageTest.id,
               name: packageTest.name,
               price: packageTest.price,
@@ -275,10 +285,10 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ closeModal }) => {
       }
     }
 
-    if (!test) return;
+    if (!selected) return;
 
     setSelectedPatient(patient);
-    setSelectedTest(test);
+    setSelectedTest(selected);
     setShowModal(true);
   };
 
@@ -289,8 +299,8 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ closeModal }) => {
   const columns = [
     {
       header: 'ID',
-      accessor: (row: Patient) => row.visitId,
-      cell: (value: number) => <span className="font-semibold text-primary">#{value}</span>
+      accessor: (row: Patient) => row.visitCode || row.visitId,
+      cell: (value: number | string) => <span className="font-semibold text-primary">#{value}</span>
     },
     {
       header: 'Patient',
@@ -379,34 +389,27 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ closeModal }) => {
           if (packageDetails) {
             // Add all test IDs from this package to the set
             packageDetails.tests.forEach(test => {
-              // Since the Test interface doesn't have an id, we need to find the test by name
-              const matchingTest = tests.find(t => t.name === test.name);
-              if (matchingTest) {
-                packageTestIds.add(matchingTest.id);
-              }
+              packageTestIds.add(test.id);
             });
           }
         });
 
         // Filter out tests that belong to packages from individual tests
-        const individualTestIds = row.testIds.filter(testId => 
-          !packageTestIds.has(testId)
+        const individualTests = (row.tests || []).filter(test => 
+          !packageTestIds.has(test.id)
         );
 
                  const isExpanded = expandedRows.has(`${row.visitId}-tests`);
-         const displayTests = isExpanded ? individualTestIds : individualTestIds.slice(0, 3);
-         const hasMoreTests = individualTestIds.length > 3;
+         const displayTests = isExpanded ? individualTests : individualTests.slice(0, 3);
+         const hasMoreTests = individualTests.length > 3;
          
          // For CollectionTable, show total test count (not just completed)
-         const totalTestCount = individualTestIds.length;
+         const totalTestCount = individualTests.length;
 
         return (
           <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
-            {displayTests.map((testId) => {
-              const test = tests.find((t) => t.id === testId);
-              const testResult = row.testResult?.find(tr => tr.testId === testId);
-              
-              if (!test) return null;
+            {displayTests.map((test) => {
+              const testResult = row.testResult?.find(tr => tr.testId === test.id);
               
               // Determine test status
               let statusColor = 'bg-blue-100 text-blue-800';
@@ -445,7 +448,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ closeModal }) => {
                   {/* Only show result button if test is not completed */}
                   {(!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
                     <button
-                      onClick={() => handleOpenReportModal(row, testId)}
+                      onClick={() => handleOpenReportModal(row, test.id)}
                       className="flex items-center gap-1 bg-blue-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-blue-600 transition-colors whitespace-nowrap"
                       title={`View result for ${test.name}`}
                     >
