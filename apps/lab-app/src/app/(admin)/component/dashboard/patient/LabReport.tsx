@@ -50,10 +50,13 @@ const LabReport: React.FC = () => {
     const fetchVisits = useCallback(async () => {
         try {
           if (currentLab?.id) {
-            const response: Patient[] = await getAllVisitssamples(currentLab.id);
-            const collectedVisits = response.filter(
-              (visit) => visit.visitStatus === 'Completed'
-            );
+            const response = await getAllVisitssamples(currentLab.id);
+            const collectedVisits = response
+              .filter((visit) => visit.visitStatus === 'Completed')
+              .map((visit) => ({
+                ...visit,
+                testIds: visit.testIds ?? [],
+              })) as Patient[];
             setPatientList(collectedVisits);
       
             const uniqueTestIds = Array.from(
@@ -187,7 +190,12 @@ const LabReport: React.FC = () => {
                     {/* Edit Report */}
                     <Button
                         text="Edit"
-                        onClick={() => handleEditReport()}
+                        onClick={() => {
+                            const firstTestId = row.testIds[0];
+                            if (firstTestId) {
+                                handleEditReport(row, firstTestId);
+                            }
+                        }}
                         className="flex items-center px-2 py-1 text-white bg-edit rounded text-xs hover:bg-edithover"
                     >
                         <TbEdit className="text-sm mr-1" />

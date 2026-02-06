@@ -563,7 +563,7 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
   };
 
   const buildReadablePreviewHTML = () => {
-    let htmlParts: string[] = [];
+    const htmlParts: string[] = [];
 
     const detailedPoint = (referencePoints[selectedTest.name] || []).find(
       p => (p.testDescription || '').toUpperCase() === 'DETAILED REPORT'
