@@ -5,6 +5,9 @@ This document defines the design system for confirmation dialogs used throughout
 
 ---
 
+
+
+
 ## 1. Component Structure
 
 ### Base Component: `ConfirmationDialog`
