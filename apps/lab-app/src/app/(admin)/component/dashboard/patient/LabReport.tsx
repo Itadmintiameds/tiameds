@@ -7,6 +7,7 @@ import Pagination from '@/app/(admin)/component/common/Pagination';
 import TableComponent from '@/app/(admin)/component/common/TableComponent';
 import Editreport from '@/app/(admin)/dashboard/sample/_component/Report/Editreport';
 import ViewReport from '@/app/(admin)/dashboard/sample/_component/Report/ViewReport';
+import { getReportData } from '@/../services/reportServices';
 import { useLabs } from '@/context/LabContext';
 import { PatientData } from '@/types/sample/sample';
 import { TestList } from '@/types/test/testlist';
@@ -40,17 +41,22 @@ const LabReport: React.FC = () => {
     const [ViewModel, setViewModel] = useState(false);
     const [editModel, setEditModel] = useState(false);
     const itemsPerPage = 8;
-    // const [editPatient, setEditPatient] = useState<Patient | null>(null);
+    const [editPatient, setEditPatient] = useState<Patient | null>(null);
+    const [editTest, setEditTest] = useState<TestList | null>(null);
+    const [editReportId, setEditReportId] = useState<number | null>(null);
     const [viewPatient, setViewPatient] = useState<Patient | null>(null);
 
 
     const fetchVisits = useCallback(async () => {
         try {
           if (currentLab?.id) {
-            const response: Patient[] = await getAllVisitssamples(currentLab.id);
-            const collectedVisits = response.filter(
-              (visit) => visit.visitStatus === 'Completed'
-            );
+            const response = await getAllVisitssamples(currentLab.id);
+            const collectedVisits = response
+              .filter((visit) => visit.visitStatus === 'Completed')
+              .map((visit) => ({
+                ...visit,
+                testIds: visit.testIds ?? [],
+              })) as Patient[];
             setPatientList(collectedVisits);
       
             const uniqueTestIds = Array.from(
@@ -93,8 +99,23 @@ const LabReport: React.FC = () => {
         setViewPatient(patient);
     };
 
-    const handleEditReport = () => {
-        setEditModel(true);
+    const handleEditReport = async (patient: Patient, testId: number) => {
+        const test = tests.find((t) => t.id === testId);
+        if (!test || !currentLab?.id) return;
+        try {
+            const reports = await getReportData(currentLab.id.toString(), patient.visitId.toString());
+            const matching = reports.find((item) => item.testName === test.name);
+            if (!matching?.reportId) {
+                toast.error('Report ID missing for this test.');
+                return;
+            }
+            setEditModel(true);
+            setEditPatient(patient);
+            setEditTest(test);
+            setEditReportId(matching.reportId);
+        } catch (error) {
+            toast.error((error as Error).message || 'Failed to load report data');
+        }
     };
 
     const columns = [
@@ -109,9 +130,19 @@ const LabReport: React.FC = () => {
                     {row.testIds.map((testId) => {
                         const test = tests.find((t) => t.id === testId);
                         return test ? (
-                            <span key={test.id} className="bg-info text-textwhite shadow-xl p-0.5 rounded text-sm">
-                                {test.name}
-                            </span>
+                            <div key={test.id} className="flex items-center gap-1">
+                                <span className="bg-info text-textwhite shadow-xl p-0.5 rounded text-sm">
+                                    {test.name}
+                                </span>
+                                <button
+                                    onClick={() => handleEditReport(row, test.id)}
+                                    className="flex items-center text-xs text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded hover:bg-emerald-200"
+                                    title={`Edit report for ${test.name}`}
+                                >
+                                    <TbEdit className="mr-1" />
+                                    Edit
+                                </button>
+                            </div>
                         ) : null;
                     }).filter(Boolean)}
                 </div>
@@ -159,7 +190,12 @@ const LabReport: React.FC = () => {
                     {/* Edit Report */}
                     <Button
                         text="Edit"
-                        onClick={() => handleEditReport()}
+                        onClick={() => {
+                            const firstTestId = row.testIds[0];
+                            if (firstTestId) {
+                                handleEditReport(row, firstTestId);
+                            }
+                        }}
                         className="flex items-center px-2 py-1 text-white bg-edit rounded text-xs hover:bg-edithover"
                     >
                         <TbEdit className="text-sm mr-1" />
@@ -191,16 +227,30 @@ const LabReport: React.FC = () => {
                 )
             }
             {
-                editModel && viewPatient && (
+                editModel && editPatient && editTest && editReportId !== null && (
                     <Modal
-                        title='Edit Report'
+                        title={`Edit Report - ${editTest.name}`}
                         isOpen={editModel}
-                        onClose={() => setEditModel(false)}
+                        onClose={() => {
+                            setEditModel(false);
+                            setEditPatient(null);
+                            setEditTest(null);
+                            setEditReportId(null);
+                        }}
                         modalClassName='max-w-3xl'
                     >
                         <Editreport
-                            editPatient={viewPatient}
-                            setShowModal={setEditModel}
+                            editPatient={editPatient}
+                            selectedTest={editTest}
+                            reportId={editReportId}
+                            setShowModal={(value) => {
+                                setEditModel(value);
+                                if (!value) {
+                                    setEditPatient(null);
+                                    setEditTest(null);
+                                    setEditReportId(null);
+                                }
+                            }}
                             refreshReports={fetchVisits}
                         />
                     </Modal>

@@ -1,28 +1,32 @@
 import { getHealthPackageById } from '@/../services/packageServices';
-import { getTestById } from '@/../services/testService';
 import Loader from '@/app/(admin)/component/common/Loader';
 import Modal from '@/app/(admin)/component/common/Model';
 import Pagination from '@/app/(admin)/component/common/Pagination';
 import TableComponent from '@/app/(admin)/component/common/TableComponent';
 import { useLabs } from '@/context/LabContext';
+import { useAuth } from '@/hooks/useAuth';
 import { TestList } from '@/types/test/testlist';
 import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, formatDisplayDate, getDateRange } from '@/utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiCalendar } from 'react-icons/fi';
-import {  TbReport } from 'react-icons/tb';
+import { TbEdit, TbReport } from 'react-icons/tb';
 import { FaTimes, FaVial } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { getCollectedCompleted } from '../../../../../../services/sampleServices';
 import ViewReport from './Report/ViewReport';
-// import Editreport from './Report/Editreport';
+import Editreport from '@/app/(admin)/dashboard/sample/_component/Report/Editreport';
 
 interface Patient {
     visitId: number;
+    visitCode?: string;
     patientname: string;
     visitDate: string;
     visitStatus: string;
     sampleNames: string[];
-    testIds: number[];
+    tests?: Array<{
+        id: number;
+        name: string;
+    }>;
     packageIds: number[];
     contactNumber?: string;
     gender?: string;
@@ -43,6 +47,7 @@ interface TestResult {
     updatedBy: string;
     createdAt: string;
     updatedAt: string;
+    reportId?: number;
 }
 interface HealthPackage {
     id: number;
@@ -63,16 +68,18 @@ interface CompletedTableProps {
 
 const CompletedTable: React.FC<CompletedTableProps> = ({ closeModal }) => {
     const { currentLab } = useLabs();
+    const { isAdmin, isSuperAdmin } = useAuth();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [patientList, setPatientList] = useState<Patient[]>([]);
     const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
-    const [tests, setTests] = useState<TestList[]>([]);
     const [healthPackages, setHealthPackages] = useState<HealthPackage[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [ViewModel, setViewModel] = useState(false);
-    // const [editModel, setEditModel] = useState(false);
+    const [editModel, setEditModel] = useState(false);
     const itemsPerPage = 8;
-    // const [editPatient, setEditPatient] = useState<Patient | null>(null);
+    const [editPatient, setEditPatient] = useState<Patient | null>(null);
+    const [editTest, setEditTest] = useState<TestList | null>(null);
+    const [editReportId, setEditReportId] = useState<number | null>(null);
     const [viewPatient, setViewPatient] = useState<Patient | null>(null);
     const [dateFilter, setDateFilter] = useState<DateFilterOption>('today');
     const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
@@ -168,24 +175,14 @@ const CompletedTable: React.FC<CompletedTableProps> = ({ closeModal }) => {
             setPatientList(sortedVisits);
             setFilteredPatients(sortedVisits);
 
-            const uniqueTestIds = Array.from(new Set(sortedVisits.flatMap((visit) => visit.testIds)));
             const uniquePackageIds = Array.from(new Set(sortedVisits.flatMap((visit) => visit.packageIds)));
 
-            const [fetchedTests, fetchedPackages] = await Promise.all([
-                Promise.all(
-                    uniqueTestIds.map((testId) =>
-                        getTestById(currentLab.id.toString(), testId)
-                            .catch(() => null)
-                    )
-                ),
-                Promise.all(
-                    uniquePackageIds.map((packageId) =>
-                        getHealthPackageById(currentLab.id, packageId)
-                            .catch(() => ({ data: null }))
-                    )
+            const fetchedPackages = await Promise.all(
+                uniquePackageIds.map((packageId) =>
+                    getHealthPackageById(currentLab.id, packageId)
+                        .catch(() => ({ data: null }))
                 )
-            ]);
-            setTests(fetchedTests.filter(Boolean) as TestList[]);
+            );
             setHealthPackages(fetchedPackages.map(pkg => pkg?.data).filter(Boolean) as HealthPackage[]);
         } catch (error) {
             toast.error((error as Error).message || 'Error fetching visits', { autoClose: 2000 });
@@ -209,15 +206,53 @@ const CompletedTable: React.FC<CompletedTableProps> = ({ closeModal }) => {
         setViewPatient(patient);
     };
 
-    // const handleEditReport = (patient: Patient) => {
-    //     setEditModel(true);
-    //     setEditPatient(patient);
-    // };
+    const resolveTestForPatient = (patient: Patient, testId: number): TestList | null => {
+        const visitTest = patient.tests?.find((t) => t.id === testId);
+        if (visitTest) {
+            return {
+                id: visitTest.id,
+                name: visitTest.name,
+                price: 0,
+                category: '',
+            };
+        }
+
+        for (const packageId of patient.packageIds) {
+            const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+            if (!packageDetails) continue;
+            const packageTest = packageDetails.tests.find((t) => t.id === testId);
+            if (packageTest) {
+                return {
+                    id: packageTest.id,
+                    name: packageTest.name,
+                    price: packageTest.price,
+                    category: packageTest.category || '',
+                };
+            }
+        }
+
+        return null;
+    };
+
+    const handleEditReport = (patient: Patient, testId: number) => {
+        const test = resolveTestForPatient(patient, testId);
+        if (!test) return;
+        const testResult = patient.testResult?.find(tr => tr.testId === testId);
+        if (!testResult || !testResult.reportId) {
+            toast.error('Report ID missing for this test.');
+            return;
+        }
+
+        setEditModel(true);
+        setEditPatient(patient);
+        setEditTest(test);
+        setEditReportId(testResult.reportId);
+    };
 
     const columns = [
-            {
+    {
         header: 'ID',
-        accessor: (row: Patient) => row.visitId
+        accessor: (row: Patient) => row.visitCode || row.visitId
     },
     {
         header: 'Patient',
@@ -271,39 +306,32 @@ const CompletedTable: React.FC<CompletedTableProps> = ({ closeModal }) => {
                 row.packageIds.forEach(packageId => {
                     const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
                     if (packageDetails) {
-                        // Add all test IDs from this package to the set
                         packageDetails.tests.forEach(test => {
-                            // Since the Test interface doesn't have an id, we need to find the test by name
-                            const matchingTest = tests.find(t => t.name === test.name);
-                            if (matchingTest) {
-                                packageTestIds.add(matchingTest.id);
-                            }
+                            packageTestIds.add(test.id);
                         });
                     }
                 });
 
+                const visitTests = row.tests || [];
                 // Filter out tests that belong to packages from individual tests
-                const individualTestIds = row.testIds.filter(testId =>
-                    !packageTestIds.has(testId)
+                const individualTests = visitTests.filter(test =>
+                    !packageTestIds.has(test.id)
                 );
 
                 const isExpanded = expandedRows.has(`${row.visitId}-tests`);
-                const displayTests = isExpanded ? individualTestIds : individualTestIds.slice(0, 3);
-                const hasMoreTests = individualTestIds.length > 3;
+                const displayTests = isExpanded ? individualTests : individualTests.slice(0, 3);
+                const hasMoreTests = individualTests.length > 3;
                 
                 // Count completed tests for display
-                const completedTestCount = individualTestIds.filter(testId => {
-                    const testResult = row.testResult?.find(tr => tr.testId === testId);
+                const completedTestCount = individualTests.filter(test => {
+                    const testResult = row.testResult?.find(tr => tr.testId === test.id);
                     return testResult && testResult.isFilled && testResult.reportStatus === 'Completed';
                 }).length;
 
                 return (
                     <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
-                        {displayTests.map((testId) => {
-                            const test = tests.find((t) => t.id === testId);
-                            const testResult = row.testResult?.find(tr => tr.testId === testId);
-
-                            if (!test) return null;
+                        {displayTests.map((test) => {
+                            const testResult = row.testResult?.find(tr => tr.testId === test.id);
 
                             // Only show tests that have progress (completed or in progress), skip pending ones
                             if (!testResult || (!testResult.isFilled && testResult.reportStatus === 'Pending')) {
@@ -335,6 +363,16 @@ const CompletedTable: React.FC<CompletedTableProps> = ({ closeModal }) => {
                                         >
                                             ✓
                                         </span>
+                                    )}
+                                    {testResult.reportStatus === 'Completed' && (isAdmin || isSuperAdmin) && (
+                                        <button
+                                            onClick={() => handleEditReport(row, test.id)}
+                                            className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-200"
+                                            title={`Edit report for ${test.name}`}
+                                        >
+                                            <TbEdit className="h-3 w-3" />
+                                            Edit
+                                        </button>
                                     )}
                                 </div>
                             );
@@ -492,16 +530,6 @@ const CompletedTable: React.FC<CompletedTableProps> = ({ closeModal }) => {
                         <TbReport className="w-3 h-3" />
                         <span>View</span>
                     </button>
-                    {/* Edit button temporarily disabled
-                    <button
-                        onClick={() => handleEditReport(row)}
-                        className="flex items-center gap-1 bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition-colors"
-                        aria-label={`Edit report for ${row.patientname}`}
-                    >
-                        <TbEdit className="w-3 h-3" />
-                        <span>Edit</span>
-                    </button>
-                    */}
                 </div>
             )
         }
@@ -628,23 +656,38 @@ const CompletedTable: React.FC<CompletedTableProps> = ({ closeModal }) => {
                         </Modal>
                     )}
 
-                    {/* Edit modal temporarily disabled
-                    {editModel && editPatient && (
+                    {editModel && editPatient && editTest && editReportId !== null && (
                         <Modal
-                            title='Edit Report'
+                            title={`Edit Report - ${editTest.name}`}
                             isOpen={editModel}
-                            onClose={() => setEditModel(false)}
+                            onClose={() => {
+                                setEditModel(false);
+                                setEditPatient(null);
+                                setEditTest(null);
+                                setEditReportId(null);
+                            }}
                             modalClassName='max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden'
                         >
                             <Editreport
                                 editPatient={editPatient}
-                                setShowModal={setEditModel}
+                                selectedTest={editTest}
+                                reportId={editReportId}
+                                setShowModal={(value) => {
+                                    setEditModel((prev) => {
+                                        const next = typeof value === 'function' ? value(prev) : value;
+                                        if (!next) {
+                                            setEditPatient(null);
+                                            setEditTest(null);
+                                            setEditReportId(null);
+                                        }
+                                        return next;
+                                    });
+                                }}
                                 refreshReports={fetchVisits}
                             />
 
                         </Modal>
                     )}
-                    */}
                     {totalPages > 1 && (
                         <div className="mt-4 flex justify-center">
                             <Pagination

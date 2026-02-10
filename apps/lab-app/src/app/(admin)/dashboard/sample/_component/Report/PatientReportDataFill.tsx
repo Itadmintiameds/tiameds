@@ -367,7 +367,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
           testName: formattedTestName,
           testCategory: formattedCategory,
           patientName: selectedPatient.patientname,
-          referenceDescription: "RADIOLOGY_TEST",
+          referenceDescription: detailedReportPoint?.testDescription || "RADIOLOGY_TEST",
           referenceRange: "N/A",
           enteredValue: "Hard copy will be provided",
           referenceAgeRange: "N/A",
@@ -576,7 +576,10 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     if (reportPreview.testData.length > 0) {
       // Group items by test name
       const groupedByTest = reportPreview.testData
-        .filter(item => (item.referenceDescription || '').toUpperCase() !== 'RADIOLOGY_TEST')
+        .filter(item => {
+          const key = (item.referenceDescription || '').toUpperCase();
+          return key !== 'RADIOLOGY_TEST' && key !== 'DETAILED REPORT';
+        })
         .reduce((acc, item) => {
           const testName = item.testName.toUpperCase();
           if (!acc[testName]) {

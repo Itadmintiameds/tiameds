@@ -83,7 +83,7 @@ const PatientBasicInfo = ({ patient }: PatientBasicInfoProps) => {
             </div>
 
             {/* Sample & Test Information Section */}
-            {(patient.sampleNames?.length > 0 || patient.testIds?.length > 0) && (
+            {((patient.sampleNames?.length ?? 0) > 0 || (patient.testIds?.length ?? 0) > 0) && (
                 <div className="bg-green-50 p-3 rounded-lg border border-green-100">
                     <h4 className="font-semibold text-green-800 mb-2 flex items-center">
                         <FaFlask className="mr-2 text-green-500" size={16} />
@@ -96,10 +96,10 @@ const PatientBasicInfo = ({ patient }: PatientBasicInfoProps) => {
                                 <span className="ml-2 text-gray-900">{patient.sampleNames.join(", ") || 'N/A'}</span>
                             </div>
                         )}
-                        {patient.testIds && patient.testIds.length > 0 && (
+                            {(patient.testIds?.length ?? 0) > 0 && (
                             <div className="col-span-2">
                                 <span className="font-medium text-gray-600">Tests:</span>
-                                <span className="ml-2 text-gray-900">{patient.testIds.length} test(s)</span>
+                                <span className="ml-2 text-gray-900">{patient.testIds?.length ?? 0} test(s)</span>
                             </div>
                         )}
                     </div>
