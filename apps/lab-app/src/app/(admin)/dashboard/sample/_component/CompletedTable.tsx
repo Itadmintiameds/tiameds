@@ -4,6 +4,7 @@ import Modal from '@/app/(admin)/component/common/Model';
 import Pagination from '@/app/(admin)/component/common/Pagination';
 import TableComponent from '@/app/(admin)/component/common/TableComponent';
 import { useLabs } from '@/context/LabContext';
+import { useAuth } from '@/hooks/useAuth';
 import { TestList } from '@/types/test/testlist';
 import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, formatDisplayDate, getDateRange } from '@/utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -67,6 +68,7 @@ interface CompletedTableProps {
 
 const CompletedTable: React.FC<CompletedTableProps> = ({ closeModal }) => {
     const { currentLab } = useLabs();
+    const { isAdmin, isSuperAdmin } = useAuth();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [patientList, setPatientList] = useState<Patient[]>([]);
     const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
@@ -362,7 +364,7 @@ const CompletedTable: React.FC<CompletedTableProps> = ({ closeModal }) => {
                                             ✓
                                         </span>
                                     )}
-                                    {testResult.reportStatus === 'Completed' && (
+                                    {testResult.reportStatus === 'Completed' && (isAdmin || isSuperAdmin) && (
                                         <button
                                             onClick={() => handleEditReport(row, test.id)}
                                             className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-200"

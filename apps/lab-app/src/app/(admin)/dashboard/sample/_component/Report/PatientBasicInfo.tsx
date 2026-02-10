@@ -96,7 +96,7 @@ const PatientBasicInfo = ({ patient }: PatientBasicInfoProps) => {
                                 <span className="ml-2 text-gray-900">{patient.sampleNames.join(", ") || 'N/A'}</span>
                             </div>
                         )}
-                        {(patient.testIds?.length ?? 0) > 0 && (
+                            {(patient.testIds?.length ?? 0) > 0 && (
                             <div className="col-span-2">
                                 <span className="font-medium text-gray-600">Tests:</span>
                                 <span className="ml-2 text-gray-900">{patient.testIds?.length ?? 0} test(s)</span>
