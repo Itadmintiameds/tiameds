@@ -2,6 +2,7 @@
 
 ## Overview
 
+
 The `dropdown` and `impression` fields are **JSONB fields** that store structured JSON data. They must be sent to the API as **JSON strings** (stringified JSON).
 
 ---
