@@ -31,6 +31,13 @@ interface AddPatientComponentProps {
 }
 
 const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, addUpdatePatientListVist }: AddPatientComponentProps) => {
+  const getLocalDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
   const [tests, setTests] = useState<TestList[]>([]);
   const [packages, setPackages] = useState<PackageType[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -57,7 +64,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
     age: '',
     gender: Gender.Female,
     visit: {
-      visitDate: new Date().toISOString().split('T')[0],
+      visitDate: getLocalDateString(),
       visitType: VisitType.OUT_PATIENT,
       visitStatus: VisitStatus.PENDING,
       visitDescription: '',
@@ -75,7 +82,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         totalAmount: null,
         paymentStatus: PaymentStatus.PAID,
         paymentMethod: PaymentMethod.CASH,
-        paymentDate: new Date().toISOString().split('T')[0],
+        paymentDate: getLocalDateString(),
         discount: null,
         netAmount: null,
         discountReason: DiscountReason.None,
@@ -507,7 +514,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
       age: '',
       gender: Gender.Female,
       visit: {
-        visitDate: new Date().toISOString().split('T')[0],
+        visitDate: getLocalDateString(),
         visitType: VisitType.OUT_PATIENT,
         visitStatus: VisitStatus.PENDING,
         visitDescription: '',
@@ -523,7 +530,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
           totalAmount: null,
           paymentStatus: PaymentStatus.PAID,
           paymentMethod: PaymentMethod.CASH,
-          paymentDate: new Date().toISOString().split('T')[0],
+          paymentDate: getLocalDateString(),
           discount: null,
           netAmount: null,
           discountReason: DiscountReason.None,
@@ -646,7 +653,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
       const computedDueAmount = Math.max(0, Number(netAmount ?? 0) - receivedAmount);
       const computedRefundAmount = Math.max(0, receivedAmount - Number(netAmount ?? 0));
 
-      const paymentDate = billing.paymentDate || new Date().toISOString().split("T")[0];
+      const paymentDate = billing.paymentDate || getLocalDateString();
 
       const transactions = [];
        transactions.push({
