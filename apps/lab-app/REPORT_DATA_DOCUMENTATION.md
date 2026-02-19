@@ -1,5 +1,6 @@
 # Report Components Data Documentation
 
+
 This document describes the data structures and inputs for each report component in the Detail Reports page.
 
 ## Table of Contents
