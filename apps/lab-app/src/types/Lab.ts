@@ -1,13 +1,33 @@
 export interface LabResponse {
     id: number;
     name: string;
-    logo: string;
+    logo?: string;
+    labLogo?: string | null;
     address: string;
     city: string;
     state: string;
     isActive: boolean;
     description: string;
     createdByName: string;
+    licenseNumber?: string;
+    labType?: string;
+    labZip?: string;
+    labCountry?: string;
+    labPhone?: string;
+    labEmail?: string;
+    directorName?: string;
+    directorEmail?: string;
+    directorPhone?: string;
+    certificationBody?: string;
+    labCertificate?: string;
+    directorGovtId?: string;
+    labBusinessRegistration?: string;
+    labLicense?: string;
+    taxId?: string;
+    labAccreditation?: string;
+    dataPrivacyAgreement?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface LabNewResponse {

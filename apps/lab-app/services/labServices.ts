@@ -63,3 +63,36 @@ export const getLabById = async (labId: string): Promise<LabNewResponse> => {
   }
 }
 
+export const updateLabById = async (labId: number | string, payload: Partial<LabNewResponse>): Promise<LabNewResponse> => {
+  try {
+    const response = await api.put<{ data: LabNewResponse; message: string; status: string }>(
+      `lab/admin/update-lab-by-id/${labId}`,
+      payload
+    );
+    toast.success(response.data.message);
+    return response.data.data;
+  } catch (error: any) {
+    const message = error.response?.data?.message || 'An error occurred while updating the lab.';
+    toast.error(message);
+    throw new Error(message);
+  }
+}
+
+export const getLabLogoUploadUrl = async (
+  labId: number | string,
+  fileName: string,
+  fileType: string
+): Promise<{ uploadUrl: string; fileUrl: string }> => {
+  try {
+    const response = await api.post<{ data: { uploadUrl: string; fileUrl: string }; message: string; status: string }>(
+      `lab/admin/lab-logo/upload-url`,
+      { labId, fileName, fileType }
+    );
+    return response.data.data;
+  } catch (error: any) {
+    const message = error.response?.data?.message || 'An error occurred while generating upload URL.';
+    toast.error(message);
+    throw new Error(message);
+  }
+}
+
