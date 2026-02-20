@@ -82,9 +82,9 @@ export const getLabLogoUploadUrl = async (
   labId: number | string,
   fileName: string,
   fileType: string
-): Promise<{ uploadUrl: string; fileUrl: string }> => {
+): Promise<{ uploadUrl: string; fileUrl: string; headers?: Record<string, string> }> => {
   try {
-    const response = await api.post<{ data: { uploadUrl: string; fileUrl: string }; message: string; status: string }>(
+    const response = await api.post<{ data: { uploadUrl: string; fileUrl: string; headers?: Record<string, string> }; message: string; status: string }>(
       `lab/admin/lab-logo/upload-url`,
       { labId, fileName, fileType }
     );

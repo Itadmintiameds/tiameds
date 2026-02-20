@@ -115,16 +115,15 @@ const LabList = () => {
       e.target.value = '';
       return;
     }
+    const contentType = file.type || 'application/octet-stream';
 
     try {
       setIsUploadingLogo(true);
-      const { uploadUrl, fileUrl } = await getLabLogoUploadUrl(editForm.id, file.name, file.type);
+      const { uploadUrl, fileUrl, headers } = await getLabLogoUploadUrl(editForm.id, file.name, contentType);
       const uploadResponse = await fetch(uploadUrl, {
         method: 'PUT',
         body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
+        headers: headers && Object.keys(headers).length > 0 ? headers : { 'Content-Type': contentType },
       });
       if (!uploadResponse.ok) {
         throw new Error('Upload failed.');
