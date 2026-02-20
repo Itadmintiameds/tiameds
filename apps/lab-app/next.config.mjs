@@ -8,7 +8,7 @@ const ContentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:;
   style-src 'self' 'unsafe-inline';
-  img-src 'self' data: blob:;
+  img-src 'self' data: blob: https://tiameds-lab-logos-test.s3.ap-south-1.amazonaws.com;
   font-src 'self' data:;
   connect-src ${connectSrc};
   media-src 'self';
