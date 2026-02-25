@@ -18,6 +18,24 @@ type Html2CanvasEnhancedOptions = Html2CanvasBaseOptions & {
 
 const DEFAULT_FONT_FAMILY = '"Inter", "Helvetica Neue", Arial, sans-serif';
 const BASE_TEXT_COLOR = "#0f172a";
+const RADIOLOGY_PATTERNS = [
+    /\bRADIOLOGY\b/i,
+    /\bX[\s-]?RAY\b/i,
+    /\bUSG\b/i,
+    /\bULTRASOUND\b/i,
+    /\bCT\b/i,
+    /\bMRI\b/i,
+    /\bPET\b/i,
+    /\bMAMMO(?:GRAPHY)?\b/i,
+    /\bDOPPLER\b/i,
+];
+const PAGE_WIDTH_MM = 190;
+const PAGE_HEIGHT_MM = 297;
+const MARGIN_X_MM = 10;
+const TOP_MARGIN_MM = 15;
+const BOTTOM_MARGIN_MM = 10;
+const BLOCK_GAP_MM = 2;
+const USABLE_HEIGHT_MM = PAGE_HEIGHT_MM - TOP_MARGIN_MM - BOTTOM_MARGIN_MM;
 
 const normalizeFieldKey = (value?: string) =>
     (value || "")
@@ -173,7 +191,7 @@ const renderReferenceRanges = (rangesStr?: string | null) => {
         return `${min} - ${max}`;
     };
     return (
-        <div className="mt-4">
+        <div className="mt-4" data-print-block data-print-table="true">
             <p className="text-xs text-gray-600 mb-3 italic">
                 The following table shows reference ranges that vary by age and gender. These ranges may differ based on the
                 methodology used. Please consult a qualified healthcare professional for proper interpretation.
@@ -393,6 +411,134 @@ const CommonReportView2 = ({
         );
     };
 
+    const isRadiologyReport = (testName?: string, testCategory?: string) => {
+        const normalizedCategory = (testCategory || "").trim().toUpperCase();
+        if (normalizedCategory === "RADIOLOGY") {
+            return true;
+        }
+
+        const name = (testName || "").trim();
+        if (!name) {
+            return false;
+        }
+
+        return RADIOLOGY_PATTERNS.some((pattern) => pattern.test(name));
+    };
+
+    const renderNodeToCanvas = async (node: HTMLElement, scale: number) => {
+        const canvasOptions: Html2CanvasEnhancedOptions = {
+            useCORS: true,
+            allowTaint: true,
+            background: "#ffffff",
+            scale,
+            windowWidth: node.scrollWidth,
+            windowHeight: node.scrollHeight,
+            logging: false,
+        };
+        const canvas = await html2canvas(node, canvasOptions);
+        const context = canvas.getContext("2d");
+        if (context) {
+            context.imageSmoothingEnabled = true;
+            (context as CanvasRenderingContext2D & { imageSmoothingQuality?: "low" | "medium" | "high" }).imageSmoothingQuality = "high";
+        }
+        return canvas;
+    };
+
+    const canvasToMm = (canvas: HTMLCanvasElement, widthMm: number) => {
+        const heightMm = (canvas.height * widthMm) / canvas.width;
+        return { widthMm, heightMm };
+    };
+
+    const addCanvasAtCursor = (pdf: jsPDF, canvas: HTMLCanvasElement, xMm: number, yMm: number, widthMm: number, heightMm: number) => {
+        const imgData = canvas.toDataURL("image/jpeg", 1);
+        pdf.addImage(imgData, "JPEG", xMm, yMm, widthMm, heightMm, undefined, "FAST");
+    };
+
+    const sliceCanvasByHeight = (canvas: HTMLCanvasElement, maxSliceHeightPx: number) => {
+        const slices: HTMLCanvasElement[] = [];
+        let offsetY = 0;
+        const safeSliceHeight = Math.max(1, maxSliceHeightPx);
+
+        while (offsetY < canvas.height) {
+            const sliceHeight = Math.min(safeSliceHeight, canvas.height - offsetY);
+            const slice = document.createElement("canvas");
+            slice.width = canvas.width;
+            slice.height = sliceHeight;
+            const sliceContext = slice.getContext("2d");
+            if (sliceContext) {
+                sliceContext.drawImage(canvas, 0, offsetY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+            }
+            slices.push(slice);
+            offsetY += sliceHeight;
+        }
+
+        return slices;
+    };
+
+    const chunkTableElementByRows = (tableWrapper: HTMLElement, maxChunkHeightPx: number) => {
+        const sourceTable = tableWrapper.querySelector("table");
+        if (!sourceTable) {
+            return [tableWrapper.cloneNode(true) as HTMLElement];
+        }
+
+        const sourceThead = sourceTable.querySelector("thead");
+        const sourceRows = Array.from(sourceTable.querySelectorAll("tbody tr"));
+        if (sourceRows.length === 0) {
+            return [tableWrapper.cloneNode(true) as HTMLElement];
+        }
+
+        const measurementHost = document.createElement("div");
+        measurementHost.style.position = "absolute";
+        measurementHost.style.left = "-9999px";
+        measurementHost.style.top = "0";
+        measurementHost.style.width = "210mm";
+        measurementHost.style.visibility = "hidden";
+        measurementHost.style.pointerEvents = "none";
+        document.body.appendChild(measurementHost);
+
+        const chunks: HTMLElement[] = [];
+
+        const createChunk = () => {
+            const wrapperClone = tableWrapper.cloneNode(false) as HTMLElement;
+            const tableClone = sourceTable.cloneNode(false) as HTMLTableElement;
+
+            if (sourceThead) {
+                tableClone.appendChild(sourceThead.cloneNode(true));
+            }
+
+            const tbody = document.createElement("tbody");
+            tableClone.appendChild(tbody);
+            wrapperClone.appendChild(tableClone);
+            return { wrapperClone, tbody };
+        };
+
+        let currentChunk = createChunk();
+        measurementHost.appendChild(currentChunk.wrapperClone);
+
+        sourceRows.forEach((row) => {
+            const candidateRow = row.cloneNode(true) as HTMLTableRowElement;
+            currentChunk.tbody.appendChild(candidateRow);
+
+            const hasMultipleRows = currentChunk.tbody.children.length > 1;
+            if (currentChunk.wrapperClone.offsetHeight > maxChunkHeightPx && hasMultipleRows) {
+                currentChunk.tbody.removeChild(candidateRow);
+                chunks.push(currentChunk.wrapperClone.cloneNode(true) as HTMLElement);
+                measurementHost.removeChild(currentChunk.wrapperClone);
+
+                currentChunk = createChunk();
+                measurementHost.appendChild(currentChunk.wrapperClone);
+                currentChunk.tbody.appendChild(row.cloneNode(true));
+            }
+        });
+
+        if (currentChunk.tbody.children.length > 0) {
+            chunks.push(currentChunk.wrapperClone.cloneNode(true) as HTMLElement);
+        }
+
+        document.body.removeChild(measurementHost);
+        return chunks.length > 0 ? chunks : [tableWrapper.cloneNode(true) as HTMLElement];
+    };
+
     const printReports = async () => {
         if (!reportRef.current || selectedReportIds.length === 0) {
             toast.error("Select at least one report to print");
@@ -400,6 +546,7 @@ const CommonReportView2 = ({
         }
 
         setPrinting(true);
+        let tempContainer: HTMLDivElement | null = null;
         try {
             const pdf = new jsPDF({
                 orientation: "p",
@@ -407,9 +554,6 @@ const CommonReportView2 = ({
                 format: "a4",
                 compress: true,
             });
-            const pageWidth = 190;
-            const margin = 10;
-            const topMargin = 15;
             const selectedSet = new Set(selectedReportIds);
             const sections = Array.from(reportRef.current.querySelectorAll("[data-report-id]")).filter((section) =>
                 selectedSet.has(Number(section.getAttribute("data-report-id")))
@@ -421,7 +565,7 @@ const CommonReportView2 = ({
             }
 
             const renderScale = Math.max(2, Math.min((window.devicePixelRatio || 1) * 1.5, 3));
-            const tempContainer = document.createElement("div");
+            tempContainer = document.createElement("div");
             tempContainer.style.position = "absolute";
             tempContainer.style.left = "-9999px";
             tempContainer.style.top = "0";
@@ -433,49 +577,225 @@ const CommonReportView2 = ({
             tempContainer.style.color = BASE_TEXT_COLOR;
             document.body.appendChild(tempContainer);
 
-            for (let index = 0; index < sections.length; index++) {
-                const sectionClone = sections[index].cloneNode(true) as HTMLElement;
+            let headerCanvas: HTMLCanvasElement | null = null;
+            let signatureCanvas: HTMLCanvasElement | null = null;
+            let footerCanvas: HTMLCanvasElement | null = null;
+            let headerHeightMm = 0;
+            let signatureHeightMm = 0;
+            let footerHeightMm = 0;
+            const pageTemplateSection = sections[0].cloneNode(true) as HTMLElement;
+            pageTemplateSection.style.width = "210mm";
+            pageTemplateSection.style.maxWidth = "210mm";
+            pageTemplateSection.style.margin = "0 auto";
+            pageTemplateSection.style.boxSizing = "border-box";
+            pageTemplateSection.style.backgroundColor = "#ffffff";
+            pageTemplateSection.style.fontFamily = DEFAULT_FONT_FAMILY;
+            pageTemplateSection.style.color = BASE_TEXT_COLOR;
+            tempContainer.appendChild(pageTemplateSection);
+
+            const headerTemplate = pageTemplateSection.querySelector('[data-print-role="header"]') as HTMLElement | null;
+            const signatureTemplate = pageTemplateSection.querySelector('[data-print-role="signature"]') as HTMLElement | null;
+            const footerTemplate = pageTemplateSection.querySelector('[data-print-role="footer"]') as HTMLElement | null;
+
+            if (headerTemplate) {
+                headerCanvas = await renderNodeToCanvas(headerTemplate, renderScale);
+                headerHeightMm = canvasToMm(headerCanvas, PAGE_WIDTH_MM).heightMm;
+            }
+            if (signatureTemplate) {
+                signatureCanvas = await renderNodeToCanvas(signatureTemplate, renderScale);
+                signatureHeightMm = canvasToMm(signatureCanvas, PAGE_WIDTH_MM).heightMm;
+            }
+            if (footerTemplate) {
+                footerCanvas = await renderNodeToCanvas(footerTemplate, renderScale);
+                footerHeightMm = canvasToMm(footerCanvas, PAGE_WIDTH_MM).heightMm;
+            }
+            tempContainer.removeChild(pageTemplateSection);
+
+            const contentTopMm = TOP_MARGIN_MM + (headerHeightMm > 0 ? headerHeightMm + BLOCK_GAP_MM : 0);
+            const reservedBottomMm =
+                (signatureHeightMm > 0 ? signatureHeightMm + BLOCK_GAP_MM : 0) +
+                (footerHeightMm > 0 ? footerHeightMm + BLOCK_GAP_MM : 0);
+            const contentBottomMm = PAGE_HEIGHT_MM - BOTTOM_MARGIN_MM - reservedBottomMm;
+            const usableContentHeightMm = contentBottomMm - contentTopMm > 0 ? contentBottomMm - contentTopMm : USABLE_HEIGHT_MM;
+
+            let currentPageNumber = 1;
+            const contentPages = new Set<number>();
+            let currentY = contentTopMm;
+            let hasContentOnPage = false;
+
+            const startNewPage = () => {
+                pdf.addPage();
+                currentPageNumber += 1;
+                currentY = contentTopMm;
+                hasContentOnPage = false;
+            };
+
+            const placeCanvasWithPagination = (canvas: HTMLCanvasElement) => {
+                const { widthMm, heightMm } = canvasToMm(canvas, PAGE_WIDTH_MM);
+                const remainingMm = contentBottomMm - currentY;
+
+                if (heightMm <= remainingMm) {
+                    addCanvasAtCursor(pdf, canvas, MARGIN_X_MM, currentY, widthMm, heightMm);
+                    currentY += heightMm + BLOCK_GAP_MM;
+                    hasContentOnPage = true;
+                    contentPages.add(currentPageNumber);
+                    return;
+                }
+
+                if (heightMm <= usableContentHeightMm) {
+                    if (hasContentOnPage) {
+                        startNewPage();
+                    }
+                    addCanvasAtCursor(pdf, canvas, MARGIN_X_MM, currentY, widthMm, heightMm);
+                    currentY += heightMm + BLOCK_GAP_MM;
+                    hasContentOnPage = true;
+                    contentPages.add(currentPageNumber);
+                    return;
+                }
+
+                const pxPerMm = canvas.height / heightMm;
+                const maxSliceHeightPx = Math.max(1, Math.floor(usableContentHeightMm * pxPerMm));
+                const slices = sliceCanvasByHeight(canvas, maxSliceHeightPx);
+
+                slices.forEach((slice, sliceIndex) => {
+                    if (sliceIndex > 0 || hasContentOnPage) {
+                        startNewPage();
+                    }
+                    const sliceDims = canvasToMm(slice, PAGE_WIDTH_MM);
+                    addCanvasAtCursor(pdf, slice, MARGIN_X_MM, currentY, sliceDims.widthMm, sliceDims.heightMm);
+                    currentY += sliceDims.heightMm + BLOCK_GAP_MM;
+                    hasContentOnPage = true;
+                    contentPages.add(currentPageNumber);
+                });
+            };
+
+            for (const section of sections) {
+                const sectionClone = section.cloneNode(true) as HTMLElement;
                 sectionClone.style.width = "210mm";
-                sectionClone.style.minHeight = "297mm";
                 sectionClone.style.maxWidth = "210mm";
                 sectionClone.style.margin = "0 auto";
                 sectionClone.style.boxSizing = "border-box";
                 sectionClone.style.backgroundColor = "#ffffff";
                 sectionClone.style.fontFamily = DEFAULT_FONT_FAMILY;
                 sectionClone.style.color = BASE_TEXT_COLOR;
+                sectionClone.style.pageBreakAfter = "auto";
+
+                const sectionBody = sectionClone.firstElementChild as HTMLElement | null;
+                if (sectionBody) {
+                    sectionBody.style.minHeight = "auto";
+                    sectionBody.style.height = "auto";
+                }
 
                 tempContainer.appendChild(sectionClone);
 
-                const canvasOptions: Html2CanvasEnhancedOptions = {
-                    useCORS: true,
-                    allowTaint: true,
-                    background: "#ffffff",
-                    scale: renderScale,
-                    windowWidth: sectionClone.scrollWidth,
-                    windowHeight: sectionClone.scrollHeight,
-                    logging: false,
-                };
-
-                const canvas = await html2canvas(sectionClone, canvasOptions);
-                const context = canvas.getContext("2d");
-                if (context) {
-                    context.imageSmoothingEnabled = true;
-                    (context as CanvasRenderingContext2D & { imageSmoothingQuality?: "low" | "medium" | "high" }).imageSmoothingQuality =
-                        "high";
+                const testName = (section as HTMLElement).getAttribute("data-test-name") || "";
+                const testCategory = (section as HTMLElement).getAttribute("data-test-category") || "";
+                if (isRadiologyReport(testName, testCategory) && hasContentOnPage) {
+                    startNewPage();
                 }
 
-                const imgData = canvas.toDataURL("image/jpeg", 1);
-                const imgWidth = pageWidth;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                const blocks = Array.from(sectionClone.querySelectorAll("[data-print-block]")) as HTMLElement[];
+                const topLevelBlocks = blocks.filter((block) => !block.parentElement?.closest("[data-print-block]"));
+                const contentBlocks = topLevelBlocks.filter((block) => {
+                    const role = block.getAttribute("data-print-role");
+                    return role !== "header" && role !== "signature" && role !== "footer";
+                });
+                const nodesToRender = contentBlocks.length > 0 ? contentBlocks : [sectionClone];
 
-                if (index > 0) {
-                    pdf.addPage();
+                for (const node of nodesToRender) {
+                    const isTableBlock = node.getAttribute("data-print-table") === "true";
+
+                    if (!isTableBlock) {
+                        const canvas = await renderNodeToCanvas(node, renderScale);
+                        placeCanvasWithPagination(canvas);
+                        continue;
+                    }
+
+                    const fullCanvas = await renderNodeToCanvas(node, renderScale);
+                    const fullDims = canvasToMm(fullCanvas, PAGE_WIDTH_MM);
+                    const remainingMm = contentBottomMm - currentY;
+
+                    if (fullDims.heightMm <= remainingMm) {
+                        addCanvasAtCursor(pdf, fullCanvas, MARGIN_X_MM, currentY, fullDims.widthMm, fullDims.heightMm);
+                        currentY += fullDims.heightMm + BLOCK_GAP_MM;
+                        hasContentOnPage = true;
+                        contentPages.add(currentPageNumber);
+                        continue;
+                    }
+
+                    if (fullDims.heightMm <= usableContentHeightMm) {
+                        if (hasContentOnPage) {
+                            startNewPage();
+                        }
+                        addCanvasAtCursor(pdf, fullCanvas, MARGIN_X_MM, currentY, fullDims.widthMm, fullDims.heightMm);
+                        currentY += fullDims.heightMm + BLOCK_GAP_MM;
+                        hasContentOnPage = true;
+                        contentPages.add(currentPageNumber);
+                        continue;
+                    }
+
+                    const pxPerMm = fullCanvas.height / fullDims.heightMm;
+                    const maxChunkHeightPx = Math.max(1, Math.floor(usableContentHeightMm * pxPerMm));
+                    const chunkNodes = chunkTableElementByRows(node, maxChunkHeightPx);
+
+                    for (const chunkNode of chunkNodes) {
+                        tempContainer.appendChild(chunkNode);
+                        const chunkCanvas = await renderNodeToCanvas(chunkNode, renderScale);
+                        tempContainer.removeChild(chunkNode);
+
+                        const chunkDims = canvasToMm(chunkCanvas, PAGE_WIDTH_MM);
+                        const chunkRemainingMm = contentBottomMm - currentY;
+                        if (chunkDims.heightMm > chunkRemainingMm && hasContentOnPage) {
+                            startNewPage();
+                        }
+
+                        if (chunkDims.heightMm <= usableContentHeightMm) {
+                            addCanvasAtCursor(pdf, chunkCanvas, MARGIN_X_MM, currentY, chunkDims.widthMm, chunkDims.heightMm);
+                            currentY += chunkDims.heightMm + BLOCK_GAP_MM;
+                            hasContentOnPage = true;
+                            contentPages.add(currentPageNumber);
+                            continue;
+                        }
+
+                        const chunkPxPerMm = chunkCanvas.height / chunkDims.heightMm;
+                        const maxSliceHeightPx = Math.max(1, Math.floor(usableContentHeightMm * chunkPxPerMm));
+                        const chunkSlices = sliceCanvasByHeight(chunkCanvas, maxSliceHeightPx);
+                        chunkSlices.forEach((slice, sliceIndex) => {
+                            if (sliceIndex > 0 || hasContentOnPage) {
+                                startNewPage();
+                            }
+                            const sliceDims = canvasToMm(slice, PAGE_WIDTH_MM);
+                            addCanvasAtCursor(pdf, slice, MARGIN_X_MM, currentY, sliceDims.widthMm, sliceDims.heightMm);
+                            currentY += sliceDims.heightMm + BLOCK_GAP_MM;
+                            hasContentOnPage = true;
+                            contentPages.add(currentPageNumber);
+                        });
+                    }
                 }
-                pdf.addImage(imgData, "JPEG", margin, topMargin, imgWidth, imgHeight, undefined, "FAST");
+
                 tempContainer.removeChild(sectionClone);
             }
 
-            document.body.removeChild(tempContainer);
+            const pagesToStamp = Array.from(contentPages).sort((a, b) => a - b);
+            pagesToStamp.forEach((pageNo) => {
+                pdf.setPage(pageNo);
+                if (headerCanvas && headerHeightMm > 0) {
+                    addCanvasAtCursor(pdf, headerCanvas, MARGIN_X_MM, TOP_MARGIN_MM, PAGE_WIDTH_MM, headerHeightMm);
+                }
+                if (signatureCanvas && signatureHeightMm > 0) {
+                    const signatureY =
+                        PAGE_HEIGHT_MM -
+                        BOTTOM_MARGIN_MM -
+                        (footerHeightMm > 0 ? footerHeightMm + BLOCK_GAP_MM : 0) -
+                        signatureHeightMm;
+                    addCanvasAtCursor(pdf, signatureCanvas, MARGIN_X_MM, signatureY, PAGE_WIDTH_MM, signatureHeightMm);
+                }
+                if (footerCanvas && footerHeightMm > 0) {
+                    const footerY = PAGE_HEIGHT_MM - BOTTOM_MARGIN_MM - footerHeightMm;
+                    addCanvasAtCursor(pdf, footerCanvas, MARGIN_X_MM, footerY, PAGE_WIDTH_MM, footerHeightMm);
+                }
+            });
+
             const pdfBlob = pdf.output("blob");
             const pdfUrl = URL.createObjectURL(pdfBlob);
             window.open(pdfUrl, "_blank");
@@ -483,6 +803,9 @@ const CommonReportView2 = ({
             console.error("PDF generation error:", error);
             toast.error("Failed to generate PDF");
         } finally {
+            if (tempContainer && document.body.contains(tempContainer)) {
+                document.body.removeChild(tempContainer);
+            }
             setPrinting(false);
         }
     };
@@ -787,9 +1110,15 @@ const CommonReportView2 = ({
                     }
 
                     return (
-                        <section key={report.reportId} data-report-id={report.reportId} className="mb-10 page-break">
-                            <div className="flex flex-col min-h-[297mm]">
-                                <div className="mb-4 bg-white pt-4 pb-4 border-b-2 border-blue-600">
+                        <section
+                            key={report.reportId}
+                            data-report-id={report.reportId}
+                            data-test-name={report.testName}
+                            data-test-category={report.testCategory || ""}
+                            className="mb-10 page-break"
+                        >
+                            <div className="flex flex-col">
+                                <div className="mb-4 bg-white pt-4 pb-4 border-b-2 border-blue-600" data-print-block data-print-role="header">
                                     {/* Top Section - Logo and Lab Info */}
                                     <div className="flex flex-row items-center gap-4 mb-4">
                                         {/* Logo - Larger height */}
@@ -870,14 +1199,14 @@ const CommonReportView2 = ({
 
                                 {/* Test Name Heading */}
                                 {!shouldHideTestNameHeading && (
-                                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center">{report.testName}</h3>
+                                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center " data-print-block>{report.testName}</h3>
                                 )}
 
                                 {/* If DETAILED REPORT -> render reportJson content and optional reference ranges, skip table */}
                                 {detailedEntry && detailedEntry.reportJson && (
                                     <div className="w-full">
                                         {/* Detailed Report Section */}
-                                        <div className="mb-3">
+                                        <div className="mb-3" data-print-block>
                                             <div className="p-2 bg-white">
                                                 <div
                                                     className="report-html"
@@ -896,7 +1225,7 @@ const CommonReportView2 = ({
                                         {renderReferenceRanges(detailedEntry.referenceRanges)}
 
                                         {/* Signature Block - appears right after detailed report content */}
-                                        <div className="grid grid-cols-2 gap-4 pt-4 mt-4">
+                                        <div className="grid grid-cols-2 gap-4 pt-4 mt-4" data-print-block data-print-role="signature">
                                             <div className="text-center">
                                             <div className="h-14 flex items-center justify-center"></div>
                                             <div className="mt-1 text-xs text-gray-700 font-medium">Lab Technician</div>
@@ -928,9 +1257,9 @@ const CommonReportView2 = ({
 
                                 {/* If not detailed report, render the classic table */}
                                 {!detailedEntry && !shouldHideResultTable && (
-                                    <div className="overflow-hidden rounded-lg border border-blue-200">
-                                        <table className="w-full text-xs border-collapse">
-                                            <thead className="bg-blue-50">
+                                    <div className="overflow-hidden rounded-lg border border-blue-200" data-print-block data-print-table="true">
+                                        <table className="w-full text-xs border-collapse  ">
+                                            <thead className="bg-blue-50 ">
                                                 <tr>
                                                     <th className="p-2 text-left font-semibold text-black">TEST PARAMETER</th>
                                                     <th className="p-2 text-center font-semibold text-black">RESULT</th>
@@ -966,8 +1295,8 @@ const CommonReportView2 = ({
                                                 return (
                                                     <>
                                                         {otherQualitativeRows.length > 0 && (
-                                                            <div className="overflow-hidden rounded-lg border border-gray-200">
-                                                                <table className="w-full text-xs border-collapse">
+                                                            <div className="overflow-hidden rounded-lg border border-gray-200" data-print-block data-print-table="true">
+                                                                <table className="w-full text-xs border-collapse ">
                                                                     <thead className="bg-blue-50">
                                                                         <tr>
                                                                             <th className="p-2 text-left font-semibold text-black">Test Name</th>
@@ -990,7 +1319,7 @@ const CommonReportView2 = ({
                                                             </div>
                                                         )}
                                                         {descriptionRows.length > 0 && (
-                                                            <div className="space-y-3 mt-3">
+                                                            <div className="space-y-3 mt-3" data-print-block>
                                                                 {descriptionRows.map((row, idx) => {
                                                 const resultValue = row.enteredValue || "N/A";
                                                 const normalizedResult = resultValue.toString().trim().toLowerCase();
@@ -1018,7 +1347,7 @@ const CommonReportView2 = ({
 
                                 {/* Signature Block - appears right after report content (only for non-detailed reports) */}
                                 {!detailedEntry && (
-                                    <div className="grid grid-cols-2 gap-4 pt-4 mt-4">
+                                    <div className="grid grid-cols-2 gap-4 pt-4 mt-4" data-print-block data-print-role="signature">
                                         <div className="text-center">
                                             <div className="h-14 flex items-center justify-center"></div>
                                             <div className="mt-1 text-xs text-gray-700 font-medium">Lab Technician</div>
@@ -1035,7 +1364,7 @@ const CommonReportView2 = ({
                                                     crossOrigin="anonymous"
                                                 />
                                             </div>
-                                            <div className="mt-1 text-xs leading-tight text-gray-700">
+                                            <div className="mt-1 text-xs leading-tight text-gray-700 my-1">
                                                 <p>Dr. Sini Arjun</p>
                                                 <p>MBBS, MD (Pathology)</p>
                                                 <p>Consultant Pathologist</p>
@@ -1047,7 +1376,7 @@ const CommonReportView2 = ({
                                     </div>
                                 )}
 
-                                <div data-footer-section className="  border-gray-200" style={{ marginTop: "auto" }}>
+                                <div data-footer-section data-print-block data-print-role="footer" className="  border-gray-200" style={{ marginTop: "auto" }}>
 
                                     <div className="mt-4 text-center">
                                         <h4 className="text-[9px] font-bold text-black mt-4 mb-1 text-left italic">Disclaimer</h4>
@@ -1102,5 +1431,3 @@ const CommonReportView2 = ({
 };
 
 export default CommonReportView2;
-
-
