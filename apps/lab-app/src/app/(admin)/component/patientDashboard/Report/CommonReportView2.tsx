@@ -954,10 +954,10 @@ const CommonReportView2 = ({
 
                         // Check if dateTimeString already has a timezone (Z, +HH:MM, +HHMM, -HH:MM, -HHMM)
                         const hasTimezone = /[Z+-]\d{2}:?\d{2}$|[Z+-]\d{4}$/.test(dateTimeString);
-                        
+
                         // Only append +05:30 if no timezone exists
                         const dateStrWithTimezone = hasTimezone ? dateTimeString : `${dateTimeString}+05:30`;
-                        
+
                         const dateObj = new Date(dateStrWithTimezone);
 
                         if (isNaN(dateObj.getTime())) {
@@ -1141,7 +1141,7 @@ const CommonReportView2 = ({
                                     <div className="w-full border border-gray-300 bg-white">
                                         <div className="grid grid-cols-2">
                                             {/* Left Section */}
-                                           
+
                                             <div className="p-3">
                                                 <div className="space-y-1.5 text-xs">
                                                     <div className="flex justify-between items-center">
@@ -1198,9 +1198,11 @@ const CommonReportView2 = ({
                                 </div>
 
                                 {/* Test Name Heading */}
-                                {!shouldHideTestNameHeading && (
+                                {/* {!shouldHideTestNameHeading && (
                                 <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center " data-print-block>{report.testName}</h3>
-                                )}
+                                )} */}
+                                
+                                
 
                                 {/* If DETAILED REPORT -> render reportJson content and optional reference ranges, skip table */}
                                 {detailedEntry && detailedEntry.reportJson && (
@@ -1208,6 +1210,7 @@ const CommonReportView2 = ({
                                         {/* Detailed Report Section */}
                                         <div className="mb-3" data-print-block>
                                             <div className="p-2 bg-white">
+                                                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center " data-print-block>{report.testName}</h3>
                                                 <div
                                                     className="report-html"
                                                     style={{
@@ -1215,6 +1218,8 @@ const CommonReportView2 = ({
                                                         fontSize: '11px',
                                                         lineHeight: '1.4'
                                                     }}
+                                                    
+                                            
                                                     dangerouslySetInnerHTML={{ __html: buildDetailedReportHTML(detailedEntry.reportJson) }}
                                                 />
                                             </div>
@@ -1227,27 +1232,27 @@ const CommonReportView2 = ({
                                         {/* Signature Block - appears right after detailed report content */}
                                         <div className="grid grid-cols-2 gap-4 pt-4 mt-4" data-print-block data-print-role="signature">
                                             <div className="text-center">
-                                            <div className="h-14 flex items-center justify-center"></div>
-                                            <div className="mt-1 text-xs text-gray-700 font-medium">Lab Technician</div>
+                                                <div className="h-14 flex items-center justify-center"></div>
+                                                <div className="mt-1 text-xs text-gray-700 font-medium">Lab Technician</div>
                                             </div>
                                             <div className="text-center">
-                                            <div className="flex items-center justify-center">
-                                                <Image
-                                                    src="/signature.png"
-                                                    alt="Authorized Pathologist Signature"
-                                                    width={180}
-                                                    height={70}
-                                                    className="h-14 w-auto object-contain"
-                                                    unoptimized
-                                                    crossOrigin="anonymous"
-                                                />
-                                            </div>
-                                            <div className="mt-1 text-xs leading-tight text-gray-700">
-                                                <p>Dr. Sini Arjun</p>
-                                                <p>MBBS, MD (Pathology)</p>
-                                                <p>Consultant Pathologist</p>
-                                            </div>
-                                            {/* <div className="mt-2 h-12 flex items-center justify-center">
+                                                <div className="flex items-center justify-center">
+                                                    <Image
+                                                        src="/signature.png"
+                                                        alt="Authorized Pathologist Signature"
+                                                        width={180}
+                                                        height={70}
+                                                        className="h-14 w-auto object-contain"
+                                                        unoptimized
+                                                        crossOrigin="anonymous"
+                                                    />
+                                                </div>
+                                                <div className="mt-1 text-xs leading-tight text-gray-700">
+                                                    <p>Dr. Sini Arjun</p>
+                                                    <p>MBBS, MD (Pathology)</p>
+                                                    <p>Consultant Pathologist</p>
+                                                </div>
+                                                {/* <div className="mt-2 h-12 flex items-center justify-center">
                                                 <span className="text-xs text-gray-700 font-medium">Authorized Pathologist</span>
                                             </div> */}
                                             </div>
@@ -1257,8 +1262,13 @@ const CommonReportView2 = ({
 
                                 {/* If not detailed report, render the classic table */}
                                 {!detailedEntry && !shouldHideResultTable && (
-                                    <div className="overflow-hidden rounded-lg border border-blue-200" data-print-block data-print-table="true">
-                                        <table className="w-full text-xs border-collapse  ">
+                                
+                                     <div className="overflow-hidden  border border-blue-200 " data-print-block data-print-table="true" style={{marginTop: shouldHideTestNameHeading ? '0' : '1rem'}}>
+                                        {/* report name */}
+                                        {!shouldHideTestNameHeading && (
+                                            <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-800 text-center my-1" data-print-block>{report.testName}</h3>
+                                        )}
+                                        <table className="w-full text-xs border-collapse rounded-lg" >
                                             <thead className="bg-blue-50 ">
                                                 <tr>
                                                     <th className="p-2 text-left font-semibold text-black">TEST PARAMETER</th>
@@ -1269,7 +1279,8 @@ const CommonReportView2 = ({
                                             </thead>
                                             <tbody>{renderedRows}</tbody>
                                         </table>
-                                    </div>
+                                
+                                   </div>
                                 )}
 
                                 {!detailedEntry && !shouldHideResultTable && referenceRangesContent}
@@ -1321,21 +1332,21 @@ const CommonReportView2 = ({
                                                         {descriptionRows.length > 0 && (
                                                             <div className="space-y-3 mt-3" data-print-block>
                                                                 {descriptionRows.map((row, idx) => {
-                                                const resultValue = row.enteredValue || "N/A";
-                                                const normalizedResult = resultValue.toString().trim().toLowerCase();
-                                                const normalizedDescription = (row.description || "").toString().trim().toLowerCase();
-                                                const showDescription =
+                                                                    const resultValue = row.enteredValue || "N/A";
+                                                                    const normalizedResult = resultValue.toString().trim().toLowerCase();
+                                                                    const normalizedDescription = (row.description || "").toString().trim().toLowerCase();
+                                                                    const showDescription =
                                                                         !!row.description && normalizedDescription !== normalizedResult;
 
-                                                return (
+                                                                    return (
                                                                         <div key={`qual-desc-${report.reportId}-${idx}`} className="text-xs">
                                                                             <p className="text-gray-800 font-semibold whitespace-pre-wrap">{resultValue}</p>
-                                                        {showDescription && (
-                                                            <p className="text-gray-600 mt-1">{row.description}</p>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
+                                                                            {showDescription && (
+                                                                                <p className="text-gray-600 mt-1">{row.description}</p>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         )}
                                                     </>
