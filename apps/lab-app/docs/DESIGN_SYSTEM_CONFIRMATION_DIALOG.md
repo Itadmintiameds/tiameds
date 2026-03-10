@@ -2,7 +2,6 @@
 
 ## Overview
 This document defines the design system for confirmation dialogs used throughout the application. All confirmation dialogs should follow these guidelines to ensure consistency and a cohesive user experience.
-
 ---
 
 ## 1. Component Structure
