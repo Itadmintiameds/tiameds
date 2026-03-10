@@ -192,23 +192,23 @@ const renderReferenceRanges = (rangesStr?: string | null) => {
     };
     return (
         <div className="mt-4" data-print-block data-print-table="true">
-            <p className="text-xs text-gray-600 mb-3 italic">
+            <p className="text-xs text-black mb-3 italic">
                 The following table shows reference ranges that vary by age and gender. These ranges may differ based on the
                 methodology used. Please consult a qualified healthcare professional for proper interpretation.
             </p>
-            <table className="w-full text-xs border border-gray-300">
+            <table className="w-full text-[13px] border border-black">
                 <thead>
                     <tr className="bg-white">
-                        <th className="p-2 font-bold border border-gray-300 text-left">GENDER</th>
-                        <th className="p-2 font-bold border border-gray-300 text-left">AGE RANGE</th>
-                        <th className="p-2 font-bold border border-gray-300 text-left">REFERENCE RANGE</th>
+                        <th className="p-2 font-bold border border-black text-left">GENDER</th>
+                        <th className="p-2 font-bold border border-black text-left">AGE RANGE</th>
+                        <th className="p-2 font-bold border border-black text-left">REFERENCE RANGE</th>
                     </tr>
                 </thead>
                 <tbody>
                     {ranges.map((range, idx) => (
-                        <tr key={`reference-range-${idx}`} className="border-b border-gray-200">
-                            <td className="p-2 border-r border-gray-200">{formatGender(range.Gender)}</td>
-                            <td className="p-2 border-r border-gray-200">{formatAge(range)}</td>
+                        <tr key={`reference-range-${idx}`} className="border-b border-black">
+                            <td className="p-2 border-r border-black">{formatGender(range.Gender)}</td>
+                            <td className="p-2 border-r border-black">{formatAge(range)}</td>
                             <td className="p-2">{range.ReferenceRange}</td>
                         </tr>
                     ))}
@@ -254,7 +254,7 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
 
             // Add description if present
             if (parsed.description) {
-                htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #374151;">${parsed.description}</p>`);
+                htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000;">${parsed.description}</p>`);
             }
 
             // Render Impression (array of strings)
@@ -269,11 +269,11 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                         htmlParts.push(`<h4 style="font-size: 11px; font-weight: 600; margin: 8px 0 4px 0; color: #000;">${table.title}</h4>`);
                     }
                     if (table.headers && Array.isArray(table.headers) && table.rows && Array.isArray(table.rows)) {
-                        let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 11px; border: 1px solid #ddd;">';
+                        let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 13px; border: 1px solid #000;">';
                         // Header row
                         tableHtml += '<thead><tr>';
                         table.headers.forEach((header: string) => {
-                            tableHtml += `<th style="border: 1px solid #ddd; padding: 6px 8px; text-align: left; background-color: #f2f2f2; font-size: 11px; font-weight: bold; color: #000;">${header}</th>`;
+                            tableHtml += `<th style="border: 1px solid #000; padding: 6px 8px; text-align: left; background-color: #f2f2f2; font-size: 11px; font-weight: bold; color: #000;">${header}</th>`;
                         });
                         tableHtml += '</tr></thead>';
                         // Data rows
@@ -281,7 +281,7 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                         table.rows.forEach((row: (string | number | boolean | null)[]) => {
                             tableHtml += '<tr>';
                             row.forEach((cell: string | number | boolean | null) => {
-                                tableHtml += `<td style="border: 1px solid #ddd; padding: 6px 8px; font-size: 11px; color: #000;">${String(cell)}</td>`;
+                                tableHtml += `<td style="border: 1px solid #000; padding: 6px 8px; font-size: 11px; color: #000;">${String(cell)}</td>`;
                             });
                             tableHtml += '</tr>';
                         });
@@ -813,9 +813,9 @@ const CommonReportView2 = ({
     if (!Array.isArray(reportsData) || reportsData.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-                <TbInfoCircle className="mb-4 text-5xl text-blue-500" />
-                <h3 className="mb-2 text-xl font-bold text-gray-700">No Test Results Available</h3>
-                <p className="max-w-md text-gray-600">
+                <TbInfoCircle className="mb-4 text-5xl text-black" />
+                <h3 className="mb-2 text-xl font-bold text-black">No Test Results Available</h3>
+                <p className="max-w-md text-black">
                     The report data for this visit is not available. Please check with the lab staff for more information.
                 </p>
             </div>
@@ -825,12 +825,12 @@ const CommonReportView2 = ({
     const displayDoctorName = doctorName || "N/A";
 
     return (
-        <div className="max-w-4xl mx-auto text-slate-900 font-sans" style={{ fontFamily: DEFAULT_FONT_FAMILY }}>
+        <div className="max-w-4xl mx-auto text-black font-sans" style={{ fontFamily: DEFAULT_FONT_FAMILY }}>
             {!hidePrintButton && (
                 <div className="print:hidden mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-sm font-medium text-slate-900">{totalReports} tests found</p>
-                        <p className="text-xs text-slate-600">{selectedCount} selected</p>
+                        <p className="text-sm font-medium text-black">{totalReports} tests found</p>
+                        <p className="text-xs text-black">{selectedCount} selected</p>
                     </div>
                     <button
                         onClick={printReports}
@@ -858,18 +858,18 @@ const CommonReportView2 = ({
             )}
 
             {totalReports > 0 && (
-                <div className="print:hidden mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+                <div className="print:hidden mb-6 rounded-2xl border border-black bg-slate-50 p-4 shadow-sm">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <p className="text-sm font-semibold text-slate-900">Select reports to print</p>
-                            <p className="text-xs text-slate-600">
+                            <p className="text-sm font-semibold text-black">Select reports to print</p>
+                            <p className="text-xs text-black">
                                 {selectedCount} of {totalReports} selected
                             </p>
                         </div>
-                        <label className="inline-flex items-center text-xs font-medium text-slate-700 cursor-pointer">
+                        <label className="inline-flex items-center text-xs font-medium text-black cursor-pointer">
                             <input
                                 type="checkbox"
-                                className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                className="mr-2 h-4 w-4 rounded border-black text-black focus:ring-blue-500"
                                 checked={isAllSelected}
                                 onChange={(e) => handleToggleAll(e.target.checked)}
                             />
@@ -881,13 +881,13 @@ const CommonReportView2 = ({
                             <label
                                 key={report.reportId}
                                 className={`flex items-center rounded-lg border px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${selectedReports[report.reportId]
-                                    ? "border-blue-200 bg-white text-slate-900 shadow-sm"
-                                    : "border-slate-200 text-slate-500"
+                                    ? "border-black bg-white text-black shadow-sm"
+                                    : "border-black text-black"
                                     }`}
                             >
                                 <input
                                     type="checkbox"
-                                    className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                    className="mr-2 h-4 w-4 rounded border-black text-black focus:ring-blue-500"
                                     checked={!!selectedReports[report.reportId]}
                                     onChange={(e) => handleToggleReport(report.reportId, e.target.checked)}
                                 />
@@ -1041,11 +1041,11 @@ const CommonReportView2 = ({
 
                         if (!isCBCTest) {
                             return isOutOfRange ? (
-                                <span className={`${boldClass} text-gray-800`}>{value}</span>
+                                <span className={`${boldClass} text-black`}>{value}</span>
                             ) : value;
                         }
                         return (
-                            <span className={`${boldClass} text-gray-900`}>
+                            <span className={`${boldClass} text-black`}>
                                 {value}
                             </span>
                         );
@@ -1057,7 +1057,7 @@ const CommonReportView2 = ({
                             return rangeValue;
                         }
                         return (
-                            <span className="text-gray-800">
+                            <span className="text-black">
                                 {rangeValue}
                             </span>
                         );
@@ -1066,8 +1066,8 @@ const CommonReportView2 = ({
                     if (!shouldHideResultTable) {
                         if (quantitativeRows.length === 0) {
                             renderedRows.push(
-                                <tr key={`no-quant-${report.reportId}`} className="border-t border-blue-100">
-                                    <td colSpan={4} className="p-4 text-center text-gray-500">
+                                <tr key={`no-quant-${report.reportId}`} className="border-t border-black">
+                                    <td colSpan={4} className="p-4 text-center text-black">
                                         {qualitativeRows.length > 0
                                             ? "Qualitative results for this report are listed below."
                                             : "No quantitative results available."}
@@ -1080,7 +1080,7 @@ const CommonReportView2 = ({
                                     renderedRows.push(
                                         <tr
                                             key={`cbc-header-${report.reportId}-${entry.key}-${idx}`}
-                                            className="bg-blue-50 text-left text-xs font-bold text-blue-800 border-t border-b border-blue-200"
+                                            className=" text-left text-[13px] font-bold text-black border-t border-b border-black"
                                         >
                                             <td className="p-2" colSpan={4}>
                                                 {entry.key}
@@ -1094,15 +1094,15 @@ const CommonReportView2 = ({
                                 const parameterLabel = isCBCTest ? (row.testParameter || "").toUpperCase() : row.testParameter;
 
                                 renderedRows.push(
-                                    <tr key={`${report.reportId}-${idx}`} className="border-t border-blue-100">
-                                        <td className="p-2 font-medium text-gray-800">
+                                    <tr key={`${report.reportId}-${idx}`} className="border-t border-black">
+                                        <td className="p-2 font-medium text-black">
                                             {parameterLabel}
                                         </td>
-                                        <td className="p-2 text-center text-gray-800">
+                                        <td className="p-2 text-center text-black">
                                             {formatResultContent(row)}
                                         </td>
-                                        <td className="p-2 text-gray-700">{formatReferenceContent(row)}</td>
-                                        <td className="p-2 text-gray-700">{row.unit || "N/A"}</td>
+                                        <td className="p-2 text-black">{formatReferenceContent(row)}</td>
+                                        <td className="p-2 text-black">{row.unit || "N/A"}</td>
                                     </tr>
                                 );
                             });
@@ -1118,7 +1118,7 @@ const CommonReportView2 = ({
                             className="mb-10 page-break"
                         >
                             <div className="flex flex-col">
-                                <div className="mb-4 bg-white pt-4 pb-4 border-b-2 border-blue-600" data-print-block data-print-role="header">
+                                <div className=" bg-white   border-b-2 border-black" data-print-block data-print-role="header">
                                     {/* Top Section - Logo and Lab Info */}
                                     <div className="flex flex-row items-center gap-4 mb-4">
                                         {/* Logo - Larger height */}
@@ -1133,32 +1133,32 @@ const CommonReportView2 = ({
                                         {/* Lab Name and Address - smaller text, uniform design */}
                                         <div className="flex flex-col justify-center gap-0.5 flex-1">
                                             <h1 className="text-base font-bold text-black leading-tight uppercase tracking-wide">{currentLab?.name}</h1>
-                                            <p className="text-[10px] text-gray-600 leading-tight uppercase">{currentLab?.address}</p>
+                                            <p className="text-[10px] text-black leading-tight uppercase">{currentLab?.address}</p>
                                         </div>
                                     </div>
 
                                     {/* Patient Details Box - Single container, compact, no divider */}
-                                    <div className="w-full border border-gray-300 bg-white">
+                                    <div className="w-full border border-black bg-white">
                                         <div className="grid grid-cols-2">
                                             {/* Left Section */}
 
                                             <div className="p-3">
                                                 <div className="space-y-1.5 text-xs">
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-gray-900 font-normal">NAME:</span>
-                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{patientData?.patientname || 'N/A'}</span>
+                                                        <span className="text-black font-normal">NAME:</span>
+                                                        <span className="text-black font-normal text-left ml-3 flex-1">{patientData?.patientname || 'N/A'}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-gray-900 font-normal">REFERRED BY:</span>
-                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{displayDoctorName}</span>
+                                                        <span className="text-black font-normal">REFERRED BY:</span>
+                                                        <span className="text-black font-normal text-left ml-3 flex-1">{displayDoctorName}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-gray-900 font-normal">LAB NO:</span>
-                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{currentLab?.id || 'N/A'}</span>
+                                                        <span className="text-black font-normal">LAB NO:</span>
+                                                        <span className="text-black font-normal text-left ml-3 flex-1">{currentLab?.id || 'N/A'}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-gray-900 font-normal">OPD/IPD:</span>
-                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{patientData?.visitType || 'N/A'}</span>
+                                                        <span className="text-black font-normal">OPD/IPD:</span>
+                                                        <span className="text-black font-normal text-left ml-3 flex-1">{patientData?.visitType || 'N/A'}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1167,12 +1167,12 @@ const CommonReportView2 = ({
                                             <div className="p-3">
                                                 <div className="space-y-1.5 text-xs">
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-gray-900 font-normal">AGE/SEX:</span>
-                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
+                                                        <span className="text-black font-normal">AGE/SEX:</span>
+                                                        <span className="text-black font-normal text-left ml-3 flex-1">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-gray-900 font-normal">DATE & TIME:</span>
-                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">
+                                                        <span className="text-black font-normal">DATE & TIME:</span>
+                                                        <span className="text-black font-normal text-left ml-3 flex-1">
                                                             {(() => {
                                                                 const { date, time } = formatReportDateTime(report.createdDateTime);
                                                                 return `${date} ${time}`;
@@ -1180,16 +1180,16 @@ const CommonReportView2 = ({
                                                         </span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-gray-900 font-normal">REPORT NO:</span>
-                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{report.reportCode || "N/A"}</span>
+                                                        <span className="text-black font-normal">REPORT NO:</span>
+                                                        <span className="text-black font-normal text-left ml-3 flex-1">{report.reportCode || "N/A"}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-gray-900 font-normal">PATIENT NO:</span>
-                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{report.patientCode || "N/A"}</span>
+                                                        <span className="text-black font-normal">PATIENT NO:</span>
+                                                        <span className="text-black font-normal text-left ml-3 flex-1">{report.patientCode || "N/A"}</span>
                                                     </div>
                                                     <div className="flex justify-between items-center">
-                                                        <span className="text-gray-900 font-normal">VISIT NO:</span>
-                                                        <span className="text-gray-900 font-normal text-left ml-3 flex-1">{report.visitCode || "N/A"}</span>
+                                                        <span className="text-black font-normal">VISIT NO:</span>
+                                                        <span className="text-black font-normal text-left ml-3 flex-1">{report.visitCode || "N/A"}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1199,7 +1199,7 @@ const CommonReportView2 = ({
 
                                 {/* Test Name Heading */}
                                 {/* {!shouldHideTestNameHeading && (
-                                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center " data-print-block>{report.testName}</h3>
+                                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-black text-center " data-print-block>{report.testName}</h3>
                                 )} */}
                                 
                                 
@@ -1210,7 +1210,7 @@ const CommonReportView2 = ({
                                         {/* Detailed Report Section */}
                                         <div className="mb-3" data-print-block>
                                             <div className="p-2 bg-white">
-                                                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-800 text-center " data-print-block>{report.testName}</h3>
+                                                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-black text-center " data-print-block>{report.testName}</h3>
                                                 <div
                                                     className="report-html"
                                                     style={{
@@ -1233,7 +1233,7 @@ const CommonReportView2 = ({
                                         <div className="grid grid-cols-2 gap-4 pt-4 mt-4" data-print-block data-print-role="signature">
                                             <div className="text-center">
                                                 <div className="h-14 flex items-center justify-center"></div>
-                                                <div className="mt-1 text-xs text-gray-700 font-medium">Lab Technician</div>
+                                                <div className="mt-1 text-xs text-black font-medium">Lab Technician</div>
                                             </div>
                                             <div className="text-center">
                                                 <div className="flex items-center justify-center">
@@ -1247,13 +1247,13 @@ const CommonReportView2 = ({
                                                         crossOrigin="anonymous"
                                                     />
                                                 </div>
-                                                <div className="mt-1 text-xs leading-tight text-gray-700">
+                                                <div className="mt-1 text-xs leading-tight text-black">
                                                     <p>Dr. Sini Arjun</p>
                                                     <p>MBBS, MD (Pathology)</p>
                                                     <p>Consultant Pathologist</p>
                                                 </div>
                                                 {/* <div className="mt-2 h-12 flex items-center justify-center">
-                                                <span className="text-xs text-gray-700 font-medium">Authorized Pathologist</span>
+                                                <span className="text-xs text-black font-medium">Authorized Pathologist</span>
                                             </div> */}
                                             </div>
                                         </div>
@@ -1263,13 +1263,13 @@ const CommonReportView2 = ({
                                 {/* If not detailed report, render the classic table */}
                                 {!detailedEntry && !shouldHideResultTable && (
                                 
-                                     <div className="overflow-hidden  border border-blue-200 " data-print-block data-print-table="true" style={{marginTop: shouldHideTestNameHeading ? '0' : '1rem'}}>
+                                     <div className="overflow-hidden  border border-black " data-print-block data-print-table="true" style={{marginTop: shouldHideTestNameHeading ? '0' : '1rem'}}>
                                         {/* report name */}
                                         {!shouldHideTestNameHeading && (
-                                            <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-800 text-center my-1" data-print-block>{report.testName}</h3>
+                                            <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-black text-center my-1" data-print-block>{report.testName}</h3>
                                         )}
-                                        <table className="w-full text-xs border-collapse rounded-lg" >
-                                            <thead className="bg-blue-50 ">
+                                        <table className="w-full text-[13px] border-collapse rounded-lg" >
+                                            <thead className=" ">
                                                 <tr>
                                                     <th className="p-2 text-left font-semibold text-black">TEST PARAMETER</th>
                                                     <th className="p-2 text-center font-semibold text-black">RESULT</th>
@@ -1306,9 +1306,9 @@ const CommonReportView2 = ({
                                                 return (
                                                     <>
                                                         {otherQualitativeRows.length > 0 && (
-                                                            <div className="overflow-hidden rounded-lg border border-gray-200" data-print-block data-print-table="true">
-                                                                <table className="w-full text-xs border-collapse ">
-                                                                    <thead className="bg-blue-50">
+                                                            <div className="overflow-hidden rounded-lg border border-black" data-print-block data-print-table="true">
+                                                                <table className="w-full text-[13px] border-collapse ">
+                                                                    <thead className="">
                                                                         <tr>
                                                                             <th className="p-2 text-left font-semibold text-black">Test Name</th>
                                                                             <th className="p-2 text-left font-semibold text-black">Result</th>
@@ -1316,7 +1316,7 @@ const CommonReportView2 = ({
                                                                     </thead>
                                                                     <tbody>
                                                                         {otherQualitativeRows.map((row, idx) => (
-                                                                            <tr key={`qual-row-${report.reportId}-${idx}`} className="border-t border-gray-100">
+                                                                            <tr key={`qual-row-${report.reportId}-${idx}`} className="border-t border-black">
                                                                                 <td className="p-2 text-black">
                                                                                     {getQualitativeDisplayName(row)}
                                                                                 </td>
@@ -1340,9 +1340,9 @@ const CommonReportView2 = ({
 
                                                                     return (
                                                                         <div key={`qual-desc-${report.reportId}-${idx}`} className="text-xs">
-                                                                            <p className="text-gray-800 font-semibold whitespace-pre-wrap">{resultValue}</p>
+                                                                            <p className="text-black font-semibold whitespace-pre-wrap">{resultValue}</p>
                                                                             {showDescription && (
-                                                                                <p className="text-gray-600 mt-1">{row.description}</p>
+                                                                                <p className="text-black mt-1">{row.description}</p>
                                                                             )}
                                                                         </div>
                                                                     );
@@ -1361,7 +1361,7 @@ const CommonReportView2 = ({
                                     <div className="grid grid-cols-2 gap-4 pt-4 mt-4" data-print-block data-print-role="signature">
                                         <div className="text-center">
                                             <div className="h-14 flex items-center justify-center"></div>
-                                            <div className="mt-1 text-xs text-gray-700 font-medium">Lab Technician</div>
+                                            <div className="mt-1 text-xs text-black font-medium">Lab Technician</div>
                                         </div>
                                         <div className="text-center">
                                             <div className="flex items-center justify-center">
@@ -1375,29 +1375,29 @@ const CommonReportView2 = ({
                                                     crossOrigin="anonymous"
                                                 />
                                             </div>
-                                            <div className="mt-1 text-xs leading-tight text-gray-700 my-1">
+                                            <div className="mt-1 text-xs leading-tight text-black my-1">
                                                 <p>Dr. Sini Arjun</p>
                                                 <p>MBBS, MD (Pathology)</p>
                                                 <p>Consultant Pathologist</p>
                                             </div>
                                             {/* <div className="mt-2 h-12 flex items-center justify-center">
-                                                <span className="text-xs text-gray-700 font-medium">Authorized Pathologist</span>
+                                                <span className="text-xs text-black font-medium">Authorized Pathologist</span>
                                             </div> */}
                                         </div>
                                     </div>
                                 )}
 
-                                <div data-footer-section data-print-block data-print-role="footer" className="  border-gray-200" style={{ marginTop: "auto" }}>
+                                <div data-footer-section data-print-block data-print-role="footer" className="  border-black" style={{ marginTop: "auto" }}>
 
                                     <div className="mt-4 text-center">
                                         <h4 className="text-[9px] font-bold text-black mt-4 mb-1 text-left italic">Disclaimer</h4>
-                                        <p className="text-[9px] text-gray-600 italic text-left mb-4">
+                                        <p className="text-[9px] text-black italic text-left mb-1">
                                             *This laboratory report is intended for clinical correlation only. Results should be interpreted by a qualified medical professional. Laboratory values may vary based on methodology and biological variance. The diagnostic center is not responsible for misinterpretation or misuse of results.*
                                         </p>
-                                        <p className="text-xs text-gray-600 mb-1">
+                                        <p className="text-[9px] text-black mb-1">
                                             This is an electronically generated report. No physical signature required.
                                         </p>
-                                        <p className="text-xs font-medium text-blue-600 mt-2">
+                                        <p className="text-[9px] font-medium text-black mt-1">
                                             Thank you for choosing {currentLab?.name || "Our Lab"}
                                         </p>
                                     </div>
@@ -1413,12 +1413,12 @@ const CommonReportView2 = ({
                                                 unoptimized
                                                 crossOrigin="anonymous"
                                             />
-                                            <span className="text-xs font-medium text-gray-600">
+                                            <span className="text-xs font-medium text-black">
                                                 Powered by Tiameds Technologies Pvt.Ltd
                                             </span>
                                         </div>
                                         <div className="text-left">
-                                            <p className="text-xs text-gray-500">Generated on:  {(() => {
+                                            <p className="text-xs text-black">Generated on:  {(() => {
                                                 const { date, time } = formatReportDateTime(report.createdDateTime);
                                                 return `${date} at ${time}`;
                                             })()}</p>
@@ -1442,3 +1442,7 @@ const CommonReportView2 = ({
 };
 
 export default CommonReportView2;
+
+
+
+

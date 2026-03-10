@@ -55,7 +55,7 @@ const baseNavigation: BaseNavigationItem[] = [
       // { name: "Profile", href: "/dashboard/profile", icon: UserIcon },
       // { name: "Preferences", href: "#", icon: ClipboardListIcon },
       { name: "Lab", href: "/dashboard/lab", icon: FlaskConical },
-      { name:"Report Settings", href: "/dashboard/reportsettings", icon: DocumentTextIcon},
+      // { name:"Report Settings", href: "/dashboard/reportsettings", icon: DocumentTextIcon},
     ],
   },
 ];
