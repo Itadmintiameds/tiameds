@@ -192,3 +192,15 @@ html {
   background-color: #f3f4f6; /* gray-100 */
   font-weight: 600;
 }
+
+@media print {
+  .description-print-block,
+  [data-print-break="page"] {
+    break-before: page;
+    break-after: page;
+    page-break-before: always;
+    page-break-after: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

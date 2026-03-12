@@ -29,12 +29,22 @@ const RADIOLOGY_PATTERNS = [
     /\bMAMMO(?:GRAPHY)?\b/i,
     /\bDOPPLER\b/i,
 ];
+// const PAGE_WIDTH_MM = 190;
+// const PAGE_HEIGHT_MM = 297;
+// const MARGIN_X_MM = 10;
+// const TOP_MARGIN_MM = 15;
+// const BOTTOM_MARGIN_MM = 10;
+// const BLOCK_GAP_MM = 2;
+
+
 const PAGE_WIDTH_MM = 190;
 const PAGE_HEIGHT_MM = 297;
 const MARGIN_X_MM = 10;
-const TOP_MARGIN_MM = 15;
-const BOTTOM_MARGIN_MM = 10;
-const BLOCK_GAP_MM = 2;
+const TOP_MARGIN_MM = 2;
+const BOTTOM_MARGIN_MM = 8;
+// Extra buffer to avoid edge clipping when html2canvas output is placed into jsPDF.
+const CONTENT_SAFETY_MM = 2;
+const BLOCK_GAP_MM = 6;
 const USABLE_HEIGHT_MM = PAGE_HEIGHT_MM - TOP_MARGIN_MM - BOTTOM_MARGIN_MM;
 
 const normalizeFieldKey = (value?: string) =>
@@ -43,6 +53,10 @@ const normalizeFieldKey = (value?: string) =>
         .replace(/–/g, "-")
         .replace(/\s+/g, "")
         .trim();
+
+const isDescriptionRow = (row?: { referenceDescription?: string; testParameter?: string }) =>
+    normalizeFieldKey(row?.referenceDescription) === "DESCRIPTION" ||
+    normalizeFieldKey(row?.testParameter) === "DESCRIPTION";
 
 const EXCLUDED_FIELD_TYPES = new Set(
     [
@@ -346,6 +360,13 @@ export interface ConsolidatedReport {
     visitCode?: string;
 }
 
+const getRowCountForOrdering = (report: ConsolidatedReport) => {
+    if (Array.isArray(report.testRows) && report.testRows.length > 0) {
+        return report.testRows.length;
+    }
+    return 1;
+};
+
 interface CommonReportView2Props {
     patientData: PatientData;
     doctorName?: string;
@@ -363,6 +384,17 @@ const CommonReportView2 = ({
     const reportRef = useRef<HTMLDivElement>(null);
     const [printing, setPrinting] = useState(false);
     const [selectedReports, setSelectedReports] = useState<Record<number, boolean>>({});
+    const sortedReports = useMemo(() => {
+        const copy = [...reportsData];
+        copy.sort((a, b) => {
+            const diff = getRowCountForOrdering(a) - getRowCountForOrdering(b);
+            if (diff !== 0) return diff;
+            const nameA = (a.testName || "").trim().toLowerCase();
+            const nameB = (b.testName || "").trim().toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+        return copy;
+    }, [reportsData]);
 
     useEffect(() => {
         if (!Array.isArray(reportsData)) {
@@ -615,7 +647,7 @@ const CommonReportView2 = ({
             const reservedBottomMm =
                 (signatureHeightMm > 0 ? signatureHeightMm + BLOCK_GAP_MM : 0) +
                 (footerHeightMm > 0 ? footerHeightMm + BLOCK_GAP_MM : 0);
-            const contentBottomMm = PAGE_HEIGHT_MM - BOTTOM_MARGIN_MM - reservedBottomMm;
+            const contentBottomMm = PAGE_HEIGHT_MM - BOTTOM_MARGIN_MM - reservedBottomMm - CONTENT_SAFETY_MM;
             const usableContentHeightMm = contentBottomMm - contentTopMm > 0 ? contentBottomMm - contentTopMm : USABLE_HEIGHT_MM;
 
             let currentPageNumber = 1;
@@ -877,7 +909,7 @@ const CommonReportView2 = ({
                         </label>
                     </div>
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                        {reportsData.map((report) => (
+                        {sortedReports.map((report) => (
                             <label
                                 key={report.reportId}
                                 className={`flex items-center rounded-lg border px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${selectedReports[report.reportId]
@@ -900,14 +932,14 @@ const CommonReportView2 = ({
 
             <div
                 ref={reportRef}
-                className="bg-white p-8"
+                className="bg-white p-8 space-y-12"
                 style={{
                     width: "210mm",
                     margin: "0 auto",
                     boxSizing: "border-box",
                 }}
             >
-                {reportsData.map((report) => {
+                {sortedReports.map((report) => {
                     const rows =
                         report.testRows && report.testRows.length > 0
                             ? report.testRows
@@ -928,6 +960,8 @@ const CommonReportView2 = ({
 
                     const firstRow = rows[0];
                     const shouldHideResultTable = rows.length > 0 && isExcludedQualitativeRow(firstRow);
+                    const hasDescriptionRow = rows.some(isDescriptionRow);
+                    const shouldIsolateDescriptionReport = hasDescriptionRow && shouldHideResultTable;
                     const shouldHideTestNameHeading =
                         rows.length > 0 &&
                         isExcludedQualitativeRow(firstRow) &&
@@ -1109,13 +1143,15 @@ const CommonReportView2 = ({
                         }
                     }
 
+                    const sectionClassName = `mb-16 page-break${shouldIsolateDescriptionReport ? " description-only-report" : ""}`;
+
                     return (
                         <section
                             key={report.reportId}
                             data-report-id={report.reportId}
                             data-test-name={report.testName}
                             data-test-category={report.testCategory || ""}
-                            className="mb-10 page-break"
+                            className={sectionClassName}
                         >
                             <div className="flex flex-col">
                                 <div className=" bg-white   border-b-2 border-black" data-print-block data-print-role="header">
@@ -1201,8 +1237,8 @@ const CommonReportView2 = ({
                                 {/* {!shouldHideTestNameHeading && (
                                 <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-black text-center " data-print-block>{report.testName}</h3>
                                 )} */}
-                                
-                                
+
+
 
                                 {/* If DETAILED REPORT -> render reportJson content and optional reference ranges, skip table */}
                                 {detailedEntry && detailedEntry.reportJson && (
@@ -1218,8 +1254,8 @@ const CommonReportView2 = ({
                                                         fontSize: '11px',
                                                         lineHeight: '1.4'
                                                     }}
-                                                    
-                                            
+
+
                                                     dangerouslySetInnerHTML={{ __html: buildDetailedReportHTML(detailedEntry.reportJson) }}
                                                 />
                                             </div>
@@ -1262,8 +1298,8 @@ const CommonReportView2 = ({
 
                                 {/* If not detailed report, render the classic table */}
                                 {!detailedEntry && !shouldHideResultTable && (
-                                
-                                     <div className="overflow-hidden  border border-black " data-print-block data-print-table="true" style={{marginTop: shouldHideTestNameHeading ? '0' : '1rem'}}>
+
+                                    <div className="overflow-hidden  border border-black " data-print-block data-print-table="true" style={{ marginTop: shouldHideTestNameHeading ? '0' : '1rem' }}>
                                         {/* report name */}
                                         {!shouldHideTestNameHeading && (
                                             <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-black text-center my-1" data-print-block>{report.testName}</h3>
@@ -1279,8 +1315,8 @@ const CommonReportView2 = ({
                                             </thead>
                                             <tbody>{renderedRows}</tbody>
                                         </table>
-                                
-                                   </div>
+
+                                    </div>
                                 )}
 
                                 {!detailedEntry && !shouldHideResultTable && referenceRangesContent}
@@ -1289,12 +1325,6 @@ const CommonReportView2 = ({
                                     <div className="mt-4">
                                         <div className="space-y-3">
                                             {(() => {
-                                                const descriptionRows = qualitativeRows.filter((row) =>
-                                                    shouldShowQualitativeDescriptionRow(row)
-                                                );
-                                                const otherQualitativeRows = qualitativeRows.filter(
-                                                    (row) => !shouldShowQualitativeDescriptionRow(row)
-                                                );
                                                 const getQualitativeDisplayName = (row: TestRow) => {
                                                     const candidate = row.testParameter || row.referenceDescription || "";
                                                     if (!candidate) return report.testName || "Test";
@@ -1302,11 +1332,19 @@ const CommonReportView2 = ({
                                                         ? (report.testName || candidate)
                                                         : candidate;
                                                 };
+                                                const descriptionRows = qualitativeRows.filter((row) =>
+                                                    shouldShowQualitativeDescriptionRow(row)
+                                                );
+                                                const otherQualitativeRows = qualitativeRows.filter(
+                                                    (row) => !shouldShowQualitativeDescriptionRow(row)
+                                                );
+                                                const shouldPageBreakBeforeDescription =
+                                                    descriptionRows.length > 0 && !shouldHideResultTable;
 
                                                 return (
                                                     <>
                                                         {otherQualitativeRows.length > 0 && (
-                                                            <div className="overflow-hidden rounded-lg border border-black" data-print-block data-print-table="true">
+                                                            <div className="overflow-hidden border border-black" data-print-block data-print-table="true">
                                                                 <table className="w-full text-[13px] border-collapse ">
                                                                     <thead className="">
                                                                         <tr>
@@ -1330,7 +1368,16 @@ const CommonReportView2 = ({
                                                             </div>
                                                         )}
                                                         {descriptionRows.length > 0 && (
-                                                            <div className="space-y-3 mt-3" data-print-block>
+                                                            <div
+                                                                className={`space-y-2 pb-4 ${shouldPageBreakBeforeDescription ? " description-print-block" : ""}`}
+                                                                data-print-block
+                                                            >
+                                                                {/*  test name */}
+                                                                {descriptionRows.some(row => getQualitativeDisplayName(row)) && (
+                                                                    <h3 className="text-sm font-bold uppercase tracking-wide text-black text-center my-1" data-print-block>
+                                                                        {report.testName}   
+                                                                    </h3>
+                                                                )}
                                                                 {descriptionRows.map((row, idx) => {
                                                                     const resultValue = row.enteredValue || "N/A";
                                                                     const normalizedResult = resultValue.toString().trim().toLowerCase();
@@ -1340,9 +1387,9 @@ const CommonReportView2 = ({
 
                                                                     return (
                                                                         <div key={`qual-desc-${report.reportId}-${idx}`} className="text-xs">
-                                                                            <p className="text-black font-semibold whitespace-pre-wrap">{resultValue}</p>
+                                                                            <p className="text-black leading-0.5 font-semibold whitespace-pre-wrap">{resultValue}</p>
                                                                             {showDescription && (
-                                                                                <p className="text-black mt-1">{row.description}</p>
+                                                                                <p className="text-black mb-1">{row.description}</p> 
                                                                             )}
                                                                         </div>
                                                                     );
@@ -1435,6 +1482,12 @@ const CommonReportView2 = ({
                     .page-break {
                         page-break-after: always;
                     }
+                    .description-only-report {
+                        page-break-before: always;
+                        page-break-inside: avoid;
+
+                    }
+                    
                 }
             `}</style>
         </div>
