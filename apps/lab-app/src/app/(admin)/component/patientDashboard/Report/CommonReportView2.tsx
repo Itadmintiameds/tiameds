@@ -182,7 +182,7 @@ interface ReferenceRangeEntry {
     ReferenceRange: string;
 }
 
-const renderReferenceRanges = (rangesStr?: string | null) => {
+const renderReferenceRanges = (rangesStr?: string | null, testName?: string | null) => {
     if (!rangesStr) return null;
     let ranges: ReferenceRangeEntry[] = [];
     try {
@@ -206,12 +206,18 @@ const renderReferenceRanges = (rangesStr?: string | null) => {
     };
     return (
         <div className="mt-4" data-print-block data-print-table="true">
-            <p className="text-xs text-black mb-3 italic">
+            {/* test name */}
+            <p className="text-xs font-bold text-black mb-1">
+                Reference Ranges for {testName || "Test"} Across Different Age and Gender Groups
+            </p>
+            <p className="text-[9px] text-black mb-3 italic -mt-1 leading-tight">
                 The following table shows reference ranges that vary by age and gender. These ranges may differ based on the
-                methodology used. Please consult a qualified healthcare professional for proper interpretation.
+                methodology used. Please consult a qualified healthcare professional for proper interpretation. asda
             </p>
             <table className="w-full text-[13px] border border-black">
                 <thead>
+                    {/* test name */}
+
                     <tr className="bg-white">
                         <th className="p-2 font-bold border border-black text-left">GENDER</th>
                         <th className="p-2 font-bold border border-black text-left">AGE RANGE</th>
@@ -977,7 +983,7 @@ const CommonReportView2 = ({
                     const quantitativeRowEntries: RenderRowEntry[] = isCBCTest
                         ? buildOrderedCBCRows(quantitativeRows)
                         : quantitativeRows.map((row) => ({ type: "row", row }));
-                    const referenceRangesContent = renderReferenceRanges(report.referenceRanges);
+                    const referenceRangesContent = renderReferenceRanges(report.referenceRanges, report.testName);
 
                     const formatReportDateTime = (
                         dateTimeString?: string
@@ -1263,7 +1269,7 @@ const CommonReportView2 = ({
 
 
                                         {/* Reference Ranges Table */}
-                                        {renderReferenceRanges(detailedEntry.referenceRanges)}
+                                        {renderReferenceRanges(detailedEntry.referenceRanges, report.testName)}
 
                                         {/* Signature Block - appears right after detailed report content */}
                                         <div className="grid grid-cols-2 gap-4 pt-4 mt-4" data-print-block data-print-role="signature">
@@ -1375,7 +1381,7 @@ const CommonReportView2 = ({
                                                                 {/*  test name */}
                                                                 {descriptionRows.some(row => getQualitativeDisplayName(row)) && (
                                                                     <h3 className="text-sm font-bold uppercase tracking-wide text-black text-center my-1" data-print-block>
-                                                                        {report.testName}   
+                                                                        {report.testName}
                                                                     </h3>
                                                                 )}
                                                                 {descriptionRows.map((row, idx) => {
@@ -1389,7 +1395,7 @@ const CommonReportView2 = ({
                                                                         <div key={`qual-desc-${report.reportId}-${idx}`} className="text-xs">
                                                                             <p className="text-black leading-0.5 font-semibold whitespace-pre-wrap">{resultValue}</p>
                                                                             {showDescription && (
-                                                                                <p className="text-black mb-1">{row.description}</p> 
+                                                                                <p className="text-black mb-1">{row.description}</p>
                                                                             )}
                                                                         </div>
                                                                     );
