@@ -207,8 +207,12 @@ const renderReferenceRanges = (rangesStr?: string | null, testName?: string | nu
     return (
         <div className="mt-4" data-print-block data-print-table="true">
             {/* test name */}
-            <p className="text-xs font-bold text-black mb-1">
-                Reference Ranges for {testName || "Test"} Across Different Age and Gender Groups
+            <p className="text-xs font-semibold text-black mb-1">
+                Reference Ranges for{" "}
+                <span className="font-bold" >
+                    {(testName || "Test").toUpperCase()}
+                </span>{" "}
+                Across Different Age and Gender Groups
             </p>
             <p className="text-[9px] text-black mb-3 italic -mt-1 leading-tight">
                 The following table shows reference ranges that vary by age and gender. These ranges may differ based on the
