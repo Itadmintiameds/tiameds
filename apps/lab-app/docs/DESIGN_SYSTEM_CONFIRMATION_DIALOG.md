@@ -77,6 +77,7 @@ style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
 
 ---
 
+
 ## 4. Content Section
 
 ### Content Container
