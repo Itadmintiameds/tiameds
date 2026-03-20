@@ -57,6 +57,8 @@ style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
 - **Padding**: px-6 (1.5rem horizontal), py-4 (1rem vertical)
 - **Border**: Bottom border with gray-200
 
+
+
 ### Header Content
 ```tsx
 <div className="flex items-center justify-between">
