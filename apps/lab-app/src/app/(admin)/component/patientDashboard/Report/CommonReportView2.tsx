@@ -262,12 +262,104 @@ interface DetailedReport {
     impression?: string[];
 }
 
+// const buildDetailedReportHTML = (reportJson?: string | null) => {
+//     if (!reportJson) return '';
+//     try {
+//         const parsed = JSON.parse(reportJson) as DetailedReport;
+
+//         // Check if this is a structured report with tables, sections, or impression
+//         const hasStructuredData =
+//             (parsed.tables && Array.isArray(parsed.tables) && parsed.tables.length > 0) ||
+//             (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) ||
+//             (parsed.impression && Array.isArray(parsed.impression) && parsed.impression.length > 0);
+
+//         if (parsed && hasStructuredData) {
+//             const htmlParts: string[] = [];
+
+//             // Add description if present
+//             if (parsed.description) {
+//                 htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000;">${parsed.description}</p>`);
+//             }
+
+//             // Render Impression (array of strings)
+//             if (parsed.impression && Array.isArray(parsed.impression) && parsed.impression.length > 0) {
+//                 htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;"><strong>Impression:</strong> ${parsed.impression.join(', ')}</p>`);
+//             }
+
+//             // Render Tables
+//             if (parsed.tables && Array.isArray(parsed.tables) && parsed.tables.length > 0) {
+//                 parsed.tables.forEach((table) => {
+//                     if (table.title) {
+//                         htmlParts.push(`<h4 style="font-size: 11px; font-weight: 600; margin: 8px 0 4px 0; color: #000;">${table.title}</h4>`);
+//                     }
+//                     if (table.headers && Array.isArray(table.headers) && table.rows && Array.isArray(table.rows)) {
+//                         let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 13px; border: 1px solid #000;">';
+//                         // Header row
+//                         tableHtml += '<thead><tr>';
+//                         table.headers.forEach((header: string) => {
+//                             tableHtml += `<th style="border: 1px solid #000; padding: 6px 8px; text-align: left; background-color: #f2f2f2; font-size: 11px; font-weight: bold; color: #000;">${header}</th>`;
+//                         });
+//                         tableHtml += '</tr></thead>';
+//                         // Data rows
+//                         tableHtml += '<tbody>';
+//                         table.rows.forEach((row: (string | number | boolean | null)[]) => {
+//                             tableHtml += '<tr>';
+//                             row.forEach((cell: string | number | boolean | null) => {
+//                                 tableHtml += `<td style="border: 1px solid #000; padding: 6px 8px; font-size: 11px; color: #000;">${String(cell)}</td>`;
+//                             });
+//                             tableHtml += '</tr>';
+//                         });
+//                         tableHtml += '</tbody></table>';
+//                         htmlParts.push(tableHtml);
+//                     }
+//                 });
+//             }
+
+//             // Render Sections
+//             if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
+//                 const sectionsHtml = parsed.sections
+//                     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+//                     .map((section) => {
+//                         // Ensure readable spacing before bold labels like "Limitations:" when missing spaces
+//                         const cleanedContent = String(section.content ?? '')
+//                             .replace(/([^\s>])<strong>/g, '$1 <strong>')
+//                             .replace(/<ul>/g, '<ul style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4;">')
+//                             .replace(/<ol>/g, '<ol style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4;">')
+//                             .replace(/<li>/g, '<li style="margin: 2px 0;">')
+//                             .replace(/<p>/g, '<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;">')
+//                             // strip background styles that cause gray fill in print
+//                             .replace(/background(?:-color)?:[^;"']*;?/gi, '')
+//                             .replace(/style="\s*"/gi, '');
+//                         return `
+//                             <div style="margin-bottom: 8px;">
+//                                  ${section.title ? `<h4 style="font-size: 11px; font-weight: 600; margin: 4px 0; color: #000;"></h4>` : ''}
+//                                 <div style="font-size: 11px; line-height: 1.4;">${cleanedContent}</div>
+//                             </div>
+//                         `;
+//                     })
+//                     .join('');
+//                 htmlParts.push(sectionsHtml);
+//             }
+
+//             return `<div style="margin-bottom: 8px;">${htmlParts.join('')}</div>`;
+//         }
+
+//         // Fallback to formatter if structure is not as expected
+//         return `<div>${formatMedicalReportToHTML(reportJson) || ''}</div>`;
+//     } catch {
+//         return `<div>${formatMedicalReportToHTML(reportJson) || ''}</div>`;
+//     }
+// };
+
+
+
+
+
 const buildDetailedReportHTML = (reportJson?: string | null) => {
     if (!reportJson) return '';
     try {
         const parsed = JSON.parse(reportJson) as DetailedReport;
 
-        // Check if this is a structured report with tables, sections, or impression
         const hasStructuredData =
             (parsed.tables && Array.isArray(parsed.tables) && parsed.tables.length > 0) ||
             (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) ||
@@ -276,36 +368,31 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
         if (parsed && hasStructuredData) {
             const htmlParts: string[] = [];
 
-            // Add description if present
             if (parsed.description) {
-                htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000;">${parsed.description}</p>`);
+                htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000000; padding-bottom: 1px;">${parsed.description}</p>`);
             }
 
-            // Render Impression (array of strings)
             if (parsed.impression && Array.isArray(parsed.impression) && parsed.impression.length > 0) {
-                htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;"><strong>Impression:</strong> ${parsed.impression.join(', ')}</p>`);
+                htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000000;"><strong style="color: #000000;">Impression:</strong> ${parsed.impression.join(', ')}</p>`);
             }
 
-            // Render Tables
             if (parsed.tables && Array.isArray(parsed.tables) && parsed.tables.length > 0) {
                 parsed.tables.forEach((table) => {
                     if (table.title) {
-                        htmlParts.push(`<h4 style="font-size: 11px; font-weight: 600; margin: 8px 0 4px 0; color: #000;">${table.title}</h4>`);
+                        htmlParts.push(`<h4 style="font-size: 11px; font-weight: 600; margin: 8px 0 4px 0; color: #000000;">${table.title}</h4>`);
                     }
                     if (table.headers && Array.isArray(table.headers) && table.rows && Array.isArray(table.rows)) {
-                        let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 13px; border: 1px solid #000;">';
-                        // Header row
-                        tableHtml += '<thead><tr>';
+                        let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 11px; border: 1px solid #000000;">';
+                        tableHtml += '<thead><tr style="vertical-align: middle;">';
                         table.headers.forEach((header: string) => {
-                            tableHtml += `<th style="border: 1px solid #000; padding: 6px 8px; text-align: left; background-color: #f2f2f2; font-size: 11px; font-weight: bold; color: #000;">${header}</th>`;
+                            tableHtml += `<th style="border: 1px solid #000000; padding: 5px 8px; text-align: left; background-color: #ffffff; font-size: 11px; font-weight: bold; color: #000000; line-height: 1.4; vertical-align: middle;">${header}</th>`;
                         });
                         tableHtml += '</tr></thead>';
-                        // Data rows
                         tableHtml += '<tbody>';
                         table.rows.forEach((row: (string | number | boolean | null)[]) => {
-                            tableHtml += '<tr>';
+                            tableHtml += '<tr style="vertical-align: middle;">';
                             row.forEach((cell: string | number | boolean | null) => {
-                                tableHtml += `<td style="border: 1px solid #000; padding: 6px 8px; font-size: 11px; color: #000;">${String(cell)}</td>`;
+                                tableHtml += `<td style="border: 1px solid #000000; padding: 5px 8px; font-size: 11px; color: #000000; line-height: 1.4; vertical-align: middle;">${String(cell)}</td>`;
                             });
                             tableHtml += '</tr>';
                         });
@@ -315,25 +402,46 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                 });
             }
 
-            // Render Sections
             if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
                 const sectionsHtml = parsed.sections
                     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
                     .map((section) => {
-                        // Ensure readable spacing before bold labels like "Limitations:" when missing spaces
                         const cleanedContent = String(section.content ?? '')
-                            .replace(/([^\s>])<strong>/g, '$1 <strong>')
-                            .replace(/<ul>/g, '<ul style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4;">')
-                            .replace(/<ol>/g, '<ol style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4;">')
-                            .replace(/<li>/g, '<li style="margin: 2px 0;">')
-                            .replace(/<p>/g, '<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;">')
-                            // strip background styles that cause gray fill in print
+                            // ✅ STEP 1: Strip unwanted label paragraphs first
+                            .replace(/<p>\s*<strong>\s*Tables:\s*<\/strong>\s*<\/p>/gi, '')
+                            .replace(/<p>\s*<strong>\s*Sections:\s*<\/strong>\s*<\/p>/gi, '')
+                            // ✅ STEP 2: Strip original background colors BEFORE injecting our styles
                             .replace(/background(?:-color)?:[^;"']*;?/gi, '')
+                            // ✅ STEP 3: Remove colgroup
+                            .replace(/<colgroup>[\s\S]*?<\/colgroup>/gi, '')
+                            // ✅ STEP 4: Now inject clean table styles
+                            .replace(/<table[^>]*>/gi, '<table style="border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 11px; border: 1px solid #000000;">')
+                            .replace(/<tr[^>]*>/gi, '<tr style="vertical-align: middle;">')
+                            .replace(/<th[^>]*>/gi, '<th style="border: 1px solid #000000; padding: 5px 8px; text-align: left; background-color: #ffffff; font-weight: bold; color: #000000; line-height: 1.4; vertical-align: middle;">')
+                            .replace(/<td[^>]*>/gi, '<td style="border: 1px solid #000000; padding: 5px 8px; color: #000000; line-height: 1.4; vertical-align: middle;">')
+                            // ✅ STEP 5: Strip <p> and <br> tags inside table cells
+                            .replace(/(<t[dh][^>]*>)\s*(<p[^>]*>)?\s*/gi, '$1')
+                            .replace(/\s*(<\/p>)?\s*(<\/t[dh]>)/gi, '$2')
+                            .replace(/<br\s*\/?>\s*(<\/t[dh]>)/gi, '$1')
+                            // ✅ STEP 6: Fix strong tags
+                            .replace(/([^\s>])<strong>/g, '$1 <strong>')
+                            .replace(/<strong>/g, '<strong style="color: #000000; font-weight: 700;">')
+                            .replace(/<strong style="(?!color)/g, '<strong style="color: #000000; font-weight: 700; ')
+                            // ✅ STEP 7: Fix list and paragraph styles
+                            .replace(/<ul>/g, '<ul style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4; color: #000000;">')
+                            .replace(/<ol>/g, '<ol style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4; color: #000000;">')
+                            .replace(/<li>/g, '<li style="margin: 2px 0; color: #000000;">')
+                            .replace(/<p>/g, '<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000000; padding-bottom: 1px;">')
+                            // ✅ STEP 8: Clean up empty style attributes
                             .replace(/style="\s*"/gi, '');
+
                         return `
-                            <div style="margin-bottom: 8px;">
-                                 ${section.title ? `<h4 style="font-size: 11px; font-weight: 600; margin: 4px 0; color: #000;"></h4>` : ''}
-                                <div style="font-size: 11px; line-height: 1.4;">${cleanedContent}</div>
+                            <div style="margin-bottom: 8px; color: #000000; padding-bottom: 4px;">
+                                ${section.title && section.title !== 'Formatted Report'
+                                ? `<h4 style="font-size: 11px; font-weight: 700; margin: 6px 0 2px 0; color: #000000;">${section.title}</h4>`
+                                : ''
+                            }
+                                <div style="font-size: 11px; line-height: 1.4; color: #000000; padding-bottom: 4px;">${cleanedContent}</div>
                             </div>
                         `;
                     })
@@ -341,13 +449,12 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                 htmlParts.push(sectionsHtml);
             }
 
-            return `<div style="margin-bottom: 8px;">${htmlParts.join('')}</div>`;
+            return `<div style="color: #000000; font-size: 11px; padding-bottom: 4px;">${htmlParts.join('')}</div>`;
         }
 
-        // Fallback to formatter if structure is not as expected
-        return `<div>${formatMedicalReportToHTML(reportJson) || ''}</div>`;
+        return `<div style="color: #000000;">${formatMedicalReportToHTML(reportJson) || ''}</div>`;
     } catch {
-        return `<div>${formatMedicalReportToHTML(reportJson) || ''}</div>`;
+        return `<div style="color: #000000;">${formatMedicalReportToHTML(reportJson) || ''}</div>`;
     }
 };
 
@@ -1353,13 +1460,13 @@ const CommonReportView2 = ({
 
                                                 return (
                                                     <>
-                                                        {otherQualitativeRows.length > 0 && (
+                                                        {/* {otherQualitativeRows.length > 0 && (
                                                             <div className="overflow-hidden border border-black" data-print-block data-print-table="true">
-                                                                <table className="w-full text-[13px] border-collapse ">
-                                                                    <thead className="">
+                                                                <table className="w-full text-[13px] border-collapse">
+                                                                    <thead>
                                                                         <tr>
                                                                             <th className="p-2 text-left font-semibold text-black">Test Name</th>
-                                                                            <th className="p-2 text-left font-semibold text-black">Result</th>
+                                                                            <th className="p-2 text-right font-semibold text-black">Result</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
@@ -1368,7 +1475,33 @@ const CommonReportView2 = ({
                                                                                 <td className="p-2 text-black">
                                                                                     {getQualitativeDisplayName(row)}
                                                                                 </td>
-                                                                                <td className="p-2 text-black font-semibold">
+                                                                                <td className="p-2 text-black font-semibold text-right">
+                                                                                    {row.enteredValue || "N/A"}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        )} */}
+
+
+                                                        {otherQualitativeRows.length > 0 && (
+                                                            <div className="overflow-hidden border border-black" data-print-block data-print-table="true">
+                                                                <table className="w-full text-[13px] border-collapse table-fixed">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th className="p-2 text-left font-semibold text-black w-2/3">Test Name</th>
+                                                                            <th className="p-2 text-center font-semibold text-black w-1/3">Result</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {otherQualitativeRows.map((row, idx) => (
+                                                                            <tr key={`qual-row-${report.reportId}-${idx}`} className="border-t border-black">
+                                                                                <td className="p-2 text-black w-2/3">
+                                                                                    {getQualitativeDisplayName(row)}
+                                                                                </td>
+                                                                                <td className="p-2 text-black font-semibold text-center w-1/3">
                                                                                     {row.enteredValue || "N/A"}
                                                                                 </td>
                                                                             </tr>
@@ -1377,6 +1510,8 @@ const CommonReportView2 = ({
                                                                 </table>
                                                             </div>
                                                         )}
+
+
                                                         {descriptionRows.length > 0 && (
                                                             <div
                                                                 className={`space-y-2 pb-4 ${shouldPageBreakBeforeDescription ? " description-print-block" : ""}`}
