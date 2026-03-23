@@ -7,9 +7,10 @@ import { Doctor } from '@/types/doctor/doctor';
 import { Packages } from '@/types/package/package';
 import { TestList } from '@/types/test/testlist';
 import { Patient, BillingTransaction } from '@/types/patient/patient';
-import { calculateAge } from '@/utils/ageUtils';
+// import { calculateAge, formatAgeForDisplay } from '@/utils/ageUtils';
+import { formatAgeForDisplay } from '@/utils/ageUtils';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import jsPDF from 'jspdf'
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { FaFileInvoiceDollar, FaFilePdf, FaPrint,  FaSignature } from 'react-icons/fa';
@@ -295,7 +296,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
             <div>
               <p className="font-semibold text-black mb-1 border-b border-gray-400 pb-0.5">Patient</p>
               <p className="text-black leading-tight"><span className="font-medium">Name:</span> {patient?.firstName || ''} {patient?.lastName || ''}</p>
-              <p className="text-black leading-tight"><span className="font-medium">Age/Sex:</span> {calculateAge(patient?.dateOfBirth || '').split(' ')[0]} yrs / {patient?.gender || 'N/A'}</p>
+              <p className="text-black leading-tight"><span className="font-medium">Age/Sex:</span> {formatAgeForDisplay(patient?.dateOfBirth || '')} / {patient?.gender || 'N/A'}</p>
               <p className="text-black leading-tight"><span className="font-medium">Contact:</span> {patient?.phone || 'N/A'}</p>
               <p className="text-black leading-tight"><span className="font-medium">Code:</span> {patient?.patientCode || 'N/A'}</p>
             </div>
