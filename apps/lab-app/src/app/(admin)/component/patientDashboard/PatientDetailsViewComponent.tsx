@@ -7,7 +7,8 @@ import { Doctor } from '@/types/doctor/doctor';
 import { Packages } from '@/types/package/package';
 import { TestList } from '@/types/test/testlist';
 import { Patient, BillingTransaction } from '@/types/patient/patient';
-import { calculateAge, formatAgeForDisplay } from '@/utils/ageUtils';
+// import { calculateAge, formatAgeForDisplay } from '@/utils/ageUtils';
+import { formatAgeForDisplay } from '@/utils/ageUtils';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf'
 import React, { useEffect, useRef, useState } from 'react';
