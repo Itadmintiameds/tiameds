@@ -262,98 +262,6 @@ interface DetailedReport {
     impression?: string[];
 }
 
-// const buildDetailedReportHTML = (reportJson?: string | null) => {
-//     if (!reportJson) return '';
-//     try {
-//         const parsed = JSON.parse(reportJson) as DetailedReport;
-
-//         // Check if this is a structured report with tables, sections, or impression
-//         const hasStructuredData =
-//             (parsed.tables && Array.isArray(parsed.tables) && parsed.tables.length > 0) ||
-//             (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) ||
-//             (parsed.impression && Array.isArray(parsed.impression) && parsed.impression.length > 0);
-
-//         if (parsed && hasStructuredData) {
-//             const htmlParts: string[] = [];
-
-//             // Add description if present
-//             if (parsed.description) {
-//                 htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000;">${parsed.description}</p>`);
-//             }
-
-//             // Render Impression (array of strings)
-//             if (parsed.impression && Array.isArray(parsed.impression) && parsed.impression.length > 0) {
-//                 htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;"><strong>Impression:</strong> ${parsed.impression.join(', ')}</p>`);
-//             }
-
-//             // Render Tables
-//             if (parsed.tables && Array.isArray(parsed.tables) && parsed.tables.length > 0) {
-//                 parsed.tables.forEach((table) => {
-//                     if (table.title) {
-//                         htmlParts.push(`<h4 style="font-size: 11px; font-weight: 600; margin: 8px 0 4px 0; color: #000;">${table.title}</h4>`);
-//                     }
-//                     if (table.headers && Array.isArray(table.headers) && table.rows && Array.isArray(table.rows)) {
-//                         let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 13px; border: 1px solid #000;">';
-//                         // Header row
-//                         tableHtml += '<thead><tr>';
-//                         table.headers.forEach((header: string) => {
-//                             tableHtml += `<th style="border: 1px solid #000; padding: 6px 8px; text-align: left; background-color: #f2f2f2; font-size: 11px; font-weight: bold; color: #000;">${header}</th>`;
-//                         });
-//                         tableHtml += '</tr></thead>';
-//                         // Data rows
-//                         tableHtml += '<tbody>';
-//                         table.rows.forEach((row: (string | number | boolean | null)[]) => {
-//                             tableHtml += '<tr>';
-//                             row.forEach((cell: string | number | boolean | null) => {
-//                                 tableHtml += `<td style="border: 1px solid #000; padding: 6px 8px; font-size: 11px; color: #000;">${String(cell)}</td>`;
-//                             });
-//                             tableHtml += '</tr>';
-//                         });
-//                         tableHtml += '</tbody></table>';
-//                         htmlParts.push(tableHtml);
-//                     }
-//                 });
-//             }
-
-//             // Render Sections
-//             if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
-//                 const sectionsHtml = parsed.sections
-//                     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-//                     .map((section) => {
-//                         // Ensure readable spacing before bold labels like "Limitations:" when missing spaces
-//                         const cleanedContent = String(section.content ?? '')
-//                             .replace(/([^\s>])<strong>/g, '$1 <strong>')
-//                             .replace(/<ul>/g, '<ul style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4;">')
-//                             .replace(/<ol>/g, '<ol style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4;">')
-//                             .replace(/<li>/g, '<li style="margin: 2px 0;">')
-//                             .replace(/<p>/g, '<p style="margin: 4px 0; font-size: 11px; line-height: 1.4;">')
-//                             // strip background styles that cause gray fill in print
-//                             .replace(/background(?:-color)?:[^;"']*;?/gi, '')
-//                             .replace(/style="\s*"/gi, '');
-//                         return `
-//                             <div style="margin-bottom: 8px;">
-//                                  ${section.title ? `<h4 style="font-size: 11px; font-weight: 600; margin: 4px 0; color: #000;"></h4>` : ''}
-//                                 <div style="font-size: 11px; line-height: 1.4;">${cleanedContent}</div>
-//                             </div>
-//                         `;
-//                     })
-//                     .join('');
-//                 htmlParts.push(sectionsHtml);
-//             }
-
-//             return `<div style="margin-bottom: 8px;">${htmlParts.join('')}</div>`;
-//         }
-
-//         // Fallback to formatter if structure is not as expected
-//         return `<div>${formatMedicalReportToHTML(reportJson) || ''}</div>`;
-//     } catch {
-//         return `<div>${formatMedicalReportToHTML(reportJson) || ''}</div>`;
-//     }
-// };
-
-
-
-
 
 const buildDetailedReportHTML = (reportJson?: string | null) => {
     if (!reportJson) return '';
@@ -1134,7 +1042,6 @@ const CommonReportView2 = ({
 
 
 
-
                     const isValueOutOfRange = (enteredValue?: string, normalRange?: string): boolean => {
                         if (!enteredValue || !normalRange || enteredValue === "N/A" || normalRange === "N/A") {
                             return false;
@@ -1271,7 +1178,7 @@ const CommonReportView2 = ({
                             className={sectionClassName}
                         >
                             <div className="flex flex-col">
-                                <div className=" bg-white   border-b-2 border-black" data-print-block data-print-role="header">
+                                <div className=" bg-white border-black" data-print-block data-print-role="header">
                                     {/* Top Section - Logo and Lab Info */}
                                     <div className="flex flex-row items-center gap-4 mb-4">
                                         {/* Logo - Larger height */}
@@ -1350,18 +1257,13 @@ const CommonReportView2 = ({
                                     </div>
                                 </div>
 
-                                {/* Test Name Heading */}
-                                {/* {!shouldHideTestNameHeading && (
-                                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-black text-center " data-print-block>{report.testName}</h3>
-                                )} */}
-
-
+                        
 
                                 {/* If DETAILED REPORT -> render reportJson content and optional reference ranges, skip table */}
                                 {detailedEntry && detailedEntry.reportJson && (
                                     <div className="w-full">
                                         {/* Detailed Report Section */}
-                                        <div className="mb-3" data-print-block>
+                                        <div className="mb-3"  data-print-block>
                                             <div className="p-2 bg-white">
                                                 <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-black text-center " data-print-block>{report.testName}</h3>
                                                 <div
