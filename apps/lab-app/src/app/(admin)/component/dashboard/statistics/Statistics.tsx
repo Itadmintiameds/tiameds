@@ -1,17 +1,13 @@
-import { IoIosStats } from "react-icons/io";
 import { FaChartBar } from "react-icons/fa";
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import Loader from '../../common/Loader';
 import SubTabComponent from '../../common/SubTabComponent';
-import StatisticsMain from './StatisticsMain';
 import { useRouter } from 'next/navigation';
 
-// Component for Detailed Analytics tab that redirects to detailed reports
 const DetailedAnalytics = () => {
     const router = useRouter();
     
-    // Redirect to detailed reports page
-    React.useEffect(() => {
+    useEffect(() => {
         router.push('/dashboard/detailreports');
     }, [router]);
     
@@ -26,27 +22,31 @@ const DetailedAnalytics = () => {
 };
 
 const tabs = [
-    { id: 'Status', icon: <IoIosStats size={16} />, label: 'Stats', content: <StatisticsMain /> },
-    { id: 'DetailedAnalytics', icon: <FaChartBar size={16} />, label: 'Detailed Analytics', content: <DetailedAnalytics /> },
+    { 
+        id: 'DetailedAnalytics', 
+        icon: <FaChartBar size={16} />, 
+        label: 'Detailed Analytics', 
+        content: <DetailedAnalytics /> 
+    },
 ];
-const Statistics = () => {
-    const [activeTab, setActiveTab] = useState<string>('Status'); // Default tab set directly
 
+const Statistics = () => {
+    const [activeTab, setActiveTab] = useState<string>(tabs[0].id);
     const handleTabChange = useCallback((tabId: string) => {
         setActiveTab(tabId);
     }, []);
-
     if (!activeTab) {
         return <Loader />;
     }
-
     const activeTabContent = tabs.find((tab) => tab.id === activeTab)?.content;
-
     return (
-        <SubTabComponent tabs={tabs} selectedTab={activeTab} onTabChange={handleTabChange}>
+        <SubTabComponent 
+            tabs={tabs} 
+            selectedTab={activeTab} 
+            onTabChange={handleTabChange}
+        >
             {activeTabContent || <div>No content available</div>}
         </SubTabComponent>
     );
 };
-
 export default Statistics;

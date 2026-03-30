@@ -6,9 +6,8 @@ import AmountReceivedTable, { transformApiDataToTableFormat } from '../../compon
 import BillReport from '../../component/common/BillReport';
 import DayClosingSummary from '../../component/common/DayClosingSummary';
 import ReceiptsSummary from '../../component/common/ReceiptsSummary';
-import ReportsGraphView from '../../component/common/ReportsGraphView';
 
-// Base types for type safety
+
 interface BaseTestResult {
   id: number;
   testId: number;
@@ -22,7 +21,6 @@ interface BaseDiscount {
   id: number;
 }
 
-// Extended interfaces for type safety
 interface ExtendedTestResult extends BaseTestResult {
   testName?: string;
   category?: string;
@@ -40,7 +38,6 @@ interface ExtendedDiscount extends BaseDiscount {
   updatedBy?: string;
 }
 
-// Type that matches AmountReceivedTable's PatientApiResponse exactly
 interface PatientApiResponse {
   id: number;
   firstName: string;
@@ -105,7 +102,6 @@ interface PatientApiResponse {
   updatedBy: string | null;
 }
 
-// Import PatientData type from BillReport
 interface PatientData {
   id: number;
   firstName: string;
@@ -192,7 +188,7 @@ interface PatientData {
     }>;
   };
 }
-// Local interface for amount received data (matching csvUtils)
+
 interface AmountReceivedItem {
   slNo: number;
   receiptNo: string;
@@ -215,7 +211,6 @@ interface AmountReceivedItem {
 import { FaMoneyBillWave, FaFileInvoice, FaCalendarDay, FaReceipt, FaArrowLeft, FaChartLine } from 'react-icons/fa';
 import { DateFilterOption, getDateRange, formatDateForAPI } from '@/utils/dateUtils';
 
-// Custom date filter options for detail reports (simplified)
 const DETAIL_REPORTS_DATE_FILTER_OPTIONS = [
   { value: 'today', label: 'Today' },
   // { value: 'yesterday', label: 'Yesterday' },
@@ -228,7 +223,6 @@ import Loader from '../../component/common/Loader';
 import { toast } from 'react-toastify';
 import { convertToCSV, downloadCSV, generateCSVFilename } from '@/utils/csvUtils';
 
-// Interface for totals
 interface Totals {
   totalAmount: number;
   discount: number;
@@ -238,17 +232,12 @@ interface Totals {
   refund: number;
 }
 
-// Interface for payment totals
 interface PaymentTotals {
   cashTotal: number;
   cardTotal: number;
   upiTotal: number;
 }
 
-
-
-// Type conversion functions
-// Convert PatientData to PatientApiResponse for transformApiDataToTableFormat
 const convertPatientDataToApiResponse = (patientData: PatientData): PatientApiResponse => {
   return {
     id: patientData.id,
@@ -491,8 +480,8 @@ const Page = () => {
         return dayClosingDateFilter;
       case 'receipts':
         return receiptsDateFilter;
-      case 'graphs':
-        return graphsDateFilter;
+      // case 'graphs':
+      //   return graphsDateFilter;
       default:
         return 'today';
     }
@@ -508,8 +497,8 @@ const Page = () => {
         return dayClosingCustomStartDate;
       case 'receipts':
         return receiptsCustomStartDate;
-      case 'graphs':
-        return graphsCustomStartDate;
+      // case 'graphs':
+      //   return graphsCustomStartDate;
       default:
         return null;
     }
@@ -525,15 +514,13 @@ const Page = () => {
         return dayClosingCustomEndDate;
       case 'receipts':
         return receiptsCustomEndDate;
-      case 'graphs':
-        return graphsCustomEndDate;
+      // case 'graphs':
+      //   return graphsCustomEndDate;
       default:
         return null;
     }
   };
 
-
-  // Helper functions to set current filter values based on active tab
   const setCurrentDateFilter = (filter: DateFilterOption) => {
     switch (activeTab) {
       case 'amount-received':
@@ -548,8 +535,8 @@ const Page = () => {
       case 'receipts':
         setReceiptsDateFilter(filter);
         break;
-      case 'graphs':
-        setGraphsDateFilter(filter);
+      // case 'graphs':
+      //   setGraphsDateFilter(filter);
         break;
     }
   };
@@ -568,8 +555,8 @@ const Page = () => {
       case 'receipts':
         setReceiptsCustomStartDate(date);
         break;
-      case 'graphs':
-        setGraphsCustomStartDate(date);
+      // case 'graphs':
+      //   setGraphsCustomStartDate(date);
         break;
     }
   };
@@ -588,8 +575,8 @@ const Page = () => {
       case 'receipts':
         setReceiptsCustomEndDate(date);
         break;
-      case 'graphs':
-        setGraphsCustomEndDate(date);
+      // case 'graphs':
+      //   setGraphsCustomEndDate(date);
         break;
     }
   };
@@ -766,7 +753,6 @@ const Page = () => {
     return csvContent;
   };
 
-  // Generate print content
   const generatePrintContent = (data: AmountReceivedItem[], rawApiData: Patient[]) => {
     // Calculate totals
     const totals: Totals = data.reduce((acc, item) => {
@@ -1009,7 +995,7 @@ const Page = () => {
     }
   };
 
-  // Fetch amount received data
+
   const fetchAmountReceivedData = async () => {
     if (!currentLab?.id) return;
 
@@ -1026,16 +1012,12 @@ const Page = () => {
       const formattedStartDate = formatDateForAPI(startDate);
       const formattedEndDate = formatDateForAPI(endDate);
 
-      // Use the new API endpoint for datewise transaction details
       const response = await getDatewiseTransactionDetails(
         currentLab.id,
         formattedStartDate,
         formattedEndDate
       );
 
-
-
-      // The new API returns data directly as an array, not wrapped in a data property
       const data = Array.isArray(response) ? response : response?.data || [];
       setAmountReceivedData(data);
     } catch (error: unknown) {
@@ -1049,7 +1031,6 @@ const Page = () => {
     }
   };
 
-  // Fetch bill report data
   const fetchBillReportData = async () => {
     if (!currentLab?.id) return;
 
@@ -1065,15 +1046,12 @@ const Page = () => {
 
       const formattedStartDate = formatDateForAPI(startDate);
       const formattedEndDate = formatDateForAPI(endDate);
-
-      // Use the new API endpoint for datewise transaction details
       const response = await getDatewiseTransactionDetails(
         currentLab.id,
         formattedStartDate,
         formattedEndDate
       );
 
-      // The new API returns data directly as an array, not wrapped in a data property
       const data = Array.isArray(response) ? response : response?.data || [];
       setBillReportData(data);
     } catch (error: unknown) {
@@ -1087,7 +1065,7 @@ const Page = () => {
     }
   };
 
-  // Fetch data when filters change (excluding visitTypeFilter as it's client-side filtering)
+
   useEffect(() => {
     if (activeTab === 'amount-received') {
       fetchAmountReceivedData();
@@ -1117,18 +1095,10 @@ const Page = () => {
       label: 'Receipts',
       icon: <FaReceipt />
     },
-    {
-      id: 'graphs',
-      label: 'Graphical View',
-      icon: <FaChartLine />
-    }
   ];
 
   const renderTabContent = () => {
-    // Get the current selected date for the active tab
     const { startDate, endDate } = getDateRange(getCurrentDateFilter(), getCurrentCustomStartDate(), getCurrentCustomEndDate());
-
-    // Only set selectedDate for single date selections, not ranges
     const isDateRange = startDate && endDate && startDate !== endDate;
     const selectedDate = !isDateRange && startDate ? formatDateForAPI(startDate) : undefined;
     const startDateStr = startDate ? formatDateForAPI(startDate) : undefined;
@@ -1166,15 +1136,12 @@ const Page = () => {
             </div>
           );
         }
-
-        // Process data for amount-received tab
         const filteredData = amountReceivedData;
 
         const convertedData = filteredData.map(convertPatientToApiResponse);
         const apiResponseData = convertedData.map(convertPatientDataToApiResponse);
         const transformedData = transformApiDataToTableFormat(apiResponseData);
 
-        // Filter transformed data based on transaction payment dates
         const dateFilteredData = transformedData.filter(item => {
           if (!item.receiptDate) return false;
 
@@ -1282,14 +1249,6 @@ const Page = () => {
       case 'receipts':
         return (
           <ReceiptsSummary
-            startDate={startDateStr}
-            endDate={endDateStr}
-          />
-        );
-
-      case 'graphs':
-        return (
-          <ReportsGraphView
             startDate={startDateStr}
             endDate={endDateStr}
           />

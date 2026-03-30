@@ -5,7 +5,7 @@ import {
   FaArrowLeft, FaSignInAlt,FaFlask, 
   FaMicroscope, FaLock, FaUser, FaEye, FaEyeSlash, FaEnvelope
 } from 'react-icons/fa'
-// import {FaUserPlus} 'react-icons/fa'
+// import  {FaUserPlus} from 'react-icons/fa'
 import { FiLoader } from 'react-icons/fi'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -16,6 +16,7 @@ import { LoginData } from '@/types/Login'
 import { AxiosError } from 'axios'
 import { ZodError } from 'zod'
 import useAuthStore from '@/context/userStore';
+
 
 const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState<LoginData>({
