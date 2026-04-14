@@ -13,7 +13,7 @@ import Technacian from './sample/_component/technican/Technacian';
 const tabs = [
   {
     id: 'patient',
-    label: 'Patient Management',
+    label: 'Patient Managementt',
     icon: <FaPerson className="text-lg" />,
     activeColor: 'text-purple-600',
     borderColor: 'bg-purple-600',
