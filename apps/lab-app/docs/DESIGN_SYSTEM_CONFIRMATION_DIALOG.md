@@ -4,9 +4,6 @@
 ## Overview
 This document defines the design system for confirmation dialogs used throughout the application. All confirmation dialogs should follow these guidelines to ensure consistency and a cohesive user experience.
 ---
-
-
-
 ## 1. Component Structure
 
 ### Base Component: `ConfirmationDialog`
@@ -58,6 +55,13 @@ style={{ background: `linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)` }}
 - **Background**: Purple gradient (135deg, #E1C4F8 to #d1a8f5)
 - **Padding**: px-6 (1.5rem horizontal), py-4 (1rem vertical)
 - **Border**: Bottom border with gray-200
+
+
+
+
+
+
+
 
 ### Header Content
 ```tsx
