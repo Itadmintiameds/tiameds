@@ -1181,13 +1181,14 @@ const CommonReportView2 = ({
                                 <div className=" bg-white border-black" data-print-block data-print-role="header">
                                     {/* Top Section - Logo and Lab Info */}
                                     <div className="flex flex-row items-center gap-4 mb-4">
-                                        {/* Logo - Larger height */}
-                                        <div className="flex-shrink-0">
-                                            <Image src="/CUREPLUS HOSPITALS (1).png"
-                                                alt="Lab Logo" width={120} height={120}
-                                                className="w-28 h-28 object-contain" priority loading="eager"
-                                                unoptimized crossOrigin="anonymous" data-print-logo="true"
-                                                quality={100}
+                                        {/* Logo */}
+                                        <div className="flex-shrink-0 flex items-center justify-center w-36 h-36">
+                                            <img
+                                                src="/CUREPLUS HOSPITALS (1).png"
+                                                alt="Lab Logo"
+                                                className="max-w-full max-h-full w-auto h-auto object-contain"
+                                                crossOrigin="anonymous"
+                                                data-print-logo="true"
                                             />
                                         </div>
                                         {/* Lab Name and Address - smaller text, uniform design */}
@@ -1299,13 +1300,10 @@ const CommonReportView2 = ({
                                             </div>
                                             <div className="text-center">
                                                 <div className="flex items-center justify-center">
-                                                    <Image
+                                                    <img
                                                         src="/signature.png"
                                                         alt="Authorized Pathologist Signature"
-                                                        width={180}
-                                                        height={70}
                                                         className="h-14 w-auto object-contain"
-                                                        unoptimized
                                                         crossOrigin="anonymous"
                                                     />
                                                 </div>
@@ -1466,13 +1464,10 @@ const CommonReportView2 = ({
                                         </div>
                                         <div className="text-center">
                                             <div className="flex items-center justify-center">
-                                                <Image
+                                                <img
                                                     src="/signature.png"
                                                     alt="Authorized Pathologist Signature"
-                                                    width={180}
-                                                    height={70}
                                                     className="h-14 w-auto object-contain"
-                                                    unoptimized
                                                     crossOrigin="anonymous"
                                                 />
                                             </div>
@@ -1505,13 +1500,10 @@ const CommonReportView2 = ({
 
                                     <div className="flex justify-between items-center mt-4">
                                         <div className="flex items-center">
-                                            <Image
+                                            <img
                                                 src="/tiamed1.svg"
                                                 alt="Tiamed Logo"
-                                                width={60}
-                                                height={24}
-                                                className="h-6 w-auto mr-2 opacity-80"
-                                                unoptimized
+                                                className="max-h-6 w-auto mr-2 opacity-80 object-contain"
                                                 crossOrigin="anonymous"
                                             />
                                             <span className="text-xs font-medium text-black">
