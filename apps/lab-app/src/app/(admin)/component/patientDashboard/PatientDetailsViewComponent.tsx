@@ -13,7 +13,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf'
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { FaFileInvoiceDollar, FaFilePdf, FaPrint,  FaSignature } from 'react-icons/fa';
+import { FaFileInvoiceDollar, FaFilePdf, FaPrint, FaSignature } from 'react-icons/fa';
 import Loader from '../common/Loader';
 import { MdDownloading } from "react-icons/md";
 import Image from 'next/image';
@@ -249,9 +249,9 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
   const renderInvoicePage = (pageTests: TestList[], pageNumber: number, totalPages: number, transaction?: BillingTransaction, hideButtons: boolean = false) => {
     // Get invoice date/time from API - use billing createdAt or updatedAt or paymentDate
     const billing = patient?.visit?.billing;
-    const invoiceDateTime = billing?.createdAt 
+    const invoiceDateTime = billing?.createdAt
       ? formatInvoiceDateTime(billing.createdAt)
-      : (billing?.updatedAt 
+      : (billing?.updatedAt
         ? formatInvoiceDateTime(billing.updatedAt)
         : (billing?.paymentDate
           ? formatInvoiceDateTime(billing.paymentDate)
@@ -281,6 +281,14 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
             <div>
               <h1 className="text-lg font-bold text-black uppercase tracking-tight leading-tight">{currentLab?.name || 'DIAGNOSTIC CENTER'}</h1>
               <p className="text-xs text-black leading-tight">{currentLab?.address || ''}</p>
+              {(currentLab?.city || currentLab?.state) && (
+                <p className="text-xs text-black leading-tight">
+                  {[currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
+                </p>
+              )}
+              {currentLab?.labPhone && (
+                <p className="text-xs text-black leading-tight">Phone: {currentLab.labPhone}</p>
+              )}
             </div>
           </div>
           <div className="text-right border border-gray-600 px-3 py-1.5 bg-white">
@@ -289,7 +297,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
             <p className="text-xs text-black leading-tight"><span className="font-semibold">Date:</span> {invoiceDateTime}</p>
           </div>
         </div>
-        
+
         {/* Patient & Visit Info Section - Ultra Compact */}
         <div className="mb-4 border border-gray-600 p-2">
           <div className="grid grid-cols-3 gap-3 text-xs">

@@ -1193,7 +1193,14 @@ const CommonReportView2 = ({
                                         {/* Lab Name and Address - smaller text, uniform design */}
                                         <div className="flex flex-col justify-center gap-0.5 flex-1">
                                             <h1 className="text-base font-bold text-black leading-tight uppercase tracking-wide">{currentLab?.name}</h1>
-                                            <p className="text-[10px] text-black leading-tight uppercase">{currentLab?.address}</p>
+                                            <p className="text-[10px] text-black leading-tight uppercase">
+                                                {[currentLab?.address, currentLab?.city, currentLab?.state]
+                                                    .filter(Boolean)
+                                                    .join(', ')}
+                                            </p>
+                                            {currentLab?.labPhone && (
+                                                <p className="text-[10px] text-black leading-tight uppercase">Phone: {currentLab.labPhone}</p>
+                                            )}
                                         </div>
                                     </div>
 
@@ -1257,13 +1264,13 @@ const CommonReportView2 = ({
                                     </div>
                                 </div>
 
-                        
+
 
                                 {/* If DETAILED REPORT -> render reportJson content and optional reference ranges, skip table */}
                                 {detailedEntry && detailedEntry.reportJson && (
                                     <div className="w-full">
                                         {/* Detailed Report Section */}
-                                        <div className="mb-3"  data-print-block>
+                                        <div className="mb-3" data-print-block>
                                             <div className="p-2 bg-white">
                                                 <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-black text-center " data-print-block>{report.testName}</h3>
                                                 <div
