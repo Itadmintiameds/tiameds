@@ -165,7 +165,7 @@ const Page = () => {
 
   
 
-  const handlePrint = () => {
+  const handlePrint = () => { 
     setBillingData({
       lab: {
         name: currentLab?.name || 'N/A',
