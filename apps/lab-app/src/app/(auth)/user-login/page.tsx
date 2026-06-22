@@ -5,7 +5,7 @@ import {
   FaArrowLeft, FaSignInAlt,FaFlask, 
   FaMicroscope, FaLock, FaUser, FaEye, FaEyeSlash, FaEnvelope
 } from 'react-icons/fa'
-// import {FaUserPlus} 'react-icons/fa'
+import {FaUserPlus} from 'react-icons/fa';
 import { FiLoader } from 'react-icons/fi'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -486,12 +486,12 @@ const LoginPage: React.FC = () => {
             </div>
           </div>
 
-           {/* <Link href="/onboarding/request" passHref>
+           <Link href="/onboarding/request" passHref>
             <button className="w-full flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm text-md font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors">
               <FaUserPlus className="mr-2 text-purple-600" />
               Register Laboratory
             </button>
-          </Link> */}
+          </Link>
 
           <div className="text-center text-xs text-gray-500">
             <p>© {new Date().getFullYear()} Tiamed Diagnostics. All rights reserved.</p>
