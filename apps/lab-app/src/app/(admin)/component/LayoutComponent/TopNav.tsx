@@ -14,7 +14,7 @@ interface User {
 interface Lab {
   id: number;
   name: string;
-  logo: string;
+  logo?: string;
   address: string;
   city: string;
   state: string;

@@ -31,6 +31,13 @@ interface AddPatientComponentProps {
 }
 
 const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, addUpdatePatientListVist }: AddPatientComponentProps) => {
+  const getLocalDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
   const [tests, setTests] = useState<TestList[]>([]);
   const [packages, setPackages] = useState<PackageType[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -57,7 +64,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
     age: '',
     gender: Gender.Female,
     visit: {
-      visitDate: new Date().toISOString().split('T')[0],
+      visitDate: getLocalDateString(),
       visitType: VisitType.OUT_PATIENT,
       visitStatus: VisitStatus.PENDING,
       visitDescription: '',
@@ -75,7 +82,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         totalAmount: null,
         paymentStatus: PaymentStatus.PAID,
         paymentMethod: PaymentMethod.CASH,
-        paymentDate: new Date().toISOString().split('T')[0],
+        paymentDate: getLocalDateString(),
         discount: null,
         netAmount: null,
         discountReason: DiscountReason.None,
@@ -125,7 +132,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
 
 
   const calculateAmounts = useCallback(() => {
-    
+
     // 1. Calculate original test prices (no discounts)
     // const totalOriginalTestAmount = selectedTests.reduce((acc, test) => acc + test.price, 0);
 
@@ -167,7 +174,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         finalPrice: test.finalPrice
       }))
     };
-    
+
     return result;
   }, [selectedTests, selectedPackages, newPatient.visit?.billing.discount]);
 
@@ -183,7 +190,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
             ...prevState.visit.billing,
             totalAmount,
             netAmount,
-         
+
           },
         },
       };
@@ -204,15 +211,15 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   const handleChange = useCallback((
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }
   ) => {
- 
+
     const target = (event && 'target' in event) ? event.target : null;
     const name = (target && typeof target === 'object' && 'name' in target) ? (target.name || '') : '';
-    
+
     let value: string | string[];
     if (target && typeof target === 'object' && 'value' in target) {
-      value = (target as { value: string | string[] }).value; 
+      value = (target as { value: string | string[] }).value;
     } else {
-      value = ''; 
+      value = '';
     }
 
     if (name === 'visit.insuranceIds') {
@@ -260,21 +267,46 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
 
 
   // Simple prefix test search function - only show tests that start with the typed characters
-  const isTestMatchingSearch = (testName: string, searchTerm: string): boolean => {
-    if (!searchTerm.trim()) return true;
-    
-    const testNameLower = testName.toLowerCase();
-    const searchTermLower = searchTerm.toLowerCase();
-    
-    // Only show tests that start with the search term
-    return testNameLower.startsWith(searchTermLower);
+  // const isTestMatchingSearch = (testName: string, searchTerm: string): boolean => {
+  //   if (!searchTerm.trim()) return true;
+
+  //   const testNameLower = testName.toLowerCase();
+  //   const searchTermLower = searchTerm.toLowerCase();
+
+  //   // Only show tests that start with the search term
+  //   return testNameLower.startsWith(searchTermLower);
+  // };
+
+  // const filteredTests = tests.filter(
+  //   (test) =>
+  //     (!selectedCategory || test.category === selectedCategory) &&
+  //     isTestMatchingSearch(test.name, searchTestTerm)
+  // );
+
+
+  const fuzzyScore = (text: string, pattern: string): number => {
+    if (!pattern.trim()) return 1;
+    const textLower = text.toLowerCase();
+    const patternLower = pattern.toLowerCase();
+
+    if (textLower === patternLower) return 100;
+    if (textLower.startsWith(patternLower)) return 80;
+    if (textLower.includes(patternLower)) return 60;
+
+    // Check all characters appear in order (e.g. "cbc" matches "Complete Blood Count")
+    let pi = 0;
+    for (let i = 0; i < textLower.length && pi < patternLower.length; i++) {
+      if (textLower[i] === patternLower[pi]) pi++;
+    }
+    return pi === patternLower.length ? 30 : 0;
   };
 
-  const filteredTests = tests.filter(
-    (test) =>
-      (!selectedCategory || test.category === selectedCategory) &&
-      isTestMatchingSearch(test.name, searchTestTerm)
-  );
+  const filteredTests = tests
+    .filter((test) => !selectedCategory || test.category === selectedCategory)
+    .map((test) => ({ test, score: fuzzyScore(test.name, searchTestTerm) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map(({ test }) => test);
 
 
   // Updated utility function
@@ -416,12 +448,12 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
             discountPercent,
             discountedPrice: originalPrice - discountAmount
           };
-          
+
           return updatedTest;
         }
         return test;
       });
-      
+
       return updatedTests;
     });
 
@@ -464,7 +496,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   };
 
   const handlePatientSelect = (selectedPatient: Patient) => {
-    
+
     setNewPatient({
       ...newPatient,
       firstName: selectedPatient.firstName,
@@ -491,7 +523,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
     setSelectedPackages([]);
     setSelectedCategory('');
     setSearchTestTerm('');
-    
+
     // Reset the patient state to initial values
     setNewPatient({
       firstName: '',
@@ -507,14 +539,14 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
       age: '',
       gender: Gender.Female,
       visit: {
-        visitDate: new Date().toISOString().split('T')[0],
+        visitDate: getLocalDateString(),
         visitType: VisitType.OUT_PATIENT,
         visitStatus: VisitStatus.PENDING,
         visitDescription: '',
-                 visitCancellationReason: '',
-         visitCancellationDate: '',
-         visitCancellationBy: '',
-         visitCancellationTime: '',
+        visitCancellationReason: '',
+        visitCancellationDate: '',
+        visitCancellationBy: '',
+        visitCancellationTime: '',
         doctorId: '',
         testIds: [],
         packageIds: [],
@@ -523,7 +555,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
           totalAmount: null,
           paymentStatus: PaymentStatus.PAID,
           paymentMethod: PaymentMethod.CASH,
-          paymentDate: new Date().toISOString().split('T')[0],
+          paymentDate: getLocalDateString(),
           discount: null,
           netAmount: null,
           discountReason: DiscountReason.None,
@@ -558,21 +590,21 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   const handleAddPatient = async () => {
     try {
       setLoading(true);
-      
+
       // Validate payment fields based on payment method
       const paymentMethod = newPatient.visit?.billing?.paymentMethod;
       const missingFields: string[] = [];
 
-             if (paymentMethod) {
-         switch (paymentMethod) {
-           case PaymentMethod.UPI:
-           case PaymentMethod.CARD:
-             const receivedAmount = Number(newPatient.visit?.billing?.received_amount || 0);
-             if (receivedAmount <= 0) {
-               missingFields.push('Received Amount');
-             }
-             break;
-          
+      if (paymentMethod) {
+        switch (paymentMethod) {
+          case PaymentMethod.UPI:
+          case PaymentMethod.CARD:
+            const receivedAmount = Number(newPatient.visit?.billing?.received_amount || 0);
+            if (receivedAmount <= 0) {
+              missingFields.push('Received Amount');
+            }
+            break;
+
           case PaymentMethod.UPI_CASH:
             const upiAmount = Number(newPatient.visit?.billing?.upi_amount || 0);
             const cashAmountUPI = Number(newPatient.visit?.billing?.cash_amount || 0);
@@ -583,7 +615,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
               missingFields.push('Cash Amount');
             }
             break;
-          
+
           case PaymentMethod.CARD_CASH:
             const cardAmount = Number(newPatient.visit?.billing?.card_amount || 0);
             const cashAmountCard = Number(newPatient.visit?.billing?.cash_amount || 0);
@@ -607,13 +639,13 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         toast.error(`Please fill the required payment fields: ${missingFields.join(', ')}`);
         return;
       }
-      
+
       // Ensure phone number is synchronized from searchTerm to newPatient before validation
       const patientToValidate = {
         ...newPatient,
         phone: searchTerm || newPatient.phone
       };
-      
+
       const validationResult = patientSchema.safeParse(patientToValidate);
 
       if (newPatient.visit.testIds.length === 0 && newPatient.visit.packageIds.length === 0) {
@@ -646,33 +678,33 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
       const computedDueAmount = Math.max(0, Number(netAmount ?? 0) - receivedAmount);
       const computedRefundAmount = Math.max(0, receivedAmount - Number(netAmount ?? 0));
 
-      const paymentDate = billing.paymentDate || new Date().toISOString().split("T")[0];
+      const paymentDate = billing.paymentDate || getLocalDateString();
 
       const transactions = [];
-       transactions.push({
+      transactions.push({
         payment_method: billing.paymentMethod || PaymentMethod.CASH,
-         received_amount: receivedAmount,
+        received_amount: receivedAmount,
         date: paymentDate,
         upi_id: billing.upi_id || '',
         card_amount: cardAmount,
         cash_amount: cashAmount,
         upi_amount: upiAmount,
-         refund_amount: computedRefundAmount,
-         due_amount: computedDueAmount,
+        refund_amount: computedRefundAmount,
+        due_amount: computedDueAmount,
         remarks: "paid by " + (billing.paymentMethod || PaymentMethod.CASH)
       });
 
       // Extract test IDs - only individual tests go to testIds, package tests are handled separately
       const individualTestIds = selectedTests.map(test => test.id);
-      
+
       // Get all test IDs for testResult (both individual and from packages)
       const allTestIds = new Set<number>();
-      
+
       // Add individual test IDs
       selectedTests.forEach(test => {
         allTestIds.add(test.id);
       });
-      
+
       // Add test IDs from packages
       selectedPackages.forEach(pkg => {
         pkg.tests.forEach(test => {
@@ -706,7 +738,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
             finalPrice: individualTest.discountedPrice || individualTest.price
           };
         }
-        
+
         // If not in selectedTests, it's from a package - get test details from packages
         for (const pkg of selectedPackages) {
           const packageTest = pkg.tests.find(test => test.id === testId);
@@ -719,7 +751,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
             };
           }
         }
-        
+
         // Fallback
         return {
           id: testId,
@@ -729,8 +761,8 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         };
       });
 
-                   const patientData = {
-        ...patientToValidate, 
+      const patientData = {
+        ...patientToValidate,
         visit: {
           ...newPatient.visit,
           testIds: individualTestIds, // Only individual test IDs

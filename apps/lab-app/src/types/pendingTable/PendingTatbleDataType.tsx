@@ -12,11 +12,16 @@ export interface BillingDetails {
 
 export interface VisitDetailDto {
   visitId: number;
+  visitCode?: string;
   visitDate: string;
   visitType: string;
   visitStatus: string;
   doctorId: number | null;
   testIds: number[];
+  tests?: Array<{
+    id: number;
+    name: string;
+  }>;
   packageIds: number[];
   bellingDetailsDto: BillingDetails;
   listofeachtestdiscount: string[];

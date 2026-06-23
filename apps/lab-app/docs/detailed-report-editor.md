@@ -1,6 +1,9 @@
 ## Detailed Report Editor – Architecture and Behavior
 
+
 This document explains how the **Detailed Report Editor** works for radiology / detailed reports, with a focus on table handling and how it avoids corrupting report structures.
+
+
 
 ---
 

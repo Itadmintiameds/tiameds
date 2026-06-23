@@ -1,5 +1,9 @@
 import api from '@/utils/api';
 import { AxiosError } from 'axios';
+import {
+  ReportSettingsPayload,
+  ReportSettingsResponse,
+} from '@/types/reportSettings';
 
 interface Report {
   reportId: number;
@@ -57,6 +61,28 @@ export const getReportData = async (labId: string, visitId: string): Promise<Rep
   try {
     const response = await api.get<{ data: Report[]; message: string; status: string }>(
       `lab/${labId}/report/${visitId}`
+    );
+    return response.data.data;
+  } catch (error) {
+    let errorMessage = 'An error occurred while fetching report details.';
+
+    if (error && (error as AxiosError).isAxiosError) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+export const getReportDataById = async (labId: string, reportId: string): Promise<Report | Report[]> => {
+  try {
+    const response = await api.get<{ data: Report | Report[]; message: string; status: string }>(
+      `/lab/${labId}/report/by-id/${reportId}`
     );
     return response.data.data;
   } catch (error) {
@@ -183,6 +209,143 @@ export const updateReports = async (labId: number, reports: ReportData[]): Promi
       } else {
         errorMessage = error.message;
       }
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+export const updateReportById = async (labId: number, reportId: string, reports: ReportData[]): Promise<ReportData[]> => {
+  try {
+    const invalidReports = reports.filter(report => !report.report_id);
+    if (invalidReports.length > 0) {
+      throw new Error('All reports must have report_id for updates');
+    }
+
+    const response = await api.put<{ data: ReportData[] }>(`/lab/${labId}/report/by-id/${reportId}`, reports);
+    return response.data.data;
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while updating the report.';
+
+    if (error instanceof Error) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+// ─── Report Settings ────────────────────────────────────────────────────────────
+
+export const getReportSettings = async (labId: number): Promise<ReportSettingsResponse> => {
+  try {
+    const response = await api.get<{ data: ReportSettingsResponse; message: string; status: string }>(
+      `/lab/${labId}/report-settings`
+    );
+    return response.data.data;
+  } catch (error) {
+    let errorMessage = 'An error occurred while fetching report settings.';
+
+    if (error && (error as AxiosError).isAxiosError) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+export const saveReportSettings = async (
+  labId: number,
+  payload: ReportSettingsPayload
+): Promise<ReportSettingsResponse> => {
+  try {
+    const response = await api.post<{ data: ReportSettingsResponse; message: string; status: string }>(
+      `/lab/${labId}/report-settings`,
+      payload
+    );
+    return response.data.data;
+  } catch (error) {
+    let errorMessage = 'An error occurred while saving report settings.';
+
+    if (error && (error as AxiosError).isAxiosError) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+export const updateReportSettings = async (
+  labId: number,
+  payload: ReportSettingsPayload
+): Promise<ReportSettingsResponse> => {
+  try {
+    const response = await api.put<{ data: ReportSettingsResponse; message: string; status: string }>(
+      `/lab/${labId}/report-settings`,
+      payload
+    );
+    return response.data.data;
+  } catch (error) {
+    let errorMessage = 'An error occurred while updating report settings.';
+
+    if (error && (error as AxiosError).isAxiosError) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+/**
+ * Get a presigned S3 URL for uploading a report signature image.
+ * Backend returns uploadUrl (for direct PUT) and fileUrl (final URL to store).
+ * Frontend uploads the file directly to S3 using the presigned URL.
+ */
+export const getReportSignatureUploadUrl = async (
+  labId: number | string,
+  fileName: string,
+  fileType: string
+): Promise<{ uploadUrl: string; fileUrl: string; headers?: Record<string, string> }> => {
+  try {
+    const response = await api.post<{
+      data: { uploadUrl: string; fileUrl: string; headers?: Record<string, string> };
+      message: string;
+      status: string;
+    }>(`/lab/${labId}/report-settings/signature/upload-url`, {
+      fileName,
+      fileType,
+    });
+    return response.data.data;
+  } catch (error) {
+    let errorMessage = 'An error occurred while generating signature upload URL.';
+
+    if (error && (error as AxiosError).isAxiosError) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
     }
 
     throw new Error(errorMessage);

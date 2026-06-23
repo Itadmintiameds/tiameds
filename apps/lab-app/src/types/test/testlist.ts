@@ -35,6 +35,7 @@ export interface TestReferancePoint {
     maxAgeUnit?: string;
     reportJson?: string;
     referenceRanges?: string;
+    dropdown?: string;
 }
 
 

@@ -85,7 +85,7 @@ const Layout = ({ children }: LayoutProps) => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden"> {/* Added overflow-hidden to prevent scrolling */}
+    <div className="flex h-screen overflow-hidden bg-info-50"> {/* Added overflow-hidden to prevent scrolling */}
       <SideBar isOpen={isOpen} setIsOpen={setIsOpen} />
 
       <main className={`flex-1 ml-20 transition-all duration-400 ${isOpen ? "ml-64" : "ml-20"} overflow-hidden`}> {/* Added overflow-hidden */}
@@ -99,8 +99,8 @@ const Layout = ({ children }: LayoutProps) => {
           />
         )}
 
-        <div className="p-6 overflow-y-auto overflow-x-hidden" style={{ maxHeight: "calc(100vh - 64px)" }}> {/* Added overflow-x-hidden */}
-          <div className="relative isolate bg-white h-full"> {/* Changed h-screen to h-full */}
+        <div className="overflow-y-auto overflow-x-hidden" style={{ maxHeight: "calc(100vh - 64px)" }}> {/* Added overflow-x-hidden */}
+          <div className="relative isolate bg-info-50 h-full"> {/* Changed h-screen to h-full */}
             <div
               aria-hidden="true"
               className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80 animate-gradient-flow"

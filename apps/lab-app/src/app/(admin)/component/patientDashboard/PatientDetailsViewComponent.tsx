@@ -7,12 +7,13 @@ import { Doctor } from '@/types/doctor/doctor';
 import { Packages } from '@/types/package/package';
 import { TestList } from '@/types/test/testlist';
 import { Patient, BillingTransaction } from '@/types/patient/patient';
-import { calculateAge } from '@/utils/ageUtils';
+// import { calculateAge, formatAgeForDisplay } from '@/utils/ageUtils';
+import { formatAgeForDisplay } from '@/utils/ageUtils';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import jsPDF from 'jspdf'
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { FaFileInvoiceDollar, FaFilePdf, FaPrint,  FaSignature } from 'react-icons/fa';
+import { FaFileInvoiceDollar, FaFilePdf, FaPrint, FaSignature } from 'react-icons/fa';
 import Loader from '../common/Loader';
 import { MdDownloading } from "react-icons/md";
 import Image from 'next/image';
@@ -248,9 +249,9 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
   const renderInvoicePage = (pageTests: TestList[], pageNumber: number, totalPages: number, transaction?: BillingTransaction, hideButtons: boolean = false) => {
     // Get invoice date/time from API - use billing createdAt or updatedAt or paymentDate
     const billing = patient?.visit?.billing;
-    const invoiceDateTime = billing?.createdAt 
+    const invoiceDateTime = billing?.createdAt
       ? formatInvoiceDateTime(billing.createdAt)
-      : (billing?.updatedAt 
+      : (billing?.updatedAt
         ? formatInvoiceDateTime(billing.updatedAt)
         : (billing?.paymentDate
           ? formatInvoiceDateTime(billing.paymentDate)
@@ -280,6 +281,14 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
             <div>
               <h1 className="text-lg font-bold text-black uppercase tracking-tight leading-tight">{currentLab?.name || 'DIAGNOSTIC CENTER'}</h1>
               <p className="text-xs text-black leading-tight">{currentLab?.address || ''}</p>
+              {(currentLab?.city || currentLab?.state) && (
+                <p className="text-xs text-black leading-tight">
+                  {[currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
+                </p>
+              )}
+              {currentLab?.labPhone && (
+                <p className="text-xs text-black leading-tight">Phone: {currentLab.labPhone}</p>
+              )}
             </div>
           </div>
           <div className="text-right border border-gray-600 px-3 py-1.5 bg-white">
@@ -288,14 +297,14 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
             <p className="text-xs text-black leading-tight"><span className="font-semibold">Date:</span> {invoiceDateTime}</p>
           </div>
         </div>
-        
+
         {/* Patient & Visit Info Section - Ultra Compact */}
         <div className="mb-4 border border-gray-600 p-2">
           <div className="grid grid-cols-3 gap-3 text-xs">
             <div>
               <p className="font-semibold text-black mb-1 border-b border-gray-400 pb-0.5">Patient</p>
               <p className="text-black leading-tight"><span className="font-medium">Name:</span> {patient?.firstName || ''} {patient?.lastName || ''}</p>
-              <p className="text-black leading-tight"><span className="font-medium">Age/Sex:</span> {calculateAge(patient?.dateOfBirth || '').split(' ')[0]} yrs / {patient?.gender || 'N/A'}</p>
+              <p className="text-black leading-tight"><span className="font-medium">Age/Sex:</span> {formatAgeForDisplay(patient?.dateOfBirth || '')} / {patient?.gender || 'N/A'}</p>
               <p className="text-black leading-tight"><span className="font-medium">Contact:</span> {patient?.phone || 'N/A'}</p>
               <p className="text-black leading-tight"><span className="font-medium">Code:</span> {patient?.patientCode || 'N/A'}</p>
             </div>
@@ -444,13 +453,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                   </div>
                   <div>
                     <span className="font-semibold text-black">Date:</span>
-                    <span className="ml-1 text-black">
-                      {summaryTxn
-                        ? (summaryTxn.created_at ? formatInvoiceDateTime(summaryTxn.created_at) : (summaryTxn.payment_date || 'N/A'))
-                        : (patient?.visit?.billing?.paymentDate
-                          ? formatInvoiceDateTime(patient.visit.billing.paymentDate)
-                          : 'N/A')}
-                    </span>
+                    <span className="ml-1 text-black">{invoiceDateTime}</span>
                   </div>
                 </div>
               </div>

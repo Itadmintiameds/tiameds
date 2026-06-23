@@ -128,7 +128,7 @@ const DashboardContent = () => {
   if (!hasMounted) {
     return (
       <div className="p-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-info-50 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex border-b border-gray-200 px-4">
             {tabs.map((tab) => (
               <div
@@ -150,7 +150,7 @@ const DashboardContent = () => {
 
   return (
     <div className="p-4">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-info-50 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Show tabs if user is ADMIN/SUPERADMIN or has both DESKROLE and TECHNICIAN roles */}
         {(isAdmin || isSuperAdmin || (isDeskRole && isTechnician)) ? (
           <div className="flex border-b border-gray-200 px-4">

@@ -900,6 +900,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                         </p>
                                     </div>
 
+
                                     <div data-footer-section className="mt-8 pt-6  border-gray-200">
                                         <div className="grid grid-cols-2 gap-4 border-gray-200 pt-4">
                                             <div className="text-center">
