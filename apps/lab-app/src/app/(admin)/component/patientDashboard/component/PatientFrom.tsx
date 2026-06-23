@@ -2,7 +2,6 @@ import { Patient, Gender } from '@/types/patient/patient';
 import React, { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import {
-  formatAgeString,
   calculateAge,
   parseAgeString,
   formatDate,
@@ -21,7 +20,8 @@ interface PatientFormProps {
   handleSearchChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   filteredPatients: Patient[];
   handlePatientSelect: (patient: Patient) => void;
-  isEditMode?: boolean; // Optional prop to indicate if it's in edit mode
+  isEditMode?: boolean;
+  forceValidation?: boolean;
 }
 
 enum Prefix {
@@ -38,7 +38,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
   handleSearchChange,
   filteredPatients,
   handlePatientSelect,
-  isEditMode = false, // Default to false if not provided
+  forceValidation = false,
 }) => {
   const [currentPrefix, currentFirstName] = extractPrefixAndName(newPatient.firstName || '');
   const [ageDetails, setAgeDetails] = useState({
@@ -47,7 +47,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
     days: ''
   });
   const [dobInput, setDobInput] = useState('');
-  const [ageInputMode, setAgeInputMode] = useState<'manual' | 'dob'>('dob');
+  const [, setAgeInputMode] = useState<'manual' | 'dob'>('dob');
   const [lastChanged, setLastChanged] = useState<'age' | 'dob'>('dob');
   const [validationErrors, setValidationErrors] = useState({
     phone: '',
@@ -66,7 +66,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
     dob: false,
     prefix: false
   });
-  const [nameInputValue, setNameInputValue] = useState('');
+  const [, setNameInputValue] = useState('');
 
 
 
@@ -181,6 +181,19 @@ const PatientForm: React.FC<PatientFormProps> = ({
       dob: validateDOBField(dobInput)
     }));
   }, [searchTerm, newPatient.phone, currentPrefix, currentFirstName, newPatient.city, dobInput, validateDOBField, validatePrefix, validatePhone, validateName, validateCity]);
+
+  // Mark all fields as touched when parent triggers validation
+  useEffect(() => {
+    if (forceValidation) {
+      setTouchedFields({
+        phone: true,
+        firstName: true,
+        city: true,
+        dob: true,
+        prefix: true,
+      });
+    }
+  }, [forceValidation]);
 
   // Handle field blur events
   const handleBlur = (field: keyof typeof touchedFields) => {
@@ -455,46 +468,6 @@ const PatientForm: React.FC<PatientFormProps> = ({
     setTouchedFields(prev => ({ ...prev, prefix: true }));
   };
 
-  const handleFirstNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow alphabets and spaces
-    let alphabeticValue = event.target.value.replace(/[^a-zA-Z\s]/g, '');
-    
-    // Prevent leading spaces and multiple consecutive spaces
-    alphabeticValue = alphabeticValue.replace(/^\s+/, ''); // Remove leading spaces
-    alphabeticValue = alphabeticValue.replace(/\s+/g, ' '); // Replace multiple spaces with single space
-    
-    // Update the input value state
-    setNameInputValue(alphabeticValue);
-    
-    // Split the name by spaces
-    const nameParts = alphabeticValue.trim().split(/\s+/);
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-    
-    // Create firstName with prefix
-    const firstNameWithPrefix = currentPrefix ? `${currentPrefix} ${firstName}` : firstName;
-
-    // Update firstName
-    const firstNameEvent = {
-      target: {
-        name: 'firstName',
-        value: firstNameWithPrefix.trim()
-      }
-    } as React.ChangeEvent<HTMLInputElement>;
-
-    // Update lastName
-    const lastNameEvent = {
-      target: {
-        name: 'lastName',
-        value: lastName.trim()
-      }
-    } as React.ChangeEvent<HTMLInputElement>;
-
-    handleChange(firstNameEvent);
-    handleChange(lastNameEvent);
-    setTouchedFields(prev => ({ ...prev, firstName: true }));
-  };
-
   const handlePhoneChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     // Only allow numeric input
     const numericValue = event.target.value.replace(/\D/g, '');
@@ -530,248 +503,246 @@ const PatientForm: React.FC<PatientFormProps> = ({
   };
 
   return (
-    <section className={`flex flex-col space-y-3 w-full p-3 border rounded-lg border-gray-200 shadow-xs ${isEditMode ? 'bg-white' : 'bg-gray-50'}`}>
-      <div className="flex items-end gap-2">
-        <div className="flex-1">
-          <label className="text-xs font-medium text-gray-600 mb-1 flex items-center">
-            Phone <span className="text-red-500 ml-0.5">*</span>
-          </label>
-          <div className="relative">
-            <input
-              type="tel"
-              name="phone"
-              required
-              value={searchTerm || newPatient.phone}
-              onChange={handlePhoneChange}
-              onBlur={() => handleBlur('phone')}
-              className={`border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${touchedFields.phone && validationErrors.phone ? 'border-red-500' : ''
-                }`}
-              placeholder="Enter phone number"
-              maxLength={10}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              onKeyPress={(e) => {
-                // Prevent non-numeric characters
-                if (!/[0-9]/.test(e.key)) {
-                  e.preventDefault();
-                }
-              }}
-            />
-            {touchedFields.phone && validationErrors.phone && (
-              <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.phone}</p>
-            )}
-            {filteredPatients?.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-xs max-h-60 overflow-y-auto">
-                {filteredPatients.map((patientItem, index) => (
-                  <div
-                    key={index}
-                    className="p-1.5 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                    onClick={() => handlePatientSelect(patientItem)}
-                  >
-                    <p className="text-xs font-medium text-gray-800">{patientItem.firstName} {patientItem.lastName}</p>
-                    <p className="text-[0.65rem] text-gray-500">{patientItem.phone}</p>
+    <section className="w-full space-y-3">
+
+      {/* ── CONTACT INFORMATION ── */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
+          Contact Information
+        </p>
+
+        <div className="space-y-4">
+          {/* Row 1 — Mobile | Email */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+                Mobile Number <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  name="phone"
+                  required
+                  value={searchTerm || newPatient.phone}
+                  onChange={handlePhoneChange}
+                  onBlur={() => handleBlur('phone')}
+                  className={`w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${touchedFields.phone && validationErrors.phone ? 'border-red-400' : ''}`}
+                  placeholder="+91 XXXXX XXXXX"
+                  maxLength={10}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  onKeyPress={(e) => { if (!/[0-9]/.test(e.key)) e.preventDefault(); }}
+                />
+                {touchedFields.phone && validationErrors.phone && (
+                  <p className="text-xs text-red-500 mt-1">{validationErrors.phone}</p>
+                )}
+                {filteredPatients?.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                    {filteredPatients.map((patientItem, index) => (
+                      <div
+                        key={index}
+                        className="px-4 py-2.5 cursor-pointer hover:bg-purple-50 border-b border-gray-100 last:border-b-0"
+                        onClick={() => handlePatientSelect(patientItem)}
+                      >
+                        <p className="text-sm font-medium text-gray-800">{patientItem.firstName} {patientItem.lastName}</p>
+                        <p className="text-xs text-gray-500">{patientItem.phone}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-600 mb-1.5 block">Email Address</label>
+              <input
+                type="email"
+                name="email"
+                value={newPatient.email || ''}
+                onChange={handleChange}
+                placeholder="patient@email.com"
+                className="w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+              />
+            </div>
+          </div>
+
+          {/* Row 2 — City */}
+          <div>
+            <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+              City <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="city"
+              value={newPatient.city}
+              onChange={handleCityChange}
+              onBlur={() => handleBlur('city')}
+              onKeyPress={(e) => { if (!/[a-zA-Z\s]/.test(e.key)) e.preventDefault(); }}
+              className={`w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${touchedFields.city && validationErrors.city ? 'border-red-400' : ''}`}
+              placeholder="Enter city"
+            />
+            {touchedFields.city && validationErrors.city && (
+              <p className="text-xs text-red-500 mt-1">{validationErrors.city}</p>
             )}
+          </div>
+
+          {/* Row 3 — Address */}
+          <div>
+            <label className="text-sm font-medium text-gray-600 mb-1.5 block">Address</label>
+            <input
+              type="text"
+              name="address"
+              value={newPatient.address || ''}
+              onChange={handleChange}
+              placeholder="Enter full address"
+              className="w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+            />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs font-medium text-gray-600 mb-1 flex items-center">
-            Full Name <span className="text-red-500 ml-0.5">*</span>
-          </label>
-          <div className="flex">
-            <select
-              name="prefix"
-              value={currentPrefix || Prefix.Mr}
-              onChange={handlePrefixChange}
-              onBlur={() => handleBlur('prefix')}
-              required
-              className={`border rounded-l-md border-gray-300 p-1.5 text-xs w-20 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${touchedFields.prefix && validationErrors.prefix ? 'border-red-500' : ''
-                }`}
-            >
-              {Object.values(Prefix).map((prefix) => (
-                <option key={prefix} value={prefix}>
-                  {prefix}
-                </option>
-              ))}
-            </select>
-            <input
-              type="text"
-              name="firstName"
-              required
-              value={nameInputValue}
-              onChange={handleFirstNameChange}
-              onBlur={() => handleBlur('firstName')}
-              onKeyPress={(e) => {
-                // Prevent non-alphabetic characters
-                if (!/[a-zA-Z]/.test(e.key)) {
-                  // Allow space only if there's text before it
-                  if (e.key === ' ' && nameInputValue.trim().length === 0) {
-                    e.preventDefault();
-                  } else if (e.key !== ' ') {
-                    e.preventDefault();
-                  }
-                }
-              }}
-              className={`border rounded-r-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${touchedFields.firstName && validationErrors.firstName ? 'border-red-500' : ''
-                }`}
-              placeholder="Enter full name"
-            />
-          </div>
-          {touchedFields.firstName && validationErrors.firstName && (
-            <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.firstName}</p>
-          )}
-          {touchedFields.prefix && validationErrors.prefix && (
-            <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.prefix}</p>
-          )}
-        </div>
-        <div>
-          <label className="text-xs font-medium text-gray-600 mb-1 flex items-center">
-            Gender <span className="text-red-500 ml-0.5">*</span>
-          </label>
-          <select
-            name="gender"
-            required
-            value={newPatient.gender}
-            onChange={handleChange}
-            className="border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-          >
-            {Object.values(Gender).map((gender) => (
-              <option key={gender} value={gender}>
-                {gender.charAt(0).toUpperCase() + gender.slice(1)}
-              </option>
-            ))}
+      {/* ── TAX & BILLING ── */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
+          Tax &amp; Billing
+        </p>
+
+        {/* hidden prefix select — keeps gender-from-prefix logic alive */}
+        <div className="hidden">
+          <select name="prefix" value={currentPrefix || Prefix.Mr} onChange={handlePrefixChange}>
+            {Object.values(Prefix).map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
         </div>
 
-        <div>
-          <label className="text-xs font-medium text-gray-600 mb-1">
-            City <span className="text-red-500 ml-0.5">*</span>
-          </label>
-                     <input
-             type="text"
-             name="city"
-             value={newPatient.city}
-             onChange={handleCityChange}
-             onBlur={() => handleBlur('city')}
-             onKeyPress={(e) => {
-               // Prevent non-alphabetic characters and spaces
-               if (!/[a-zA-Z\s]/.test(e.key)) {
-                 e.preventDefault();
-               }
-             }}
-             className={`border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${touchedFields.city && validationErrors.city ? 'border-red-500' : ''
-               }`}
-             placeholder="City"
-           />
-          {touchedFields.city && validationErrors.city && (
-            <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.city}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="text-xs font-medium text-gray-600 mb-1 flex items-center">
-            Date of Birth <span className="text-red-500 ml-0.5">*</span>
-          </label>
-          <input
-            type="text"
-            name="dobInput"
-            value={dobInput}
-            onChange={handleDobInputChange}
-            onBlur={() => handleBlur('dob')}
-            placeholder="DD/MM/YYYY"
-            className={`border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${touchedFields.dob && validationErrors.dob ? 'border-red-500' : ''
-              }`}
-          />
-          {touchedFields.dob && validationErrors.dob && (
-            <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.dob}</p>
-          )}
-          {ageInputMode === 'dob' && newPatient.dateOfBirth && !validationErrors.dob && (
-            <p className="text-[0.65rem] mt-1 text-gray-500">
-              {formatAgeString(newPatient.age)}
-            </p>
-          )}
-        </div>
-
-        <div className="col-span-2">
-          <label className="text-xs font-medium text-gray-600 mb-1">
-            Age Details (Manual Input)
-          </label>
-          <p className="text-xs text-gray-500 mb-1">
-            Enter age details manually if you prefer not to use date of birth.
-          </p>
-          <div className="grid grid-cols-3 gap-3">
+        <div className="space-y-4">
+          {/* Row 1 — First Name | Last Name */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">
-                Years
+              <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+                First Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                name="ageYears"
-                value={ageDetails.years}
-                onChange={handleAgeDetailChange('years')}
-                className={`border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${validationErrors.years ? 'border-red-500' : ''
-                  }`}
-                placeholder="Enter years (0-100)"
-                maxLength={3}
+                value={currentFirstName}
+                onBlur={() => handleBlur('firstName')}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^a-zA-Z]/g, '');
+                  handleChange({ target: { name: 'firstName', value: (currentPrefix ? `${currentPrefix} ${val}` : val).trim() } } as React.ChangeEvent<HTMLInputElement>);
+                  setTouchedFields(prev => ({ ...prev, firstName: true }));
+                }}
+                onKeyPress={(e) => { if (!/[a-zA-Z]/.test(e.key)) e.preventDefault(); }}
+                placeholder="Enter first name"
+                className={`w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${touchedFields.firstName && validationErrors.firstName ? 'border-red-400' : ''}`}
               />
-              {validationErrors.years && (
-                <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.years}</p>
+              {touchedFields.firstName && validationErrors.firstName && (
+                <p className="text-xs text-red-500 mt-1">{validationErrors.firstName}</p>
               )}
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">
-                Months
-              </label>
+              <label className="text-sm font-medium text-gray-600 mb-1.5 block">Last Name</label>
               <input
                 type="text"
-                name="ageMonths"
-                value={ageDetails.months}
-                onChange={handleAgeDetailChange('months')}
-                className={`border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${validationErrors.months ? 'border-red-500' : ''
-                  }`}
-                placeholder="Enter months (0-12)"
-                maxLength={2}
+                name="lastName"
+                value={newPatient.lastName || ''}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                  handleChange({ target: { name: 'lastName', value: val } } as React.ChangeEvent<HTMLInputElement>);
+                }}
+                onKeyPress={(e) => { if (!/[a-zA-Z\s]/.test(e.key)) e.preventDefault(); }}
+                placeholder="Enter last name"
+                className="w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
               />
-              {validationErrors.months && (
-                <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.months}</p>
-              )}
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">
-                Days
-              </label>
-              <input
-                type="text"
-                name="ageDays"
-                value={ageDetails.days}
-                onChange={handleAgeDetailChange('days')}
-                className={`border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${validationErrors.days ? 'border-red-500' : ''
-                  }`}
-                placeholder="Enter days (0-31)"
-                maxLength={2}
-              />
-              {validationErrors.days && (
-                <p className="text-[0.65rem] text-red-500 mt-1">{validationErrors.days}</p>
-              )}
             </div>
           </div>
-          {ageInputMode === 'manual' && newPatient.age && (
-            <p className="text-[0.65rem] mt-1 text-gray-500">
-              Age: {formatAgeString(newPatient.age)}
-            </p>
-          )}
+
+          {/* Row 2 — DOB | Age */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+                Date of Birth <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="dobInput"
+                value={dobInput}
+                onChange={handleDobInputChange}
+                onBlur={() => handleBlur('dob')}
+                placeholder="DD/MM/YYYY"
+                className={`w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${touchedFields.dob && validationErrors.dob ? 'border-red-400' : ''}`}
+              />
+              {touchedFields.dob && validationErrors.dob && (
+                <p className="text-xs text-red-500 mt-1">{validationErrors.dob}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-600 mb-1.5 block">Age</label>
+              <div className="flex gap-1.5">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={ageDetails.years}
+                    onChange={handleAgeDetailChange('years')}
+                    placeholder="YY"
+                    maxLength={3}
+                    className="w-full border rounded-xl border-gray-300 px-2 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1 text-center">Yrs</p>
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={ageDetails.months}
+                    onChange={handleAgeDetailChange('months')}
+                    placeholder="MM"
+                    maxLength={2}
+                    className="w-full border rounded-xl border-gray-300 px-2 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1 text-center">Mnths</p>
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={ageDetails.days}
+                    onChange={handleAgeDetailChange('days')}
+                    placeholder="DD"
+                    maxLength={2}
+                    className="w-full border rounded-xl border-gray-300 px-2 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1 text-center">Days</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 3 — Gender full width */}
+          <div>
+            <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+              Gender <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <select
+                name="gender"
+                required
+                value={newPatient.gender}
+                onChange={handleChange}
+                className="w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 bg-white appearance-none"
+              >
+                {Object.values(Gender).map((gender) => (
+                  <option key={gender} value={gender}>
+                    {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                  </option>
+                ))}
+              </select>
+              <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
-      <div className="text-right mt-1">
-        <p className="text-[0.65rem] text-gray-500">
-          <span className="text-red-500">*</span> indicates required fields
-        </p>
-      </div>
+
+      <p className="text-xs text-gray-400 text-right">
+        <span className="text-red-500">*</span> indicates required fields
+      </p>
     </section>
   );
 };

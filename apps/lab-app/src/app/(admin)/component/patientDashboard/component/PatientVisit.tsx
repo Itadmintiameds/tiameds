@@ -1,5 +1,5 @@
 import React from 'react';
-import { Patient } from '@/types/patient/patient';
+import { Patient, VisitType } from '@/types/patient/patient';
 import { Doctor } from '@/types/doctor/doctor';
 import { FaCalendarAlt, FaUserPlus } from 'react-icons/fa';
 import Modal from '../../common/Model';
@@ -10,21 +10,14 @@ import { useState } from 'react';
 import { FaUserDoctor } from 'react-icons/fa6';
 import { toast } from 'react-toastify';
 
-
-enum VisitType {
-    INPATIENT = 'In-Patient',
-    OUTPATIENT = 'Out-Patient',
-    DAYCARE = 'Day-Care',
-    WAKING = 'Walk-In',
-}
-
 interface PatientVisitProps {
     newPatient: Patient;
     handleChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | { target: { name: string; value: string[] } }) => void;
     doctors: Doctor[];
+    mode?: 'full' | 'visitOnly' | 'doctorOnly';
 }
 
-const PatientVisit = ({ newPatient, handleChange, doctors }: PatientVisitProps) => {
+const PatientVisit = ({ newPatient, handleChange, doctors, mode = 'full' }: PatientVisitProps) => {
     const { currentLab, refreshDocterList, setRefreshDocterList } = useLabs();
     const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
     const [isDoctorAddedLoading, setIsDoctorAddedLoading] = useState(false);
@@ -86,61 +79,65 @@ const PatientVisit = ({ newPatient, handleChange, doctors }: PatientVisitProps) 
     };
 
     return (
-        <section className="flex w-full">
-            <div className="w-full p-3 border rounded-lg border-gray-200 shadow-sm bg-gray-50">
-                <div className="flex justify-between items-center mb-3">
-                    <h2 className="text-xs font-semibold text-gray-700 flex items-center">
-                        <FaCalendarAlt className="mr-1.5 text-purple-500 text-sm" />
-                        Visit Details
-                    </h2>
-                </div>
-                <div className="space-y-3">
-                    <div className="flex flex-col">
-                        <label className="text-xs font-medium mb-1 text-purple-500 flex items-center">
-                            Visit Date <span className="text-red-500 ml-0.5">*</span>
-                        </label>
-                        <div className="relative">
-                            <input
-                                type="date"
-                                name="visit.visitDate"
-                                value={newPatient.visit?.visitDate || ""}
-                                onChange={handleChange}
-                                className="border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                required
-                                disabled
-                            />
-                           
+        <section className="w-full">
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+                {/* Visit type radio buttons — hidden when doctorOnly */}
+                {mode !== 'doctorOnly' && (
+                    <>
+                        <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                            <FaCalendarAlt className="text-purple-500" />
+                            Visit Type
+                        </h3>
+                        <div className="space-y-2 mb-5">
+                            {Object.values(VisitType).map((type) => {
+                                const isSelected = newPatient.visit?.visitType === type;
+                                return (
+                                    <label
+                                        key={type}
+                                        className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                            isSelected
+                                                ? 'border-purple-500 bg-purple-50'
+                                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                                            isSelected ? 'border-purple-600' : 'border-gray-300'
+                                        }`}>
+                                            {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-purple-600" />}
+                                        </div>
+                                        <span className={`text-sm font-medium ${isSelected ? 'text-purple-700' : 'text-gray-700'}`}>
+                                            {type}
+                                        </span>
+                                        <input
+                                            type="radio"
+                                            name="visit.visitType"
+                                            value={type}
+                                            checked={isSelected}
+                                            onChange={handleChange}
+                                            className="sr-only"
+                                        />
+                                    </label>
+                                );
+                            })}
                         </div>
-                    </div>
-                    <div className="flex flex-col">
-                        <label className="text-xs font-medium mb-1 text-gray-600 flex items-center">
-                            Visit Type <span className="text-red-500 ml-0.5">*</span>
-                        </label>
-                        <select
-                            name="visit.visitType"
-                            value={newPatient.visit?.visitType || ""}
-                            onChange={handleChange}
-                            className="border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 appearance-none"
-                            required
-                        >
-                            {Object.values(VisitType).map((type) => (
-                                <option key={type} value={type}>
-                                    {type}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    </>
+                )}
 
-                    <div className="flex flex-col">
-                        <div className="flex justify-between items-center mb-1">
-                            <label className="text-xs font-medium text-gray-600">Doctor</label>
+                {/* Referring Doctor — hidden when visitOnly */}
+                {mode !== 'visitOnly' && (
+                    <div className={mode === 'doctorOnly' ? '' : 'pt-4 border-t border-gray-100'}>
+                        <div className="flex justify-between items-center mb-2">
+                            <label className="text-sm font-medium text-gray-600 flex items-center gap-1.5">
+                                <FaUserDoctor className="text-purple-500 text-xs" />
+                                Referring Doctor
+                            </label>
                             <button
                                 type="button"
                                 onClick={() => setIsDoctorModalOpen(true)}
-                                className="flex items-center text-xs text-purple-500 hover:text-blue-800"
+                                className="flex items-center text-xs text-purple-500 hover:text-purple-700"
                             >
-                                <FaUserPlus className="mr-1 text-xs text-purple-500" />
-                                Add Doctor
+                                <FaUserPlus className="mr-1" />
+                                Add
                             </button>
                         </div>
                         <div className="relative">
@@ -148,8 +145,7 @@ const PatientVisit = ({ newPatient, handleChange, doctors }: PatientVisitProps) 
                                 name="visit.doctorId"
                                 value={newPatient.visit?.doctorId || ""}
                                 onChange={handleChange}
-                                className="border rounded-md border-gray-300 p-1.5 text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 appearance-none"
-                                style={{ maxHeight: '100px', overflowY: 'auto' }}
+                                className="w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 bg-white appearance-none"
                             >
                                 <option value="">Select doctor</option>
                                 {doctors.map((doctor) => (
@@ -158,11 +154,10 @@ const PatientVisit = ({ newPatient, handleChange, doctors }: PatientVisitProps) 
                                     </option>
                                 ))}
                             </select>
-                            <FaUserDoctor className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-purple-500 text-xs pointer-events-none" />
+                            <FaUserDoctor className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none" />
                         </div>
-
                     </div>
-                </div>
+                )}
             </div>
             {isDoctorModalOpen && (
                 <Modal
