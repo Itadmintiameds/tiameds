@@ -22,8 +22,11 @@ import SampleCollect from './SampleCollect';
 import NewModal from "../../newcommoncomponent/NewModal";
 
 type SortOption = 'patientName' | 'patientId';
+interface PendingTableProps {
+  onDataUpdate?: (count: number) => void;
+}
 
-const PendingTable = () => {
+const PendingTable = ({ onDataUpdate }: PendingTableProps) => {
   const { currentLab } = useLabs();
   
   // State management
@@ -45,6 +48,12 @@ const PendingTable = () => {
   
   // Expanded row state for dropdown
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (onDataUpdate) {
+      onDataUpdate(filteredPatients.length);
+    }
+  }, [filteredPatients, onDataUpdate]);
 
   // Fetch visits data
   const fetchVisits = async () => {
@@ -247,6 +256,7 @@ const PendingTable = () => {
             </span>
           );
         }
+
 
         return (
           <div className="w-[274px]">

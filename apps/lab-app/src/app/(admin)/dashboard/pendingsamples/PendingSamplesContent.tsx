@@ -20,12 +20,8 @@ const PendingSamplesContent = () => {
     case 'collected':
       return <CollectedSample />;
 
-
-    case 'collected':
-      return <CollectionTable />;
-
     case 'partial':
-      return <RecivedTable />;
+      return <CollectionTable />;
 
     case 'completed':
       return <CompletedTable />;

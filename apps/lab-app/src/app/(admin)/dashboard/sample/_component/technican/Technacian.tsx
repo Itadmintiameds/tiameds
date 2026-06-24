@@ -1,231 +1,89 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Search, Package, ChevronDown, Plus } from "lucide-react";
 import KPISection from '../KPISection';
-import NewCommonTable from '../../../newcommoncomponent/NewCommonTable';
 
+// import { useLabs } from '@/context/LabContext';
+import PendingTable from '../PendingTable';
+import CompletedTable from '../CompletedTable';
+import CollectionTable from '../CollectionTable';
+import CollectedSample from '../CollectedSample';
 
+type ViewType = 'pending' | 'collected' | 'partial' | 'completed';
 
-type Patient = {
-  id: string;
-  date: string;
-  name: string;
-  age: string;
-  gender: string;
-  status: string;
-  testPackage: string;
-};
+const Technician = () => {
+  // const { currentLab } = useLabs();
+  const [currentView, setCurrentView] = useState<ViewType>('pending');
+  const [hideKPI, setHideKPI] = useState(false); // Add this state
+  
+  // State to hold KPI data from child components
+  const [kpiData, setKpiData] = useState({
+    pending: 0,
+    collected: 0,
+    partial: 0,
+    completed: 0
+  });
 
-const Technacian = () => {
+  // Handler to update KPI data from child components
+  const updateKPIData = (type: ViewType, count: number) => {
+    setKpiData(prev => ({
+      ...prev,
+      [type]: count
+    }));
+  };
+
+  // Stats for KPISection
   const stats = [
     {
       title: "Samples Pending",
-      value: "6531",
-      valueColor: "text-black",
+      value: kpiData.pending.toString(),
+      count: kpiData.pending
     },
     {
       title: "Samples Collected",
-      value: "6531",
-      valueColor: "text-blue-500",
+      value: kpiData.collected.toString(),
+      count: kpiData.collected
     },
     {
       title: "Partially Completed Test Results",
-      value: "6531",
-      valueColor: "text-amber-500",
+      value: kpiData.partial.toString(),
+      count: kpiData.partial
     },
     {
       title: "Completed Test",
-      value: "6531",
-      valueColor: "text-green-600",
+      value: kpiData.completed.toString(),
+      count: kpiData.completed
     },
   ];
 
-  const patients: Patient[] = [
-    {
-      id: "PAT-00507",
-      date: "3/6/2026",
-      name: "Mrs. JYOTHI",
-      age: "41 Yrs",
-      gender: "Male",
-      status: "Pending",
-      testPackage: "COMPLETE BLOOD COUNT (CBC)",
-    },
-    {
-      id: "PAT-00508",
-      date: "3/6/2026",
-      name: "Mr. Rajesh Kumar",
-      age: "41 Yrs",
-      gender: "Male",
-      status: "Pending",
-      testPackage: "COMPLETE BLOOD COUNT (CBC)",
-    },
-    {
-      id: "PAT-00509",
-      date: "2/6/2026",
-      name: "Ms. Priya Sharma",
-      age: "41 Yrs",
-      gender: "Male",
-      status: "Pending",
-      testPackage: "Diabetic test package",
-    },
-    {
-      id: "PAT-00510",
-      date: "2/6/2026",
-      name: "Mr. Amit Patel",
-      age: "41 Yrs",
-      gender: "Male",
-      status: "Pending",
-      testPackage: "COMPLETE BLOOD COUNT (CBC)",
-    },
-    {
-      id: "PAT-00511",
-      date: "1/6/2026",
-      name: "Mrs. Lakshmi Iyer",
-      age: "41 Yrs",
-      gender: "Male",
-      status: "Pending",
-      testPackage: "COMPLETE BLOOD COUNT (CBC)",
-    },
-    {
-      id: "PAT-00512",
-      date: "1/6/2026",
-      name: "Mr. Suresh Reddy",
-      age: "41 Yrs",
-      gender: "Male",
-      status: "Pending",
-      testPackage: "Diabetic test package",
-    },
-    {
-      id: "PAT-00513",
-      date: "31/5/2026",
-      name: "Ms. Ananya Das",
-      age: "41 Yrs",
-      gender: "Male",
-      status: "Pending",
-      testPackage: "COMPLETE BLOOD COUNT (CBC)",
-    },
-    {
-      id: "PAT-00514",
-      date: "31/5/2026",
-      name: "Mr. Vikram Singh",
-      age: "41 Yrs",
-      gender: "Male",
-      status: "Pending",
-      testPackage: "COMPLETE BLOOD COUNT (CBC)",
-    },
-    {
-      id: "PAT-00515",
-      date: "30/5/2026",
-      name: "Mr. Ravi Kumar",
-      age: "41 Yrs",
-      gender: "Male",
-      status: "Pending",
-      testPackage: "COMPLETE BLOOD COUNT (CBC)",
-    },
-    {
-      id: "PAT-00516",
-      date: "30/5/2026",
-      name: "Mr. Arun Sharma",
-      age: "41 Yrs",
-      gender: "Male",
-      status: "Pending",
-      testPackage: "COMPLETE BLOOD COUNT (CBC)",
-    },
-    {
-      id: "PAT-00517",
-      date: "29/5/2026",
-      name: "Mr. Kiran Rao",
-      age: "41 Yrs",
-      gender: "Male",
-      status: "Pending",
-      testPackage: "COMPLETE BLOOD COUNT (CBC)",
-    },
-  ];
+  // Handle KPI card click
+  const handleCardChange = (index: number) => {
+    const views: ViewType[] = ['pending', 'collected', 'partial', 'completed'];
+    setCurrentView(views[index]);
+    setHideKPI(false); // Show KPI when changing views
+  };
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const filteredPatients = patients.filter((patient) =>
-  patient.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  patient.name.toLowerCase().includes(searchTerm.toLowerCase())
-);
-
-  const columns = [
-    {
-      header: "Patient ID",
-      accessor: "id",
-      render: (row: Patient) => (
-        <div>
-          <p className="font-semibold text-p3 text-pneutral-900">
-            {row.id}
-          </p>
-
-          <p className="text-[12px] leading-[16px] font-normal text-pneutral-500">
-            {row.date}
-          </p>
-        </div>
-      ),
-    },
-
-    {
-      header: "Patient Details",
-      accessor: "name",
-      render: (row: Patient) => (
-        <div>
-          <p className="font-semibold text-p3 text-pneutral-900">
-            {row.name}
-          </p>
-
-          <p className="text-p2 leading-[16px] font-normal text-pneutral-500">
-            {row.age} | {row.gender}
-          </p>
-        </div>
-      ),
-    },
-
-    {
-      header: "Report Status",
-      accessor: "status",
-      render: (row: Patient) => (
-        <span className="inline-flex rounded-full bg-danger-100 px-5 py-1 text-p2 font-medium text-warning-800">
-          {row.status}
-        </span>
-      ),
-    },
-
-    {
-      header: "Tests/Package",
-      accessor: "testPackage",
-      render: (row: Patient) =>
-        row.testPackage === "Diabetic test package" ? (
-          <button className="flex min-w-[220px] items-center font-semibold justify-between text-label-l4 rounded-xl border border-secondary-200 bg-secondary-50 px-2 py-2">
-            <div className="flex items-center gap-2">
-              <Package size={20} />
-
-              <span className="font-semibold">
-                {row.testPackage}
-              </span>
-            </div>
-
-            <ChevronDown size={20} />
-          </button>
-        ) : (
-          <span className="rounded-full bg-secondary-50 px-3 py-1 text-xs font-medium text-secondary-700">
-            {row.testPackage}
-          </span>
-        ),
-    },
-
-    {
-      header: "Actions",
-      accessor: "actions",
-      render: () => (
-        <button className="flex items-center gap-1 rounded-lg border border-success-900 px-4 py-1 text-label-l2 font-medium text-success-900">
-  <Plus size={12} strokeWidth={4}/>
-  <span>Add Sample</span>
-</button>
-      ),
-    },
-  ];
+  // Render the appropriate component based on current view
+  const renderContent = () => {
+    switch (currentView) {
+      case 'pending':
+        return <PendingTable onDataUpdate={(count) => updateKPIData('pending', count)} />;
+      case 'collected':
+        return <CollectedSample onDataUpdate={(count) => updateKPIData('collected', count)} />;
+      case 'partial':
+        return (
+          <CollectionTable 
+            onDataUpdate={(count) => updateKPIData('partial', count)}
+            onHideKPI={() => setHideKPI(true)} // Pass callback to hide KPI
+            onShowKPI={() => setHideKPI(false)}  // Pass callback to show KPI
+          />
+        );
+      case 'completed':
+        return <CompletedTable onDataUpdate={(count) => updateKPIData('completed', count)} />;
+      default:
+        return <PendingTable onDataUpdate={(count) => updateKPIData('pending', count)} />;
+    }
+  };
 
   return (
     <div className="w-full">
@@ -234,82 +92,29 @@ const Technacian = () => {
         <h1 className="text-2xl font-semibold text-pneutral-900">
           Samples Status
         </h1>
-
         <p className="mt-1 text-sm text-pneutral-500">
           Manage and track pending patient Samples
         </p>
       </div>
 
-      {/* KPI Section */}
-      {/* <KPISection data={stats} /> */}
-       <KPISection
-  data={stats}
-  onCardChange={(index) =>
-    console.log("Selected Card:", index)
-  }
-/>
-
-      {/* Filters */}
-      <div className="mt-5 rounded-xl border border-pneutral-200 bg-white p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative flex-1 max-w-xl">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-sneutral-700"
-            />
-
-            <input
-  type="text"
-  placeholder="Search by ID or Name"
-  value={searchTerm}
-  onChange={(e) => setSearchTerm(e.target.value)}
-  className="h-10 w-full rounded-lg border border-pneutral-200 pl-10 pr-4 text-sm outline-none"
-/>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">
-                Date Range:
-              </span>
-
-              <select className="h-10 rounded-md border border-gray-200 px-3 text-sm">
-                <option>This Year</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">
-                Sort by:
-              </span>
-
-              <select className="h-10 rounded-md border border-gray-200 px-3 text-sm">
-                <option>This Year</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="mt-5">
-        <NewCommonTable
-          columns={columns}
-          data={filteredPatients}
-          pageSize={10}
+      {/* KPI Section - Hide when on result entry screen */}
+      {!hideKPI && (
+        <KPISection
+          data={stats}
+          onCardChange={handleCardChange}
+          selectedIndex={['pending', 'collected', 'partial', 'completed'].indexOf(currentView)}
         />
+      )}
+
+      {/* Dynamic Content */}
+      <div className={`mt-5 ${hideKPI ? 'mt-0' : ''}`}>
+        {renderContent()}
       </div>
     </div>
   );
 };
 
-export default Technacian;
-
-
-
-
-
-
+export default Technician;
 
 
 
@@ -317,294 +122,111 @@ export default Technacian;
 
 // "use client";
 
-// import { Search, Package, ChevronDown } from "lucide-react";
-// import KPISection from "../KPISection";
-// import NewCommonTable from "../../../newcommoncomponent/NewCommonTable";
+// import React, { useState} from 'react';
+// import KPISection from '../KPISection';
 
+// import { useLabs } from '@/context/LabContext';
+// import PendingTable from '../PendingTable';
+// import CollectedSample from '../CollectedSample';
+// import CollectionTable from '../CollectionTable';
+// import CompletedTable from '../CompletedTable';
 
+// type ViewType = 'pending' | 'collected' | 'partial' | 'completed';
 
-// type Patient = {
-//   id: string;
-//   date: string;
-//   name: string;
-//   age: string;
-//   gender: string;
-//   status: string;
-//   testPackage: string;
-// };
+// const Technician = () => {
+//   const { currentLab } = useLabs();
+//   const [currentView, setCurrentView] = useState<ViewType>('pending');
+  
+//   // State to hold KPI data from child components
+//   const [kpiData, setKpiData] = useState({
+//     pending: 0,
+//     collected: 0,
+//     partial: 0,
+//     completed: 0
+//   });
 
-// const Technacian = () => {
+//   // Handler to update KPI data from child components
+//   const updateKPIData = (type: ViewType, count: number) => {
+//     setKpiData(prev => ({
+//       ...prev,
+//       [type]: count
+//     }));
+//   };
+
+//   // Stats for KPISection
 //   const stats = [
 //     {
 //       title: "Samples Pending",
-//       value: "6531",
-//       valueColor: "text-black",
+//       value: kpiData.pending.toString(),
+//       count: kpiData.pending
 //     },
 //     {
 //       title: "Samples Collected",
-//       value: "6531",
-//       valueColor: "text-blue-500",
+//       value: kpiData.collected.toString(),
+//       count: kpiData.collected
 //     },
 //     {
 //       title: "Partially Completed Test Results",
-//       value: "6531",
-//       valueColor: "text-amber-500",
+//       value: kpiData.partial.toString(),
+//       count: kpiData.partial
 //     },
 //     {
 //       title: "Completed Test",
-//       value: "6531",
-//       valueColor: "text-green-600",
+//       value: kpiData.completed.toString(),
+//       count: kpiData.completed
 //     },
 //   ];
 
-//   const patients: Patient[] = [
-//     {
-//       id: "PAT-00507",
-//       date: "3/6/2026",
-//       name: "Mrs. JYOTHI",
-//       age: "41 Yrs",
-//       gender: "Male",
-//       status: "Pending",
-//       testPackage: "COMPLETE BLOOD COUNT (CBC)",
-//     },
-//     {
-//       id: "PAT-00508",
-//       date: "3/6/2026",
-//       name: "Mr. Rajesh Kumar",
-//       age: "41 Yrs",
-//       gender: "Male",
-//       status: "Pending",
-//       testPackage: "COMPLETE BLOOD COUNT (CBC)",
-//     },
-//     {
-//       id: "PAT-00509",
-//       date: "2/6/2026",
-//       name: "Ms. Priya Sharma",
-//       age: "41 Yrs",
-//       gender: "Male",
-//       status: "Pending",
-//       testPackage: "Diabetic test package",
-//     },
-//     {
-//       id: "PAT-00510",
-//       date: "2/6/2026",
-//       name: "Mr. Amit Patel",
-//       age: "41 Yrs",
-//       gender: "Male",
-//       status: "Pending",
-//       testPackage: "COMPLETE BLOOD COUNT (CBC)",
-//     },
-//     {
-//       id: "PAT-00511",
-//       date: "1/6/2026",
-//       name: "Mrs. Lakshmi Iyer",
-//       age: "41 Yrs",
-//       gender: "Male",
-//       status: "Pending",
-//       testPackage: "COMPLETE BLOOD COUNT (CBC)",
-//     },
-//     {
-//       id: "PAT-00512",
-//       date: "1/6/2026",
-//       name: "Mr. Suresh Reddy",
-//       age: "41 Yrs",
-//       gender: "Male",
-//       status: "Pending",
-//       testPackage: "Diabetic test package",
-//     },
-//     {
-//       id: "PAT-00513",
-//       date: "31/5/2026",
-//       name: "Ms. Ananya Das",
-//       age: "41 Yrs",
-//       gender: "Male",
-//       status: "Pending",
-//       testPackage: "COMPLETE BLOOD COUNT (CBC)",
-//     },
-//     {
-//       id: "PAT-00514",
-//       date: "31/5/2026",
-//       name: "Mr. Vikram Singh",
-//       age: "41 Yrs",
-//       gender: "Male",
-//       status: "Pending",
-//       testPackage: "COMPLETE BLOOD COUNT (CBC)",
-//     },
-//     {
-//       id: "PAT-00515",
-//       date: "30/5/2026",
-//       name: "Mr. Ravi Kumar",
-//       age: "41 Yrs",
-//       gender: "Male",
-//       status: "Pending",
-//       testPackage: "COMPLETE BLOOD COUNT (CBC)",
-//     },
-//     {
-//       id: "PAT-00516",
-//       date: "30/5/2026",
-//       name: "Mr. Arun Sharma",
-//       age: "41 Yrs",
-//       gender: "Male",
-//       status: "Pending",
-//       testPackage: "COMPLETE BLOOD COUNT (CBC)",
-//     },
-//     {
-//       id: "PAT-00517",
-//       date: "29/5/2026",
-//       name: "Mr. Kiran Rao",
-//       age: "41 Yrs",
-//       gender: "Male",
-//       status: "Pending",
-//       testPackage: "COMPLETE BLOOD COUNT (CBC)",
-//     },
-//   ];
+//   // Handle KPI card click
+//   const handleCardChange = (index: number) => {
+//     const views: ViewType[] = ['pending', 'collected', 'partial', 'completed'];
+//     setCurrentView(views[index]);
+//   };
 
-//   const columns = [
-//     {
-//       header: "Patient ID",
-//       accessor: "id",
-//       render: (row: Patient) => (
-//         <div>
-//           <p className="font-semibold text-gray-900">
-//             {row.id}
-//           </p>
-
-//           <p className="text-sm text-gray-500">
-//             {row.date}
-//           </p>
-//         </div>
-//       ),
-//     },
-
-//     {
-//       header: "Patient Details",
-//       accessor: "name",
-//       render: (row: Patient) => (
-//         <div>
-//           <p className="font-semibold text-gray-900">
-//             {row.name}
-//           </p>
-
-//           <p className="text-sm text-gray-500">
-//             {row.age} | {row.gender}
-//           </p>
-//         </div>
-//       ),
-//     },
-
-//     {
-//       header: "Report Status",
-//       accessor: "status",
-//       render: (row: Patient) => (
-//         <span className="inline-flex rounded-full bg-[#F8E3A1] px-5 py-1 text-xs font-medium text-[#7A5400]">
-//           {row.status}
-//         </span>
-//       ),
-//     },
-
-//     {
-//       header: "Tests/Package",
-//       accessor: "testPackage",
-//       render: (row: Patient) =>
-//         row.testPackage === "Diabetic test package" ? (
-//           <button className="flex min-w-[220px] items-center justify-between rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
-//             <div className="flex items-center gap-2">
-//               <Package size={16} />
-
-//               <span className="font-medium">
-//                 {row.testPackage}
-//               </span>
-//             </div>
-
-//             <ChevronDown size={16} />
-//           </button>
-//         ) : (
-//           <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-600">
-//             {row.testPackage}
-//           </span>
-//         ),
-//     },
-
-//     {
-//       header: "Actions",
-//       accessor: "actions",
-//       render: () => (
-//         <button className="rounded-lg border border-green-500 px-4 py-2 text-sm font-medium text-green-600 transition hover:bg-green-50">
-//           + Add Sample
-//         </button>
-//       ),
-//     },
-//   ];
+//   // Render the appropriate component based on current view
+//   const renderContent = () => {
+//     switch (currentView) {
+//       case 'pending':
+//         return <PendingTable onDataUpdate={(count) => updateKPIData('pending', count)} />;
+//       case 'collected':
+//         return <CollectedSample onDataUpdate={(count) => updateKPIData('collected', count)} />;
+//       case 'partial':
+//         return <CollectionTable onDataUpdate={(count) => updateKPIData('partial', count)} />;
+//       case 'completed':
+//         return <CompletedTable onDataUpdate={(count) => updateKPIData('completed', count)} />;
+//       default:
+//         return <PendingTable onDataUpdate={(count) => updateKPIData('pending', count)} />;
+//     }
+//   };
 
 //   return (
 //     <div className="w-full">
 //       {/* Header */}
 //       <div className="mb-5">
-//         <h1 className="text-2xl font-semibold text-gray-900">
+//         <h1 className="text-2xl font-semibold text-pneutral-900">
 //           Samples Status
 //         </h1>
-
-//         <p className="mt-1 text-sm text-gray-500">
+//         <p className="mt-1 text-sm text-pneutral-500">
 //           Manage and track pending patient Samples
 //         </p>
 //       </div>
 
 //       {/* KPI Section */}
-//       <KPISection data={stats} />
+//       <KPISection
+//         data={stats}
+//         onCardChange={handleCardChange}
+//         selectedIndex={['pending', 'collected', 'partial', 'completed'].indexOf(currentView)}
+//       />
 
-//       {/* Filters */}
-//       <div className="mt-5 rounded-xl border bg-white border-gray-200 p-4">
-//         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-//           <div className="relative w-full max-w-md">
-//             <Search
-//               size={18}
-//               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-//             />
-
-//             <input
-//               type="text"
-//               placeholder="Search by name, ID, or phone..."
-//               className="h-10 w-full rounded-lg border border-gray-200 pl-10 pr-4 text-sm outline-none focus:border-violet-400"
-//             />
-//           </div>
-
-//           <div className="flex flex-wrap items-center gap-4">
-//             <div className="flex items-center gap-2">
-//               <span className="text-sm text-gray-500">
-//                 Date Range:
-//               </span>
-
-//               <select className="h-10 rounded-md border border-gray-200 px-3 text-sm">
-//                 <option>This Year</option>
-//               </select>
-//             </div>
-
-//             <div className="flex items-center gap-2">
-//               <span className="text-sm text-gray-500">
-//                 Sort by:
-//               </span>
-
-//               <select className="h-10 rounded-md border border-gray-200 px-3 text-sm">
-//                 <option>This Year</option>
-//               </select>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* Table */}
+//       {/* Dynamic Content */}
 //       <div className="mt-5">
-//         <NewCommonTable
-//           columns={columns}
-//           data={patients}
-//           pageSize={10}
-//         />
+//         {renderContent()}
 //       </div>
 //     </div>
 //   );
 // };
 
-// export default Technacian;
+// export default Technician;
 
 
 
@@ -622,7 +244,14 @@ export default Technacian;
 
 
 
-// code by abhishek........................
+
+
+
+
+
+
+
+// code by abhishek........................do not chnage......................
 
 // 'use client';
 // import { useState } from 'react';
