@@ -165,6 +165,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
       } as React.ChangeEvent<HTMLSelectElement>;
       handlePrefixChange(prefixEvent);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPrefix, newPatient.firstName]);
 
   // Validate all fields when they change

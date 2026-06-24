@@ -15,7 +15,10 @@ const Modal = ({ isOpen, onClose, children, title, footer, modalClassName }: Mod
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div
+                    className="fixed inset-0 z-50 p-2 sm:p-4"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
                     {/* Backdrop */}
                     <motion.div
                         className="fixed inset-0 bg-black/20 backdrop-blur-sm"
@@ -32,16 +35,21 @@ const Modal = ({ isOpen, onClose, children, title, footer, modalClassName }: Mod
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 8 }}
                         transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                        className={`relative z-10 bg-white rounded-xl shadow-2xl w-full overflow-hidden max-h-[90vh] overflow-y-auto ${modalClassName || 'max-w-2xl'}`}
+                        className={`relative z-10 bg-white rounded-xl shadow-2xl w-full ${modalClassName || 'max-w-2xl'}`}
+                        style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: '90vh' }}
                     >
-                        {/* Header */}
+                        {/* Header — sticky, never scrolls */}
                         {title && (
                             <div
-                                className="px-6 py-4 border-b border-gray-200 relative overflow-hidden"
-                                style={{ background: 'linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)' }}
+                                className="px-6 py-4 relative overflow-hidden"
+                                style={{
+                                    background: 'linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)',
+                                    flexShrink: 0,
+                                    borderBottom: '1px solid #e5e7eb',
+                                }}
                             >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center">
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center' }}>
                                         <div className="bg-white/20 p-2 rounded-lg mr-3">
                                             <FaExclamationTriangle className="text-white text-lg" />
                                         </div>
@@ -60,14 +68,21 @@ const Modal = ({ isOpen, onClose, children, title, footer, modalClassName }: Mod
                             </div>
                         )}
 
-                        {/* Body */}
-                        <div id="modal-description" className="p-6">
+                        {/* Body — only this scrolls */}
+                        <div
+                            id="modal-description"
+                            className="p-4 sm:p-6"
+                            style={{ flex: '1 1 0%', overflowY: 'auto', minHeight: 0 }}
+                        >
                             {children}
                         </div>
 
-                        {/* Footer */}
+                        {/* Footer — sticky, never scrolls */}
                         {footer && (
-                            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                            <div
+                                className="px-6 py-4 bg-gray-50"
+                                style={{ flexShrink: 0, borderTop: '1px solid #e5e7eb' }}
+                            >
                                 {footer}
                             </div>
                         )}

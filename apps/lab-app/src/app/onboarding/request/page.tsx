@@ -141,8 +141,8 @@ const RequestVerificationPage = () => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-white to-primary/5 flex items-center justify-center px-4 py-12">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+      <div className="bg-gradient-to-br from-purple-50 via-white to-purple-50" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 16px' }}>
+        <div style={{ width: '100%', maxWidth: '448px' }} className="bg-white rounded-2xl shadow-xl p-8 text-center">
           <div className="mb-6 flex justify-center">
             <div className="p-4 bg-green-100 rounded-full">
               <FaCheckCircle className="text-5xl text-green-600" />
@@ -159,7 +159,7 @@ const RequestVerificationPage = () => {
             <button
               onClick={handleResend}
               disabled={isSubmitting || !!blockedUntil}
-              className="w-full py-2.5 px-4 text-sm text-primary hover:text-primarylight font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-2.5 px-4 text-sm text-purple-600 hover:text-purple-500 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
@@ -182,12 +182,12 @@ const RequestVerificationPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-white to-primary/5 flex items-center justify-center px-4 py-12">
-      <div className="max-w-md w-full">
+    <div className="bg-gradient-to-br from-purple-50 via-white to-purple-50" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 16px' }}>
+      <div style={{ width: '100%', maxWidth: '448px' }}>
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
-            <FaEnvelope className="text-3xl text-primary" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
+            <FaEnvelope className="text-3xl text-purple-600" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Get Started</h1>
           <p className="text-gray-600">
@@ -214,7 +214,7 @@ const RequestVerificationPage = () => {
                     setEmail(e.target.value);
                     setValidationError('');
                   }}
-                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                     validationError ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="your.email@example.com"
@@ -233,7 +233,7 @@ const RequestVerificationPage = () => {
             <button
               type="submit"
               disabled={isSubmitting || !!blockedUntil || !email.trim()}
-              className="w-full bg-primary hover:bg-primarylight text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
             >
               {isSubmitting ? (
                 <>
@@ -252,7 +252,7 @@ const RequestVerificationPage = () => {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <Link href="/user-login" className="text-primary hover:text-primarylight font-medium">
+              <Link href="/user-login" className="text-purple-600 hover:text-purple-500 font-medium">
                 Sign in
               </Link>
             </p>

@@ -1,5 +1,6 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+'use client';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FaTimes, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
 
 interface ConfirmationDialogProps {
@@ -25,105 +26,198 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   isLoading = false,
   children
 }) => {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-          {/* Backdrop */}
-          <motion.div
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={!isLoading ? onClose : undefined}
-          />
+  const [mounted, setMounted] = useState(false);
 
-          {/* Dialog */}
-          <motion.div
-            className="relative z-10 bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
-            initial={{ opacity: 0, scale: 0.95, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 8 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-          >
-            {/* Header */}
-            <div
-              className="px-6 py-4 border-b border-gray-200 relative overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)' }}
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !isOpen) return null;
+
+  return createPortal(
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+      }}
+    >
+      {/* Backdrop */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0,0,0,0.45)',
+          backdropFilter: 'blur(4px)',
+        }}
+        onClick={!isLoading ? onClose : undefined}
+      />
+
+      {/* Dialog box */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)',
+          width: '100%',
+          maxWidth: '540px',
+          maxHeight: 'calc(100vh - 32px)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            padding: '16px 24px',
+            background: 'linear-gradient(135deg, #E1C4F8 0%, #d1a8f5 100%)',
+            borderBottom: '1px solid #e5e7eb',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  marginRight: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <FaExclamationTriangle style={{ color: 'white', fontSize: '18px' }} />
+              </div>
+              <h3 style={{ fontSize: '17px', fontWeight: 600, color: 'white', margin: 0 }}>{title}</h3>
+            </div>
+            <button
+              onClick={onClose}
+              disabled={isLoading}
+              style={{
+                color: 'rgba(255,255,255,0.8)',
+                padding: '6px',
+                borderRadius: '6px',
+                border: 'none',
+                background: 'none',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+              }}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="bg-white/20 p-2 rounded-lg mr-3">
-                    <FaExclamationTriangle className="text-white text-lg" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white">{title}</h3>
-                </div>
-                <button
-                  onClick={onClose}
-                  disabled={isLoading}
-                  className="text-white/80 hover:text-white transition-colors disabled:opacity-50 p-1 rounded-lg hover:bg-white/10"
-                >
-                  <FaTimes className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="p-6">
-              <div className="flex items-start mb-6">
-                <div className="flex-shrink-0 mr-4">
-                  <div className="bg-purple-100 p-3 rounded-full">
-                    <FaCheckCircle className="text-purple-500 text-xl" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <p className="text-gray-700 leading-relaxed mb-4">{message}</p>
-                  {children && (
-                    <div className="mt-4 border-t border-gray-200 pt-4">
-                      {children}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={onClose}
-                  disabled={isLoading}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200"
-                >
-                  {cancelText}
-                </button>
-                <button
-                  onClick={onConfirm}
-                  disabled={isLoading}
-                  className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                  style={{
-                    background: isLoading
-                      ? '#9CA3AF'
-                      : 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)'
-                  }}
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <FaCheckCircle className="mr-2" />
-                      {confirmText}
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </motion.div>
+              <FaTimes style={{ width: '14px', height: '14px' }} />
+            </button>
+          </div>
         </div>
-      )}
-    </AnimatePresence>
+
+        {/* Scrollable content */}
+        <div style={{ padding: '24px', overflowY: 'auto', flex: '1 1 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '20px' }}>
+            <div style={{ flexShrink: 0, marginRight: '16px' }}>
+              <div
+                style={{
+                  backgroundColor: '#f3e8ff',
+                  padding: '12px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <FaCheckCircle style={{ color: '#a855f7', fontSize: '20px' }} />
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ color: '#374151', lineHeight: '1.6', margin: 0, fontSize: '14px' }}>{message}</p>
+              {children && (
+                <div
+                  style={{ marginTop: '16px', borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}
+                >
+                  {children}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '10px',
+              paddingTop: '16px',
+              borderTop: '1px solid #f3f4f6',
+            }}
+          >
+            <button
+              onClick={onClose}
+              disabled={isLoading}
+              style={{
+                padding: '8px 18px',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#374151',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                opacity: isLoading ? 0.5 : 1,
+              }}
+            >
+              {cancelText}
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isLoading}
+              style={{
+                padding: '8px 18px',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: 'white',
+                background: isLoading
+                  ? '#9CA3AF'
+                  : 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                opacity: isLoading ? 0.5 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              {isLoading ? (
+                <>
+                  <div
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      border: '2px solid white',
+                      borderTopColor: 'transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite',
+                    }}
+                  />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <FaCheckCircle />
+                  {confirmText}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 };
 

@@ -444,6 +444,7 @@ const PatientBilling = ({
         value: PaymentStatus.DUE,
       },
     } as React.ChangeEvent<HTMLInputElement>);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   useEffect(() => {

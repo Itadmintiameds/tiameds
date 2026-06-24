@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useLabs } from '@/context/LabContext';
 import { FaTrash, FaUser, FaInfoCircle, FaCalendarAlt, FaClock, FaChevronDown, FaSearch, FaTimes } from 'react-icons/fa';
 
@@ -57,7 +58,6 @@ const CancelPatientModal: React.FC<CancelPatientModalProps> = ({ isOpen, onClose
   const [tests, setTests] = useState<TestList[]>([]);
   const [healthPackage, setHealthPackage] = useState<Packages[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
-  const modalRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Reset form when modal opens/closes
@@ -76,9 +76,6 @@ const CancelPatientModal: React.FC<CancelPatientModalProps> = ({ isOpen, onClose
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowReasonDropdown(false);
       }
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose();
-      }
     };
 
     if (isOpen) {
@@ -87,7 +84,7 @@ const CancelPatientModal: React.FC<CancelPatientModalProps> = ({ isOpen, onClose
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -277,31 +274,56 @@ const CancelPatientModal: React.FC<CancelPatientModalProps> = ({ isOpen, onClose
     );
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div
-        ref={modalRef}
-        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-50 p-4"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          {/* Backdrop */}
+          <motion.div
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+          />
+
+          {/* Modal Content */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 8 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="relative z-10 bg-white rounded-xl shadow-2xl w-full max-w-2xl"
+            style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: '90vh' }}
+          >
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center">
+        <div
+          className="px-6 py-4"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexShrink: 0, borderBottom: '1px solid #e5e7eb',
+            background: 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             <FaUser className="text-orange-600 mr-3 text-xl" />
-            <h2 className="text-2xl font-bold text-gray-800">Cancel Patient Visit</h2>
+            <h2 className="text-lg font-semibold text-orange-900">Cancel Patient Visit</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
+            className="text-orange-700/70 hover:text-orange-900 transition-colors p-1 rounded-lg hover:bg-orange-100 focus:outline-none"
             aria-label="Close modal"
           >
-            <FaTimes className="text-xl" />
+            <FaTimes className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="overflow-y-auto p-6 flex-1">
+        {/* Modal Body — only this scrolls */}
+        <div className="p-6" style={{ flex: '1 1 0%', overflowY: 'auto', minHeight: 0 }}>
           {/* Warning Section */}
           <div className="bg-orange-50 border-l-4 border-orange-500 p-4 mb-6 rounded-r">
             <div className="flex items-start">
@@ -478,7 +500,10 @@ const CancelPatientModal: React.FC<CancelPatientModalProps> = ({ isOpen, onClose
         </div>
 
         {/* Modal Footer */}
-        <div className="flex justify-between items-center p-6 border-t border-gray-200">
+        <div
+          className="px-6 py-4 bg-gray-50"
+          style={{ flexShrink: 0, borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        >
           <button
             onClick={onClose}
             className="px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
@@ -503,8 +528,10 @@ const CancelPatientModal: React.FC<CancelPatientModalProps> = ({ isOpen, onClose
             )}
           </button>
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 };
 
