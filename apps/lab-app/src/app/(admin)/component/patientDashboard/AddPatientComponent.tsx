@@ -10,10 +10,9 @@ import { Insurance } from '@/types/insurance/insurance';
 import { Package as PackageType } from '@/types/package/package';
 import { Patient, PaymentMethod, PaymentStatus, VisitStatus, VisitType } from "@/types/patient/patient";
 import { TestList } from '@/types/test/testlist';
-import { Plus, XIcon } from 'lucide-react';
+import { XIcon } from 'lucide-react';
 import React, { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import Button from '../common/Button';
 import Loader from '../common/Loader';
 import ConfirmationDialog from '../common/ConfirmationDialog';
 import PatientBilling from './component/PatientBilling';
@@ -102,6 +101,8 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
   const { currentLab, setPatientDetails, refreshDocterList } = useLabs();
   const { user: loginedUser } = useAuthStore();
   const [isGlobalDiscountHidden, setIsGlobalDiscountHidden] = useState<boolean>(false);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [forceFormValidation, setForceFormValidation] = useState<boolean>(false);
 
   useEffect(() => {
     if (!currentLab || !currentLab.id) {
@@ -574,10 +575,6 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
 
 
 
-  const handleAddPatientClick = () => {
-    setShowConfirmDialog(true);
-  };
-
   const handleConfirmAdd = () => {
     setShowConfirmDialog(false);
     handleAddPatient();
@@ -585,6 +582,50 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
 
   const handleCancelAdd = () => {
     setShowConfirmDialog(false);
+  };
+
+  const handleProceed = () => {
+    if (currentStep === 1) {
+      const phone = searchTerm || newPatient.phone;
+      const actualFirstName = (newPatient.firstName || '')
+        .replace(/^(Mr\.|Mrs\.|Ms\.|M\/S)\s*/i, '')
+        .trim();
+
+      if (!actualFirstName) {
+        setForceFormValidation(true);
+        toast.error('Please enter patient first name.');
+        return;
+      }
+      if (!phone || !/^\d{10}$/.test(phone)) {
+        setForceFormValidation(true);
+        toast.error('Please enter a valid 10-digit mobile number.');
+        return;
+      }
+      if (!newPatient.city?.trim()) {
+        setForceFormValidation(true);
+        toast.error('Please enter the city.');
+        return;
+      }
+      if (!newPatient.dateOfBirth) {
+        setForceFormValidation(true);
+        toast.error('Please enter the date of birth.');
+        return;
+      }
+      setForceFormValidation(false);
+      setCurrentStep(2);
+    } else if (currentStep === 2) {
+      if (newPatient.visit.testIds.length === 0 && newPatient.visit.packageIds.length === 0) {
+        toast.error('Please select at least one test or package.');
+        return;
+      }
+      setCurrentStep(3);
+    } else {
+      handleAddPatient();
+    }
+  };
+
+  const handleGoBack = () => {
+    if (currentStep > 1) setCurrentStep((prev) => (prev - 1) as 1 | 2 | 3);
   };
 
   const handleAddPatient = async () => {
@@ -809,72 +850,325 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
     return <Loader type="progress" fullScreen={true} text='Adding Patient...' />;
   }
 
+  const steps = [
+    { n: 1 as const, label: 'Register Patient' },
+    { n: 2 as const, label: 'Test & Billing' },
+    { n: 3 as const, label: 'Confirm Bill' },
+  ];
+
   return (
-    <div>
-      <div className="flex gap-4 bg-gray-50">
-        <PatientFrom
-          newPatient={newPatient}
-          handleChange={handleChange}
-          searchTerm={searchTerm}
-          handleSearchChange={handleSearchChange}
-          filteredPatients={filteredPatients}
-          handlePatientSelect={handlePatientSelect}
-        />
-        <PatientVisit
-          newPatient={newPatient}
-          handleChange={handleChange}
-          doctors={doctors}
-        />
+    <div className="bg-gray-50">
+
+      {/* ── Stepper ── */}
+      <div className="bg-white border-b border-gray-100 px-2 py-3 mb-5 rounded-xl">
+        <div className="flex items-center gap-2">
+          {steps.map(({ n, label }, i) => (
+            <React.Fragment key={n}>
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                currentStep === n
+                  ? 'bg-purple-600 text-white'
+                  : currentStep > n
+                    ? 'bg-white border border-purple-200 text-purple-600'
+                    : 'text-gray-400'
+              }`}>
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                  currentStep === n ? 'bg-white text-purple-600' :
+                  currentStep > n ? 'bg-purple-600 text-white' :
+                  'bg-gray-200 text-gray-500'
+                }`}>
+                  {currentStep > n ? '✓' : n}
+                </span>
+                {label}
+              </div>
+              {i < 2 && (
+                <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
 
-      <PatientTestPackage
-        tests={tests}
-        packages={packages}
-        selectedTests={selectedTests}
-        selectedPackages={selectedPackages}
-        setSelectedTests={setSelectedTests}
-        setSelectedPackages={setSelectedPackages}
-        selectedCategory={selectedCategory}
-        handleCategoryChange={handleCategoryChange}
-        searchTestTerm={searchTestTerm}
-        handleTestSearch={handleTestSearch}
-        filteredTests={filteredTests}
-        handleTestSelection={handleTestSelection}
-        handlePackageSelection={handlePackageSelection}
-        removeTest={removeTest}
-        removePackage={removePackage}
-        categories={categories}
-        handleTestDiscountChange={handleTestDiscountChange}
-      />
-
-      <PatientBilling
-        selectedPackages={selectedPackages}
-        setSelectedTests={setSelectedTests}
-        newPatient={newPatient}
-        handleChange={handleChange}
-        isGlobalDiscountHidden={isGlobalDiscountHidden}
-      />
-
-      <div className="flex justify-end space-x-2 mt-3">
-        <Button
-          text=''
-          type="button"
-          onClick={handleAddPatientClick}
-          className="flex items-center px-2.5 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-3 w-3 mr-1.5" />
-          Add Patient
-        </Button>
-        <Button
-          text=''
-          type="button"
-          onClick={handleClearPatient}
-          className="flex items-center px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-        >
-          <XIcon className="h-3 w-3 mr-1.5" />
-          Clear
-        </Button>
+      {/* ── Page header ── */}
+      <div className="flex items-start justify-between mb-5">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">
+            {currentStep === 1 ? 'Register Patient' : currentStep === 2 ? 'Test & Package Selection' : 'Confirm Bill'}
+          </h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {currentStep === 1
+              ? 'Create a new patient record'
+              : `Patient: ${newPatient.firstName} ${newPatient.lastName || ''}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {currentStep === 1 ? (
+            <button
+              type="button"
+              onClick={() => setAddPatientModal(false)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              ← Cancel
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleGoBack}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              ← Back
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleProceed}
+            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-purple-600 rounded-xl hover:bg-purple-700 transition-colors"
+          >
+            {currentStep === 3 ? 'Confirm' : 'Save & Proceed →'}
+          </button>
+        </div>
       </div>
+
+      {/* ── Step 1: Register Patient ── */}
+      {currentStep === 1 && (
+        <div className="flex gap-5 items-start">
+          <div className="flex-1 min-w-0 space-y-3">
+            <PatientFrom
+              newPatient={newPatient}
+              handleChange={handleChange}
+              searchTerm={searchTerm}
+              handleSearchChange={handleSearchChange}
+              filteredPatients={filteredPatients}
+              handlePatientSelect={handlePatientSelect}
+              forceValidation={forceFormValidation}
+            />
+            <PatientVisit
+              newPatient={newPatient}
+              handleChange={handleChange}
+              doctors={doctors}
+              mode="doctorOnly"
+            />
+          </div>
+          <div className="w-72 flex-shrink-0">
+            <PatientVisit
+              newPatient={newPatient}
+              handleChange={handleChange}
+              doctors={doctors}
+              mode="visitOnly"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 2: Test & Package Selection ── */}
+      {currentStep === 2 && (
+        <div className="flex gap-5 items-start">
+          <div className="flex-1 min-w-0">
+            <PatientTestPackage
+              tests={tests}
+              packages={packages}
+              selectedTests={selectedTests}
+              selectedPackages={selectedPackages}
+              setSelectedTests={setSelectedTests}
+              setSelectedPackages={setSelectedPackages}
+              selectedCategory={selectedCategory}
+              handleCategoryChange={handleCategoryChange}
+              searchTestTerm={searchTestTerm}
+              handleTestSearch={handleTestSearch}
+              filteredTests={filteredTests}
+              handleTestSelection={handleTestSelection}
+              handlePackageSelection={handlePackageSelection}
+              removeTest={removeTest}
+              removePackage={removePackage}
+              categories={categories}
+              handleTestDiscountChange={handleTestDiscountChange}
+            />
+          </div>
+          <div className="w-72 flex-shrink-0">
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Billing Summary</h3>
+              {selectedTests.length === 0 && selectedPackages.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">No tests selected yet</p>
+              ) : (
+                <>
+                  <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                    {selectedTests.map((test) => (
+                      <div key={test.id} className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 leading-tight">{test.name}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{test.testCode || `T${String(test.id).padStart(3,'0')}`} · {test.category}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <p className="text-sm font-semibold text-gray-800">₹{Number(test.discountedPrice ?? test.price).toFixed(0)}</p>
+                          <button onClick={() => removeTest(test.id.toString())} className="text-gray-300 hover:text-red-500 transition-colors">
+                            <XIcon className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {selectedPackages.map((pkg) => (
+                      <div key={pkg.id} className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 leading-tight">{pkg.packageName}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{pkg.tests?.length || 0} tests included</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <p className="text-sm font-semibold text-purple-700">₹{Number(pkg.price).toFixed(0)}</p>
+                          <button onClick={() => removePackage(pkg.id.toString())} className="text-gray-300 hover:text-red-500 transition-colors">
+                            <XIcon className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-gray-100 pt-3 space-y-1.5">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Subtotal ({selectedTests.length + selectedPackages.length} tests)</span>
+                      <span className="font-medium text-gray-800">₹{Number(newPatient.visit?.billing?.totalAmount ?? 0).toFixed(0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Discount</span>
+                      <span className="font-medium text-green-600">-₹{Number(newPatient.visit?.billing?.discount ?? 0).toFixed(0)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold mt-1 pt-2 border-t border-gray-100">
+                      <span className="text-gray-900">Total</span>
+                      <span className="text-gray-900">₹{Number(newPatient.visit?.billing?.netAmount ?? 0).toFixed(0)}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleProceed}
+                    className="w-full mt-4 bg-purple-600 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-purple-700 transition-colors"
+                  >
+                    → Proceed to Billing
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 3: Confirm Bill ── */}
+      {currentStep === 3 && (
+        <div className="flex gap-5 items-start">
+          <div className="flex-1 min-w-0 space-y-4">
+            {/* Order Summary */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-700">Order Summary</h3>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Test Name</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Code</th>
+                    <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Price</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {selectedTests.map((test) => (
+                    <tr key={test.id} className="hover:bg-gray-50">
+                      <td className="px-5 py-3 font-medium text-gray-800">{test.name}</td>
+                      <td className="px-3 py-3 font-mono text-xs text-gray-500">{test.testCode || '—'}</td>
+                      <td className="px-3 py-3 text-right font-medium text-gray-800">₹{Number(test.discountedPrice ?? test.price).toFixed(0)}</td>
+                    </tr>
+                  ))}
+                  {selectedPackages.map((pkg) => (
+                    <tr key={pkg.id} className="hover:bg-purple-50/40">
+                      <td className="px-5 py-3 font-medium text-gray-800">{pkg.packageName}</td>
+                      <td className="px-3 py-3 text-xs text-purple-500">Package</td>
+                      <td className="px-3 py-3 text-right font-medium text-purple-700">₹{Number(pkg.price).toFixed(0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="px-5 py-3 border-t border-gray-100 space-y-1.5 bg-gray-50">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Subtotal</span>
+                  <span>₹{Number(newPatient.visit?.billing?.totalAmount ?? 0).toFixed(0)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Discount ({newPatient.visit?.billing?.discountPercentage ?? 0}%)</span>
+                  <span>-₹{Number(newPatient.visit?.billing?.discount ?? 0).toFixed(0)}</span>
+                </div>
+                <div className="flex justify-between font-bold pt-1.5 border-t border-gray-200">
+                  <span className="text-gray-900">Total</span>
+                  <span className="text-gray-900">₹{Number(newPatient.visit?.billing?.netAmount ?? 0).toFixed(0)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Details */}
+            <PatientBilling
+              selectedPackages={selectedPackages}
+              setSelectedTests={setSelectedTests}
+              newPatient={newPatient}
+              handleChange={handleChange}
+              isGlobalDiscountHidden={isGlobalDiscountHidden}
+            />
+          </div>
+
+          {/* Patient Info Card */}
+          <div className="w-72 flex-shrink-0">
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-base font-bold text-gray-900 mb-4">
+                {newPatient.firstName} {newPatient.lastName || ''}
+              </h3>
+              <div className="space-y-2.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Age / Gender</span>
+                  <span className="font-semibold text-gray-800 capitalize">{newPatient.age || '—'}, {newPatient.gender || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Doctor</span>
+                  <span className="font-semibold text-gray-800">
+                    {newPatient.visit?.doctorId
+                      ? doctors.find(d => d.id === Number(newPatient.visit.doctorId))?.name || '—'
+                      : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Visit Type</span>
+                  <span className="font-semibold text-gray-800">{newPatient.visit?.visitType?.replace(/_/g, ' ') || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Contact</span>
+                  <span className="font-semibold text-gray-800">{searchTerm || newPatient.phone || '—'}</span>
+                </div>
+                {(selectedTests.length > 0 || selectedPackages.length > 0) && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-500 flex-shrink-0">Tests Ordered</span>
+                    <span className="font-semibold text-gray-800 text-right">
+                      {[
+                        ...selectedTests.map(t => t.name),
+                        ...selectedPackages.map(p => p.packageName),
+                      ].join(', ')}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {newPatient.visit?.visitDate && (
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-600">Visit Information</span>
+                      <span className="text-gray-500">
+                        {new Date(newPatient.visit.visitDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Status</span>
+                      <span className="capitalize text-gray-700">{newPatient.visit.visitStatus?.toLowerCase().replace(/_/g, ' ') || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmationDialog
         isOpen={showConfirmDialog}

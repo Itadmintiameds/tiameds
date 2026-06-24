@@ -740,30 +740,34 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex gap-4">
-        <PatientForm
-          newPatient={editedPatient}
-          handleChange={handleChange}
-          isEditMode={true}
-          searchTerm={editedPatient.phone}
-          handleSearchChange={(e) => {
-            const value = e.target.value.replace(/\D/g, '');
-            handleChange({
-              target: {
-                name: 'phone',
-                value,
-              },
-            } as unknown as React.ChangeEvent<HTMLInputElement>);
-          }}
-          filteredPatients={[]}
-          handlePatientSelect={() => { }}
-        />
-        <PatientVisit
-          newPatient={editedPatient}
-          handleChange={handleChange}
-          doctors={doctors}
-        />
+    <div className="w-full flex flex-col gap-6">
+      <div className="flex flex-col lg:flex-row gap-5 items-start">
+        <div className="flex-1 min-w-0 w-full">
+          <PatientForm
+            newPatient={editedPatient}
+            handleChange={handleChange}
+            isEditMode={true}
+            searchTerm={editedPatient.phone}
+            handleSearchChange={(e) => {
+              const value = e.target.value.replace(/\D/g, '');
+              handleChange({
+                target: {
+                  name: 'phone',
+                  value,
+                },
+              } as unknown as React.ChangeEvent<HTMLInputElement>);
+            }}
+            filteredPatients={[]}
+            handlePatientSelect={() => { }}
+          />
+        </div>
+        <div className="w-full lg:w-72 flex-shrink-0">
+          <PatientVisit
+            newPatient={editedPatient}
+            handleChange={handleChange}
+            doctors={doctors}
+          />
+        </div>
       </div>
 
       <PatientTestPackage
@@ -795,23 +799,23 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         onCollectedAmountChange={setHasCollectedAmount}
       />
 
-      <div className="flex justify-end space-x-2 mt-3">
+      <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
         <Button
           text=''
           type="button"
           onClick={handleUpdatePatientClick}
-          className="flex items-center px-2.5 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+          className="flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
         >
-          <Plus className="h-3 w-3 mr-1.5" />
+          <Plus className="h-3.5 w-3.5 mr-1.5" />
           Update Patient
         </Button>
         <Button
           text=''
           type="button"
           onClick={() => setEditPatientDetailsModal(false)}
-          className="flex items-center px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+          className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors border border-gray-200"
         >
-          <XIcon className="h-3 w-3 mr-1.5" />
+          <XIcon className="h-3.5 w-3.5 mr-1.5" />
           Cancel
         </Button>
       </div>

@@ -444,6 +444,7 @@ const PatientBilling = ({
         value: PaymentStatus.DUE,
       },
     } as React.ChangeEvent<HTMLInputElement>);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   useEffect(() => {
@@ -631,7 +632,39 @@ const PatientBilling = ({
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Payment Method pills */}
+        <div>
+          <label className="text-xs font-medium text-gray-600 mb-2 flex items-center">
+            <FaCreditCard className="mr-1.5 text-purple-500 text-xs" />
+            Payment Method
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {Object.values(PaymentMethod).map((method) => {
+              const isActive = paymentMethod === method;
+              const label = method.replace(/_/g, ' + ');
+              return (
+                <button
+                  key={method}
+                  type="button"
+                  onClick={() =>
+                    handleChange({
+                      target: { name: 'visit.billing.paymentMethod', value: method },
+                    } as React.ChangeEvent<HTMLInputElement>)
+                  }
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    isActive
+                      ? 'bg-purple-600 text-white border-purple-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-purple-400 hover:text-purple-600'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col">
             <label className="text-xs font-medium text-gray-600 mb-1 flex items-center">
               <FaInfoCircle className="mr-1.5 text-purple-500 text-xs" />
@@ -648,26 +681,6 @@ const PatientBilling = ({
               {Object.values(PaymentStatus).map((status) => (
                 <option key={status} value={status}>
                   {status}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col">
-            <label className="text-xs font-medium text-gray-600 mb-1 flex items-center">
-              <FaCreditCard className="mr-1.5 text-purple-500 text-xs" />
-              Method
-            </label>
-             <select
-               name="visit.billing.paymentMethod"
-               value={newPatient.visit?.billing?.paymentMethod ?? ''}
-               onChange={handleChange}
-               className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
-               required
-             >
-              {Object.values(PaymentMethod).map((method) => (
-                <option key={method} value={method}>
-                  {method}
                 </option>
               ))}
             </select>

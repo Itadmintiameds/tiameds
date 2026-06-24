@@ -109,6 +109,7 @@ const PatientVisitListTable: React.FC = () => {
 
   useEffect(() => {
     fetchVisits();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLab, updatePatientListVist, addUpdatePatientListVist, dateRangeFilter, customStartDate, customEndDate]);
 
   const { startDate, endDate } = getDateRange(dateRangeFilter, customStartDate, customEndDate);
@@ -716,7 +717,7 @@ const PatientVisitListTable: React.FC = () => {
         isOpen={viewPatientModal}
         onClose={() => setViewPatientModal(false)}
         title="Invoice Details"
-        modalClassName="max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+        modalClassName="max-w-4xl max-h-[90vh] rounded-lg"
       >
         {patientDetails && <PatientDetailsViewComponent patient={patientDetails} />}
       </Modal>
@@ -725,7 +726,7 @@ const PatientVisitListTable: React.FC = () => {
         isOpen={editPatientDetailsModal}
         onClose={() => setEditPatientDetailsModal(false)}
         title="Edit Patient Details"
-        modalClassName="max-w-7xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+        modalClassName="w-full max-w-7xl rounded-lg"
       >
         <EditPatientDetails
           setEditPatientDetailsModal={setEditPatientDetailsModal}
@@ -739,7 +740,7 @@ const PatientVisitListTable: React.FC = () => {
         isOpen={viewReportModal}
         onClose={() => setViewReportModal(false)}
         title="Report"
-        modalClassName="max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+        modalClassName="max-w-4xl max-h-[90vh] rounded-lg"
       >
         {viewReportDetails && (
           <ReportView
@@ -770,18 +771,11 @@ const PatientVisitListTable: React.FC = () => {
       </Modal>
       
 
-      <Modal
+      <CancelPatient
         isOpen={deletePatientModal}
         onClose={() => setDeletePatientModal(false)}
-        title="Cancel Patient Visit"
-        modalClassName="max-w-md rounded-lg overflow-hidden"
-      >
-        <CancelPatient
-          isOpen={deletePatientModal}
-          onClose={() => setDeletePatientModal(false)}
-          onPatientCancelled={fetchVisits}
-        />
-      </Modal>
+        onPatientCancelled={fetchVisits}
+      />
 
       {/* Cancellation Details Modal */}
       <CancellationDetailsModal
@@ -794,7 +788,7 @@ const PatientVisitListTable: React.FC = () => {
         isOpen={duePaymentModal}
         onClose={() => setDuePaymentModal(false)}
         title="Due Payment"
-        modalClassName="max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+        modalClassName="max-w-4xl max-h-[90vh] rounded-lg"
       >
         {patientDetails && (
           <DuePayment

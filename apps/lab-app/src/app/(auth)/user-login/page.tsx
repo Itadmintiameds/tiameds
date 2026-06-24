@@ -5,7 +5,7 @@ import {
   FaArrowLeft, FaSignInAlt,FaFlask, 
   FaMicroscope, FaLock, FaUser, FaEye, FaEyeSlash, FaEnvelope
 } from 'react-icons/fa'
-// import {FaUserPlus} 'react-icons/fa'
+import {FaUserPlus} from 'react-icons/fa';
 import { FiLoader } from 'react-icons/fi'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -244,91 +244,98 @@ const LoginPage: React.FC = () => {
 
    
 
-  return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gradient-to-br from-white to-purple-50">
-      {/* Branding Panel */}
-      <div className="w-full md:w-2/5 flex flex-col justify-center items-center p-8 md:p-12">
-        <div className="flex flex-col items-center w-full max-w-md space-y-8">
-          <div className="flex flex-col items-center group">
-            <Image 
-              src="/LOGO.svg" 
-              alt="Tiamed Logo" 
-              width={180} 
-              height={90} 
-              className="transition-transform duration-300 group-hover:scale-105"
-              priority
-            />
-          </div>
+  const inputClass = "block w-full pl-10 pr-3 py-3 bg-purple-50 border border-purple-100 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
 
+  return (
+    <div className="bg-gradient-to-br from-white to-purple-50" style={{ minHeight: '100vh', display: 'flex' }}>
+
+      {/* Left branding panel — hidden on mobile */}
+      <div
+        className="hidden lg:flex flex-col justify-center items-center"
+        style={{ width: '40%', flexShrink: 0, padding: '48px' }}
+      >
+        <div className="flex flex-col items-center w-full max-w-sm space-y-8">
+          <Image
+            src="/LOGO.svg"
+            alt="Tiamed Logo"
+            width={180}
+            height={90}
+            className="transition-transform duration-300 hover:scale-105"
+            priority
+          />
           <div className="flex space-x-4 text-purple-600/80">
             <FaFlask className="text-3xl" />
             <FaMicroscope className="text-3xl" />
           </div>
-
           <div className="text-center space-y-2">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-900">
               Precision Laboratory Management
             </h1>
-            <p className="text-gray-600 text-sm md:text-base">
+            <p className="text-gray-600">
               Advanced diagnostic solutions for modern healthcare
             </p>
           </div>
-
-          <Link href="/" passHref>
-            <button className="flex items-center text-sm text-purple-700 hover:text-purple-600 transition-all">
-              <FaArrowLeft className="mr-2 group-hover:-translate-x-1 transition-transform" />
-              Return to Homepage
-            </button>
+          <Link href="/" className="flex items-center gap-2 text-sm text-purple-700 hover:text-purple-500 transition-colors">
+            <FaArrowLeft />
+            Return to Homepage
           </Link>
         </div>
       </div>
 
-      {/* Login Panel */}
-      <div className="w-full md:w-3/5 flex items-center justify-center p-6 md:p-12 bg-white shadow-xl rounded-tl-3xl md:rounded-tl-none rounded-bl-none md:rounded-bl-3xl">
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center space-y-4">
+      {/* Right form panel */}
+      <div
+        className="bg-white lg:shadow-2xl"
+        style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 32px', minHeight: '100vh' }}
+      >
+        <div className="space-y-6" style={{ width: '100%', maxWidth: '440px' }}>
+
+          {/* Mobile: logo + back link */}
+          <div className="lg:hidden flex items-center justify-between mb-8">
+            <Link href="/" className="flex items-center gap-2 text-sm text-purple-700 hover:text-purple-500">
+              <FaArrowLeft />
+              Back to Home
+            </Link>
+            <Image src="/LOGO.svg" alt="Tiamed Logo" width={110} height={55} priority />
+          </div>
+
+          {/* Header */}
+          <div className="text-center space-y-3">
             <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-xl text-purple-600">
               <FaSignInAlt className="text-lg" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Laboratory Portal</h2>
-              <p className="text-purple-600">Access your diagnostic dashboard</p>
+              <p className="text-purple-600 mt-1">Access your diagnostic dashboard</p>
             </div>
           </div>
 
+          {/* ── Credentials step ── */}
           {step === 'credentials' ? (
-            <form 
-              onSubmit={handleCredentialsSubmit} 
+            <form
+              onSubmit={handleCredentialsSubmit}
               method="POST"
               action="#"
               className="space-y-5"
               noValidate
             >
               {blockedUntil && blockedUntil > Date.now() && (
-                <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3 flex-1">
-                      <p className="text-sm font-medium text-red-800">
-                        Account Temporarily Blocked
-                      </p>
-                      <p className="mt-1 text-sm text-red-700">
-                        {blockMessage}
-                      </p>
-                    </div>
+                <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg flex items-start gap-3">
+                  <svg className="h-5 w-5 text-red-400 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-red-800">Account Temporarily Blocked</p>
+                    <p className="mt-1 text-sm text-red-700">{blockMessage}</p>
                   </div>
                 </div>
               )}
+
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700">Username</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                     <FaUser />
-                  </div>
+                  </span>
                   <input
                     name="username"
                     type="text"
@@ -336,21 +343,21 @@ const LoginPage: React.FC = () => {
                     onChange={handleChange}
                     disabled={blockedUntil !== null && blockedUntil > Date.now()}
                     autoComplete="username"
-                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
-                    placeholder="username"
+                    placeholder="Enter your username"
+                    className={inputClass}
                   />
-                  {validationErrors.username && (
-                    <p className="text-sm text-red-600">{validationErrors.username}</p>
-                  )}
                 </div>
+                {validationErrors.username && (
+                  <p className="text-sm text-red-600">{validationErrors.username}</p>
+                )}
               </div>
 
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700">Password</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                     <FaLock />
-                  </div>
+                  </span>
                   <input
                     name="password"
                     type={showPassword ? 'text' : 'password'}
@@ -358,8 +365,8 @@ const LoginPage: React.FC = () => {
                     onChange={handleChange}
                     disabled={blockedUntil !== null && blockedUntil > Date.now()}
                     autoComplete="current-password"
-                    className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
+                    className={`${inputClass} pr-10`}
                   />
                   <button
                     type="button"
@@ -368,14 +375,14 @@ const LoginPage: React.FC = () => {
                   >
                     {showPassword ? <FaEyeSlash /> : <FaEye />}
                   </button>
-                  {validationErrors.password && (
-                    <p className="text-sm text-red-600">{validationErrors.password}</p>
-                  )}
                 </div>
+                {validationErrors.password && (
+                  <p className="text-sm text-red-600">{validationErrors.password}</p>
+                )}
               </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <Link href="/forgot-password" className="text-purple-600 hover:text-purple-500">
+              <div className="text-right">
+                <Link href="/forgot-password" className="text-sm text-purple-600 hover:text-purple-500">
                   Forgot password?
                 </Link>
               </div>
@@ -383,35 +390,31 @@ const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting || (blockedUntil !== null && blockedUntil > Date.now())}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-md font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-lg text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? (
-                  <span className="flex items-center">
-                    <FiLoader className="animate-spin mr-2" />
-                    Sending OTP...
-                  </span>
-                ) : blockedUntil && blockedUntil > Date.now() ? (
-                  'Account Blocked'
-                ) : (
-                  'Continue'
-                )}
+                {isSubmitting ? <><FiLoader className="animate-spin" /> Sending OTP...</>
+                  : blockedUntil && blockedUntil > Date.now() ? 'Account Blocked'
+                  : 'Continue'}
               </button>
             </form>
+
           ) : (
-            <form 
-              onSubmit={handleOtpSubmit} 
+            /* ── OTP step ── */
+            <form
+              onSubmit={handleOtpSubmit}
               method="POST"
               action="#"
               className="space-y-5"
               noValidate
             >
-              <div className="text-center space-y-2 mb-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full text-purple-600 mb-2">
+              <div className="text-center space-y-2">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full text-purple-600 mb-1">
                   <FaEnvelope className="text-2xl" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">Enter OTP</h3>
                 <p className="text-sm text-gray-600">
-                  We&apos;ve sent a 4-digit OTP to <span className="font-medium text-purple-600">{userEmail}</span>
+                  We&apos;ve sent a 4-digit OTP to{' '}
+                  <span className="font-medium text-purple-600 break-all">{userEmail}</span>
                 </p>
                 {otpTimer > 0 && (
                   <p className="text-xs text-gray-500">
@@ -423,32 +426,31 @@ const LoginPage: React.FC = () => {
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700">OTP Code</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                     <FaLock />
-                  </div>
+                  </span>
                   <input
                     name="otp"
                     type="text"
                     value={otp}
                     onChange={handleOtpChange}
-                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-center text-2xl tracking-widest font-mono"
+                    className={`${inputClass} text-center text-2xl tracking-widest font-mono`}
                     placeholder="0000"
                     maxLength={4}
                   />
-                  {validationErrors.otp && (
-                    <p className="text-sm text-red-600 mt-1">{validationErrors.otp}</p>
-                  )}
                 </div>
+                {validationErrors.otp && (
+                  <p className="text-sm text-red-600 mt-1">{validationErrors.otp}</p>
+                )}
               </div>
 
               <div className="flex items-center justify-between text-sm">
                 <button
                   type="button"
                   onClick={handleBackToCredentials}
-                  className="text-purple-600 hover:text-purple-500 flex items-center"
+                  className="text-purple-600 hover:text-purple-500 flex items-center gap-1"
                 >
-                  <FaArrowLeft className="mr-1" />
-                  Back to login
+                  <FaArrowLeft /> Back to login
                 </button>
                 <button
                   type="button"
@@ -463,39 +465,34 @@ const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting || otp.length !== 4}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-md font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors disabled:opacity-70"
+                className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-lg text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors disabled:opacity-70"
               >
-                {isSubmitting ? (
-                  <span className="flex items-center">
-                    <FiLoader className="animate-spin mr-2" />
-                    Verifying...
-                  </span>
-                ) : (
-                  'Verify OTP'
-                )}
+                {isSubmitting ? <><FiLoader className="animate-spin" /> Verifying...</> : 'Verify OTP'}
               </button>
             </form>
           )}
 
+          {/* Divider */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+              <div className="w-full border-t border-gray-200" />
             </div>
             <div className="relative flex justify-center">
-              <span className="px-2 bg-white text-sm text-gray-500">New to our platform?</span>
+              <span className="px-3 bg-white text-sm text-gray-500">New to our platform?</span>
             </div>
           </div>
 
-           {/* <Link href="/onboarding/request" passHref>
-            <button className="w-full flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm text-md font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors">
-              <FaUserPlus className="mr-2 text-purple-600" />
+          <Link href="/onboarding/request" passHref>
+            <button className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors">
+              <FaUserPlus className="text-purple-600" />
               Register Laboratory
             </button>
-          </Link> */}
+          </Link>
 
-          <div className="text-center text-xs text-gray-500">
-            <p>© {new Date().getFullYear()} Tiamed Diagnostics. All rights reserved.</p>
-          </div>
+          <p className="text-center text-xs text-gray-400">
+            © {new Date().getFullYear()} Tiamed Diagnostics. All rights reserved.
+          </p>
+
         </div>
       </div>
     </div>
