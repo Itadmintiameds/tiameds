@@ -421,6 +421,7 @@ const PatientVisitListTable: React.FC = () => {
       accessor: (row: Patient) => {
         const dueAmount = Number(row?.visit?.billing?.due_amount || 0);
         const isPaid = dueAmount === 0;
+        const isCancelled = row?.visit?.visitStatus?.toUpperCase() === 'CANCELLED';
 
         const badgeClass = isPaid
           ? 'bg-green-100 text-green-800'
@@ -432,15 +433,24 @@ const PatientVisitListTable: React.FC = () => {
               {isPaid ? 'PAID' : `DUE (₹${dueAmount.toFixed(2)})`}
             </span>
             {!isPaid && dueAmount > 0 && (
-              <button
-                onClick={() => {
-                  setPatientDetails(row);
-                  setDuePaymentModal(true);
-                }}
-                className="mt-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
-              >
-                Collect Due
-              </button>
+              isCancelled ? (
+                <span
+                  className="mt-1 text-xs text-gray-400 cursor-not-allowed"
+                  title="Cannot collect payment: visit is cancelled"
+                >
+                  Collect Due
+                </span>
+              ) : (
+                <button
+                  onClick={() => {
+                    setPatientDetails(row);
+                    setDuePaymentModal(true);
+                  }}
+                  className="mt-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  Collect Due
+                </button>
+              )
             )}
           </div>
         );

@@ -49,18 +49,15 @@
 
 import React, { useEffect } from 'react';
 import Package from '@/app/(admin)/component/package/Pakage';
-import Tabs from '@/app/(admin)/component/common/TabComponent';
-import { PackageTabItem } from '@/types/package/package';
-import { CiViewList } from 'react-icons/ci';
 import { RiTestTubeLine } from 'react-icons/ri';
 import PackageList from '../../component/package/PackageList';
 import Unauthorised from '../../component/Unauthorised';
 // import { useLabs } from '@/context/LabContext';
 import useAuthStore from '@/context/userStore';
 
-const allTabs: PackageTabItem[] = [
-  { id: 'package', label: 'Package', icon: <RiTestTubeLine className="text-xl" /> },
-  { id: 'packageList', label: 'Package List', icon: <CiViewList className="text-xl" /> },
+const navItems = [
+  { id: 'packageList', label: 'Package List' },
+  { id: 'package', label: 'Add Package' },
 ];
 
 const Page = () => {
@@ -81,14 +78,36 @@ const Page = () => {
   return (
     <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
       {isAdmin || isSuperAdmin ? (
-        <Tabs
-          tabs={allTabs}
-          selectedTab={selectedTab}
-          onTabChange={setSelectedTab}
-        >
-          {selectedTab === 'package' && <Package />}
-          {selectedTab === 'packageList' && <PackageList />}
-        </Tabs>
+        <div className="flex flex-col md:flex-row gap-6 items-start">
+          <aside className="w-full md:w-60 shrink-0 space-y-2">
+            <div
+              className="flex items-center gap-2 px-4 py-3 rounded-xl text-white font-semibold text-sm"
+              style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)' }}
+            >
+              <RiTestTubeLine className="text-lg" />
+              Package Management
+            </div>
+            <nav className="space-y-1 pl-1">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setSelectedTab(item.id)}
+                  className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-colors ${selectedTab === item.id
+                    ? 'border border-gray-300 font-medium text-gray-900'
+                    : 'text-gray-500 hover:bg-gray-50'
+                    }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          </aside>
+
+          <div className="flex-1 w-full min-w-0">
+            {selectedTab === 'package' && <Package />}
+            {selectedTab === 'packageList' && <PackageList />}
+          </div>
+        </div>
       ) : (
         <Unauthorised
           username={loginedUser?.username || ''}
