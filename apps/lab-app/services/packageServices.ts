@@ -44,8 +44,8 @@ export const packageDelete = async (labId: number, packageId: number) => {
         const response = await api.delete(`/admin/lab/${labId}/package/${packageId}`);
         return response.data;
     } catch (error: any) {
-       
-        throw new Error('An error occurred while deleting package.');
+        const message = error?.response?.data?.message || 'An error occurred while deleting package.';
+        throw new Error(message);
     }
 }
 

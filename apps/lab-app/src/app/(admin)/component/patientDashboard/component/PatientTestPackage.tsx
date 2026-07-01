@@ -234,7 +234,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
           </h3>
           <div className="flex items-center gap-2">
             <select
-              className="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white text-gray-600"
+              className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white text-gray-600"
               value={selectedCategory}
               onChange={handleCategoryChange}
             >
@@ -248,7 +248,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
               <input
                 ref={testSearchRef}
                 type="text"
-                className="border border-gray-200 rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 w-44"
+                className="border border-gray-200 rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 w-44"
                 placeholder="Search tests..."
                 value={searchTestTerm}
                 onChange={handleTestSearch}
@@ -337,7 +337,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
               <input
                 ref={packageSearchRef}
                 type="text"
-                className="border border-gray-200 rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 w-44"
+                className="border border-gray-200 rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 w-44"
                 placeholder="Search packages..."
                 value={searchPackageTerm}
                 onChange={handlePackageSearch}

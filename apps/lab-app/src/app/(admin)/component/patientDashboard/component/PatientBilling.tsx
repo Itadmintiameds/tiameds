@@ -77,7 +77,8 @@ const PatientBilling = ({
   const netAmount = getSafeDecimal(newPatient?.visit?.billing?.netAmount);
   const paymentMethod = newPatient?.visit?.billing?.paymentMethod;
 
-
+  const discountReason = newPatient?.visit?.billing?.discountReason;
+  const isDiscountReasonMissing = discount.gt(0) && (!discountReason || discountReason === DiscountReason.None);
 
   // Calculate discount percentage based on the total amount (which already includes individual test discounts)
   const discountPercentage = totalAmount.gt(0)
@@ -525,7 +526,7 @@ const PatientBilling = ({
 
 
   return (
-    <section className="bg-gray-50 rounded-lg border border-gray-200 shadow-xs overflow-hidden">
+    <section className="bg-gray-50 rounded-xl border border-gray-200 shadow-xs overflow-hidden">
       <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <h2 className="text-sm font-medium text-gray-800 flex items-center">
           <FaMoneyBillWave className="mr-2 text-purple-500 text-sm" />
@@ -534,10 +535,10 @@ const PatientBilling = ({
       </div>
 
       <div className="p-4 space-y-4">
-        <div className="flex flex-wrap gap-5 items-end">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {canEditDiscount && (
             <>
-              <div className="flex flex-col min-w-[100px]">
+              <div className="flex flex-col">
                 <label className="text-xs font-medium text-gray-600 mb-1 flex items-center">
                   <FaPercent className="mr-1.5 text-purple-500 text-xs" />
                   Discount (%)
@@ -550,11 +551,11 @@ const PatientBilling = ({
                   step="0.01"
                   value={discountPercentage}
                   onChange={handleDiscountChange}
-                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
 
-              <div className="flex flex-col min-w-[100px]">
+              <div className="flex flex-col">
                 <label className="text-xs font-medium text-gray-600 mb-1 flex items-center">
                   Discount in ₹
                 </label>
@@ -566,16 +567,16 @@ const PatientBilling = ({
                   step="0.01"
                   value={formatAmount(discount.toNumber())}
                   onChange={handleDiscountChange}
-                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
             </>
           )}
 
-          <div className="flex flex-col min-w-[160px]">
+          <div className="flex flex-col col-span-2 sm:col-span-1">
             <label className="text-xs font-medium text-gray-600 mb-1 flex items-center">
               <FaPercent className="mr-1.5 text-purple-500 text-xs" />
-              Discount Reason
+              Discount Reason {discount.gt(0) && <span className="text-red-500 ml-0.5">*</span>}
             </label>
             <div className="relative">
               <select
@@ -583,7 +584,8 @@ const PatientBilling = ({
                 value={newPatient.visit?.billing.discountReason ?? ''}
                 onChange={handleChange}
                 disabled={hasCollectedAmount}
-                className={`border rounded-md border-gray-300 px-3 py-2 pr-8 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none bg-white ${hasCollectedAmount ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                required={discount.gt(0)}
+                className={`border rounded-xl px-3 py-2 pr-8 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none bg-white ${hasCollectedAmount ? 'bg-gray-100 cursor-not-allowed border-gray-300' : isDiscountReasonMissing ? 'border-red-400' : 'border-gray-300'}`}
               >
                 {Object.values(DiscountReason).map((reason) => (
                   <option key={reason} value={reason}>
@@ -597,22 +599,25 @@ const PatientBilling = ({
                 </svg>
               </div>
             </div>
+            {isDiscountReasonMissing && (
+              <p className="text-xs text-red-500 mt-1">Reason is required when a discount is applied</p>
+            )}
           </div>
 
-          <div className="flex flex-col min-w-[160px]">
+          <div className="flex flex-col">
             <p className="text-xs font-medium text-gray-500 mb-1">
               Total Amount
             </p>
-            <div className="border border-gray-200 bg-gray-50 rounded-md px-3 py-2 h-[38px] flex items-center">
+            <div className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 h-[38px] flex items-center">
               <p className="text-sm font-semibold text-gray-800">
                 ₹{totalAmount.toFixed(2)}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col min-w-auto">
+          <div className="flex flex-col">
             <p className="text-xs font-medium text-gray-500 mb-1">Net Amount</p>
-            <div className="border border-gray-200 bg-gray-50 rounded-md px-3 py-2 h-[38px] flex items-center">
+            <div className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 h-[38px] flex items-center">
               <p className="text-sm font-semibold text-gray-800">
                 ₹{netAmount.toFixed(2)}
               </p>
@@ -621,9 +626,9 @@ const PatientBilling = ({
 
           {/* Only show Collected Amount in edit mode (when there are existing transactions) */}
           {existingTransactions.length > 0 && (
-            <div className="flex flex-col min-w-auto">
+            <div className="flex flex-col">
               <p className="text-xs font-medium text-gray-500 mb-1">Collected Amount</p>
-              <div className="border border-gray-200 bg-gray-50 rounded-md px-3 py-2 h-[38px] flex items-center">
+              <div className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 h-[38px] flex items-center">
                 <p className="text-sm font-semibold text-gray-800">
                   ₹{collectedAmount.toFixed(2)}
                 </p>
@@ -674,7 +679,7 @@ const PatientBilling = ({
               name="visit.billing.paymentStatus"
               value={totalNetCollected >= netAmount.toNumber() ? PaymentStatus.PAID : PaymentStatus.DUE}
               onChange={handleChange}
-              className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
+              className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
               required
               disabled
             >
@@ -697,7 +702,7 @@ const PatientBilling = ({
               name="visit.billing.paymentDate"
               value={newPatient.visit?.billing.paymentDate ?? ''}
               onChange={handleChange}
-              className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
         </div>
@@ -714,7 +719,7 @@ const PatientBilling = ({
                 name="visit.billing.upi_id"
                 value={newPatient.visit?.billing?.upi_id ?? ''}
                 onChange={handleUpiIdChange}
-                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 placeholder="Enter UPI ID"
                 required
               />
@@ -736,7 +741,7 @@ const PatientBilling = ({
                  value={newPatient.visit?.billing?.received_amount || '0'}
                  onInput={handleReceivedAmountInput}
                  onChange={() => {}} // Empty onChange to prevent React warnings
-                 className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                 className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                />
              </div>  
            )}
@@ -755,7 +760,7 @@ const PatientBilling = ({
                  value={newPatient.visit?.billing?.received_amount || '0'}
                  onInput={handleReceivedAmountInput}
                  onChange={() => {}} // Empty onChange to prevent React warnings
-                 className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                 className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                />
              </div>  
            )}
@@ -772,7 +777,7 @@ const PatientBilling = ({
                 step="0.01"
                 disabled
                 value={formatAmount(newPatient.visit?.billing?.cash_amount)}
-                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           )}
@@ -789,7 +794,7 @@ const PatientBilling = ({
                 step="0.01"
                 disabled
                 value={formatAmount(newPatient.visit?.billing?.card_amount)}
-                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           )}
@@ -806,7 +811,7 @@ const PatientBilling = ({
                 step="0.01"
                 disabled
                 value={formatAmount(newPatient.visit?.billing?.upi_amount)}
-                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           )}
@@ -825,7 +830,7 @@ const PatientBilling = ({
                   required
                   value={newPatient.visit?.billing?.upi_amount || ''}
                   onChange={handlePaymentFieldChange}
-                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
               <div className="flex flex-col">
@@ -840,7 +845,7 @@ const PatientBilling = ({
                   required
                   value={newPatient.visit?.billing?.cash_amount || ''}
                   onChange={handlePaymentFieldChange}
-                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
             </>
@@ -860,7 +865,7 @@ const PatientBilling = ({
                   required
                   value={newPatient.visit?.billing?.card_amount || ''}
                   onChange={handlePaymentFieldChange}
-                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
               <div className="flex flex-col">
@@ -875,7 +880,7 @@ const PatientBilling = ({
                   required
                   value={newPatient.visit?.billing?.cash_amount || ''}
                   onChange={handlePaymentFieldChange}
-                  className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
             </>
@@ -894,7 +899,7 @@ const PatientBilling = ({
                 step="0.01"
                 disabled
                 value={formatAmount(newPatient.visit?.billing?.received_amount)}
-                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           )}
@@ -915,7 +920,7 @@ const PatientBilling = ({
                 min="0"
                 disabled
                 value={formatAmount(refund.gt(0) ? refund.toString() : due.toString())}
-                className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="border rounded-xl border-gray-300 px-3 py-2 text-sm w-full bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           )}

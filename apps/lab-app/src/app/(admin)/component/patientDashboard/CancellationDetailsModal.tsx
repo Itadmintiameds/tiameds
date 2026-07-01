@@ -56,7 +56,7 @@ const CancellationDetailsModal: React.FC<CancellationDetailsModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div ref={modalRef} className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] mx-auto overflow-hidden flex flex-col">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -74,7 +74,7 @@ const CancellationDetailsModal: React.FC<CancellationDetailsModalProps> = ({
                 </div>
 
                 {/* Modal Body */}
-                <div className="p-6">
+                <div className="p-6 overflow-y-auto flex-1 min-h-0">
                     {/* Patient Info */}
                     <div className="mb-6">
                         <h3 className="text-lg font-semibold text-gray-800 mb-3">Patient Information</h3>

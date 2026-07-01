@@ -147,7 +147,10 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
     setIsDeleting(pkgId);
     try {
       if (currentLab) {
-        await packageDelete(currentLab.id, pkgId);
+        const response = await packageDelete(currentLab.id, pkgId);
+        if (response && response.status && response.status !== 'success') {
+          throw new Error(response.message || 'Failed to delete package');
+        }
         setPackages(packages.filter(pkg => pkg.id !== pkgId));
         toast.success('Package deleted successfully', {
           autoClose: 2000,
@@ -157,7 +160,8 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
         setError('No lab selected');
       }
     } catch (error) {
-      toast.error('Failed to delete package', {
+      const message = (error as { message?: string })?.message || 'Failed to delete package';
+      toast.error(message, {
         className: 'bg-error text-white'
       });
     } finally {

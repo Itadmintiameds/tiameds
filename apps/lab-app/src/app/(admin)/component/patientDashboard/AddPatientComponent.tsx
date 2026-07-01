@@ -694,6 +694,13 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         return;
       }
 
+      const appliedDiscount = Number(newPatient.visit?.billing?.discount || 0);
+      const appliedDiscountReason = newPatient.visit?.billing?.discountReason;
+      if (appliedDiscount > 0 && (!appliedDiscountReason || appliedDiscountReason === DiscountReason.None)) {
+        toast.error('Please select a reason for applying the discount.');
+        return;
+      }
+
       if (!validationResult.success) {
         const error = validationResult.error;
         toast.error(error.errors.map((err) => err.message).join(', '));
@@ -907,7 +914,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
             <button
               type="button"
               onClick={() => setAddPatientModal(false)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
             >
               ← Cancel
             </button>
@@ -915,7 +922,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
             <button
               type="button"
               onClick={handleGoBack}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
             >
               ← Back
             </button>
@@ -923,7 +930,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
           <button
             type="button"
             onClick={handleProceed}
-            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-purple-600 rounded-xl hover:bg-purple-700 transition-colors"
+            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-purple-600 rounded-full hover:bg-purple-700 transition-colors"
           >
             {currentStep === 3 ? 'Confirm' : 'Save & Proceed →'}
           </button>
@@ -1039,7 +1046,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
                   <button
                     type="button"
                     onClick={handleProceed}
-                    className="w-full mt-4 bg-purple-600 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-purple-700 transition-colors"
+                    className="w-full mt-4 bg-purple-600 text-white text-sm font-semibold py-2.5 rounded-full hover:bg-purple-700 transition-colors"
                   >
                     → Proceed to Billing
                   </button>

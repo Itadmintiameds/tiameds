@@ -185,6 +185,11 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
       return;
     }
 
+    if (patient?.visit?.visitStatus?.toUpperCase() === 'CANCELLED') {
+      toast.error("Cannot collect payment: visit is cancelled");
+      return;
+    }
+
     if (paymentData.receivedAmount.lte(0)) {
       toast.error("Please enter a valid payment amount");
       return;
