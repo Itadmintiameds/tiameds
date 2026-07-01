@@ -5,16 +5,17 @@
 import { getPackage, packageDelete, updatePackage } from '@/../services/packageServices';
 import Modal from '@/app/(admin)/component/common/Model';
 import { useLabs } from '@/context/LabContext';
-import { useCallback, useEffect, useState } from 'react';
-import { FaBoxOpen, FaChevronDown, FaChevronUp, FaEdit, FaSearch, FaTrash, FaTimes, FaBox } from 'react-icons/fa';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
+import { FaEdit, FaEye, FaSearch, FaTrash, FaTimes, FaSortAmountDown, FaSortAmountUp } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import Loader from '../common/Loader';
 import UpdatePackage from './UpdatePackage';
+import ViewPackage from './ViewPackage';
+import DeletePackage from './DeletePackage';
 import { TestList } from '@/types/test/testlist';
-// import Button from '@/app/(admin)/component/common/Button';
 import Pagination from '../common/Pagination';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BsCurrencyRupee, BsPercent } from 'react-icons/bs';
 import { FiPackage } from 'react-icons/fi';
 
 interface editingPackage {
@@ -47,13 +48,15 @@ interface PackageListProps {
 
 const PackageList = ({ closeModal }: PackageListProps = {}) => {
   const [packages, setPackages] = useState<Package[]>([]);
-  const [filteredPackages, setFilteredPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [expandedPackage, setExpandedPackage] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
+  const [sortOrder, setSortOrder] = useState<'new' | 'old'>('new');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [editingPackage, setEditingPackage] = useState<editingPackage | null>(null);
+  const [viewingPackage, setViewingPackage] = useState<Package | null>(null);
+  const [deletingPackage, setDeletingPackage] = useState<Package | null>(null);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const itemsPerPage = 5;
 
@@ -64,15 +67,14 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
       setError('No lab selected');
       return;
     }
-  
+
     setLoading(true);
     setError(null);
-  
+
     try {
       const response = await getPackage(currentLab.id);
       if (response && response.status === 'success' && response.data) {
         setPackages(response.data);
-        setFilteredPackages(response.data);
       } else {
         setError('No packages found or failed to fetch data.');
       }
@@ -82,24 +84,44 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
       setLoading(false);
     }
   }, [currentLab]);
-  
+
   useEffect(() => {
     fetchPackages();
   }, [fetchPackages]);
 
-  useEffect(() => {
+  const categories = useMemo(() => {
+    const unique = new Set<string>();
+    packages.forEach(pkg => {
+      pkg.tests?.forEach(test => unique.add(test.category));
+    });
+    return ['All Categories', ...Array.from(unique)];
+  }, [packages]);
+
+  const filteredPackages = useMemo(() => {
+    let result = [...packages];
+
     if (searchQuery) {
-      const filtered = packages.filter((pkg) =>
+      result = result.filter((pkg) =>
         pkg.packageName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (Array.isArray(pkg.tests) &&
           pkg.tests.some((test) => test.name.toLowerCase().includes(searchQuery.toLowerCase())))
       );
-      setFilteredPackages(filtered);
-    } else {
-      setFilteredPackages(packages);
     }
+
+    if (selectedCategory !== 'All Categories') {
+      result = result.filter((pkg) =>
+        Array.isArray(pkg.tests) && pkg.tests.some((test) => test.category === selectedCategory)
+      );
+    }
+
+    result.sort((a, b) => (sortOrder === 'new' ? b.id - a.id : a.id - b.id));
+
+    return result;
+  }, [packages, searchQuery, selectedCategory, sortOrder]);
+
+  useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, packages]);
+  }, [searchQuery, selectedCategory, sortOrder]);
 
   const totalPages = Math.ceil(filteredPackages.length / itemsPerPage);
   const paginatedPackages = filteredPackages.slice(
@@ -107,37 +129,40 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
     currentPage * itemsPerPage
   );
 
-  const togglePackageDetails = (pkgId: number) => {
-    setExpandedPackage(expandedPackage === pkgId ? null : pkgId);
-  };
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  const handleDeletePackage = async (pkgId: number) => {
-    const confirmDelete = window.confirm('Are you sure you want to delete this package?');
-    if (confirmDelete) {
-      setIsDeleting(pkgId);
-      try {
-        if (currentLab) {
-          await packageDelete(currentLab.id, pkgId);
-          setPackages(packages.filter(pkg => pkg.id !== pkgId));
-          setFilteredPackages(filteredPackages.filter(pkg => pkg.id !== pkgId));
-          toast.success('Package deleted successfully', {
-            autoClose: 2000,
-            className: 'bg-success text-white'
-          });
-        } else {
-          setError('No lab selected');
-        }
-      } catch (error) {
-        toast.error('Failed to delete package', {
-          className: 'bg-error text-white'
+  const handleDeletePackage = (pkgId: number) => {
+    const pkgToDelete = packages.find(pkg => pkg.id === pkgId);
+    if (pkgToDelete) {
+      setDeletingPackage(pkgToDelete);
+    }
+  };
+
+  const confirmDeletePackage = async () => {
+    if (!deletingPackage) return;
+    const pkgId = deletingPackage.id;
+
+    setIsDeleting(pkgId);
+    try {
+      if (currentLab) {
+        await packageDelete(currentLab.id, pkgId);
+        setPackages(packages.filter(pkg => pkg.id !== pkgId));
+        toast.success('Package deleted successfully', {
+          autoClose: 2000,
+          className: 'bg-success text-white'
         });
-      } finally {
-        setIsDeleting(null);
+      } else {
+        setError('No lab selected');
       }
+    } catch (error) {
+      toast.error('Failed to delete package', {
+        className: 'bg-error text-white'
+      });
+    } finally {
+      setIsDeleting(null);
+      setDeletingPackage(null);
     }
   };
 
@@ -145,6 +170,13 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
     const pkgToEdit = packages.find(pkg => pkg.id === pkgId);
     if (pkgToEdit) {
       setEditingPackage(pkgToEdit);
+    }
+  };
+
+  const handleViewPackage = (pkgId: number) => {
+    const pkgToView = packages.find(pkg => pkg.id === pkgId);
+    if (pkgToView) {
+      setViewingPackage(pkgToView);
     }
   };
 
@@ -213,177 +245,146 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between mb-4"
+        className="flex items-center justify-between mb-2"
       >
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-100 rounded-full">
-            <FiPackage className="text-indigo-600 text-xl" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Package Management</h1>
-            <p className="text-sm text-gray-600">View and manage all your test packages</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Package Management</h1>
+          <p className="text-sm text-gray-500">View and manage all your test packages</p>
         </div>
-        {closeModal && (
-          <button
-            onClick={closeModal}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Close"
-          >
-            <FaTimes className="h-5 w-5" />
-          </button>
-        )}
-      </motion.div>
-
-      {/* Search Bar */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.1 }}
-        className="bg-blue-50 p-3 rounded-lg border border-blue-100"
-      >
-        <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
-          <FaSearch className="mr-2 text-blue-600" /> Search Packages
-        </h4>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FaSearch className="text-gray-400" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search packages or tests..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition-all"
-          />
+        <div className="flex items-center gap-2">
+          {closeModal && (
+            <button
+              onClick={closeModal}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Close"
+            >
+              <FaTimes className="h-5 w-5" />
+            </button>
+          )}
         </div>
       </motion.div>
 
-      {/* Package List */}
-      <div className="space-y-4">
+      {/* Table Card */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        {/* Toolbar */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900">Package List</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaSearch className="text-gray-400 text-sm" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search tests..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-4 py-2 border border-gray-200 rounded-full text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none bg-gray-50"
+              />
+            </div>
+
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-full text-sm bg-gray-50 focus:ring-2 focus:ring-indigo-400 focus:outline-none uppercase"
+            >
+              {categories.map((category) => (
+                <option key={category} value={category} className="normal-case">
+                  {category}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => setSortOrder(prev => (prev === 'new' ? 'old' : 'new'))}
+              className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-full text-sm bg-gray-50 hover:bg-gray-100 transition-colors"
+            >
+              {sortOrder === 'new' ? <FaSortAmountDown className="text-gray-500" /> : <FaSortAmountUp className="text-gray-500" />}
+              {sortOrder === 'new' ? 'New to Old' : 'Old to New'}
+            </button>
+          </div>
+        </div>
+
+        {/* Table */}
         {paginatedPackages.length > 0 ? (
-          <AnimatePresence>
-            {paginatedPackages.map((pkg) => (
-              <motion.div
-                key={pkg.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.3 }}
-                className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow"
-              >
-                {/* Package Header */}
-                <div className="p-4 flex items-center justify-between border-b">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <FaBoxOpen className="text-blue-600 text-lg" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-800">{pkg.packageName}</h2>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                                                 <span className="flex items-center gap-1">
-                           <BsCurrencyRupee className="text-xs" /> {Number(pkg.price).toFixed(2)}
-                         </span>
-                        <span className="flex items-center gap-1 text-green-600">
-                          <BsPercent className="text-xs" /> {pkg.discount}% off
-                        </span>
-                        <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
-                          {pkg.tests.length} tests
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEditPackage(pkg.id)}
-                      className="p-2 bg-blue-50 hover:bg-blue-100 rounded-lg text-blue-600 transition-colors"
-                      title="Edit package"
-                    >
-                      <FaEdit className="text-sm" />
-                    </button>
-                    <button
-                      onClick={() => handleDeletePackage(pkg.id)}
-                      disabled={isDeleting === pkg.id}
-                      className="p-2 bg-red-50 hover:bg-red-100 rounded-lg text-red-600 transition-colors disabled:opacity-50"
-                      title="Delete package"
-                    >
-                      {isDeleting === pkg.id ? (
-                        <Loader type="progress" fullScreen={false} text="Deleting..." />
-                      ) : (
-                        <FaTrash className="text-sm" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Package Details */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-sm text-gray-500 border-b border-gray-100">
+                  <th className="px-6 py-3 font-medium">Package Name</th>
+                  <th className="px-6 py-3 font-medium">No. of Test</th>
+                  <th className="px-6 py-3 font-medium">Discount %</th>
+                  <th className="px-6 py-3 font-medium">Price</th>
+                  <th className="px-6 py-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
                 <AnimatePresence>
-                  {expandedPackage === pkg.id && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="overflow-hidden"
+                  {paginatedPackages.map((pkg) => (
+                    <motion.tr
+                      key={pkg.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="border-b border-gray-50 last:border-none hover:bg-gray-50 transition-colors"
                     >
-                      <div className="p-4 border-t bg-green-50">
-                        <h3 className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
-                          <FaBox className="text-green-600" />
-                          Included Tests
-                        </h3>
-                        <div className="space-y-2">
-                          {pkg.tests.map((test: TestList) => (
-                            <motion.div
-                              key={test.id}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              className="flex justify-between items-center p-3 bg-white rounded-lg border border-green-200 hover:bg-green-50 transition-colors"
-                            >
-                              <div className="flex items-center space-x-3">
-                                <div className="p-1.5 bg-green-100 rounded-full">
-                                  <FaChevronDown className="text-green-600 text-xs" />
-                                </div>
-                                <span className="text-sm font-medium text-gray-800">{test.name}</span>
-                              </div>
-                              <p className="text-sm font-medium text-gray-700 flex items-center">
-                                <BsCurrencyRupee className="text-xs mr-1" /> {Number(test.price).toFixed(2)}
-                              </p>
-                            </motion.div>
-                          ))}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 flex items-center justify-center rounded-full bg-purple-50 overflow-hidden shrink-0">
+                            <Image src="/package.png" alt="" width={20} height={20} />
+                          </div>
+                          <span className="text-sm font-medium text-gray-800">{pkg.packageName}</span>
                         </div>
-                      </div>
-                    </motion.div>
-                  )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full">
+                          {pkg.tests.length} Test
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{pkg.discount}%</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">₹{Number(pkg.price).toFixed(0)}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditPackage(pkg.id)}
+                            className="w-8 h-8 flex items-center justify-center rounded-full border border-blue-300 text-blue-500 hover:bg-blue-50 transition-colors"
+                            title="Edit package"
+                          >
+                            <FaEdit className="text-sm" />
+                          </button>
+                          <button
+                            onClick={() => handleViewPackage(pkg.id)}
+                            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100 transition-colors"
+                            title="View package"
+                          >
+                            <FaEye className="text-sm" />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePackage(pkg.id)}
+                            disabled={isDeleting === pkg.id}
+                            className="w-8 h-8 flex items-center justify-center rounded-full border border-red-300 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                            title="Delete package"
+                          >
+                            {isDeleting === pkg.id ? (
+                              <Loader type="progress" fullScreen={false} text="" />
+                            ) : (
+                              <FaTrash className="text-sm" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
                 </AnimatePresence>
-
-                {/* Toggle Button */}
-                <div className="p-2 border-t bg-gray-50 flex justify-center">
-                  <button
-                    onClick={() => togglePackageDetails(pkg.id)}
-                    className="text-xs text-blue-600 hover:text-blue-800 focus:outline-none flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
-                  >
-                    {expandedPackage === pkg.id ? (
-                      <>
-                        <FaChevronUp className="text-sm" />
-                        <span>Hide Details</span>
-                      </>
-                    ) : (
-                      <>
-                        <FaChevronDown className="text-sm" />
-                        <span>View Details</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
         ) : (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center p-8 bg-white rounded-xl shadow-lg border-2 border-dashed border-gray-200"
+            className="text-center p-8"
           >
             <FiPackage className="mx-auto text-4xl text-gray-300 mb-3" />
             <h3 className="text-lg font-semibold text-gray-800">No packages found</h3>
@@ -428,7 +429,7 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
             isOpen={!!editingPackage}
             onClose={() => setEditingPackage(null)}
             title="Update Package"
-            modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+            modalClassName="max-w-2xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
           >
             <UpdatePackage
               packageData={editingPackage}
@@ -438,38 +439,44 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
           </Modal>
         )}
       </AnimatePresence>
+
+      {/* View Package Modal */}
+      <AnimatePresence>
+        {viewingPackage && (
+          <Modal
+            isOpen={!!viewingPackage}
+            onClose={() => setViewingPackage(null)}
+            title="View Package"
+            modalClassName="max-w-2xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+          >
+            <ViewPackage
+              packageData={viewingPackage}
+              onClose={() => setViewingPackage(null)}
+            />
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Package Confirmation Modal */}
+      <AnimatePresence>
+        {deletingPackage && (
+          <Modal
+            isOpen={!!deletingPackage}
+            onClose={() => setDeletingPackage(null)}
+            title="Delete Package"
+            modalClassName="max-w-2xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+          >
+            <DeletePackage
+              packageName={deletingPackage.packageName}
+              isDeleting={isDeleting === deletingPackage.id}
+              onClose={() => setDeletingPackage(null)}
+              onConfirm={confirmDeletePackage}
+            />
+          </Modal>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 export default PackageList;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
