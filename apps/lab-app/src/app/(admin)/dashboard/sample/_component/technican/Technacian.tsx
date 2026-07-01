@@ -1,9 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import KPISection from '../KPISection';
-
-// import { useLabs } from '@/context/LabContext';
+import { useLabs } from '@/context/LabContext';
+import { getVisitsByDate } from '@/../services/patientServices';
+import { getCollectedCompleted } from '@/../services/sampleServices';
+import { getHealthPackageById } from '@/../services/packageServices';
+import { formatDateForAPI, getDateRange, DateFilterOption } from '@/utils/dateUtils';
 import PendingTable from '../PendingTable';
 import CompletedTable from '../CompletedTable';
 import CollectionTable from '../CollectionTable';
@@ -11,28 +15,322 @@ import CollectedSample from '../CollectedSample';
 
 type ViewType = 'pending' | 'collected' | 'partial' | 'completed';
 
+// interface KPIState {
+//   pending: number;
+//   collected: number;
+//   partial: number;
+//   completed: number;
+// }
+
+// Shared date filter state interface
+export interface DateFilterState {
+  dateFilter: DateFilterOption;
+  customStartDate: Date | null;
+  customEndDate: Date | null;
+}
+
+// Separate state for visit counts (for pending and collected)
+interface VisitCounts {
+  pending: number;
+  collected: number;
+}
+
+// Separate state for test counts (for partial and completed)
+interface TestCounts {
+  partial: number;
+  completed: number;
+}
+
 const Technician = () => {
-  // const { currentLab } = useLabs();
+  const { currentLab } = useLabs();
   const [currentView, setCurrentView] = useState<ViewType>('pending');
-  const [hideKPI, setHideKPI] = useState(false); // Add this state
+  const [hideKPI, setHideKPI] = useState(false);
   
-  // State to hold KPI data from child components
-  const [kpiData, setKpiData] = useState({
+  // Separate states for different types of counts
+  const [visitCounts, setVisitCounts] = useState<VisitCounts>({
     pending: 0,
-    collected: 0,
+    collected: 0
+  });
+  
+  const [testCounts, setTestCounts] = useState<TestCounts>({
     partial: 0,
     completed: 0
   });
+  
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isLoadingKPI, setIsLoadingKPI] = useState(false);
+  
+  // Date filter state for KPI - default to today
+  const [dateFilter, setDateFilter] = useState<DateFilterOption>('today');
+  const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
+  const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
+  
+  // Track if we're using custom date for KPI
+  const [isUsingCustomDate, setIsUsingCustomDate] = useState(false);
+  
+  // Ref to track if we should fetch KPI on mount
+  const isMounted = useRef(false);
+  
+  // Ref to prevent multiple concurrent fetches
+  const isFetchingRef = useRef(false);
 
-  // Handler to update KPI data from child components
-  const updateKPIData = (type: ViewType, count: number) => {
-    setKpiData(prev => ({
-      ...prev,
-      [type]: count
-    }));
+  // Function to fetch health packages and get test counts
+  const fetchHealthPackages = async (packageIds: number[]) => {
+    if (!currentLab?.id || packageIds.length === 0) return {};
+    
+    const packageMap: Record<number, any> = {};
+    const uniquePackageIds = Array.from(new Set(packageIds));
+    
+    await Promise.all(
+      uniquePackageIds.map(async (packageId) => {
+        try {
+          const response = await getHealthPackageById(currentLab.id, packageId);
+          if (response?.data) {
+            packageMap[packageId] = response.data;
+          }
+        } catch (error) {
+          console.error(`Failed to fetch package ${packageId}:`, error);
+        }
+      })
+    );
+    
+    return packageMap;
+  };
+
+  // Function to fetch all KPI counts based on date range
+  const fetchAllKPICounts = useCallback(async (dateFilterParam?: DateFilterOption, startDateParam?: Date | null, endDateParam?: Date | null) => {
+    // Prevent multiple concurrent fetches
+    if (isFetchingRef.current) return;
+    
+    if (!currentLab?.id) {
+      return;
+    }
+
+    // Use provided params or current state
+    const filter = dateFilterParam || dateFilter;
+    const start = startDateParam !== undefined ? startDateParam : customStartDate;
+    const end = endDateParam !== undefined ? endDateParam : customEndDate;
+
+    isFetchingRef.current = true;
+    setIsLoadingKPI(true);
+    
+    try {
+      const { startDate, endDate } = getDateRange(filter, start, end);
+
+      if (!startDate || !endDate) {
+        isFetchingRef.current = false;
+        return;
+      }
+
+      const formattedStartDate = formatDateForAPI(startDate);
+      const formattedEndDate = formatDateForAPI(endDate);
+
+      // 1. Fetch pending samples count (number of visits with Pending status)
+      const visitsResponse = await getVisitsByDate(
+        currentLab.id,
+        formattedStartDate,
+        formattedEndDate
+      );
+      const allVisits = visitsResponse?.data || [];
+      const pendingCount = allVisits.filter(
+        (visit: any) => visit.visitDetailDto?.visitStatus === 'Pending'
+      ).length;
+
+      // 2. Fetch collected and completed samples
+      const collectedResponse = await getCollectedCompleted(
+        currentLab.id,
+        formattedStartDate,
+        formattedEndDate
+      );
+
+      // Collect all package IDs from all visits to fetch once
+      const allPackageIds: number[] = [];
+      collectedResponse.forEach((visit: any) => {
+        if (visit.packageIds && visit.packageIds.length > 0) {
+          allPackageIds.push(...visit.packageIds);
+        }
+      });
+
+      // Fetch all health packages
+      const packageMap = await fetchHealthPackages(allPackageIds);
+
+      // Calculate counts
+      let collectedCount = 0;
+      let partialCount = 0; // Number of tests pending (not completed)
+      let completedCount = 0; // Number of tests completed
+
+      collectedResponse.forEach((visit: any) => {
+        const testResults = visit.testResult || [];
+        
+        // Get all tests for this visit (including package tests)
+        const allTestIds = new Set<number>();
+        
+        // Add individual tests
+        if (visit.tests) {
+          visit.tests.forEach((test: any) => allTestIds.add(test.id));
+        }
+        
+        // Add package tests
+        if (visit.packageIds) {
+          visit.packageIds.forEach((packageId: number) => {
+            const pkg = packageMap[packageId];
+            if (pkg && pkg.tests) {
+              pkg.tests.forEach((test: any) => allTestIds.add(test.id));
+            }
+          });
+        }
+
+        const totalTests = allTestIds.size;
+        
+        if (totalTests === 0) {
+          // No tests found - consider as collected (1 visit = 1 collected)
+          collectedCount++;
+          return;
+        }
+
+        // Count completed tests
+        const completedTestIds = new Set<number>();
+        testResults.forEach((tr: any) => {
+          if (tr.reportStatus === 'Completed') {
+            completedTestIds.add(tr.testId);
+          }
+        });
+
+        const completedTests = completedTestIds.size;
+        const pendingTests = totalTests - completedTests;
+
+        if (completedTests === totalTests && totalTests > 0) {
+          // All tests completed
+          completedCount += completedTests;
+        } else if (completedTests > 0 && completedTests < totalTests) {
+          // Partial - some completed, some pending
+          completedCount += completedTests;
+          partialCount += pendingTests;
+        } else {
+          // No tests completed - all pending
+          partialCount += totalTests;
+        }
+      });
+
+      // Update states separately
+      setVisitCounts({
+        pending: pendingCount,
+        collected: collectedCount
+      });
+      
+      setTestCounts({
+        partial: partialCount,
+        completed: completedCount
+      });
+
+    } catch (error) {
+      console.error('Error fetching KPI counts:', error);
+    } finally {
+      setIsLoadingKPI(false);
+      isFetchingRef.current = false;
+    }
+  }, [currentLab, dateFilter, customStartDate, customEndDate]);
+
+  // Combined KPI data for display
+  const getKPIData = useCallback(() => {
+    return {
+      pending: visitCounts.pending,
+      collected: visitCounts.collected,
+      partial: testCounts.partial,
+      completed: testCounts.completed
+    };
+  }, [visitCounts, testCounts]);
+
+  // Fetch KPI counts on mount with today's date
+  useEffect(() => {
+    if (currentLab?.id && !isMounted.current) {
+      isMounted.current = true;
+      // Reset to today's date on mount
+      setDateFilter('today');
+      setCustomStartDate(null);
+      setCustomEndDate(null);
+      setIsUsingCustomDate(false);
+      fetchAllKPICounts('today', null, null);
+    }
+  }, [currentLab, fetchAllKPICounts]);
+
+  // Set up auto-refresh interval (every 60 seconds)
+  useEffect(() => {
+    if (!currentLab?.id) return;
+    
+    const intervalId = setInterval(() => {
+      // Only refresh if not on custom date
+      if (!isUsingCustomDate) {
+        fetchAllKPICounts();
+      }
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(intervalId);
+  }, [currentLab, fetchAllKPICounts, isUsingCustomDate]);
+
+  // Handle date filter changes from child components
+  const handleDateFilterChange = useCallback((filter: DateFilterOption, startDate?: Date | null, endDate?: Date | null) => {
+    setDateFilter(filter);
+    
+    if (filter === 'custom') {
+      setCustomStartDate(startDate || null);
+      setCustomEndDate(endDate || null);
+      setIsUsingCustomDate(true);
+      // Small delay to let state update
+      setTimeout(() => {
+        fetchAllKPICounts(filter, startDate || null, endDate || null);
+      }, 50);
+    } else {
+      setCustomStartDate(null);
+      setCustomEndDate(null);
+      setIsUsingCustomDate(false);
+      // Small delay to let state update
+      setTimeout(() => {
+        fetchAllKPICounts(filter, null, null);
+      }, 50);
+    }
+  }, [fetchAllKPICounts]);
+
+  // Reset to today's date when switching tabs
+  const handleViewChange = useCallback((view: ViewType) => {
+    setCurrentView(view);
+    setHideKPI(false);
+    
+    // Reset to today's date when switching tabs
+    // Only if we're not currently using a custom date
+    if (!isUsingCustomDate) {
+      setDateFilter('today');
+      setCustomStartDate(null);
+      setCustomEndDate(null);
+      // Small delay to let state update
+      setTimeout(() => {
+        fetchAllKPICounts('today', null, null);
+      }, 50);
+    }
+  }, [fetchAllKPICounts, isUsingCustomDate]);
+
+  // Handle KPI card click
+  const handleCardChange = (index: number) => {
+    const views: ViewType[] = ['pending', 'collected', 'partial', 'completed'];
+    const newView = views[index];
+    
+    // Reset to today's date when clicking on a different tab
+    // Only if we're not currently using a custom date
+    if (!isUsingCustomDate) {
+      setDateFilter('today');
+      setCustomStartDate(null);
+      setCustomEndDate(null);
+      // Fetch with today's date
+      setTimeout(() => {
+        fetchAllKPICounts('today', null, null);
+      }, 50);
+    }
+    
+    handleViewChange(newView);
   };
 
   // Stats for KPISection
+  const kpiData = getKPIData();
   const stats = [
     {
       title: "Samples Pending",
@@ -45,7 +343,7 @@ const Technician = () => {
       count: kpiData.collected
     },
     {
-      title: "Partially Completed Test Results",
+      title: "Pending Test Results",
       value: kpiData.partial.toString(),
       count: kpiData.partial
     },
@@ -56,32 +354,71 @@ const Technician = () => {
     },
   ];
 
-  // Handle KPI card click
-  const handleCardChange = (index: number) => {
-    const views: ViewType[] = ['pending', 'collected', 'partial', 'completed'];
-    setCurrentView(views[index]);
-    setHideKPI(false); // Show KPI when changing views
-  };
+  // Handle data update from child components
+  const handleChildDataUpdate = useCallback((type: ViewType, count: number) => {
+    // For partial and completed, we do NOT update KPI from child
+    // because child counts visits, but we want test counts
+    if (type === 'partial' || type === 'completed') {
+      // Just refresh KPI from API to ensure correct test counts
+      if (!isFetchingRef.current) {
+        fetchAllKPICounts();
+      }
+      return;
+    }
+    
+    // For pending and collected, update visit counts
+    if (type === 'pending') {
+      setVisitCounts(prev => ({ ...prev, pending: count }));
+    } else if (type === 'collected') {
+      setVisitCounts(prev => ({ ...prev, collected: count }));
+    }
+  }, [fetchAllKPICounts]);
 
   // Render the appropriate component based on current view
   const renderContent = () => {
     switch (currentView) {
       case 'pending':
-        return <PendingTable onDataUpdate={(count) => updateKPIData('pending', count)} />;
+        return (
+          <PendingTable 
+            onDataUpdate={(count) => handleChildDataUpdate('pending', count)}
+            onDateFilterChange={handleDateFilterChange}
+          />
+        );
       case 'collected':
-        return <CollectedSample onDataUpdate={(count) => updateKPIData('collected', count)} />;
+        return (
+          <CollectedSample 
+            onDataUpdate={(count) => handleChildDataUpdate('collected', count)}
+            onDateFilterChange={handleDateFilterChange}
+          />
+        );
       case 'partial':
         return (
           <CollectionTable 
-            onDataUpdate={(count) => updateKPIData('partial', count)}
-            onHideKPI={() => setHideKPI(true)} // Pass callback to hide KPI
-            onShowKPI={() => setHideKPI(false)}  // Pass callback to show KPI
+            onDataUpdate={() => {
+              // Just refresh KPI, don't use the count from child
+              if (!isFetchingRef.current) {
+                fetchAllKPICounts();
+              }
+            }}
+            onHideKPI={() => setHideKPI(true)}
+            onShowKPI={() => setHideKPI(false)}
+            onDateFilterChange={handleDateFilterChange}
           />
         );
       case 'completed':
-        return <CompletedTable onDataUpdate={(count) => updateKPIData('completed', count)} />;
+        return (
+          <CompletedTable 
+            onDataUpdate={() => {
+              // Just refresh KPI, don't use the count from child
+              if (!isFetchingRef.current) {
+                fetchAllKPICounts();
+              }
+            }}
+            onDateFilterChange={handleDateFilterChange}
+          />
+        );
       default:
-        return <PendingTable onDataUpdate={(count) => updateKPIData('pending', count)} />;
+        return <PendingTable onDataUpdate={(count) => handleChildDataUpdate('pending', count)} />;
     }
   };
 
@@ -120,22 +457,32 @@ export default Technician;
 
 
 
+
+
+
+
+
+
+
+// working code dated 01.07.2026.............
+
 // "use client";
 
-// import React, { useState} from 'react';
+// import React, { useState } from 'react';
 // import KPISection from '../KPISection';
 
-// import { useLabs } from '@/context/LabContext';
+// // import { useLabs } from '@/context/LabContext';
 // import PendingTable from '../PendingTable';
-// import CollectedSample from '../CollectedSample';
-// import CollectionTable from '../CollectionTable';
 // import CompletedTable from '../CompletedTable';
+// import CollectionTable from '../CollectionTable';
+// import CollectedSample from '../CollectedSample';
 
 // type ViewType = 'pending' | 'collected' | 'partial' | 'completed';
 
 // const Technician = () => {
-//   const { currentLab } = useLabs();
+//   // const { currentLab } = useLabs();
 //   const [currentView, setCurrentView] = useState<ViewType>('pending');
+//   const [hideKPI, setHideKPI] = useState(false); // Add this state
   
 //   // State to hold KPI data from child components
 //   const [kpiData, setKpiData] = useState({
@@ -181,6 +528,7 @@ export default Technician;
 //   const handleCardChange = (index: number) => {
 //     const views: ViewType[] = ['pending', 'collected', 'partial', 'completed'];
 //     setCurrentView(views[index]);
+//     setHideKPI(false); // Show KPI when changing views
 //   };
 
 //   // Render the appropriate component based on current view
@@ -191,7 +539,13 @@ export default Technician;
 //       case 'collected':
 //         return <CollectedSample onDataUpdate={(count) => updateKPIData('collected', count)} />;
 //       case 'partial':
-//         return <CollectionTable onDataUpdate={(count) => updateKPIData('partial', count)} />;
+//         return (
+//           <CollectionTable 
+//             onDataUpdate={(count) => updateKPIData('partial', count)}
+//             onHideKPI={() => setHideKPI(true)} // Pass callback to hide KPI
+//             onShowKPI={() => setHideKPI(false)}  // Pass callback to show KPI
+//           />
+//         );
 //       case 'completed':
 //         return <CompletedTable onDataUpdate={(count) => updateKPIData('completed', count)} />;
 //       default:
@@ -211,15 +565,17 @@ export default Technician;
 //         </p>
 //       </div>
 
-//       {/* KPI Section */}
-//       <KPISection
-//         data={stats}
-//         onCardChange={handleCardChange}
-//         selectedIndex={['pending', 'collected', 'partial', 'completed'].indexOf(currentView)}
-//       />
+//       {/* KPI Section - Hide when on result entry screen */}
+//       {!hideKPI && (
+//         <KPISection
+//           data={stats}
+//           onCardChange={handleCardChange}
+//           selectedIndex={['pending', 'collected', 'partial', 'completed'].indexOf(currentView)}
+//         />
+//       )}
 
 //       {/* Dynamic Content */}
-//       <div className="mt-5">
+//       <div className={`mt-5 ${hideKPI ? 'mt-0' : ''}`}>
 //         {renderContent()}
 //       </div>
 //     </div>

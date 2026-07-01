@@ -11,7 +11,7 @@ import { getTestReferanceRangeByTestName } from '@/../services/testService';
 import { createReportWithTestResult } from '@/../services/reportServices';
 import { calculateAgeObject } from '@/utils/ageUtils';
 import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
-// import { formatMedicalReportToHTML } from '@/utils/reportFormatter';
+import AutoCalculation from './AutoCalculation';
 
 // Interfaces
 export interface Patient {
@@ -71,23 +71,26 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => {
   );
 };
 
-// Dropdown Component
+// Dropdown Component with NEW UI styling
 const DropdownInput = ({ 
   value, 
   onChange, 
   options,
-  placeholder = "Select value"
+  placeholder = "Select value",
+  disabled = false
 }: { 
   value: string; 
   onChange: (value: string) => void; 
   options: DropdownItem[];
   placeholder?: string;
+  disabled?: boolean;
 }) => {
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="h-9 w-32 rounded-full border border-info-500 bg-white px-3 text-p3 outline-none transition focus:border-secondary-700"
+      disabled={disabled}
+      className="h-9 w-32 rounded-full border border-info-500 bg-white px-3 text-p3 outline-none transition focus:border-secondary-700 disabled:opacity-60 disabled:cursor-not-allowed"
     >
       <option value="">{placeholder}</option>
       {options.map((option) => (
@@ -99,112 +102,61 @@ const DropdownInput = ({
   );
 };
 
-// Auto-calculation functions
-const calculateAutoFields = (testName: string, inputs: Record<string | number, string>, referenceData: TestReferancePoint[]) => {
-  const updatedInputs = { ...inputs };
-  
-  const getNumericValue = (index: number): number | null => {
-    const val = inputs[index];
-    if (!val || isNaN(Number(val))) return null;
-    return parseFloat(val);
-  };
+// Status helper functions
+const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
+  if (!value || isNaN(Number(value))) return 'no-reference';
+  const numValue = parseFloat(value);
 
-  const setValue = (index: number, value: string) => {
-    updatedInputs[index] = value;
-  };
+  if (minRef === null || maxRef === null) return 'no-reference';
+  if (numValue < minRef) return 'below';
+  if (numValue > maxRef) return 'above';
+  return 'normal';
+};
 
-  const descriptions = referenceData.map(p => p.testDescription?.toUpperCase() || '');
-
-  // CBC Auto-calculations
-  if (testName.toUpperCase().includes('COMPLETE BLOOD COUNT') || testName.toUpperCase().includes('CBC')) {
-    const hemoglobinIdx = descriptions.findIndex(d => d.includes('HEMOGLOBIN'));
-    const hematocritIdx = descriptions.findIndex(d => d.includes('HEMATOCRIT'));
-    const rbcIdx = descriptions.findIndex(d => d.includes('RBC COUNT') || d.includes('RED BLOOD CELL'));
-    const mcvIdx = descriptions.findIndex(d => d.includes('MCV'));
-    const mchIdx = descriptions.findIndex(d => d.includes('MCH'));
-    const mchcIdx = descriptions.findIndex(d => d.includes('MCHC'));
-
-    if (mcvIdx >= 0 && hematocritIdx >= 0 && rbcIdx >= 0) {
-      const hematocrit = getNumericValue(hematocritIdx);
-      const rbc = getNumericValue(rbcIdx);
-      if (hematocrit !== null && rbc !== null && rbc > 0) {
-        const mcv = (hematocrit / rbc) * 10;
-        setValue(mcvIdx, mcv.toFixed(1));
-      }
-    }
-
-    if (mchIdx >= 0 && hemoglobinIdx >= 0 && rbcIdx >= 0) {
-      const hemoglobin = getNumericValue(hemoglobinIdx);
-      const rbc = getNumericValue(rbcIdx);
-      if (hemoglobin !== null && rbc !== null && rbc > 0) {
-        const mch = (hemoglobin / rbc) * 10;
-        setValue(mchIdx, mch.toFixed(1));
-      }
-    }
-
-    if (mchcIdx >= 0 && hemoglobinIdx >= 0 && hematocritIdx >= 0) {
-      const hemoglobin = getNumericValue(hemoglobinIdx);
-      const hematocrit = getNumericValue(hematocritIdx);
-      if (hemoglobin !== null && hematocrit !== null && hematocrit > 0) {
-        const mchc = (hemoglobin / hematocrit) * 100;
-        setValue(mchcIdx, mchc.toFixed(1));
-      }
-    }
+const getStatusTextColor = (status: string) => {
+  switch (status) {
+    case 'above':
+      return 'text-warning-500';
+    case 'below':
+      return 'text-danger-600';
+    case 'normal':
+      return 'text-success-900';
+    default:
+      return 'text-pneutral-400';
   }
+};
 
-  // LFT Auto-calculations
-  if (testName.toUpperCase().includes('LIVER FUNCTION TEST') || testName.toUpperCase().includes('LFT')) {
-    const totalProteinIdx = descriptions.findIndex(d => d.includes('TOTAL PROTEIN'));
-    const albuminIdx = descriptions.findIndex(d => d.includes('ALBUMIN'));
-    const globulinIdx = descriptions.findIndex(d => d.includes('GLOBULIN'));
-    const agRatioIdx = descriptions.findIndex(d => d.includes('A/G RATIO'));
-    const totalBilirubinIdx = descriptions.findIndex(d => d.includes('TOTAL BILIRUBIN'));
-    const directBilirubinIdx = descriptions.findIndex(d => d.includes('DIRECT BILIRUBIN'));
-    const indirectBilirubinIdx = descriptions.findIndex(d => d.includes('INDIRECT BILIRUBIN'));
-
-    if (globulinIdx >= 0 && totalProteinIdx >= 0 && albuminIdx >= 0) {
-      const totalProtein = getNumericValue(totalProteinIdx);
-      const albumin = getNumericValue(albuminIdx);
-      if (totalProtein !== null && albumin !== null) {
-        const globulin = totalProtein - albumin;
-        setValue(globulinIdx, globulin.toFixed(1));
-      }
-    }
-
-    if (agRatioIdx >= 0 && albuminIdx >= 0 && globulinIdx >= 0) {
-      const albumin = getNumericValue(albuminIdx);
-      const globulin = getNumericValue(globulinIdx);
-      if (albumin !== null && globulin !== null && globulin > 0) {
-        const agRatio = albumin / globulin;
-        setValue(agRatioIdx, agRatio.toFixed(2));
-      }
-    }
-
-    if (indirectBilirubinIdx >= 0 && totalBilirubinIdx >= 0 && directBilirubinIdx >= 0) {
-      const totalBilirubin = getNumericValue(totalBilirubinIdx);
-      const directBilirubin = getNumericValue(directBilirubinIdx);
-      if (totalBilirubin !== null && directBilirubin !== null) {
-        const indirectBilirubin = totalBilirubin - directBilirubin;
-        setValue(indirectBilirubinIdx, indirectBilirubin.toFixed(1));
-      }
-    }
+const getInputBorderColor = (status: string) => {
+  switch (status) {
+    case 'above':
+      return 'border-warning-500';
+    case 'below':
+      return 'border-danger-600';
+    case 'normal':
+      return 'border-info-500';
+    default:
+      return 'border-info-500';
   }
+};
 
-  // LPT Auto-calculations
-  if (testName.toUpperCase().includes('LIPID PROFILE') || testName.toUpperCase().includes('LPT')) {
-    const vldlIdx = descriptions.findIndex(d => d.includes('VLDL'));
-    const triglyceridesIdx = descriptions.findIndex(d => d.includes('TRIGLYCERIDES'));
-
-    if (vldlIdx >= 0 && triglyceridesIdx >= 0) {
-      const triglycerides = getNumericValue(triglyceridesIdx);
-      if (triglycerides !== null) {
-        const vldl = triglycerides / 5;
-        setValue(vldlIdx, vldl.toFixed(2));
-      }
-    }
+const getRowBackground = (status: string) => {
+  switch (status) {
+    case 'above':
+      return 'bg-warning-50';
+    case 'below':
+      return 'bg-danger-50';
+    default:
+      return '';
   }
+};
 
-  return updatedInputs;
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'above': return 'High';
+    case 'below': return 'Low';
+    case 'normal': return 'Normal';
+    default: return '';
+  }
 };
 
 const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
@@ -222,63 +174,12 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   const [allTests, setAllTests] = useState<TestList[]>([]);
   const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Get status for value
-  const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
-    if (!value || isNaN(Number(value))) return 'no-reference';
-    const numValue = parseFloat(value);
-
-    if (minRef === null || maxRef === null) return 'no-reference';
-    if (numValue < minRef) return 'below';
-    if (numValue > maxRef) return 'above';
-    return 'normal';
-  };
-
-  const getStatusTextColor = (status: string) => {
-    switch (status) {
-      case 'above':
-        return 'text-warning-500';
-      case 'below':
-        return 'text-danger-600';
-      case 'normal':
-        return 'text-success-900';
-      default:
-        return 'text-pneutral-400';
-    }
-  };
-
-  const getInputBorderColor = (status: string) => {
-    switch (status) {
-      case 'above':
-        return 'border-warning-500';
-      case 'below':
-        return 'border-danger-600';
-      case 'normal':
-        return 'border-info-500';
-      default:
-        return 'border-info-500';
-    }
-  };
-
-  const getRowBackground = (status: string) => {
-    switch (status) {
-      case 'above':
-        return 'bg-warning-50';
-      case 'below':
-        return 'bg-danger-50';
-      default:
-        return '';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'above': return 'High';
-      case 'below': return 'Low';
-      case 'normal': return 'Normal';
-      default: return '';
-    }
-  };
+  const [differentialValidation, setDifferentialValidation] = useState<{
+    total: number;
+    type: string;
+    message: string;
+    calculation: string;
+  } | null>(null);
 
   const filterReferenceData = useCallback((referenceData: Record<string, TestReferancePoint[]>) => {
     const filteredData: Record<string, TestReferancePoint[]> = {};
@@ -384,55 +285,173 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   }, [selectedTest, fetchReferenceData]);
 
   const handleInputChange = (testName: string, index: number | string, value: string) => {
-    const numericValue = parseFloat(value);
+  const numericValue = parseFloat(value);
 
-    if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
-      const referenceData = referencePoints[testName] || [];
-      const point = referenceData[typeof index === 'number' ? index : 0];
-
-      const isAutoCalculatedField = point?.testDescription?.toUpperCase().includes('GLOBULIN') ||
-        point?.testDescription?.toUpperCase().includes('INDIRECT BILIRUBIN') ||
-        point?.testDescription?.toUpperCase().includes('A/G RATIO') ||
-        point?.testDescription?.toUpperCase().includes('MEAN BLOOD GLUCOSE') ||
-        point?.testDescription?.toUpperCase().includes('ABSOLUTE EOSINOPHIL COUNT') ||
-        point?.testDescription?.toUpperCase().includes('HDL CHOLESTEROL - DIRECT') ||
-        point?.testDescription?.toUpperCase().includes('LDL CHOLESTEROL - DIRECT') ||
-        point?.testDescription?.toUpperCase().includes('VLDL CHOLESTEROL') ||
-        point?.testDescription?.toUpperCase().includes('MCV') ||
-        point?.testDescription?.toUpperCase().includes('MCH') ||
-        point?.testDescription?.toUpperCase().includes('MCHC');
-
-      if (!isAutoCalculatedField) {
-        toast.error('Negative values are not allowed');
-        return;
-      }
+  // Prevent negative values for non-auto-calculated fields
+  if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
+    const referenceData = referencePoints[testName] || [];
+    const point = referenceData[typeof index === 'number' ? index : 0];
+    
+    if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
+      toast.error('Negative values are not allowed');
+      return;
     }
+  }
 
-    setInputValues(prev => {
-      const updated = {
-        ...prev,
-        [testName]: {
-          ...prev[testName],
-          [index]: value
+  setInputValues(prev => {
+    // First update the input
+    const currentTestInputs = prev[testName] || {};
+    const updated = {
+      ...prev,
+      [testName]: {
+        ...currentTestInputs,
+        [index]: value
+      }
+    };
+
+    // Get the updated inputs for this test
+    const updatedInputs = updated[testName];
+    const refData = referencePoints[testName] || [];
+
+    // Trigger auto-calculation if we have reference data
+    if (refData.length > 0) {
+      // Skip auto-calculation for dropdown fields to avoid conflicts
+      const point = refData[typeof index === 'number' ? index : 0];
+      const isDropdownField = point?.testDescription?.toUpperCase().includes('DROPDOWN') || 
+                              point?.testDescription?.toUpperCase().includes('DROPDOWN WITH DESCRIPTION');
+      
+      // Only run auto-calculation for non-dropdown fields or when the change is from a non-dropdown field
+      if (!isDropdownField) {
+        console.log('Triggering auto-calculation for:', testName);
+        console.log('Current inputs:', updatedInputs);
+        
+        const result = AutoCalculation.calculate(testName, updatedInputs, refData);
+        updated[testName] = result.updatedInputs;
+        
+        // Update differential validation for CBC
+        if (result.differentialValidation) {
+          setDifferentialValidation(result.differentialValidation);
         }
-      };
-
-      const refData = referencePoints[testName] || [];
-      if (refData.length > 0) {
-        const autoCalculated = calculateAutoFields(testName, updated[testName], refData);
-        updated[testName] = autoCalculated;
+        
+        console.log('After auto-calculation:', updated[testName]);
       }
-
-      return updated;
-    });
-
-    if (validationErrors[`${testName}-${index}`]) {
-      setValidationErrors(prev => ({
-        ...prev,
-        [`${testName}-${index}`]: false
-      }));
     }
-  };
+
+    return updated;
+  });
+
+  if (validationErrors[`${testName}-${index}`]) {
+    setValidationErrors(prev => ({
+      ...prev,
+      [`${testName}-${index}`]: false
+    }));
+  }
+};
+
+
+
+// this is working 
+//   const handleInputChange = (testName: string, index: number | string, value: string) => {
+//   const numericValue = parseFloat(value);
+
+//   // Prevent negative values for non-auto-calculated fields
+//   if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
+//     const referenceData = referencePoints[testName] || [];
+//     const point = referenceData[typeof index === 'number' ? index : 0];
+    
+//     if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
+//       toast.error('Negative values are not allowed');
+//       return;
+//     }
+//   }
+
+//   setInputValues(prev => {
+//     // First update the input
+//     const currentTestInputs = prev[testName] || {};
+//     const updated = {
+//       ...prev,
+//       [testName]: {
+//         ...currentTestInputs,
+//         [index]: value
+//       }
+//     };
+
+//     // Get the updated inputs for this test
+//     const updatedInputs = updated[testName];
+//     const refData = referencePoints[testName] || [];
+
+//     // Trigger auto-calculation if we have reference data
+//     if (refData.length > 0) {
+//       console.log('Triggering auto-calculation for:', testName);
+//       console.log('Current inputs:', updatedInputs);
+      
+//       const result = AutoCalculation.calculate(testName, updatedInputs, refData);
+//       updated[testName] = result.updatedInputs;
+      
+//       // Update differential validation for CBC
+//       if (result.differentialValidation) {
+//         setDifferentialValidation(result.differentialValidation);
+//       }
+      
+//       console.log('After auto-calculation:', updated[testName]);
+//     }
+
+//     return updated;
+//   });
+
+//   if (validationErrors[`${testName}-${index}`]) {
+//     setValidationErrors(prev => ({
+//       ...prev,
+//       [`${testName}-${index}`]: false
+//     }));
+//   }
+// };
+
+  // const handleInputChange = (testName: string, index: number | string, value: string) => {
+  //   const numericValue = parseFloat(value);
+
+  //   // Prevent negative values for non-auto-calculated fields
+  //   if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
+  //     const referenceData = referencePoints[testName] || [];
+  //     const point = referenceData[typeof index === 'number' ? index : 0];
+      
+  //     if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
+  //       toast.error('Negative values are not allowed');
+  //       return;
+  //     }
+  //   }
+
+  //   setInputValues(prev => {
+  //     const updated = {
+  //       ...prev,
+  //       [testName]: {
+  //         ...prev[testName],
+  //         [index]: value
+  //       }
+  //     };
+
+  //     // Trigger auto-calculation for the specific test
+  //     const refData = referencePoints[testName] || [];
+  //     if (refData.length > 0) {
+  //       const result = AutoCalculation.calculate(testName, updated[testName], refData);
+  //       updated[testName] = result.updatedInputs;
+        
+  //       // Update differential validation for CBC
+  //       if (result.differentialValidation) {
+  //         setDifferentialValidation(result.differentialValidation);
+  //       }
+  //     }
+
+  //     return updated;
+  //   });
+
+  //   if (validationErrors[`${testName}-${index}`]) {
+  //     setValidationErrors(prev => ({
+  //       ...prev,
+  //       [`${testName}-${index}`]: false
+  //     }));
+  //   }
+  // };
 
   const validateForm = () => {
     const errors: Record<string, boolean> = {};
@@ -449,6 +468,11 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
       referenceData.forEach((point, index) => {
         const descriptionUpper = (point.testDescription || '').toUpperCase();
         if (descriptionUpper === 'DETAILED REPORT') {
+          return;
+        }
+
+        // Skip validation for auto-calculated fields
+        if (AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
           return;
         }
 
@@ -595,13 +619,11 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
         }
       };
 
-      // Submit report directly
       const response = await createReportWithTestResult(currentLab?.id.toString() || '', completePayload);
 
       if (response !== undefined && response !== null) {
         toast.success('Report submitted successfully!');
         setUpdateCollectionTable(prev => !prev);
-        // Immediately close the modal
         setShowModal(false);
       } else {
         toast.error('Failed to submit report');
@@ -645,6 +667,22 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
 
   return (
     <div className="min-h-screen bg-info-50">
+      {/* Differential Count Validation Alert - Only for CBC */}
+      {differentialValidation && (
+        <div className="mb-4 rounded-2xl border p-4 bg-red-50 border-red-300">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className={`text-lg font-bold ${differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+                Total: {differentialValidation.total}
+              </div>
+              <span className={`ml-3 text-sm font-medium ${differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'}`}>
+                {differentialValidation.message}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -768,17 +806,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
                       return null;
                     }
 
-                    const isAutoCalculated = point.testDescription?.toUpperCase().includes('GLOBULIN') ||
-                      point.testDescription?.toUpperCase().includes('INDIRECT BILIRUBIN') ||
-                      point.testDescription?.toUpperCase().includes('A/G RATIO') ||
-                      point.testDescription?.toUpperCase().includes('MEAN BLOOD GLUCOSE') ||
-                      point.testDescription?.toUpperCase().includes('ABSOLUTE EOSINOPHIL COUNT') ||
-                      point.testDescription?.toUpperCase().includes('HDL CHOLESTEROL - DIRECT') ||
-                      point.testDescription?.toUpperCase().includes('LDL CHOLESTEROL - DIRECT') ||
-                      point.testDescription?.toUpperCase().includes('VLDL CHOLESTEROL') ||
-                      point.testDescription?.toUpperCase().includes('MCV') ||
-                      point.testDescription?.toUpperCase().includes('MCH') ||
-                      point.testDescription?.toUpperCase().includes('MCHC');
+                    const isAutoCalculated = AutoCalculation.isAutoCalculatedField(point.testDescription || '');
 
                     return (
                       <tr
@@ -864,7 +892,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
                         <td
                           className={`px-4 py-3 text-p3 font-medium ${getStatusTextColor(status)}`}
                         >
-                          {isDescription || isDropdown || isDropdownWithDescription || isAutoCalculated ? '-' : (getStatusLabel(status) || '-')}
+                          {isDescription || isDropdown || isDropdownWithDescription ? '-' : (getStatusLabel(status) || '-')}
                         </td>
                       </tr>
                     );
@@ -929,7 +957,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   );
 };
 
-export default PatientReportDataFill;
+export default PatientReportDataFill; 
 
 
 
@@ -937,13 +965,17 @@ export default PatientReportDataFill;
 
 
 
+
+
+
+
+// code dated 01.07.2026 with the auto calculation not showing normal high low status.............
 
 // "use client";
 
 // import React, { useState, useCallback, useEffect } from "react";
 // import { CiCircleCheck } from "react-icons/ci";
 // import { IoArrowBack } from "react-icons/io5";
-// // import { TbInfoCircle, TbReportMedical, TbArrowDownCircle, TbArrowUpCircle, TbSquareRoundedCheck } from "react-icons/tb";
 // import { toast } from 'react-toastify';
 // import Loader from '@/app/(admin)/component/common/Loader';
 // import { useLabs } from '@/context/LabContext';
@@ -952,8 +984,7 @@ export default PatientReportDataFill;
 // import { createReportWithTestResult } from '@/../services/reportServices';
 // import { calculateAgeObject } from '@/utils/ageUtils';
 // import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
-// import { formatMedicalReportToHTML } from '@/utils/reportFormatter';
-// import ConfirmationDialog from '@/app/(admin)/component/common/ConfirmationDialog';
+// import AutoCalculation from './AutoCalculation';
 
 // // Interfaces
 // export interface Patient {
@@ -993,47 +1024,13 @@ export default PatientReportDataFill;
 //   };
 // }
 
-// interface StructuredReportSection {
-//   title?: string;
-//   content?: string;
-//   order?: number;
-// }
-
-// interface StructuredReport {
-//   title?: string;
-//   description?: string;
-//   sections?: StructuredReportSection[];
-//   note?: string;
-//   impression?: string;
-//   interpretation?: string;
-//   limitations?: unknown;
-//   organReview?: unknown;
-//   observations?: unknown;
-//   fetalParameters?: Record<string, unknown>;
-//   parameters?: Record<string, unknown>;
-//   calculation?: string;
-//   significance?: string;
-// }
-
 // interface PatientReportDataFillProps {
 //   selectedPatient: Patient;
 //   selectedTest: TestList;
 //   updateCollectionTable: boolean;
-//   setShowModal: (value: React.SetStateAction<boolean>) => void;
 //   setUpdateCollectionTable: (value: React.SetStateAction<boolean>) => void;
+//   setShowModal: (value: React.SetStateAction<boolean>) => void;
 // }
-
-// // Helper functions
-// const escapeHtmlWithBreaks = (text: string) =>
-//   text
-//     .replace(/&/g, '&amp;')
-//     .replace(/</g, '&lt;')
-//     .replace(/>/g, '&gt;')
-//     .replace(/ /g, '&nbsp;')
-//     .replace(/\r?\n/g, '<br/>');
-
-// const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-//   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 // // InfoRow Component for Sidebar
 // const InfoRow = ({ label, value }: { label: string; value: string }) => {
@@ -1052,18 +1049,21 @@ export default PatientReportDataFill;
 //   value, 
 //   onChange, 
 //   options,
-//   placeholder = "Select value"
+//   placeholder = "Select value",
+//   disabled = false
 // }: { 
 //   value: string; 
 //   onChange: (value: string) => void; 
 //   options: DropdownItem[];
 //   placeholder?: string;
+//   disabled?: boolean;
 // }) => {
 //   return (
 //     <select
 //       value={value}
 //       onChange={(e) => onChange(e.target.value)}
-//       className="h-9 w-32 rounded-full border border-info-500 bg-white px-3 text-p3 outline-none transition focus:border-secondary-700"
+//       disabled={disabled}
+//       className="h-9 w-32 rounded-full border border-info-500 bg-white px-3 text-p3 outline-none transition focus:border-secondary-700 disabled:opacity-60 disabled:cursor-not-allowed"
 //     >
 //       <option value="">{placeholder}</option>
 //       {options.map((option) => (
@@ -1075,126 +1075,61 @@ export default PatientReportDataFill;
 //   );
 // };
 
-// // Auto-calculation functions
-// const calculateAutoFields = (testName: string, inputs: Record<string | number, string>, referenceData: TestReferancePoint[]) => {
-//   const updatedInputs = { ...inputs };
-  
-//   // Helper to get numeric value
-//   const getNumericValue = (index: number): number | null => {
-//     const val = inputs[index];
-//     if (!val || isNaN(Number(val))) return null;
-//     return parseFloat(val);
-//   };
+// // Status helper functions
+// const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
+//   if (!value || isNaN(Number(value))) return 'no-reference';
+//   const numValue = parseFloat(value);
 
-//   // Helper to set value
-//   const setValue = (index: number, value: string) => {
-//     updatedInputs[index] = value;
-//   };
+//   if (minRef === null || maxRef === null) return 'no-reference';
+//   if (numValue < minRef) return 'below';
+//   if (numValue > maxRef) return 'above';
+//   return 'normal';
+// };
 
-//   // Get the description of each point to identify auto-calculated fields
-//   const descriptions = referenceData.map(p => p.testDescription?.toUpperCase() || '');
-
-//   // CBC Auto-calculations
-//   if (testName.toUpperCase().includes('COMPLETE BLOOD COUNT') || testName.toUpperCase().includes('CBC')) {
-//     // Find indices for key parameters
-//     const hemoglobinIdx = descriptions.findIndex(d => d.includes('HEMOGLOBIN'));
-//     const hematocritIdx = descriptions.findIndex(d => d.includes('HEMATOCRIT'));
-//     const rbcIdx = descriptions.findIndex(d => d.includes('RBC COUNT') || d.includes('RED BLOOD CELL'));
-//     const mcvIdx = descriptions.findIndex(d => d.includes('MCV'));
-//     const mchIdx = descriptions.findIndex(d => d.includes('MCH'));
-//     const mchcIdx = descriptions.findIndex(d => d.includes('MCHC'));
-
-//     // Calculate MCV = (Hematocrit / RBC) * 10
-//     if (mcvIdx >= 0 && hematocritIdx >= 0 && rbcIdx >= 0) {
-//       const hematocrit = getNumericValue(hematocritIdx);
-//       const rbc = getNumericValue(rbcIdx);
-//       if (hematocrit !== null && rbc !== null && rbc > 0) {
-//         const mcv = (hematocrit / rbc) * 10;
-//         setValue(mcvIdx, mcv.toFixed(1));
-//       }
-//     }
-
-//     // Calculate MCH = (Hemoglobin / RBC) * 10
-//     if (mchIdx >= 0 && hemoglobinIdx >= 0 && rbcIdx >= 0) {
-//       const hemoglobin = getNumericValue(hemoglobinIdx);
-//       const rbc = getNumericValue(rbcIdx);
-//       if (hemoglobin !== null && rbc !== null && rbc > 0) {
-//         const mch = (hemoglobin / rbc) * 10;
-//         setValue(mchIdx, mch.toFixed(1));
-//       }
-//     }
-
-//     // Calculate MCHC = (Hemoglobin / Hematocrit) * 100
-//     if (mchcIdx >= 0 && hemoglobinIdx >= 0 && hematocritIdx >= 0) {
-//       const hemoglobin = getNumericValue(hemoglobinIdx);
-//       const hematocrit = getNumericValue(hematocritIdx);
-//       if (hemoglobin !== null && hematocrit !== null && hematocrit > 0) {
-//         const mchc = (hemoglobin / hematocrit) * 100;
-//         setValue(mchcIdx, mchc.toFixed(1));
-//       }
-//     }
+// const getStatusTextColor = (status: string) => {
+//   switch (status) {
+//     case 'above':
+//       return 'text-warning-500';
+//     case 'below':
+//       return 'text-danger-600';
+//     case 'normal':
+//       return 'text-success-900';
+//     default:
+//       return 'text-pneutral-400';
 //   }
+// };
 
-//   // LFT Auto-calculations
-//   if (testName.toUpperCase().includes('LIVER FUNCTION TEST') || testName.toUpperCase().includes('LFT')) {
-//     // Find indices for key parameters
-//     const totalProteinIdx = descriptions.findIndex(d => d.includes('TOTAL PROTEIN'));
-//     const albuminIdx = descriptions.findIndex(d => d.includes('ALBUMIN'));
-//     const globulinIdx = descriptions.findIndex(d => d.includes('GLOBULIN'));
-//     const agRatioIdx = descriptions.findIndex(d => d.includes('A/G RATIO'));
-//     const totalBilirubinIdx = descriptions.findIndex(d => d.includes('TOTAL BILIRUBIN'));
-//     const directBilirubinIdx = descriptions.findIndex(d => d.includes('DIRECT BILIRUBIN'));
-//     const indirectBilirubinIdx = descriptions.findIndex(d => d.includes('INDIRECT BILIRUBIN'));
-
-//     // Calculate Globulin = Total Protein - Albumin
-//     if (globulinIdx >= 0 && totalProteinIdx >= 0 && albuminIdx >= 0) {
-//       const totalProtein = getNumericValue(totalProteinIdx);
-//       const albumin = getNumericValue(albuminIdx);
-//       if (totalProtein !== null && albumin !== null) {
-//         const globulin = totalProtein - albumin;
-//         setValue(globulinIdx, globulin.toFixed(1));
-//       }
-//     }
-
-//     // Calculate A/G Ratio = Albumin / Globulin
-//     if (agRatioIdx >= 0 && albuminIdx >= 0 && globulinIdx >= 0) {
-//       const albumin = getNumericValue(albuminIdx);
-//       const globulin = getNumericValue(globulinIdx);
-//       if (albumin !== null && globulin !== null && globulin > 0) {
-//         const agRatio = albumin / globulin;
-//         setValue(agRatioIdx, agRatio.toFixed(2));
-//       }
-//     }
-
-//     // Calculate Indirect Bilirubin = Total Bilirubin - Direct Bilirubin
-//     if (indirectBilirubinIdx >= 0 && totalBilirubinIdx >= 0 && directBilirubinIdx >= 0) {
-//       const totalBilirubin = getNumericValue(totalBilirubinIdx);
-//       const directBilirubin = getNumericValue(directBilirubinIdx);
-//       if (totalBilirubin !== null && directBilirubin !== null) {
-//         const indirectBilirubin = totalBilirubin - directBilirubin;
-//         setValue(indirectBilirubinIdx, indirectBilirubin.toFixed(1));
-//       }
-//     }
+// const getInputBorderColor = (status: string) => {
+//   switch (status) {
+//     case 'above':
+//       return 'border-warning-500';
+//     case 'below':
+//       return 'border-danger-600';
+//     case 'normal':
+//       return 'border-info-500';
+//     default:
+//       return 'border-info-500';
 //   }
+// };
 
-//   // LPT Auto-calculations
-//   if (testName.toUpperCase().includes('LIPID PROFILE') || testName.toUpperCase().includes('LPT')) {
-//     const hdlIdx = descriptions.findIndex(d => d.includes('HDL'));
-//     const ldlIdx = descriptions.findIndex(d => d.includes('LDL'));
-//     const vldlIdx = descriptions.findIndex(d => d.includes('VLDL'));
-//     const triglyceridesIdx = descriptions.findIndex(d => d.includes('TRIGLYCERIDES'));
-
-//     // Calculate VLDL = Triglycerides / 5
-//     if (vldlIdx >= 0 && triglyceridesIdx >= 0) {
-//       const triglycerides = getNumericValue(triglyceridesIdx);
-//       if (triglycerides !== null) {
-//         const vldl = triglycerides / 5;
-//         setValue(vldlIdx, vldl.toFixed(2));
-//       }
-//     }
+// const getRowBackground = (status: string) => {
+//   switch (status) {
+//     case 'above':
+//       return 'bg-warning-50';
+//     case 'below':
+//       return 'bg-danger-50';
+//     default:
+//       return '';
 //   }
+// };
 
-//   return updatedInputs;
+// const getStatusLabel = (status: string) => {
+//   switch (status) {
+//     case 'above': return 'High';
+//     case 'below': return 'Low';
+//     case 'normal': return 'Normal';
+//     default: return '';
+//   }
 // };
 
 // const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
@@ -1206,76 +1141,18 @@ export default PatientReportDataFill;
 //   const { currentLab } = useLabs();
   
 //   // State management
-//   const [reportSaved, setReportSaved] = useState(false);
 //   const [loading, setLoading] = useState(false);
 //   const [referencePoints, setReferencePoints] = useState<Record<string, TestReferancePoint[]>>({});
 //   const [inputValues, setInputValues] = useState<Record<string, Record<string | number, string>>>({});
 //   const [allTests, setAllTests] = useState<TestList[]>([]);
 //   const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
-//   const [showConfirmation, setShowConfirmation] = useState(false);
-//   const [reportPreview, setReportPreview] = useState<ReportPayload>({
-//     testData: [],
-//     testResult: { testId: 0, isFilled: false }
-//   });
-//   const [hasMissingDescriptions, setHasMissingDescriptions] = useState(false);
 //   const [isSubmitting, setIsSubmitting] = useState(false);
-
-//   // Get status for value
-//   const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
-//     if (!value || isNaN(Number(value))) return 'no-reference';
-//     const numValue = parseFloat(value);
-
-//     if (minRef === null || maxRef === null) return 'no-reference';
-//     if (numValue < minRef) return 'below';
-//     if (numValue > maxRef) return 'above';
-//     return 'normal';
-//   };
-
-//   const getStatusTextColor = (status: string) => {
-//     switch (status) {
-//       case 'above':
-//         return 'text-warning-500';
-//       case 'below':
-//         return 'text-danger-600';
-//       case 'normal':
-//         return 'text-success-900';
-//       default:
-//         return 'text-pneutral-400';
-//     }
-//   };
-
-//   const getInputBorderColor = (status: string) => {
-//     switch (status) {
-//       case 'above':
-//         return 'border-warning-500';
-//       case 'below':
-//         return 'border-danger-600';
-//       case 'normal':
-//         return 'border-info-500';
-//       default:
-//         return 'border-info-500';
-//     }
-//   };
-
-//   const getRowBackground = (status: string) => {
-//     switch (status) {
-//       case 'above':
-//         return 'bg-warning-50';
-//       case 'below':
-//         return 'bg-danger-50';
-//       default:
-//         return '';
-//     }
-//   };
-
-//   const getStatusLabel = (status: string) => {
-//     switch (status) {
-//       case 'above': return 'High';
-//       case 'below': return 'Low';
-//       case 'normal': return 'Normal';
-//       default: return '';
-//     }
-//   };
+//   const [differentialValidation, setDifferentialValidation] = useState<{
+//     total: number;
+//     type: string;
+//     message: string;
+//     calculation: string;
+//   } | null>(null);
 
 //   const filterReferenceData = useCallback((referenceData: Record<string, TestReferancePoint[]>) => {
 //     const filteredData: Record<string, TestReferancePoint[]> = {};
@@ -1337,23 +1214,14 @@ export default PatientReportDataFill;
 
 //   const fetchReferenceData = useCallback(async () => {
 //     if (!selectedTest || !currentLab) {
-//       console.log('Missing selectedTest or currentLab:', { selectedTest, currentLab });
 //       return;
 //     }
 
 //     setLoading(true);
 //     try {
-//       console.log('Fetching reference data for:', {
-//         labId: currentLab.id,
-//         testName: selectedTest.name
-//       });
-
 //       const response = await getTestReferanceRangeByTestName(currentLab.id.toString(), selectedTest.name);
 
-//       console.log('Reference data response:', response);
-
 //       if (response) {
-//         // Handle both single object and array response
 //         const responseArray = Array.isArray(response) ? response : [response];
         
 //         const filteredData = filterReferenceData({ [selectedTest.name]: responseArray });
@@ -1372,8 +1240,6 @@ export default PatientReportDataFill;
 //         }));
 //       }
 //     } catch (error) {
-//       console.error('Error fetching reference data:', error);
-//       // Try to get the error message
 //       let errorMessage = 'Failed to fetch test reference data';
 //       if (error instanceof Error) {
 //         errorMessage = error.message;
@@ -1392,57 +1258,173 @@ export default PatientReportDataFill;
 //   }, [selectedTest, fetchReferenceData]);
 
 //   const handleInputChange = (testName: string, index: number | string, value: string) => {
-//     const numericValue = parseFloat(value);
+//   const numericValue = parseFloat(value);
 
-//     if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
-//       const referenceData = referencePoints[testName] || [];
-//       const point = referenceData[typeof index === 'number' ? index : 0];
-
-//       const isAutoCalculatedField = point?.testDescription?.toUpperCase().includes('GLOBULIN') ||
-//         point?.testDescription?.toUpperCase().includes('INDIRECT BILIRUBIN') ||
-//         point?.testDescription?.toUpperCase().includes('A/G RATIO') ||
-//         point?.testDescription?.toUpperCase().includes('MEAN BLOOD GLUCOSE') ||
-//         point?.testDescription?.toUpperCase().includes('ABSOLUTE EOSINOPHIL COUNT') ||
-//         point?.testDescription?.toUpperCase().includes('HDL CHOLESTEROL - DIRECT') ||
-//         point?.testDescription?.toUpperCase().includes('LDL CHOLESTEROL - DIRECT') ||
-//         point?.testDescription?.toUpperCase().includes('VLDL CHOLESTEROL') ||
-//         point?.testDescription?.toUpperCase().includes('MCV') ||
-//         point?.testDescription?.toUpperCase().includes('MCH') ||
-//         point?.testDescription?.toUpperCase().includes('MCHC');
-
-//       if (!isAutoCalculatedField) {
-//         toast.error('Negative values are not allowed');
-//         return;
-//       }
+//   // Prevent negative values for non-auto-calculated fields
+//   if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
+//     const referenceData = referencePoints[testName] || [];
+//     const point = referenceData[typeof index === 'number' ? index : 0];
+    
+//     if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
+//       toast.error('Negative values are not allowed');
+//       return;
 //     }
+//   }
 
-//     // Update the input value
-//     setInputValues(prev => {
-//       const updated = {
-//         ...prev,
-//         [testName]: {
-//           ...prev[testName],
-//           [index]: value
+//   setInputValues(prev => {
+//     // First update the input
+//     const currentTestInputs = prev[testName] || {};
+//     const updated = {
+//       ...prev,
+//       [testName]: {
+//         ...currentTestInputs,
+//         [index]: value
+//       }
+//     };
+
+//     // Get the updated inputs for this test
+//     const updatedInputs = updated[testName];
+//     const refData = referencePoints[testName] || [];
+
+//     // Trigger auto-calculation if we have reference data
+//     if (refData.length > 0) {
+//       // Skip auto-calculation for dropdown fields to avoid conflicts
+//       const point = refData[typeof index === 'number' ? index : 0];
+//       const isDropdownField = point?.testDescription?.toUpperCase().includes('DROPDOWN') || 
+//                               point?.testDescription?.toUpperCase().includes('DROPDOWN WITH DESCRIPTION');
+      
+//       // Only run auto-calculation for non-dropdown fields or when the change is from a non-dropdown field
+//       if (!isDropdownField) {
+//         console.log('Triggering auto-calculation for:', testName);
+//         console.log('Current inputs:', updatedInputs);
+        
+//         const result = AutoCalculation.calculate(testName, updatedInputs, refData);
+//         updated[testName] = result.updatedInputs;
+        
+//         // Update differential validation for CBC
+//         if (result.differentialValidation) {
+//           setDifferentialValidation(result.differentialValidation);
 //         }
-//       };
-
-//       // Trigger auto-calculation for the specific test
-//       const refData = referencePoints[testName] || [];
-//       if (refData.length > 0) {
-//         const autoCalculated = calculateAutoFields(testName, updated[testName], refData);
-//         updated[testName] = autoCalculated;
+        
+//         console.log('After auto-calculation:', updated[testName]);
 //       }
-
-//       return updated;
-//     });
-
-//     if (validationErrors[`${testName}-${index}`]) {
-//       setValidationErrors(prev => ({
-//         ...prev,
-//         [`${testName}-${index}`]: false
-//       }));
 //     }
-//   };
+
+//     return updated;
+//   });
+
+//   if (validationErrors[`${testName}-${index}`]) {
+//     setValidationErrors(prev => ({
+//       ...prev,
+//       [`${testName}-${index}`]: false
+//     }));
+//   }
+// };
+
+
+
+// // this is working 
+// //   const handleInputChange = (testName: string, index: number | string, value: string) => {
+// //   const numericValue = parseFloat(value);
+
+// //   // Prevent negative values for non-auto-calculated fields
+// //   if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
+// //     const referenceData = referencePoints[testName] || [];
+// //     const point = referenceData[typeof index === 'number' ? index : 0];
+    
+// //     if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
+// //       toast.error('Negative values are not allowed');
+// //       return;
+// //     }
+// //   }
+
+// //   setInputValues(prev => {
+// //     // First update the input
+// //     const currentTestInputs = prev[testName] || {};
+// //     const updated = {
+// //       ...prev,
+// //       [testName]: {
+// //         ...currentTestInputs,
+// //         [index]: value
+// //       }
+// //     };
+
+// //     // Get the updated inputs for this test
+// //     const updatedInputs = updated[testName];
+// //     const refData = referencePoints[testName] || [];
+
+// //     // Trigger auto-calculation if we have reference data
+// //     if (refData.length > 0) {
+// //       console.log('Triggering auto-calculation for:', testName);
+// //       console.log('Current inputs:', updatedInputs);
+      
+// //       const result = AutoCalculation.calculate(testName, updatedInputs, refData);
+// //       updated[testName] = result.updatedInputs;
+      
+// //       // Update differential validation for CBC
+// //       if (result.differentialValidation) {
+// //         setDifferentialValidation(result.differentialValidation);
+// //       }
+      
+// //       console.log('After auto-calculation:', updated[testName]);
+// //     }
+
+// //     return updated;
+// //   });
+
+// //   if (validationErrors[`${testName}-${index}`]) {
+// //     setValidationErrors(prev => ({
+// //       ...prev,
+// //       [`${testName}-${index}`]: false
+// //     }));
+// //   }
+// // };
+
+//   // const handleInputChange = (testName: string, index: number | string, value: string) => {
+//   //   const numericValue = parseFloat(value);
+
+//   //   // Prevent negative values for non-auto-calculated fields
+//   //   if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
+//   //     const referenceData = referencePoints[testName] || [];
+//   //     const point = referenceData[typeof index === 'number' ? index : 0];
+      
+//   //     if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
+//   //       toast.error('Negative values are not allowed');
+//   //       return;
+//   //     }
+//   //   }
+
+//   //   setInputValues(prev => {
+//   //     const updated = {
+//   //       ...prev,
+//   //       [testName]: {
+//   //         ...prev[testName],
+//   //         [index]: value
+//   //       }
+//   //     };
+
+//   //     // Trigger auto-calculation for the specific test
+//   //     const refData = referencePoints[testName] || [];
+//   //     if (refData.length > 0) {
+//   //       const result = AutoCalculation.calculate(testName, updated[testName], refData);
+//   //       updated[testName] = result.updatedInputs;
+        
+//   //       // Update differential validation for CBC
+//   //       if (result.differentialValidation) {
+//   //         setDifferentialValidation(result.differentialValidation);
+//   //       }
+//   //     }
+
+//   //     return updated;
+//   //   });
+
+//   //   if (validationErrors[`${testName}-${index}`]) {
+//   //     setValidationErrors(prev => ({
+//   //       ...prev,
+//   //       [`${testName}-${index}`]: false
+//   //     }));
+//   //   }
+//   // };
 
 //   const validateForm = () => {
 //     const errors: Record<string, boolean> = {};
@@ -1462,6 +1444,11 @@ export default PatientReportDataFill;
 //           return;
 //         }
 
+//         // Skip validation for auto-calculated fields
+//         if (AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
+//           return;
+//         }
+
 //         if (!testInputs[index] || testInputs[index].trim() === '') {
 //           errors[`${test.name}-${index}`] = true;
 //           isValid = false;
@@ -1473,55 +1460,19 @@ export default PatientReportDataFill;
 //     return isValid;
 //   };
 
-//   const prepareReportPreview = () => {
+//   const handleSaveAndGenerate = async () => {
 //     if (!validateForm()) {
 //       toast.error('Please fill in all required fields');
 //       return;
 //     }
 
-//     const generatedReportData: ReportData[] = [];
-//     let hasMissingDesc = false;
+//     setIsSubmitting(true);
 
-//     allTests.forEach((test) => {
-//       if (test.category === 'RADIOLOGY') {
-//         const formattedTestName = test.name
-//           .split(' ')
-//           .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-//           .join(' ');
+//     try {
+//       const generatedReportData: ReportData[] = [];
 
-//         const formattedCategory = test.category
-//           .split(' ')
-//           .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-//           .join(' ');
-
-//         const detailedReportPoint = referencePoints[test.name]?.find(point => point.testDescription === "DETAILED REPORT");
-//         generatedReportData.push({
-//           visit_id: selectedPatient.visitId.toString(),
-//           testName: formattedTestName,
-//           testCategory: formattedCategory,
-//           patientName: selectedPatient.patientname,
-//           referenceDescription: detailedReportPoint?.testDescription || "RADIOLOGY_TEST",
-//           referenceRange: "N/A",
-//           enteredValue: "Hard copy will be provided",
-//           referenceAgeRange: "N/A",
-//           unit: "N/A",
-//           description: "Imaging test - Results provided separately",
-//           referenceRanges: detailedReportPoint?.referenceRanges || undefined,
-//           reportJson: detailedReportPoint?.reportJson || undefined
-//         });
-
-//         return;
-//       }
-
-//       const testInputs = inputValues[test.name] || {};
-//       const referenceData = referencePoints[test.name] || [];
-
-//       referenceData.forEach((point, index) => {
-//         if (testInputs[index] || (point.testDescription && point.testDescription !== "No reference available for this test")) {
-//           if (!point.testDescription || point.testDescription === "No reference description available") {
-//             hasMissingDesc = true;
-//           }
-
+//       allTests.forEach((test) => {
+//         if (test.category === 'RADIOLOGY') {
 //           const formattedTestName = test.name
 //             .split(' ')
 //             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -1532,101 +1483,121 @@ export default PatientReportDataFill;
 //             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
 //             .join(' ');
 
-//           let finalValue = testInputs[index] || "N/A";
-//           let description = "N/A";
-//           let unit = "N/A";
-//           let referenceRange = "N/A";
-//           const hasReferenceRange =
-//             point.minReferenceRange !== null &&
-//             point.minReferenceRange !== undefined ||
-//             point.maxReferenceRange !== null &&
-//             point.maxReferenceRange !== undefined;
-//           const resolvedReferenceRange = hasReferenceRange
-//             ? `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`
-//             : "N/A";
-
-//           const descriptionKey = `${index}_description`;
-//           const hasDescription = testInputs[descriptionKey] && testInputs[descriptionKey].trim();
-
-//           const hasApiDropdown = hasValidDropdown(point.dropdown);
-
-//           // EXACT logic from old code
-//           if (point.testDescription === "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE" ||
-//             point.testDescription === "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT") {
-//             unit = point.units || "N/A";
-//             description = hasDescription ? testInputs[descriptionKey] : "N/A";
-//             finalValue = testInputs[index] || "N/A";
-//             referenceRange = resolvedReferenceRange;
-//           } else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
-//             "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DROPDOWN-COMPATIBLE/INCOMPATIBLE"].includes(point.testDescription)) {
-//             unit = point.units || "N/A";
-//             description = "N/A";
-//             finalValue = testInputs[index] || "N/A";
-//             referenceRange = resolvedReferenceRange;
-//           } else if (point.testDescription === "DESCRIPTION") {
-//             unit = "N/A";
-//             description = testInputs[index] || "N/A";
-//             finalValue = testInputs[index] || "N/A";
-//             referenceRange = "N/A";
-//           }
-//           else if (point.testDescription === "DETAILED REPORT") {
-//             unit = "N/A";
-//             description = "Imaging test - Results provided separately";
-//             finalValue = "Hard copy will be provided";
-//             referenceRange = "N/A";
-//           }
-//           else {
-//             unit = point.units || "N/A";
-//             description = "N/A";
-//             finalValue = testInputs[index] || "N/A";
-//             referenceRange = `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`;
-//           }
-
+//           const detailedReportPoint = referencePoints[test.name]?.find(point => point.testDescription === "DETAILED REPORT");
 //           generatedReportData.push({
 //             visit_id: selectedPatient.visitId.toString(),
 //             testName: formattedTestName,
 //             testCategory: formattedCategory,
 //             patientName: selectedPatient.patientname,
-//             referenceDescription: point.testDescription || "No reference description available",
-//             referenceRange: referenceRange,
-//             enteredValue: finalValue,
-//             referenceAgeRange: `${point.ageMin ?? "N/A"} ${point.minAgeUnit ?? "YEARS"} - ${point.ageMax ?? "N/A"} ${point.maxAgeUnit ?? "YEARS"}`,
-//             unit: unit,
-//             description: description,
-//             referenceRanges: point.referenceRanges || undefined,
-//             reportJson: point.reportJson || undefined
+//             referenceDescription: detailedReportPoint?.testDescription || "RADIOLOGY_TEST",
+//             referenceRange: "N/A",
+//             enteredValue: "Hard copy will be provided",
+//             referenceAgeRange: "N/A",
+//             unit: "N/A",
+//             description: "Imaging test - Results provided separately",
+//             referenceRanges: detailedReportPoint?.referenceRanges || undefined,
+//             reportJson: detailedReportPoint?.reportJson || undefined
 //           });
+
+//           return;
 //         }
+
+//         const testInputs = inputValues[test.name] || {};
+//         const referenceData = referencePoints[test.name] || [];
+
+//         referenceData.forEach((point, index) => {
+//           if (testInputs[index] || (point.testDescription && point.testDescription !== "No reference available for this test")) {
+//             const formattedTestName = test.name
+//               .split(' ')
+//               .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+//               .join(' ');
+
+//             const formattedCategory = test.category
+//               .split(' ')
+//               .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+//               .join(' ');
+
+//             let finalValue = testInputs[index] || "N/A";
+//             let description = "N/A";
+//             let unit = "N/A";
+//             let referenceRange = "N/A";
+//             const hasReferenceRange =
+//               point.minReferenceRange !== null &&
+//               point.minReferenceRange !== undefined ||
+//               point.maxReferenceRange !== null &&
+//               point.maxReferenceRange !== undefined;
+//             const resolvedReferenceRange = hasReferenceRange
+//               ? `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`
+//               : "N/A";
+
+//             const descriptionKey = `${index}_description`;
+//             const hasDescription = testInputs[descriptionKey] && testInputs[descriptionKey].trim();
+
+//             const hasApiDropdown = hasValidDropdown(point.dropdown);
+
+//             if (point.testDescription === "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE" ||
+//               point.testDescription === "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT") {
+//               unit = point.units || "N/A";
+//               description = hasDescription ? testInputs[descriptionKey] : "N/A";
+//               finalValue = testInputs[index] || "N/A";
+//               referenceRange = resolvedReferenceRange;
+//             } else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
+//               "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DROPDOWN-COMPATIBLE/INCOMPATIBLE"].includes(point.testDescription)) {
+//               unit = point.units || "N/A";
+//               description = "N/A";
+//               finalValue = testInputs[index] || "N/A";
+//               referenceRange = resolvedReferenceRange;
+//             } else if (point.testDescription === "DESCRIPTION") {
+//               unit = "N/A";
+//               description = testInputs[index] || "N/A";
+//               finalValue = testInputs[index] || "N/A";
+//               referenceRange = "N/A";
+//             }
+//             else if (point.testDescription === "DETAILED REPORT") {
+//               unit = "N/A";
+//               description = "Imaging test - Results provided separately";
+//               finalValue = "Hard copy will be provided";
+//               referenceRange = "N/A";
+//             }
+//             else {
+//               unit = point.units || "N/A";
+//               description = "N/A";
+//               finalValue = testInputs[index] || "N/A";
+//               referenceRange = `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`;
+//             }
+
+//             generatedReportData.push({
+//               visit_id: selectedPatient.visitId.toString(),
+//               testName: formattedTestName,
+//               testCategory: formattedCategory,
+//               patientName: selectedPatient.patientname,
+//               referenceDescription: point.testDescription || "No reference description available",
+//               referenceRange: referenceRange,
+//               enteredValue: finalValue,
+//               referenceAgeRange: `${point.ageMin ?? "N/A"} ${point.minAgeUnit ?? "YEARS"} - ${point.ageMax ?? "N/A"} ${point.maxAgeUnit ?? "YEARS"}`,
+//               unit: unit,
+//               description: description,
+//               referenceRanges: point.referenceRanges || undefined,
+//               reportJson: point.reportJson || undefined
+//             });
+//           }
+//         });
 //       });
-//     });
 
-//     const completePayload: ReportPayload = {
-//       testData: generatedReportData,
-//       testResult: {
-//         testId: selectedTest.id,
-//         isFilled: true
-//       }
-//     };
+//       const completePayload: ReportPayload = {
+//         testData: generatedReportData,
+//         testResult: {
+//           testId: selectedTest.id,
+//           isFilled: true
+//         }
+//       };
 
-//     setReportPreview(completePayload);
-//     setHasMissingDescriptions(hasMissingDesc);
-//     setShowConfirmation(true);
-//   };
-
-//   const submitReport = async () => {
-//     try {
-//       setIsSubmitting(true);
-
-//       const response = await createReportWithTestResult(currentLab?.id.toString() || '', reportPreview);
+//       const response = await createReportWithTestResult(currentLab?.id.toString() || '', completePayload);
 
 //       if (response !== undefined && response !== null) {
 //         toast.success('Report submitted successfully!');
-//         setShowConfirmation(false);
-//         setReportSaved(true);
 //         setUpdateCollectionTable(prev => !prev);
-//         setTimeout(() => {
-//           setShowModal(false);
-//         }, 2000);
+//         setShowModal(false);
 //       } else {
 //         toast.error('Failed to submit report');
 //       }
@@ -1635,142 +1606,6 @@ export default PatientReportDataFill;
 //     } finally {
 //       setIsSubmitting(false);
 //     }
-//   };
-
-//   const buildReadablePreviewHTML = () => {
-//     let htmlParts: string[] = [];
-
-//     const detailedReports = allTests
-//       .map((test) => {
-//         const detailedPoint = (referencePoints[test.name] || []).find(p => (p.testDescription || '').toUpperCase() === 'DETAILED REPORT');
-//         if (!detailedPoint || !detailedPoint.reportJson) return null;
-
-//         try {
-//           const parsed = JSON.parse(detailedPoint.reportJson) as StructuredReport;
-//           const parsedSections: (StructuredReportSection & { title?: string; content?: string })[] = Array.isArray(parsed.sections)
-//             ? parsed.sections
-//             : isPlainObject(parsed.sections)
-//               ? Object.entries(parsed.sections as Record<string, unknown>).map(([title, content]) => ({
-//                 title,
-//                 content: String(content ?? ''),
-//               }))
-//               : [];
-//           if (parsed && parsed.title && parsedSections.length > 0) {
-//             const sectionsHtml = [...parsedSections]
-//               .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-//               .map((section) => `
-//                 <div class="mb-3">
-//                   <h4 class="text-sm font-semibold text-gray-800">${section.title || ''}</h4>
-//                   <div>${section.content || ''}</div>
-//                 </div>
-//               `)
-//               .join('');
-//             return `
-//               <div class="mb-6">
-//                 <h3 class="text-base font-bold text-gray-900">${parsed.title || test.name}</h3>
-//                 ${parsed.description ? `<p class="text-sm text-gray-700 mb-2">${parsed.description}</p>` : ''}
-//                 ${sectionsHtml}
-//               </div>
-//             `;
-//           }
-
-//           const formatted = formatMedicalReportToHTML(detailedPoint.reportJson) || '';
-//           return `
-//             <div class="mb-6">
-//               <h3 class="text-base font-bold text-gray-900">${test.name}</h3>
-//               <div>${formatted}</div>
-//             </div>
-//           `;
-//         } catch (_) {
-//           const formatted = formatMedicalReportToHTML(detailedPoint.reportJson) || '';
-//           return `
-//             <div class="mb-6">
-//               <h3 class="text-base font-bold text-gray-900">${test.name}</h3>
-//               <div>${formatted}</div>
-//             </div>
-//           `;
-//         }
-//       })
-//       .filter(Boolean) as string[];
-
-//     if (detailedReports.length > 0) {
-//       htmlParts.push(`<div class="mb-4"><h2 class="text-sm font-bold text-gray-900">Detailed Reports</h2></div>`);
-//       htmlParts = htmlParts.concat(detailedReports);
-//     }
-
-//     if (reportPreview.testData.length > 0) {
-//       const groupedByTest = reportPreview.testData
-//         .filter(item => {
-//           const key = (item.referenceDescription || '').toUpperCase();
-//           return key !== 'RADIOLOGY_TEST' && key !== 'DETAILED REPORT';
-//         })
-//         .reduce((acc, item) => {
-//           const testName = item.testName.toUpperCase();
-//           if (!acc[testName]) {
-//             acc[testName] = [];
-//           }
-//           acc[testName].push(item);
-//           return acc;
-//         }, {} as Record<string, typeof reportPreview.testData>);
-
-//       const testGroups = Object.entries(groupedByTest).map(([testName, items]) => {
-//         const parameters = items.map(item => {
-//           const label = (item.referenceDescription || 'Test Parameter');
-//           const value = (() => {
-//             const t = (item.referenceDescription || '').toUpperCase();
-//             if (t === 'DESCRIPTION') {
-//               return `
-//       <li class="mb-1 text-sm text-gray-700 ml-4">
-//         <div style="
-//           padding-left: 100px;
-//           text-indent: -100px;
-//           white-space: normal;
-//           word-break: break-word;
-//         ">
-//           <strong>${label}:</strong>
-//           ${escapeHtmlWithBreaks(item.description || 'N/A')}
-//         </div>
-//       </li>
-//     `;
-//             }
-
-//             if (t.includes('DROPDOWN')) return item.enteredValue || 'N/A';
-//             return `${item.enteredValue} ${item.unit}`.trim();
-//           })();
-//           const ref = (() => {
-//             const t = (item.referenceDescription || '').toUpperCase();
-//             if (t.includes('DROPDOWN') || t === 'DESCRIPTION') return '';
-//             return `${item.referenceRange || 'N/A'} ${item.unit || ''}`.trim();
-//           })();
-//           return `<li class="mb-1 text-sm text-gray-700 ml-4">
-//             <span class="text-gray-800">${label}: ${value}</span>
-//             ${ref ? `<span class="text-gray-500"> (Ref: ${ref})</span>` : ''}
-//           </li>`;
-//         }).join('');
-
-//         return `
-//           <div class="mb-4">
-//             <h3 class="text-sm font-bold text-gray-900 mb-2">${testName}</h3>
-//             <ul class="list-disc pl-5">${parameters}</ul>
-//           </div>
-//         `;
-//       }).join('');
-
-//       if (testGroups) {
-//         htmlParts.push(`
-//           <div class="mt-4">
-//             <h2 class="text-sm font-bold text-gray-900 mb-3">Entered Results</h2>
-//             ${testGroups}
-//           </div>
-//         `);
-//       }
-//     }
-
-//     if (htmlParts.length === 0) {
-//       htmlParts.push('<p class="text-sm text-gray-600">No data available to preview.</p>');
-//     }
-
-//     return htmlParts.join('\n');
 //   };
 
 //   if (loading) {
@@ -1805,23 +1640,18 @@ export default PatientReportDataFill;
 
 //   return (
 //     <div className="min-h-screen bg-info-50">
-//       {/* Success Banner */}
-//       {reportSaved && (
-//         <div className="mb-6 rounded-2xl border border-success-900 bg-success-50 px-4 py-3">
+//       {/* Differential Count Validation Alert - Only for CBC */}
+//       {differentialValidation && (
+//         <div className="mb-4 rounded-2xl border p-4 bg-red-50 border-red-300">
 //           <div className="flex items-center justify-between">
-//             <div className="flex items-center gap-2">
-//               <CiCircleCheck className="h-6 w-6 shrink-0 text-success-700" />
-//               <p className="text-p3 font-medium text-[#006045]">
-//                 Results saved. Report is ready for review.
-//               </p>
+//             <div className="flex items-center">
+//               <div className={`text-lg font-bold ${differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+//                 Total: {differentialValidation.total}
+//               </div>
+//               <span className={`ml-3 text-sm font-medium ${differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'}`}>
+//                 {differentialValidation.message}
+//               </span>
 //             </div>
-
-//             <button 
-//               onClick={() => setShowModal(false)}
-//               className="rounded-full border border-pneutral-200 bg-pneutral-50 px-3 py-2 text-label-l2 font-medium text-pneutral-900"
-//             >
-//               Preview Report
-//             </button>
 //           </div>
 //         </div>
 //       )}
@@ -1848,17 +1678,20 @@ export default PatientReportDataFill;
 //           </button>
 
 //           <button
-//             onClick={prepareReportPreview}
-//             className="flex items-center gap-2 rounded-full bg-secondary-700 px-3 py-2 text-label-l3 font-medium text-pneutral-50"
+//             onClick={handleSaveAndGenerate}
+//             disabled={isSubmitting}
+//             className={`flex items-center gap-2 rounded-full px-3 py-2 text-label-l3 font-medium text-pneutral-50 ${
+//               isSubmitting ? 'bg-pneutral-400 cursor-not-allowed' : 'bg-secondary-700'
+//             }`}
 //           >
 //             <CiCircleCheck className="h-5 w-5" />
-//             Save & Generate Report
+//             {isSubmitting ? 'Saving...' : 'Save & Generate Report'}
 //           </button>
 //         </div>
 //       </div>
 
 //       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-//         {/* Left Side - Test Table with NEW UI */}
+//         {/* Left Side - Test Table */}
 //         <div className="space-y-6">
 //           {/* Test Header Card */}
 //           <div className="rounded-xl border border-pneutral-200 bg-white px-4 py-3">
@@ -1867,7 +1700,7 @@ export default PatientReportDataFill;
 //             </h3>
 //           </div>
 
-//           {/* Test Table Card with NEW UI styling */}
+//           {/* Test Table Card */}
 //           <div className="overflow-hidden rounded-xl border border-pneutral-200 bg-white">
 //             <div className="overflow-x-auto">
 //               <table className="w-full min-w-[750px]">
@@ -1886,12 +1719,10 @@ export default PatientReportDataFill;
 //                     const currentValue = inputValues[selectedTest?.name]?.[index] || "";
 //                     const descriptionValue = inputValues[selectedTest?.name]?.[`${index}_description`] || "";
                     
-//                     // Determine field type using proper dropdown parser
 //                     const dropdownResult = parseDropdownField(point.dropdown);
 //                     const hasApiDropdown = dropdownResult.isValid;
 //                     const dropdownItems = dropdownResult.data;
 
-//                     // Check if it's a dropdown field (either from API or hardcoded type)
 //                     const isDropdown = hasApiDropdown || 
 //                       ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
 //                        "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DROPDOWN-COMPATIBLE/INCOMPATIBLE"]
@@ -1904,19 +1735,14 @@ export default PatientReportDataFill;
 //                     const isDescription = point.testDescription === "DESCRIPTION";
 //                     const isDetailedReport = point.testDescription === "DETAILED REPORT";
 
-//                     // Get dropdown options - Check test name as well
 //                     let dropdownOptions: DropdownItem[] = [];
                     
 //                     if (hasApiDropdown && dropdownItems && dropdownItems.length > 0) {
-//                       // Use the dropdown items from API
 //                       dropdownOptions = dropdownItems;
-//                       console.log(`Dropdown options for ${point.testDescription}:`, dropdownOptions);
 //                     } else if (isDropdown) {
-//                       // Hardcoded fallback options based on test description OR test name
 //                       const desc = point.testDescription?.toUpperCase() || '';
 //                       const name = selectedTest?.name?.toUpperCase() || '';
                       
-//                       // Check if it's a blood group test
 //                       if (name.includes('BLOOD GROUP') || name.includes('BLOOD TYPE') || desc.includes('BLOOD GROUP') || desc.includes('BLOOD TYPE')) {
 //                         dropdownOptions = [
 //                           { label: 'A+', value: 'A+' },
@@ -1941,32 +1767,19 @@ export default PatientReportDataFill;
 //                       }
 //                     }
 
-//                     // Get status for numeric values only
 //                     let status = 'no-reference';
-//                     let minRef = point.minReferenceRange;
-//                     let maxRef = point.maxReferenceRange;
+//                     const minRef = point.minReferenceRange;
+//                     const maxRef = point.maxReferenceRange;
                     
 //                     if (!isDropdown && !isDescription && !isDropdownWithDescription && currentValue && !isNaN(Number(currentValue))) {
 //                       status = getValueStatus(currentValue, minRef, maxRef);
 //                     }
 
-//                     // Skip rendering DETAILED REPORT in table
 //                     if (isDetailedReport) {
 //                       return null;
 //                     }
 
-//                     // Check if this is an auto-calculated field
-//                     const isAutoCalculated = point.testDescription?.toUpperCase().includes('GLOBULIN') ||
-//                       point.testDescription?.toUpperCase().includes('INDIRECT BILIRUBIN') ||
-//                       point.testDescription?.toUpperCase().includes('A/G RATIO') ||
-//                       point.testDescription?.toUpperCase().includes('MEAN BLOOD GLUCOSE') ||
-//                       point.testDescription?.toUpperCase().includes('ABSOLUTE EOSINOPHIL COUNT') ||
-//                       point.testDescription?.toUpperCase().includes('HDL CHOLESTEROL - DIRECT') ||
-//                       point.testDescription?.toUpperCase().includes('LDL CHOLESTEROL - DIRECT') ||
-//                       point.testDescription?.toUpperCase().includes('VLDL CHOLESTEROL') ||
-//                       point.testDescription?.toUpperCase().includes('MCV') ||
-//                       point.testDescription?.toUpperCase().includes('MCH') ||
-//                       point.testDescription?.toUpperCase().includes('MCHC');
+//                     const isAutoCalculated = AutoCalculation.isAutoCalculatedField(point.testDescription || '');
 
 //                     return (
 //                       <tr
@@ -2113,535 +1926,6 @@ export default PatientReportDataFill;
 //           </div>
 //         </aside>
 //       </div>
-
-//       {/* Confirmation Dialog */}
-//       <ConfirmationDialog
-//         isOpen={showConfirmation}
-//         onClose={() => setShowConfirmation(false)}
-//         onConfirm={submitReport}
-//         title={hasMissingDescriptions ? "Important Note About Test References" : "Confirm Report Submission"}
-//         message={hasMissingDescriptions
-//           ? "Some tests don't have digital references available. Please review the details below before submitting."
-//           : "All test references have complete descriptions. Please review the data before submitting."}
-//         confirmText="Confirm Submission"
-//         cancelText="Cancel"
-//         isLoading={isSubmitting}
-//       >
-//         <div className="space-y-4 text-sm">
-//           {/* Patient Information */}
-//           <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-//             <h4 className="font-semibold text-blue-800 mb-2">Patient Information</h4>
-//             <div className="grid grid-cols-2 gap-2 text-xs">
-//               <div>
-//                 <span className="font-medium text-gray-600">Name:</span>
-//                 <span className="ml-2 text-gray-900">{selectedPatient.patientname || 'N/A'}</span>
-//               </div>
-//               <div>
-//                 <span className="font-medium text-gray-600">Phone:</span>
-//                 <span className="ml-2 text-gray-900">{selectedPatient.contactNumber || 'N/A'}</span>
-//               </div>
-//               <div>
-//                 <span className="font-medium text-gray-600">Email:</span>
-//                 <span className="ml-2 text-gray-900">{selectedPatient.email || 'N/A'}</span>
-//               </div>
-//               <div>
-//                 <span className="font-medium text-gray-600">Gender:</span>
-//                 <span className="ml-2 text-gray-900 capitalize">{selectedPatient.gender || 'N/A'}</span>
-//               </div>
-//               <div>
-//                 <span className="font-medium text-gray-600">Date of Birth:</span>
-//                 <span className="ml-2 text-gray-900">{selectedPatient.dateOfBirth ? new Date(selectedPatient.dateOfBirth).toLocaleDateString() : 'N/A'}</span>
-//               </div>
-//               <div>
-//                 <span className="font-medium text-gray-600">Visit Date:</span>
-//                 <span className="ml-2 text-gray-900">{selectedPatient.visitDate ? new Date(selectedPatient.visitDate).toLocaleDateString() : 'N/A'}</span>
-//               </div>
-//               <div>
-//                 <span className="font-medium text-gray-600">Visit Status:</span>
-//                 <span className="ml-2 text-gray-900 capitalize">{selectedPatient.visitStatus?.toLowerCase().replace('_', ' ') || 'N/A'}</span>
-//               </div>
-//               <div>
-//                 <span className="font-medium text-gray-600">Visit ID:</span>
-//                 <span className="ml-2 text-gray-900">{selectedPatient.visitId || 'N/A'}</span>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Test Information */}
-//           <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
-//             <h4 className="font-semibold text-purple-800 mb-2">Test Information</h4>
-//             <div className="grid grid-cols-2 gap-2 text-xs">
-//               <div>
-//                 <span className="font-medium text-gray-600">Test Name:</span>
-//                 <span className="ml-2 text-gray-900">{selectedTest?.name || 'N/A'}</span>
-//               </div>
-//               <div>
-//                 <span className="font-medium text-gray-600">Category:</span>
-//                 <span className="ml-2 text-gray-900">{selectedTest?.category || 'N/A'}</span>
-//               </div>
-//               <div className="col-span-2">
-//                 <span className="font-medium text-gray-600">Total Test Points:</span>
-//                 <span className="ml-2 text-gray-900">{reportPreview.testData.length}</span>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Missing Descriptions Warning */}
-//           {hasMissingDescriptions && (
-//             <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
-//               <h4 className="font-semibold text-yellow-800 mb-2">Important Note</h4>
-//               <ul className="list-disc pl-5 space-y-1 text-xs text-yellow-700">
-//                 <li>Some tests ({reportPreview.testData.filter(item => !item.referenceDescription || item.referenceDescription === "No reference description available").length}) don&lsquo;t have digital references available</li>
-//                 <li>These tests might be machine-generated or have hard copy references</li>
-//                 <li>The results will be provided separately at the reception</li>
-//                 <li>Please inform the patient to collect all results from the reception desk</li>
-//               </ul>
-//             </div>
-//           )}
-
-//           {/* Report Preview */}
-//           <div className="bg-white p-3 rounded-lg border border-gray-200">
-//             <h4 className="font-semibold text-gray-800 mb-2">Report Preview</h4>
-//             <div className="border rounded-lg overflow-hidden bg-white">
-//               <div className="p-4">
-//                 <div
-//                   className="report-html prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
-//                   dangerouslySetInnerHTML={{ __html: buildReadablePreviewHTML() }}
-//                 />
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       </ConfirmationDialog>
-//     </div>
-//   );
-// };
-
-// export default PatientReportDataFill;
-
-
-
-
-
-
-
-
-
-
-// new UI but API is not integrated...........
-
-// "use client";
-
-// import React, { useState } from "react";
-// import { CiCircleCheck } from "react-icons/ci";
-// import { IoArrowBack } from "react-icons/io5";
-
-// type TestRow = {
-//   parameter: string;
-//   unit: string;
-//   referenceRange: string;
-// };
-
-// const cbcData: TestRow[] = [
-//   {
-//     parameter: "Hemoglobin",
-//     unit: "g/dL",
-//     referenceRange: "13.0 - 17.0",
-//   },
-//   {
-//     parameter: "WBC Count",
-//     unit: "×10³/µL",
-//     referenceRange: "4.0 - 11.0",
-//   },
-//   {
-//     parameter: "Platelet Count",
-//     unit: "×10³/µL",
-//     referenceRange: "150 - 400",
-//   },
-//   {
-//     parameter: "RBC Count",
-//     unit: "×10⁶/µL",
-//     referenceRange: "4.5 - 5.5",
-//   },
-//   {
-//     parameter: "Hematocrit",
-//     unit: "%",
-//     referenceRange: "40 - 50",
-//   },
-//   {
-//     parameter: "MCV",
-//     unit: "fL",
-//     referenceRange: "80 - 100",
-//   },
-//   {
-//     parameter: "MCH",
-//     unit: "pg",
-//     referenceRange: "27 - 33",
-//   },
-//   {
-//     parameter: "MCHC",
-//     unit: "g/dL",
-//     referenceRange: "32 - 36",
-//   },
-// ];
-
-// const PatientReportDataFill = () => {
-//   const [results, setResults] = useState<Record<string, string>>({});
-//   const [reportSaved, setReportSaved] = useState(false);
-
-//   const handleResultChange = (
-//     parameter: string,
-//     value: string
-//   ) => {
-//     setResults((prev) => ({
-//       ...prev,
-//       [parameter]: value,
-//     }));
-//   };
-
-//   const getStatus = (
-//     value: string,
-//     referenceRange: string
-//   ): "Normal" | "Low" | "High" | "" => {
-//     if (!value) return "";
-
-//     const numericValue = Number(value);
-
-//     const [min, max] = referenceRange
-//       .split("-")
-//       .map((item) => Number(item.trim()));
-
-//     if (numericValue < min) return "Low";
-//     if (numericValue > max) return "High";
-
-//     return "Normal";
-//   };
-
-//   const getStatusTextColor = (status: string) => {
-//     switch (status) {
-//       case "High":
-//         return "text-warning-500";
-//       case "Low":
-//         return "text-danger-600";
-//       case "Normal":
-//         return "text-success-900";
-//       default:
-//         return "text-pneutral-400";
-//     }
-//   };
-
-//   const getInputBorderColor = (status: string) => {
-//     switch (status) {
-//       case "High":
-//         return "border-warning-500";
-//       case "Low":
-//         return "border-danger-600";
-//       case "Normal":
-//         return "border-info-500";
-//       default:
-//         return "border-info-500";
-//     }
-//   };
-
-//   const getRowBackground = (status: string) => {
-//     switch (status) {
-//       case "High":
-//         return "bg-warning-50";
-//       case "Low":
-//         return "bg-danger-50";
-//       default:
-//         return "";
-//     }
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-info-50">
-//       {/* Success Banner */}
-//       {reportSaved && (
-//         <div className="mb-6 rounded-2xl border border-success-900 bg-success-50 px-4 py-3">
-//           <div className="flex items-center justify-between">
-//             <div className="flex items-center gap-2">
-//               <CiCircleCheck className="h-6 w-6 shrink-0 text-success-700" />
-//               <p className="text-p3 font-medium text-[#006045]">
-//                 Results saved. Report is ready for review.
-//               </p>
-//             </div>
-
-//             <button className="rounded-full border border-pneutral-200 bg-pneutral-50 px-3 py-2 text-label-l2 font-medium text-pneutral-900">
-//               Preview Report
-//             </button>
-//           </div>
-//         </div>
-//       )}
-
-//       {/* Header */}
-//       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-//         <div>
-//           <h1 className="text-h6 font-semibold text-[#101828]">
-//             Enter Test Result Data
-//           </h1>
-
-//           <p className="mt-1 text-p3 font-medium text-[#99A1AF]">
-//             15 June 2024 • 12 samples pending
-//           </p>
-//         </div>
-
-//         <div className="flex gap-3">
-//           <button className="flex items-center gap-2 rounded-full border border-pneutral-600 px-3 py-2 text-label-l3 font-medium text-pneutral-600">
-//             <IoArrowBack className="h-4 w-4 text-pneutral-600" />
-//             Back to Queue
-//           </button>
-
-//           <button
-//             onClick={() => setReportSaved(true)}
-//             className="flex items-center gap-2 rounded-full bg-secondary-700 px-3 py-2 text-label-l3 font-medium text-pneutral-50"
-//           >
-//             <CiCircleCheck className="h-5 w-5" />
-//             Save & Generate Report
-//           </button>
-//         </div>
-//       </div>
-
-//       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-//         {/* Left Side */}
-//         <div className="space-y-6">
-//           {[1, 2].map((section) => (
-
-//             <div key={section} className="space-y-4">
-//               {/* CBC Header Card */}
-//               <div className="rounded-xl border border-pneutral-200 bg-white px-4 py-3">
-//                 <h3 className="text-label-l4 font-medium text-pneutral-900">
-//                   CBC — Complete Blood Count
-//                 </h3>
-//               </div>
-
-//               {/* CBC Table Card */}
-//               <div className="overflow-hidden rounded-xl border border-pneutral-200 bg-white">
-//                 <div className="overflow-x-auto">
-//                   <table className="w-full min-w-[750px]">
-//                     <thead>
-//                       <tr className="border-b border-pneutral-200 bg-white text-left text-label-l3 text-pneutral-900">
-//                         <th className="px-4 py-3">Parameter</th>
-//                         <th className="px-4 py-3">Result</th>
-//                         <th className="px-4 py-3">Unit</th>
-//                         <th className="px-4 py-3">Ref. Range</th>
-//                         <th className="px-4 py-3">Status</th>
-//                       </tr>
-//                     </thead>
-
-//                     <tbody>
-//                       {cbcData.map((row) => {
-//                         const currentValue =
-//                           results[row.parameter] || "";
-
-//                         const status = getStatus(
-//                           currentValue,
-//                           row.referenceRange
-//                         );
-
-//                         return (
-//                           <tr
-//                             key={`${section}-${row.parameter}`}
-//                             className={`border-b border-pneutral-200 last:border-0 ${getRowBackground(
-//                               status
-//                             )}`}
-//                           >
-//                             <td className="px-4 py-3 text-p3 text-pneutral-900">
-//                               {row.parameter}
-//                             </td>
-
-//                             <td className="px-4 py-3 text-p3">
-//                               <input
-//                                 type="number"
-//                                 value={currentValue}
-//                                 placeholder="Enter value"
-//                                 onChange={(e) =>
-//                                   handleResultChange(
-//                                     row.parameter,
-//                                     e.target.value
-//                                   )
-//                                 }
-//                                 className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(
-//                                   status
-//                                 )}`}
-//                               />
-//                             </td>
-
-//                             <td className="px-4 py-3 text-p3 text-pneutral-900">
-//                               {row.unit}
-//                             </td>
-
-//                             <td className="px-4 py-3 text-p3 text-sneutral-500">
-//                               {row.referenceRange}
-//                             </td>
-
-//                             <td
-//                               className={`px-4 py-3 text-p3 font-medium ${getStatusTextColor(
-//                                 status
-//                               )}`}
-//                             >
-//                               {status || "-"}
-//                             </td>
-//                           </tr>
-//                         );
-//                       })}
-//                     </tbody>
-//                   </table>
-//                 </div>
-//               </div>
-//             </div>
-//             // <div
-//             //   key={section}
-//             //   className="overflow-hidden rounded-xl border border-gray-200 bg-white"
-//             // >
-//             //   <div className="border-b border-pneutral-200 bg-gray-50 px-4 py-3">
-//             //     <h3 className="font-medium text-label-l4 text-pneutral-900">
-//             //       CBC — Complete Blood Count
-//             //     </h3>
-//             //   </div>
-
-//             //   <div className="overflow-x-auto">
-//             //     <table className="w-full min-w-[750px]">
-//             //       <thead>
-//             //         <tr className="border-b border-pneutral-200 bg-white text-left text-label-l3 text-pneutral-900">
-//             //           <th className="px-4 py-3">Parameter</th>
-//             //           <th className="px-4 py-3">Result</th>
-//             //           <th className="px-4 py-3">Unit</th>
-//             //           <th className="px-4 py-3">Ref. Range</th>
-//             //           <th className="px-4 py-3">Status</th>
-//             //         </tr>
-//             //       </thead>
-
-//             //       <tbody>
-//             //         {cbcData.map((row) => {
-//             //           const currentValue =
-//             //             results[row.parameter] || "";
-
-//             //           const status = getStatus(
-//             //             currentValue,
-//             //             row.referenceRange
-//             //           );
-
-//             //           return (
-//             //             <tr
-//             //               key={`${section}-${row.parameter}`}
-//             //               className={`border-b border-pneutral-200 last:border-0 ${getRowBackground(
-//             //                 status
-//             //               )}`}
-//             //             >
-//             //               <td className="px-4 py-3 text-p3 text-pneutral-900">
-//             //                 {row.parameter}
-//             //               </td>
-
-//             //               <td className="px-4 py-3 text-p3">
-//             //                 <input
-//             //                   type="number"
-//             //                   value={currentValue}
-//             //                   placeholder="Enter value"
-//             //                   onChange={(e) =>
-//             //                     handleResultChange(
-//             //                       row.parameter,
-//             //                       e.target.value
-//             //                     )
-//             //                   }
-//             //                   className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(
-//             //                     status
-//             //                   )}`}
-//             //                 />
-//             //               </td>
-
-//             //               <td className="px-4 py-3 text-p3 text-pneutral-900">
-//             //                 {row.unit}
-//             //               </td>
-
-//             //               <td className="px-4 py-3 text-p3 text-sneutral-500">
-//             //                 {row.referenceRange}
-//             //               </td>
-
-//             //               <td
-//             //                 className={`px-4 py-3 text-p3 font-medium ${getStatusTextColor(
-//             //                   status
-//             //                 )}`}
-//             //               >
-//             //                 {status || "-"}
-//             //               </td>
-//             //             </tr>
-//             //           );
-//             //         })}
-//             //       </tbody>
-//             //     </table>
-//             //   </div>
-//             // </div>
-//           ))}
-//         </div>
-
-//         {/* Right Sidebar */}
-//         <aside>
-//           <div className="rounded-2xl border border-white bg-white p-4">
-//             <h3 className="mb-5 text-p3 font-semibold text-pneutral-900">
-//               Mrs. Lakshmi Iyer
-//             </h3>
-
-//             <div className="space-y-3 ">
-//               <InfoRow
-//                 label="Patient ID"
-//                 value="PAT-00513"
-//               />
-//               <InfoRow
-//                 label="Age / Gender"
-//                 value="34 Yrs, Female"
-//               />
-//               <InfoRow
-//                 label="Doctor"
-//                 value="Dr. R. Mehta"
-//               />
-//               <InfoRow label="Visit Type" value="OPD" />
-//               <InfoRow
-//                 label="Contact"
-//                 value="9454042494"
-//               />
-//               <InfoRow
-//                 label="Tests Ordered"
-//                 value="CBC, LFT, TFT"
-//               />
-//             </div>
-
-//             <div className="mt-6 rounded-xl border border-info-200 bg-info-50 p-4">
-//               <div className="mb-4 flex items-center justify-between">
-//                 <h4 className="text-p2 font-semibold text-pneutral-900">
-//                   Visit Information
-//                 </h4>
-
-//                 <span className="text-p2 text-pneutral-500">
-//                   12 Apr 2024
-//                 </span>
-//               </div>
-
-//               <InfoRow
-//                 label="Status"
-//                 value="Completed"
-//               />
-//             </div>
-//           </div>
-//         </aside>
-//       </div>
-//     </div>
-//   );
-// };
-
-// const InfoRow = ({
-//   label,
-//   value,
-// }: {
-//   label: string;
-//   value: string;
-// }) => {
-//   return (
-//     <div className="flex items-start justify-between text-p3 gap-4">
-//       <span className="text-pneutral-500 ">{label}</span>
-//       <span className="text-right font-medium text-pneutral-900">
-//         {value}
-//       </span>
 //     </div>
 //   );
 // };
