@@ -101,9 +101,18 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
 
   useEffect(() => {
     if (onDataUpdate) {
-      onDataUpdate(filteredPatients.length);
+      // Count actual incomplete tests across all partially/un-completed visits,
+      // not the number of patients, so the KPI reflects real pending test work.
+      const incompleteTestCount = filteredPatients.reduce((sum, patient) => {
+        const { totalTestCount } = getPatientTestItems(patient);
+        const completedTests = patient.testResult?.filter(
+          (tr) => tr.isFilled && tr.reportStatus === 'Completed'
+        ).length || 0;
+        return sum + Math.max(totalTestCount - completedTests, 0);
+      }, 0);
+      onDataUpdate(incompleteTestCount);
     }
-  }, [filteredPatients, onDataUpdate]);
+  }, [filteredPatients, healthPackages, onDataUpdate]);
 
   // Fetch collected visits data
   const fetchVisits = async () => {
