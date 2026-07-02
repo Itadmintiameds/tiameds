@@ -106,11 +106,23 @@ const CompletedTable: React.FC<CompletedTableProps> = ({ onDataUpdate, onDateFil
     [key: string]: boolean;
   }>({});
   
-  useEffect(() => {
-    if (onDataUpdate) {
-      onDataUpdate(filteredPatients.length);
-    }
-  }, [filteredPatients, onDataUpdate]);
+useEffect(() => {
+  if (onDataUpdate) {
+    // Count individual completed tests across all patients
+    const totalCompletedTests = filteredPatients.reduce((total, patient) => {
+      if (!patient.testResult) return total;
+      
+      // Count all tests with reportStatus === 'Completed'
+      const completedTests = patient.testResult.filter(
+        tr => tr.reportStatus === 'Completed'
+      ).length;
+      
+      return total + completedTests;
+    }, 0);
+    
+    onDataUpdate(totalCompletedTests);
+  }
+}, [filteredPatients, onDataUpdate]);
 
    useEffect(() => {
     if (onDateFilterChange) {
