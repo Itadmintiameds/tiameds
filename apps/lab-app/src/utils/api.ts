@@ -56,6 +56,7 @@ type FailedRequest = {
 };
 
 let isRefreshing = false;
+let refreshPromise: Promise<void> | null = null;
 const failedQueue: FailedRequest[] = [];
 
 const processQueue = (error: unknown) => {
@@ -69,6 +70,38 @@ const processQueue = (error: unknown) => {
     }
   }
 };
+
+// Refresh tokens are rotated server-side on every use, so two concurrent
+// /auth/refresh calls would cause the second (stale) one to fail with 401
+// even though the session is fine. Every caller - the reactive 401 handler
+// below and any proactive/silent refresh - must funnel through this single
+// in-flight promise so only one refresh request is ever outstanding.
+const performRefresh = (): Promise<void> => {
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  isRefreshing = true;
+  refreshPromise = refreshClient
+    .post<VerifyOtpResponse>('/auth/refresh')
+    .then(() => {
+      processQueue(null);
+    })
+    .catch((refreshError: unknown) => {
+      processQueue(refreshError);
+      throw refreshError;
+    })
+    .finally(() => {
+      isRefreshing = false;
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+};
+
+// Exposed so callers (e.g. proactive silent refresh) share the same
+// dedup/queue logic as the reactive 401 handler below.
+export const refreshAccessToken = () => performRefresh();
 
 // Request interceptor - No need to manually add Authorization headers
 // The backend reads accessToken from HttpOnly cookies automatically
@@ -114,17 +147,13 @@ api.interceptors.response.use(
 
       // Mark this request as retried and start refresh process
       originalRequest._retry = true;
-      isRefreshing = true;
 
       try {
         // Call refresh endpoint - refreshToken cookie is sent automatically via withCredentials
         // Backend will set new accessToken and refreshToken cookies in the response
-        await refreshClient.post<VerifyOtpResponse>('/auth/refresh');
-        
-        // Refresh successful - new cookies are set automatically by the browser
-        // Process all queued requests with success
-        processQueue(null);
-        
+        await performRefresh();
+
+        // Refresh successful - new cookies are set automatically by the browser.
         // Retry the original request - new accessToken cookie will be sent automatically
         return api.request(originalRequest);
       } catch (refreshError: unknown) {
@@ -134,21 +163,16 @@ api.interceptors.response.use(
           const apiError = refreshError as { response?: { status?: number } };
           refreshStatus = apiError.response?.status;
         }
-        
+
         // Only redirect to login if refresh actually failed (not network errors)
         if (refreshStatus === 401 || refreshStatus === 403) {
-          // Refresh token is invalid/expired - clear queue and redirect to login
-          processQueue(refreshError);
+          // Refresh token is invalid/expired - redirect to login
           handleTokenExpiration();
-        } else {
-          // Network or other error - don't redirect, just reject
-          // This allows the UI to handle the error appropriately
-          processQueue(refreshError);
         }
-        
+        // Network or other error - don't redirect, just reject.
+        // This allows the UI to handle the error appropriately.
+
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
     // For non-auth errors or already retried requests, reject normally

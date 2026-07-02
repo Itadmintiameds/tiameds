@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import KPISection from '../KPISection';
 
 // import { useLabs } from '@/context/LabContext';
@@ -15,7 +15,7 @@ const Technician = () => {
   // const { currentLab } = useLabs();
   const [currentView, setCurrentView] = useState<ViewType>('pending');
   const [hideKPI, setHideKPI] = useState(false); // Add this state
-  
+
   // State to hold KPI data from child components
   const [kpiData, setKpiData] = useState({
     pending: 0,
@@ -25,12 +25,16 @@ const Technician = () => {
   });
 
   // Handler to update KPI data from child components
-  const updateKPIData = (type: ViewType, count: number) => {
-    setKpiData(prev => ({
-      ...prev,
-      [type]: count
-    }));
-  };
+  const updateKPIData = useCallback((type: ViewType, count: number) => {
+    setKpiData(prev => (prev[type] === count ? prev : { ...prev, [type]: count }));
+  }, []);
+
+  const handlePendingUpdate = useCallback((count: number) => updateKPIData('pending', count), [updateKPIData]);
+  const handleCollectedUpdate = useCallback((count: number) => updateKPIData('collected', count), [updateKPIData]);
+  const handlePartialUpdate = useCallback((count: number) => updateKPIData('partial', count), [updateKPIData]);
+  const handleCompletedUpdate = useCallback((count: number) => updateKPIData('completed', count), [updateKPIData]);
+  const handleHideKPI = useCallback(() => setHideKPI(true), []);
+  const handleShowKPI = useCallback(() => setHideKPI(false), []);
 
   // Stats for KPISection
   const stats = [
@@ -67,21 +71,21 @@ const Technician = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'pending':
-        return <PendingTable onDataUpdate={(count) => updateKPIData('pending', count)} />;
+        return <PendingTable onDataUpdate={handlePendingUpdate} />;
       case 'collected':
-        return <CollectedSample onDataUpdate={(count) => updateKPIData('collected', count)} />;
+        return <CollectedSample onDataUpdate={handleCollectedUpdate} />;
       case 'partial':
         return (
-          <CollectionTable 
-            onDataUpdate={(count) => updateKPIData('partial', count)}
-            onHideKPI={() => setHideKPI(true)} // Pass callback to hide KPI
-            onShowKPI={() => setHideKPI(false)}  // Pass callback to show KPI
+          <CollectionTable
+            onDataUpdate={handlePartialUpdate}
+            onHideKPI={handleHideKPI}
+            onShowKPI={handleShowKPI}
           />
         );
       case 'completed':
-        return <CompletedTable onDataUpdate={(count) => updateKPIData('completed', count)} />;
+        return <CompletedTable onDataUpdate={handleCompletedUpdate} />;
       default:
-        return <PendingTable onDataUpdate={(count) => updateKPIData('pending', count)} />;
+        return <PendingTable onDataUpdate={handlePendingUpdate} />;
     }
   };
 
