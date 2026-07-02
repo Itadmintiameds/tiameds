@@ -16,6 +16,12 @@ const Technician = () => {
   const [currentView, setCurrentView] = useState<ViewType>('pending');
   const [hideKPI, setHideKPI] = useState(false); // Add this state
 
+  // Bumped whenever any table mutates a sample's status (collected, tested,
+  // completed) so all four tables refetch instantly instead of drifting out
+  // of sync until their own filters happen to change.
+  const [refreshTick, setRefreshTick] = useState(0);
+  const triggerRefresh = useCallback(() => setRefreshTick((t) => t + 1), []);
+
   // State to hold KPI data from child components
   const [kpiData, setKpiData] = useState({
     pending: 0,
@@ -74,20 +80,22 @@ const Technician = () => {
     return (
       <>
         <div className={currentView === 'pending' ? '' : 'hidden'}>
-          <PendingTable onDataUpdate={handlePendingUpdate} />
+          <PendingTable onDataUpdate={handlePendingUpdate} refreshTick={refreshTick} onMutated={triggerRefresh} />
         </div>
         <div className={currentView === 'collected' ? '' : 'hidden'}>
-          <CollectedSample onDataUpdate={handleCollectedUpdate} />
+          <CollectedSample onDataUpdate={handleCollectedUpdate} refreshTick={refreshTick} onMutated={triggerRefresh} />
         </div>
         <div className={currentView === 'partial' ? '' : 'hidden'}>
           <CollectionTable
             onDataUpdate={handlePartialUpdate}
             onHideKPI={handleHideKPI}
             onShowKPI={handleShowKPI}
+            refreshTick={refreshTick}
+            onMutated={triggerRefresh}
           />
         </div>
         <div className={currentView === 'completed' ? '' : 'hidden'}>
-          <CompletedTable onDataUpdate={handleCompletedUpdate} />
+          <CompletedTable onDataUpdate={handleCompletedUpdate} refreshTick={refreshTick} />
         </div>
       </>
     );
