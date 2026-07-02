@@ -25,9 +25,13 @@ type SortOption = 'patientName' | 'patientId';
 interface PendingTableProps {
   onDataUpdate?: (count: number) => void;
   onDateFilterChange?: (filter: DateFilterOption, startDate?: Date | null, endDate?: Date | null) => void;
+
+ refreshTrigger?: number;
+  onSampleAdded?: () => void;
 }
 
-const PendingTable = ({ onDataUpdate,  onDateFilterChange }: PendingTableProps) => {
+const PendingTable = ({ onDataUpdate,  onDateFilterChange, refreshTrigger, 
+  onSampleAdded }: PendingTableProps) => {
   const { currentLab } = useLabs();
   
   // State management
@@ -64,6 +68,12 @@ const [expandedSections, setExpandedSections] = useState<{
     onDateFilterChange(dateFilter, customStartDate, customEndDate);
   }
 }, [dateFilter, customStartDate, customEndDate, onDateFilterChange]);
+
+useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      fetchVisits();
+    }
+  }, [refreshTrigger]);
 
 
   // Fetch visits data
@@ -193,8 +203,14 @@ const [expandedSections, setExpandedSections] = useState<{
       setSamples([]);
       setLoading(false);
       setShowModal(false);
-      // Refresh the list
+      
+      // Refresh this table
       fetchVisits();
+      
+      // Notify parent to refresh other tables
+      if (onSampleAdded) {
+        onSampleAdded();
+      }
     } catch (error) {
       setLoading(false);
       toast.error("Failed to add samples");
@@ -591,15 +607,7 @@ export default PendingTable;
 
 
 
-
-
-
-
-
-
-
-
-// code dated 01.07.2026......................
+// working code dated 02.07.2026 without refresh data.........
 
 // "use client";
 
@@ -627,9 +635,10 @@ export default PendingTable;
 // type SortOption = 'patientName' | 'patientId';
 // interface PendingTableProps {
 //   onDataUpdate?: (count: number) => void;
+//   onDateFilterChange?: (filter: DateFilterOption, startDate?: Date | null, endDate?: Date | null) => void;
 // }
 
-// const PendingTable = ({ onDataUpdate }: PendingTableProps) => {
+// const PendingTable = ({ onDataUpdate,  onDateFilterChange }: PendingTableProps) => {
 //   const { currentLab } = useLabs();
   
 //   // State management
@@ -660,6 +669,12 @@ export default PendingTable;
 //       onDataUpdate(filteredPatients.length);
 //     }
 //   }, [filteredPatients, onDataUpdate]);
+
+//   useEffect(() => {
+//   if (onDateFilterChange) {
+//     onDateFilterChange(dateFilter, customStartDate, customEndDate);
+//   }
+// }, [dateFilter, customStartDate, customEndDate, onDateFilterChange]);
 
 
 //   // Fetch visits data
@@ -1177,18 +1192,6 @@ export default PendingTable;
 // };
 
 // export default PendingTable;
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -73,9 +73,16 @@ interface CompletedTableProps {
   closeModal?: () => void;
   onDataUpdate?: (count: number) => void;
   onDateFilterChange?: (filter: DateFilterOption, startDate?: Date | null, endDate?: Date | null) => void;
+  refreshTrigger?: number;
+  onReportEdited?: () => void;
 }
 
-const CompletedTable: React.FC<CompletedTableProps> = ({ onDataUpdate, onDateFilterChange }) => {
+const CompletedTable: React.FC<CompletedTableProps> = ({ 
+  onDataUpdate, 
+  onDateFilterChange,
+  refreshTrigger,
+  onReportEdited 
+}) => {
   const { currentLab } = useLabs();
   const { isAdmin, isSuperAdmin } = useAuth();
   
@@ -106,29 +113,36 @@ const CompletedTable: React.FC<CompletedTableProps> = ({ onDataUpdate, onDateFil
     [key: string]: boolean;
   }>({});
   
-useEffect(() => {
-  if (onDataUpdate) {
-    // Count individual completed tests across all patients
-    const totalCompletedTests = filteredPatients.reduce((total, patient) => {
-      if (!patient.testResult) return total;
+  useEffect(() => {
+    if (onDataUpdate) {
+      // Count individual completed tests across all patients
+      const totalCompletedTests = filteredPatients.reduce((total, patient) => {
+        if (!patient.testResult) return total;
+        
+        // Count all tests with reportStatus === 'Completed'
+        const completedTests = patient.testResult.filter(
+          tr => tr.reportStatus === 'Completed'
+        ).length;
+        
+        return total + completedTests;
+      }, 0);
       
-      // Count all tests with reportStatus === 'Completed'
-      const completedTests = patient.testResult.filter(
-        tr => tr.reportStatus === 'Completed'
-      ).length;
-      
-      return total + completedTests;
-    }, 0);
-    
-    onDataUpdate(totalCompletedTests);
-  }
-}, [filteredPatients, onDataUpdate]);
+      onDataUpdate(totalCompletedTests);
+    }
+  }, [filteredPatients, onDataUpdate]);
 
-   useEffect(() => {
+  useEffect(() => {
     if (onDateFilterChange) {
       onDateFilterChange(dateFilter, customStartDate, customEndDate);
     }
   }, [dateFilter, customStartDate, customEndDate, onDateFilterChange]);
+
+  // Listen for refresh trigger from parent
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      fetchVisits();
+    }
+  }, [refreshTrigger]);
 
   // Fetch visits data
   const fetchVisits = async () => {
@@ -378,185 +392,171 @@ useEffect(() => {
       ),
     },
     {
-  header: "Tests/Package",
-  accessor: "title",
-  render: (row: Patient) => {
-    const { tests, hasPackages, completedPackageTestIds } = getPatientTestItems(row);
-    
-    const isExpanded = expandedRow === row.visitId.toString();
-    const displayTests = isExpanded ? tests : tests.slice(0, 3);
-    const hasMoreTests = tests.length > 3;
+      header: "Tests/Package",
+      accessor: "title",
+      render: (row: Patient) => {
+        const { tests, hasPackages, completedPackageTestIds } = getPatientTestItems(row);
+        
+        const isExpanded = expandedRow === row.visitId.toString();
+        const displayTests = isExpanded ? tests : tests.slice(0, 3);
+        const hasMoreTests = tests.length > 3;
 
-    const toggleSection = (key: string) => {
-      setExpandedSections(prev => ({
-        ...prev,
-        [key]: !prev[key]
-      }));
-    };
+        const toggleSection = (key: string) => {
+          setExpandedSections(prev => ({
+            ...prev,
+            [key]: !prev[key]
+          }));
+        };
 
-    // If only individual tests (no packages)
-    if (!hasPackages) {
-      return (
-        <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
-          {displayTests.map((test) => (
-            <div key={test.id} className="flex items-center gap-1 py-1">
-              <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
-                {test.name}
-              </span>
-              {/* Only show Edit button if user has permission */}
-              {canEdit && (
+        // If only individual tests (no packages)
+        if (!hasPackages) {
+          return (
+            <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
+              {displayTests.map((test) => (
+                <div key={test.id} className="flex items-center gap-1 py-1">
+                  <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
+                    {test.name}
+                  </span>
+                  {/* Only show Edit button if user has permission */}
+                  {canEdit && (
+                    <button
+                      onClick={() => handleEditReport(row, test.id)}
+                      className="text-blue-600"
+                    >
+                      <Edit size={20} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              
+              {hasMoreTests && (
                 <button
-                  onClick={() => handleEditReport(row, test.id)}
-                  className="text-blue-600"
+                  onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
                 >
-                  <Edit size={20} />
+                  {isExpanded ? 'Show Less' : `View All (${tests.length})`}
                 </button>
               )}
             </div>
-          ))}
-          
-          {hasMoreTests && (
-            <button
-              onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
-              className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
-            >
-              {isExpanded ? 'Show Less' : `View All (${tests.length})`}
-            </button>
-          )}
-        </div>
-      );
-    }
+          );
+        }
 
-    // If there are packages
-    return (
-      <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
-        {/* Individual tests section */}
-        {tests.length > 0 && (
-          <div className="flex flex-col gap-1">
-            {displayTests.map((test) => (
-              <div key={test.id} className="flex items-center gap-1 py-1">
-                <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
-                  {test.name}
-                </span>
-                {/* Only show Edit button if user has permission */}
-                {canEdit && (
+        // If there are packages
+        return (
+          <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
+            {/* Individual tests section */}
+            {tests.length > 0 && (
+              <div className="flex flex-col gap-1">
+                {displayTests.map((test) => (
+                  <div key={test.id} className="flex items-center gap-1 py-1">
+                    <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
+                      {test.name}
+                    </span>
+                    {/* Only show Edit button if user has permission */}
+                    {canEdit && (
+                      <button
+                        onClick={() => handleEditReport(row, test.id)}
+                        className="text-blue-600"
+                      >
+                        <Edit size={20} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                
+                {hasMoreTests && (
                   <button
-                    onClick={() => handleEditReport(row, test.id)}
-                    className="text-blue-600"
+                    onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
                   >
-                    <Edit size={20} />
+                    {isExpanded ? 'Show Less' : `View All (${tests.length})`}
                   </button>
                 )}
               </div>
-            ))}
-            
-            {hasMoreTests && (
-              <button
-                onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
-              >
-                {isExpanded ? 'Show Less' : `View All (${tests.length})`}
-              </button>
+            )}
+
+            {/* Divider when both sections exist */}
+            {tests.length > 0 && hasPackages && (
+              <div className="border-t border-white"></div>
+            )}
+
+            {/* Packages section - only show packages that have completed tests */}
+            {hasPackages && (
+              <div className="flex flex-col gap-2">
+                {row.packageIds.map((packageId) => {
+                  const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+                  if (!packageDetails) return null;
+
+                  // Filter to only show completed tests in this package
+                  const completedTestsInPackage = packageDetails.tests.filter(test => 
+                    completedPackageTestIds.has(test.id)
+                  );
+
+                  // Skip this package if it has no completed tests
+                  if (completedTestsInPackage.length === 0) return null;
+
+                  const isPackageExpanded = expandedSections[`package-${row.visitId}-${packageId}`] || false;
+
+                  return (
+                    <div key={packageDetails.id} className="flex flex-col">
+                      {/* Package dropdown button */}
+                      <button
+                        onClick={() => toggleSection(`package-${row.visitId}-${packageId}`)}
+                        className={`flex w-full items-center justify-between rounded-xl border px-3 py-2
+                        ${isPackageExpanded
+                            ? "border-secondary-300 bg-secondary-50 rounded-b-none border-b-0"
+                            : "border-secondary-200 bg-secondary-50"
+                          }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Package size={16} />
+                          <span className="font-medium text-label-l4 text-pneutral-900">
+                            {packageDetails.packageName}
+                          </span>
+                          <span className="text-xs text-success-700">
+                            ({completedTestsInPackage.length}/{packageDetails.tests.length})
+                          </span>
+                        </div>
+                        {isPackageExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </button>
+
+                      {/* Package tests - shown when expanded */}
+                      {isPackageExpanded && (
+                        <div className="w-full rounded-xl rounded-t-none border border-t-0 border-secondary-300 bg-pneutral-50 p-3">
+                          <div className="flex flex-col gap-1.5">
+                            {completedTestsInPackage.map((test, index) => (
+                              <div key={index} className="flex items-center gap-1 py-1">
+                                <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
+                                  {test.name}
+                                </span>
+                                {/* Only show Edit button if user has permission */}
+                                {canEdit && (
+                                  <button
+                                    onClick={() => handleEditReport(row, test.id)}
+                                    className="text-blue-600"
+                                  >
+                                    <Edit size={20} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }).filter(Boolean)}
+              </div>
             )}
           </div>
-        )}
-
-        {/* Divider when both sections exist */}
-        {tests.length > 0 && hasPackages && (
-          <div className="border-t border-white"></div>
-        )}
-
-        {/* Packages section - only show packages that have completed tests */}
-        {hasPackages && (
-          <div className="flex flex-col gap-2">
-            {row.packageIds.map((packageId) => {
-              const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-              if (!packageDetails) return null;
-
-              // Filter to only show completed tests in this package
-              const completedTestsInPackage = packageDetails.tests.filter(test => 
-                completedPackageTestIds.has(test.id)
-              );
-
-              // Skip this package if it has no completed tests
-              if (completedTestsInPackage.length === 0) return null;
-
-              const isPackageExpanded = expandedSections[`package-${row.visitId}-${packageId}`] || false;
-
-              return (
-                <div key={packageDetails.id} className="flex flex-col">
-                  {/* Package dropdown button */}
-                  <button
-                    onClick={() => toggleSection(`package-${row.visitId}-${packageId}`)}
-                    className={`flex w-full items-center justify-between rounded-xl border px-3 py-2
-                    ${isPackageExpanded
-                        ? "border-secondary-300 bg-secondary-50 rounded-b-none border-b-0"
-                        : "border-secondary-200 bg-secondary-50"
-                      }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Package size={16} />
-                      <span className="font-medium text-label-l4 text-pneutral-900">
-                        {packageDetails.packageName}
-                      </span>
-                      <span className="text-xs text-success-700">
-                        ({completedTestsInPackage.length}/{packageDetails.tests.length})
-                      </span>
-                    </div>
-                    {isPackageExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
-
-                  {/* Package tests - shown when expanded */}
-                  {isPackageExpanded && (
-                    <div className="w-full rounded-xl rounded-t-none border border-t-0 border-secondary-300 bg-pneutral-50 p-3">
-                      <div className="flex flex-col gap-1.5">
-                        {completedTestsInPackage.map((test, index) => (
-                          <div key={index} className="flex items-center gap-1 py-1">
-                            <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
-                              {test.name}
-                            </span>
-                            {/* Only show Edit button if user has permission */}
-                            {canEdit && (
-                              <button
-                                onClick={() => handleEditReport(row, test.id)}
-                                className="text-blue-600"
-                              >
-                                <Edit size={20} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            }).filter(Boolean)}
-          </div>
-        )}
-      </div>
-    );
-  },
-},
+        );
+      },
+    },
     {
       header: "Actions",
       accessor: "actions",
       render: (row: Patient) => (
         <div className="flex items-center gap-2">
-          {/* {canEdit && (
-            <button
-              onClick={() => {
-                const completedTest = row.testResult?.find(tr => tr.reportStatus === 'Completed');
-                if (completedTest) {
-                  handleEditReport(row, completedTest.testId);
-                }
-              }}
-              className="p-1.5 text-blue-600 hover:text-blue-800 transition-colors rounded hover:bg-blue-50"
-              title="Edit Report"
-            >
-              <Edit size={16} />
-            </button>
-          )} */}
           {canView && (
             <button
               onClick={() => handleViewReport(row)}
@@ -740,6 +740,11 @@ useEffect(() => {
                   setEditPatient(null);
                   setEditTest(null);
                   setEditReportId(null);
+
+                  // 🔥 NOTIFY PARENT TO REFRESH OTHER TABLES
+                  if (onReportEdited) {
+                    onReportEdited();
+                  }
                 }
                 return next;
               });
@@ -760,10 +765,7 @@ export default CompletedTable;
 
 
 
-
-
-
-// code dated 01.07.2026............................
+// working code but without refresh datat dated 02.07.2026............
 
 // "use client";
 
@@ -772,6 +774,9 @@ export default CompletedTable;
 //   Search,
 //   Edit,
 //   Eye,
+//   Package,
+//   ChevronDown,
+//   ChevronUp,
 // } from "lucide-react";
 // import NewCommonTable from "../../newcommoncomponent/NewCommonTable";
 // import { getHealthPackageById } from '@/../services/packageServices';
@@ -836,9 +841,10 @@ export default CompletedTable;
 // interface CompletedTableProps {
 //   closeModal?: () => void;
 //   onDataUpdate?: (count: number) => void;
+//   onDateFilterChange?: (filter: DateFilterOption, startDate?: Date | null, endDate?: Date | null) => void;
 // }
 
-// const CompletedTable: React.FC<CompletedTableProps> = ({ onDataUpdate }) => {
+// const CompletedTable: React.FC<CompletedTableProps> = ({ onDataUpdate, onDateFilterChange }) => {
 //   const { currentLab } = useLabs();
 //   const { isAdmin, isSuperAdmin } = useAuth();
   
@@ -861,14 +867,37 @@ export default CompletedTable;
 //   const [editTest, setEditTest] = useState<TestList | null>(null);
 //   const [editReportId, setEditReportId] = useState<number | null>(null);
   
-//   // Expanded row state for dropdown
+//   // Expanded row state for individual tests
 //   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   
-//   useEffect(() => {
-//     if (onDataUpdate) {
-//       onDataUpdate(filteredPatients.length);
+//   // Expanded sections state for package dropdowns
+//   const [expandedSections, setExpandedSections] = useState<{
+//     [key: string]: boolean;
+//   }>({});
+  
+// useEffect(() => {
+//   if (onDataUpdate) {
+//     // Count individual completed tests across all patients
+//     const totalCompletedTests = filteredPatients.reduce((total, patient) => {
+//       if (!patient.testResult) return total;
+      
+//       // Count all tests with reportStatus === 'Completed'
+//       const completedTests = patient.testResult.filter(
+//         tr => tr.reportStatus === 'Completed'
+//       ).length;
+      
+//       return total + completedTests;
+//     }, 0);
+    
+//     onDataUpdate(totalCompletedTests);
+//   }
+// }, [filteredPatients, onDataUpdate]);
+
+//    useEffect(() => {
+//     if (onDateFilterChange) {
+//       onDateFilterChange(dateFilter, customStartDate, customEndDate);
 //     }
-//   }, [filteredPatients, onDataUpdate]);
+//   }, [dateFilter, customStartDate, customEndDate, onDateFilterChange]);
 
 //   // Fetch visits data
 //   const fetchVisits = async () => {
@@ -886,15 +915,13 @@ export default CompletedTable;
 //         formatDateForAPI(endDate),
 //       );
 
-//       // Filter to show ONLY visits where ALL tests are completed (fully completed)
+//       // Filter to show visits where AT LEAST ONE test is completed
 //       const completedVisits = response.filter(visit => {
 //         if (!visit.testResult || visit.testResult.length === 0) {
-//           return false; // Skip visits without test results
+//           return false;
 //         }
-
-//         // Check if ALL tests have reportStatus "Completed"
-//         const allTestsCompleted = visit.testResult.every(tr => tr.reportStatus === 'Completed');
-//         return allTestsCompleted; // Only show visits where ALL tests are completed
+//         const hasCompletedTest = visit.testResult.some(tr => tr.reportStatus === 'Completed');
+//         return hasCompletedTest;
 //       });
 
 //       const sortedVisits = completedVisits.sort((a, b) => {
@@ -926,7 +953,6 @@ export default CompletedTable;
 //         return new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime();
 //       });
 
-//       // Add doctorName and visitType if they exist in the response
 //       const normalizedVisits = sortedVisits.map(visit => ({
 //         ...visit,
 //         doctorName: visit.doctorName ?? '',
@@ -958,7 +984,6 @@ export default CompletedTable;
 //   useEffect(() => {
 //     let filtered = patientList;
 
-//     // Apply search filter
 //     if (searchTerm.trim()) {
 //       const searchLower = searchTerm.toLowerCase();
 //       filtered = patientList.filter(patient => 
@@ -968,7 +993,6 @@ export default CompletedTable;
 //       );
 //     }
 
-//     // Apply sorting
 //     filtered = [...filtered].sort((a, b) => {
 //       if (sortBy === 'patientName') {
 //         const nameA = a.patientname?.toLowerCase() || '';
@@ -987,7 +1011,7 @@ export default CompletedTable;
 //     fetchVisits();
 //   }, [currentLab, dateFilter, customStartDate, customEndDate]);
 
-//   // Get test items for a patient
+//   // Get test items for a patient - FILTER ONLY COMPLETED TESTS
 //   const getPatientTestItems = (patient: Patient) => {
 //     const packageTestIds = new Set<number>();
 //     patient.packageIds.forEach(packageId => {
@@ -1002,12 +1026,30 @@ export default CompletedTable;
 //     const visitTests = patient.tests || [];
 //     const individualTests = visitTests.filter(test => !packageTestIds.has(test.id));
     
+//     // Filter to only include completed tests
+//     const completedIndividualTests = individualTests.filter(test => {
+//       const testResult = patient.testResult?.find(tr => tr.testId === test.id);
+//       return testResult?.reportStatus === 'Completed';
+//     });
+    
+//     // Get completed test IDs from packages
+//     const completedPackageTestIds = new Set<number>();
+//     patient.packageIds.forEach(packageId => {
+//       const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+//       if (packageDetails) {
+//         packageDetails.tests.forEach(test => {
+//           const testResult = patient.testResult?.find(tr => tr.testId === test.id);
+//           if (testResult?.reportStatus === 'Completed') {
+//             completedPackageTestIds.add(test.id);
+//           }
+//         });
+//       }
+//     });
+    
 //     return {
-//       tests: individualTests, // Used in the render
+//       tests: completedIndividualTests,
 //       hasPackages: patient.packageIds.length > 0,
-//       // Remove unused variables
-//       // totalTestCount: ...,
-//       // packageNames: ...
+//       completedPackageTestIds: completedPackageTestIds,
 //     };
 //   };
 
@@ -1061,24 +1103,9 @@ export default CompletedTable;
 //     setEditModel(true);
 //   };
 
-//   // Handle delete report
-//   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-//   const handleDeleteReport = async (visitId: number) => {
-//     if (!window.confirm('Are you sure you want to delete this report?')) return;
-    
-//     try {
-//       // You'll need to implement the delete API call here
-//       toast.success('Report deleted successfully');
-//       fetchVisits();
-//     } catch (error) {
-//       toast.error((error as Error).message || 'Error deleting report');
-//     }
-//   };
-
 //   // Check if user has permission for actions
 //   const canEdit = isAdmin || isSuperAdmin;
-//   // const canDelete = isAdmin || isSuperAdmin;
-//   const canView = true; // All users can view
+//   const canView = true;
 
 //   // Table columns definition
 //   const columns = [
@@ -1120,121 +1147,174 @@ export default CompletedTable;
 //       ),
 //     },
 //     {
-//       header: "Tests/Package",
-//       accessor: "title",
-//       render: (row: Patient) => {
-//         const {  hasPackages } = getPatientTestItems(row);
-        
-//         // Get all test IDs that belong to packages
-//         const packageTestIds = new Set<number>();
-//         row.packageIds.forEach(packageId => {
-//           const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-//           if (packageDetails) {
-//             packageDetails.tests.forEach(test => {
-//               packageTestIds.add(test.id);
-//             });
-//           }
-//         });
+//   header: "Tests/Package",
+//   accessor: "title",
+//   render: (row: Patient) => {
+//     const { tests, hasPackages, completedPackageTestIds } = getPatientTestItems(row);
+    
+//     const isExpanded = expandedRow === row.visitId.toString();
+//     const displayTests = isExpanded ? tests : tests.slice(0, 3);
+//     const hasMoreTests = tests.length > 3;
 
-//         // Filter out tests that belong to packages from individual tests
-//         const individualTests = (row.tests || []).filter(test => 
-//           !packageTestIds.has(test.id)
-//         );
+//     const toggleSection = (key: string) => {
+//       setExpandedSections(prev => ({
+//         ...prev,
+//         [key]: !prev[key]
+//       }));
+//     };
 
-//         const isExpanded = expandedRow === row.visitId.toString();
-//         const displayTests = isExpanded ? individualTests : individualTests.slice(0, 3);
-//         const hasMoreTests = individualTests.length > 3;
-
-//         // If there are only individual tests (no packages)
-//         if (!hasPackages) {
-//           return (
-//             <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
-//               {displayTests.map((test) => (
-//                 <div key={test.id} className="flex items-center gap-1 py-1 ">
-//                   <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
-//                     {test.name}
-//                   </span>
-//                 </div>
-//               ))}
-              
-//               {hasMoreTests && (
+//     // If only individual tests (no packages)
+//     if (!hasPackages) {
+//       return (
+//         <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
+//           {displayTests.map((test) => (
+//             <div key={test.id} className="flex items-center gap-1 py-1">
+//               <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
+//                 {test.name}
+//               </span>
+//               {/* Only show Edit button if user has permission */}
+//               {canEdit && (
 //                 <button
-//                   onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
-//                   className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
+//                   onClick={() => handleEditReport(row, test.id)}
+//                   className="text-blue-600"
 //                 >
-//                   {isExpanded ? 'Show Less' : `View All (${individualTests.length})`}
+//                   <Edit size={20} />
 //                 </button>
 //               )}
 //             </div>
-//           );
-//         }
+//           ))}
+          
+//           {hasMoreTests && (
+//             <button
+//               onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
+//               className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
+//             >
+//               {isExpanded ? 'Show Less' : `View All (${tests.length})`}
+//             </button>
+//           )}
+//         </div>
+//       );
+//     }
 
-//         // If there are packages
-//         return (
-//           <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
-//             {/* Show individual tests first */}
-//             {individualTests.length > 0 && (
-//               <div className="flex flex-col gap-1">
-//                 {displayTests.map((test) => (
-//                   <div key={test.id} className="flex items-center gap-1 py-1">
-//                     <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
-//                       {test.name}
-//                     </span>
-//                   </div>
-//                 ))}
-                
-//                 {hasMoreTests && (
+//     // If there are packages
+//     return (
+//       <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
+//         {/* Individual tests section */}
+//         {tests.length > 0 && (
+//           <div className="flex flex-col gap-1">
+//             {displayTests.map((test) => (
+//               <div key={test.id} className="flex items-center gap-1 py-1">
+//                 <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
+//                   {test.name}
+//                 </span>
+//                 {/* Only show Edit button if user has permission */}
+//                 {canEdit && (
 //                   <button
-//                     onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
-//                     className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
+//                     onClick={() => handleEditReport(row, test.id)}
+//                     className="text-blue-600"
 //                   >
-//                     {isExpanded ? 'Show Less' : `View All (${individualTests.length})`}
+//                     <Edit size={20} />
 //                   </button>
 //                 )}
 //               </div>
+//             ))}
+            
+//             {hasMoreTests && (
+//               <button
+//                 onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
+//                 className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
+//               >
+//                 {isExpanded ? 'Show Less' : `View All (${tests.length})`}
+//               </button>
 //             )}
+//           </div>
+//         )}
 
-//             {/* Show packages */}
+//         {/* Divider when both sections exist */}
+//         {tests.length > 0 && hasPackages && (
+//           <div className="border-t border-white"></div>
+//         )}
+
+//         {/* Packages section - only show packages that have completed tests */}
+//         {hasPackages && (
+//           <div className="flex flex-col gap-2">
 //             {row.packageIds.map((packageId) => {
 //               const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
 //               if (!packageDetails) return null;
 
+//               // Filter to only show completed tests in this package
+//               const completedTestsInPackage = packageDetails.tests.filter(test => 
+//                 completedPackageTestIds.has(test.id)
+//               );
+
+//               // Skip this package if it has no completed tests
+//               if (completedTestsInPackage.length === 0) return null;
+
+//               const isPackageExpanded = expandedSections[`package-${row.visitId}-${packageId}`] || false;
+
 //               return (
-//                 <div key={packageDetails.id} className="flex flex-col gap-1">
-//                   <div className="flex items-center gap-1">
-//                     <span className="text-xs">📦</span>
-//                     <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs font-medium">
-//                       {packageDetails.packageName}
-//                     </span>
-//                     <span className="text-xs text-green-600">({packageDetails.tests.length} completed)</span>
-//                   </div>
-                  
-//                   {/* Show all tests inside package (all completed) */}
-//                   <div className="flex flex-col gap-1 ml-2">
-//                     {packageDetails.tests.map((test, index) => (
-//                       <div key={index} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
-//                         <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs inline-block w-fit">
-//                           {test.name}
-//                         </span>
+//                 <div key={packageDetails.id} className="flex flex-col">
+//                   {/* Package dropdown button */}
+//                   <button
+//                     onClick={() => toggleSection(`package-${row.visitId}-${packageId}`)}
+//                     className={`flex w-full items-center justify-between rounded-xl border px-3 py-2
+//                     ${isPackageExpanded
+//                         ? "border-secondary-300 bg-secondary-50 rounded-b-none border-b-0"
+//                         : "border-secondary-200 bg-secondary-50"
+//                       }`}
+//                   >
+//                     <div className="flex items-center gap-2">
+//                       <Package size={16} />
+//                       <span className="font-medium text-label-l4 text-pneutral-900">
+//                         {packageDetails.packageName}
+//                       </span>
+//                       <span className="text-xs text-success-700">
+//                         ({completedTestsInPackage.length}/{packageDetails.tests.length})
+//                       </span>
+//                     </div>
+//                     {isPackageExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+//                   </button>
+
+//                   {/* Package tests - shown when expanded */}
+//                   {isPackageExpanded && (
+//                     <div className="w-full rounded-xl rounded-t-none border border-t-0 border-secondary-300 bg-pneutral-50 p-3">
+//                       <div className="flex flex-col gap-1.5">
+//                         {completedTestsInPackage.map((test, index) => (
+//                           <div key={index} className="flex items-center gap-1 py-1">
+//                             <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
+//                               {test.name}
+//                             </span>
+//                             {/* Only show Edit button if user has permission */}
+//                             {canEdit && (
+//                               <button
+//                                 onClick={() => handleEditReport(row, test.id)}
+//                                 className="text-blue-600"
+//                               >
+//                                 <Edit size={20} />
+//                               </button>
+//                             )}
+//                           </div>
+//                         ))}
 //                       </div>
-//                     ))}
-//                   </div>
+//                     </div>
+//                   )}
 //                 </div>
 //               );
 //             }).filter(Boolean)}
 //           </div>
-//         );
-//       },
-//     },
+//         )}
+//       </div>
+//     );
+//   },
+// },
 //     {
 //       header: "Actions",
 //       accessor: "actions",
 //       render: (row: Patient) => (
 //         <div className="flex items-center gap-2">
-//           {canEdit && (
+//           {/* {canEdit && (
 //             <button
 //               onClick={() => {
-//                 // Find first completed test to edit
 //                 const completedTest = row.testResult?.find(tr => tr.reportStatus === 'Completed');
 //                 if (completedTest) {
 //                   handleEditReport(row, completedTest.testId);
@@ -1244,732 +1324,15 @@ export default CompletedTable;
 //               title="Edit Report"
 //             >
 //               <Edit size={16} />
-//             </button>
-//           )}
-//           {canView && (
-//             <button
-//               onClick={() => handleViewReport(row)}
-//               className="p-1.5 text-info-500 hover:text-info-700 transition-colors rounded hover:bg-info-50"
-//               title="View Report"
-//             >
-//               <Eye size={16} />
-//             </button>
-//           )}
-//           {/* {canDelete && (
-//             <button
-//               onClick={() => handleDeleteReport(row.visitId)}
-//               className="p-1.5 text-red-500 hover:text-red-700 transition-colors rounded hover:bg-red-50"
-//               title="Delete Report"
-//             >
-//               <Trash2 size={16} />
 //             </button>
 //           )} */}
-//         </div>
-//       ),
-//     },
-//   ];
-
-//   if (isLoading) {
-//     return (
-//       <div className="flex flex-col items-center justify-center h-64">
-//         <Loader type="progress" fullScreen={false} text="Loading completed tests..." />
-//         <p className="mt-4 text-sm text-gray-500">Fetching the latest completed tests...</p>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="w-full">
-//       {/* Header */}
-//       <div className="mb-5">
-//         <h1 className="text-2xl font-semibold text-pneutral-900">
-//           Completed Tests
-//         </h1>
-//         <p className="mt-1 text-sm text-pneutral-500">
-//           View and manage completed test reports
-//         </p>
-//       </div>
-
-//       {/* Filters */}
-//       <div className="mt-5 rounded-xl border border-pneutral-200 bg-white p-4">
-//         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-//           <div className="relative flex-1 max-w-xl">
-//             <Search
-//               size={18}
-//               className="absolute left-3 top-1/2 -translate-y-1/2 text-sneutral-700"
-//             />
-//             <input
-//               type="text"
-//               placeholder="Search by ID or Name"
-//               value={searchTerm}
-//               onChange={(e) => setSearchTerm(e.target.value)}
-//               className="h-10 w-full rounded-lg border border-pneutral-200 pl-10 pr-4 text-sm outline-none focus:border-pneutral-500"
-//             />
-//           </div>
-//           <div className="flex flex-wrap items-center gap-4">
-//             <div className="flex items-center gap-2">
-//               <span className="text-sm text-gray-500">Date Range:</span>
-//               <select
-//                 value={dateFilter}
-//                 onChange={(e) => setDateFilter(e.target.value as DateFilterOption)}
-//                 className="h-10 rounded-md border border-pneutral-200 px-3 text-sm focus:border-pneutral-500"
-//               >
-//                 {DATE_FILTER_OPTIONS.map(option => (
-//                   <option key={option.value} value={option.value}>
-//                     {option.label}
-//                   </option>
-//                 ))}
-//               </select>
-//             </div>
-            
-//             {dateFilter === 'custom' && (
-//               <>
-//                 <input
-//                   type="date"
-//                   value={customStartDate ? customStartDate.toISOString().split('T')[0] : ''}
-//                   onChange={(e) => setCustomStartDate(e.target.value ? new Date(e.target.value) : null)}
-//                   className="h-10 rounded-md border border-pneutral-200 px-3 text-sm focus:border-pneutral-500"
-//                   placeholder="Start Date"
-//                 />
-//                 <input
-//                   type="date"
-//                   value={customEndDate ? customEndDate.toISOString().split('T')[0] : ''}
-//                   onChange={(e) => setCustomEndDate(e.target.value ? new Date(e.target.value) : null)}
-//                   className="h-10 rounded-md border border-pneutral-200 px-3 text-sm focus:border-pneutral-500"
-//                   placeholder="End Date"
-//                 />
-//               </>
-//             )}
-
-//             <div className="flex items-center gap-2">
-//               <span className="text-sm text-pneutral-500">Sort by:</span>
-//               <select
-//                 value={sortBy}
-//                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-//                 className="h-10 rounded-md border border-pneutral-200 px-3 text-sm focus:border-pneutral-500"
-//               >
-//                 <option value="patientId">Patient ID</option>
-//                 <option value="patientName">Patient Name</option>
-//               </select>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* Table */}
-//       <div className="mt-5 relative">
-//         {filteredPatients.length === 0 ? (
-//           <div className="flex flex-col items-center justify-center rounded-xl border border-pneutral-200 bg-white py-16">
-//             <svg
-//               xmlns="http://www.w3.org/2000/svg"
-//               className="h-16 w-16 text-pneutral-300"
-//               fill="none"
-//               viewBox="0 0 24 24"
-//               stroke="currentColor"
-//             >
-//               <path
-//                 strokeLinecap="round"
-//                 strokeLinejoin="round"
-//                 strokeWidth={1}
-//                 d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-//               />
-//             </svg>
-//             <p className="mt-4 text-sm font-medium text-pneutral-500">
-//               {searchTerm ? `No results found for "${searchTerm}"` : "No completed tests found"}
-//             </p>
-//             {searchTerm && (
-//               <p className="mt-1 text-xs text-pneutral-400">
-//                 Try adjusting your search or filter criteria
-//               </p>
-//             )}
-//           </div>
-//         ) : (
-//           <NewCommonTable 
-//             columns={columns} 
-//             data={filteredPatients} 
-//             pageSize={10}
-//             showPagination={true}
-//           />
-//         )}
-//       </div>
-
-//       {/* View Report Modal */}
-//       {viewModel && viewPatient && (
-//         <NewModal
-//           isOpen={viewModel}
-//           title="View Report"
-//           onClose={() => {
-//             setViewModel(false);
-//             setViewPatient(null);
-//           }}
-//           modalClassName="max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
-//         >
-//           <ViewReport 
-//             viewPatient={{
-//               ...viewPatient,
-//               gender: viewPatient.gender ?? '',
-//               contactNumber: viewPatient.contactNumber ?? '',
-//               email: viewPatient.email ?? '',
-//               doctorName: viewPatient.doctorName ?? '',
-//               visitType: viewPatient.visitType ?? '',
-//               visitStatus: viewPatient.visitStatus ?? ''
-//             }}
-//             hidePrintButton={false}
-//           />
-//         </NewModal>
-//       )}
-
-//       {/* Edit Report Modal */}
-//       {editModel && editPatient && editTest && editReportId !== null && (
-//         <NewModal
-//           isOpen={editModel}
-//           title={`Edit Report - ${editTest.name}`}
-//           onClose={() => {
-//             setEditModel(false);
-//             setEditPatient(null);
-//             setEditTest(null);
-//             setEditReportId(null);
-//           }}
-//           modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
-//         >
-//           <Editreport
-//             editPatient={editPatient}
-//             selectedTest={editTest}
-//             reportId={editReportId}
-//             setShowModal={(value) => {
-//               setEditModel((prev) => {
-//                 const next = typeof value === 'function' ? value(prev) : value;
-//                 if (!next) {
-//                   setEditPatient(null);
-//                   setEditTest(null);
-//                   setEditReportId(null);
-//                 }
-//                 return next;
-//               });
-//             }}
-//             refreshReports={fetchVisits}
-//           />
-//         </NewModal>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default CompletedTable;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// code dated 30.06.2026 .... with delete option but not working............
-
-// "use client";
-
-// import React, { useEffect, useState} from "react";
-// import {
-//   Search,
-//   Edit,
-//   Eye,
-//   Trash2,
-// } from "lucide-react";
-// import NewCommonTable from "../../newcommoncomponent/NewCommonTable";
-// import { getHealthPackageById } from '@/../services/packageServices';
-// import { useLabs } from '@/context/LabContext';
-// import { useAuth } from '@/hooks/useAuth';
-// import { TestList } from '@/types/test/testlist';
-// import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, getDateRange } from '@/utils/dateUtils';
-// import { calculateAgeInYears } from '@/utils/ageUtils';
-// import { toast } from 'react-toastify';
-// import Loader from '@/app/(admin)/component/common/Loader';
-// import NewModal from "../../newcommoncomponent/NewModal";
-// import { getCollectedCompleted } from '../../../../../../services/sampleServices';
-// import ViewReport from './Report/ViewReport';
-// import Editreport from '@/app/(admin)/dashboard/sample/_component/Report/Editreport';
-
-// interface HealthPackage {
-//   id: number;
-//   packageName: string;
-//   tests: Array<{
-//     id: number;
-//     name: string;
-//     price: number;
-//     category?: string;
-//   }>;
-// }
-
-// interface Patient {
-//   visitId: number;
-//   visitCode?: string;
-//   patientname: string;
-//   visitDate: string;
-//   visitStatus: string;
-//   sampleNames: string[];
-//   tests?: Array<{
-//     id: number;
-//     name: string;
-//   }>;
-//   packageIds: number[];
-//   contactNumber?: string;
-//   gender?: string;
-//   email?: string;
-//   dateOfBirth?: string;
-//   testResult?: TestResult[];
-//   doctorName?: string;
-//   visitType?: string;
-// }
-
-// interface TestResult {
-//   id: number;
-//   testId: number;
-//   isFilled: boolean;
-//   reportStatus: string;
-//   createdBy: string;
-//   updatedBy: string;
-//   createdAt: string;
-//   updatedAt: string;
-//   reportId?: number;
-// }
-
-// type SortOption = 'patientName' | 'patientId';
-
-// interface CompletedTableProps {
-//   closeModal?: () => void;
-//   onDataUpdate?: (count: number) => void;
-// }
-
-// const CompletedTable: React.FC<CompletedTableProps> = ({ onDataUpdate }) => {
-//   const { currentLab } = useLabs();
-//   const { isAdmin, isSuperAdmin } = useAuth();
-  
-//   // State management
-//   const [patientList, setPatientList] = useState<Patient[]>([]);
-//   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
-//   const [healthPackages, setHealthPackages] = useState<HealthPackage[]>([]);
-//   const [searchTerm, setSearchTerm] = useState("");
-//   const [dateFilter, setDateFilter] = useState<DateFilterOption>('today');
-//   const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
-//   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
-//   const [isLoading, setIsLoading] = useState(false);
-//   const [sortBy, setSortBy] = useState<SortOption>('patientId');
-  
-//   // Modal states
-//   const [viewModel, setViewModel] = useState(false);
-//   const [editModel, setEditModel] = useState(false);
-//   const [viewPatient, setViewPatient] = useState<Patient | null>(null);
-//   const [editPatient, setEditPatient] = useState<Patient | null>(null);
-//   const [editTest, setEditTest] = useState<TestList | null>(null);
-//   const [editReportId, setEditReportId] = useState<number | null>(null);
-  
-//   // Expanded row state for dropdown
-//   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  
-//   useEffect(() => {
-//     if (onDataUpdate) {
-//       onDataUpdate(filteredPatients.length);
-//     }
-//   }, [filteredPatients, onDataUpdate]);
-
-//   // Fetch visits data
-//   const fetchVisits = async () => {
-//     if (!currentLab?.id) return;
-
-//     try {
-//       setIsLoading(true);
-//       const { startDate, endDate } = getDateRange(dateFilter, customStartDate, customEndDate);
-
-//       if (!startDate || !endDate) return;
-
-//       const response = await getCollectedCompleted(
-//         currentLab.id,
-//         formatDateForAPI(startDate),
-//         formatDateForAPI(endDate),
-//       );
-
-//       // Filter to show ONLY visits where ALL tests are completed (fully completed)
-//       const completedVisits = response.filter(visit => {
-//         if (!visit.testResult || visit.testResult.length === 0) {
-//           return false; // Skip visits without test results
-//         }
-
-//         // Check if ALL tests have reportStatus "Completed"
-//         const allTestsCompleted = visit.testResult.every(tr => tr.reportStatus === 'Completed');
-//         return allTestsCompleted; // Only show visits where ALL tests are completed
-//       });
-
-//       const sortedVisits = completedVisits.sort((a, b) => {
-//         const aLatestCompletion = a.testResult?.reduce((latest, tr) => {
-//           if (tr.reportStatus === 'Completed' && tr.updatedAt) {
-//             const updatedAt = new Date(tr.updatedAt).getTime();
-//             return updatedAt > latest ? updatedAt : latest;
-//           }
-//           return latest;
-//         }, 0) || 0;
-        
-//         const bLatestCompletion = b.testResult?.reduce((latest, tr) => {
-//           if (tr.reportStatus === 'Completed' && tr.updatedAt) {
-//             const updatedAt = new Date(tr.updatedAt).getTime();
-//             return updatedAt > latest ? updatedAt : latest;
-//           }
-//           return latest;
-//         }, 0) || 0;
-        
-//         if (aLatestCompletion > 0 && bLatestCompletion > 0) {
-//           return bLatestCompletion - aLatestCompletion;
-//         }
-//         if (aLatestCompletion > 0 && bLatestCompletion === 0) {
-//           return -1;
-//         }
-//         if (bLatestCompletion > 0 && aLatestCompletion === 0) {
-//           return 1;
-//         }
-//         return new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime();
-//       });
-
-//       // Add doctorName and visitType if they exist in the response
-//       const normalizedVisits = sortedVisits.map(visit => ({
-//         ...visit,
-//         doctorName: visit.doctorName ?? '',
-//         visitType: visit.visitType ?? '',
-//       }));
-
-//       setPatientList(normalizedVisits);
-//       setFilteredPatients(normalizedVisits);
-
-//       // Fetch health packages
-//       const uniquePackageIds = Array.from(new Set(sortedVisits.flatMap((visit) => visit.packageIds)));
-//       if (uniquePackageIds.length > 0) {
-//         const fetchedPackages = await Promise.all(
-//           uniquePackageIds.map((packageId) =>
-//             getHealthPackageById(currentLab.id, packageId)
-//               .catch(() => ({ data: null }))
-//           )
-//         );
-//         setHealthPackages(fetchedPackages.map(pkg => pkg?.data).filter(Boolean) as HealthPackage[]);
-//       }
-//     } catch (error) {
-//       toast.error((error as Error).message || 'Error fetching visits', { autoClose: 2000 });
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   // Handle search and filter
-//   useEffect(() => {
-//     let filtered = patientList;
-
-//     // Apply search filter
-//     if (searchTerm.trim()) {
-//       const searchLower = searchTerm.toLowerCase();
-//       filtered = patientList.filter(patient => 
-//         patient.visitCode?.toLowerCase().includes(searchLower) ||
-//         patient.patientname?.toLowerCase().includes(searchLower) ||
-//         patient.visitId.toString().includes(searchTerm)
-//       );
-//     }
-
-//     // Apply sorting
-//     filtered = [...filtered].sort((a, b) => {
-//       if (sortBy === 'patientName') {
-//         const nameA = a.patientname?.toLowerCase() || '';
-//         const nameB = b.patientname?.toLowerCase() || '';
-//         return nameA.localeCompare(nameB);
-//       } else {
-//         return a.visitId - b.visitId;
-//       }
-//     });
-
-//     setFilteredPatients(filtered);
-//   }, [patientList, searchTerm, sortBy]);
-
-//   // Effects
-//   useEffect(() => {
-//     fetchVisits();
-//   }, [currentLab, dateFilter, customStartDate, customEndDate]);
-
-//   // Get test items for a patient
-//   const getPatientTestItems = (patient: Patient) => {
-//     const packageTestIds = new Set<number>();
-//     patient.packageIds.forEach(packageId => {
-//       const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-//       if (packageDetails) {
-//         packageDetails.tests.forEach(test => {
-//           packageTestIds.add(test.id);
-//         });
-//       }
-//     });
-
-//     const visitTests = patient.tests || [];
-//     const individualTests = visitTests.filter(test => !packageTestIds.has(test.id));
-    
-//     return {
-//       tests: individualTests, // Used in the render
-//       hasPackages: patient.packageIds.length > 0,
-//       // Remove unused variables
-//       // totalTestCount: ...,
-//       // packageNames: ...
-//     };
-//   };
-
-//   // Handle view report
-//   const handleViewReport = (patient: Patient) => {
-//     setViewPatient(patient);
-//     setViewModel(true);
-//   };
-
-//   // Handle edit report
-//   const handleEditReport = (patient: Patient, testId: number) => {
-//     const visitTest = patient.tests?.find((t) => t.id === testId);
-//     let test: TestList | null = visitTest
-//       ? {
-//           id: visitTest.id,
-//           name: visitTest.name,
-//           price: 0,
-//           category: '',
-//         }
-//       : null;
-    
-//     if (!test) {
-//       for (const packageId of patient.packageIds) {
-//         const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-//         if (packageDetails) {
-//           const packageTest = packageDetails.tests.find((t) => t.id === testId);
-//           if (packageTest) {
-//             test = {
-//               id: packageTest.id,
-//               name: packageTest.name,
-//               price: packageTest.price,
-//               category: packageTest.category || '',
-//             };
-//             break;
-//           }
-//         }
-//       }
-//     }
-
-//     if (!test) return;
-
-//     const testResult = patient.testResult?.find(tr => tr.testId === testId);
-//     if (!testResult || !testResult.reportId) {
-//       toast.error('Report ID missing for this test.');
-//       return;
-//     }
-
-//     setEditPatient(patient);
-//     setEditTest(test);
-//     setEditReportId(testResult.reportId);
-//     setEditModel(true);
-//   };
-
-//   // Handle delete report
-//   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-//   const handleDeleteReport = async (visitId: number) => {
-//     if (!window.confirm('Are you sure you want to delete this report?')) return;
-    
-//     try {
-//       // You'll need to implement the delete API call here
-//       toast.success('Report deleted successfully');
-//       fetchVisits();
-//     } catch (error) {
-//       toast.error((error as Error).message || 'Error deleting report');
-//     }
-//   };
-
-//   // Check if user has permission for actions
-//   const canEdit = isAdmin || isSuperAdmin;
-//   const canDelete = isAdmin || isSuperAdmin;
-//   const canView = true; // All users can view
-
-//   // Table columns definition
-//   const columns = [
-//     {
-//       header: "Patient ID",
-//       accessor: "id",
-//       render: (row: Patient) => (
-//         <div>
-//           <p className="font-semibold text-p3 text-pneutral-900">
-//             {row.visitCode || `#${row.visitId}`}
-//           </p>
-//           <p className="text-[12px] leading-[16px] font-normal text-pneutral-500">
-//             {row.visitDate ? new Date(row.visitDate).toLocaleDateString('en-IN') : ''}
-//           </p>
-//         </div>
-//       ),
-//     },
-//     {
-//       header: "Patient Details",
-//       accessor: "name",
-//       render: (row: Patient) => (
-//         <div>
-//           <p className="font-semibold text-p3 text-pneutral-900">
-//             {row.patientname}
-//           </p>
-//           <p className="text-p2 leading-[16px] font-normal text-pneutral-500">
-//             {row.dateOfBirth ? calculateAgeInYears(row.dateOfBirth) : 'N/A'} | {row.gender}
-//           </p>
-//         </div>
-//       ),
-//     },
-//     {
-//       header: "Status",
-//       accessor: "status",
-//       render: () => (
-//         <span className="inline-flex rounded-full bg-success-50 px-3 py-1 text-p2 font-medium text-success-900 border border-success-900">
-//           Completed
-//         </span>
-//       ),
-//     },
-//     {
-//       header: "Tests/Package",
-//       accessor: "title",
-//       render: (row: Patient) => {
-//         const {  hasPackages } = getPatientTestItems(row);
-        
-//         // Get all test IDs that belong to packages
-//         const packageTestIds = new Set<number>();
-//         row.packageIds.forEach(packageId => {
-//           const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-//           if (packageDetails) {
-//             packageDetails.tests.forEach(test => {
-//               packageTestIds.add(test.id);
-//             });
-//           }
-//         });
-
-//         // Filter out tests that belong to packages from individual tests
-//         const individualTests = (row.tests || []).filter(test => 
-//           !packageTestIds.has(test.id)
-//         );
-
-//         const isExpanded = expandedRow === row.visitId.toString();
-//         const displayTests = isExpanded ? individualTests : individualTests.slice(0, 3);
-//         const hasMoreTests = individualTests.length > 3;
-
-//         // If there are only individual tests (no packages)
-//         if (!hasPackages) {
-//           return (
-//             <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
-//               {displayTests.map((test) => (
-//                 <div key={test.id} className="flex items-center gap-1 py-1 ">
-//                   <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
-//                     {test.name}
-//                   </span>
-//                 </div>
-//               ))}
-              
-//               {hasMoreTests && (
-//                 <button
-//                   onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
-//                   className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
-//                 >
-//                   {isExpanded ? 'Show Less' : `View All (${individualTests.length})`}
-//                 </button>
-//               )}
-//             </div>
-//           );
-//         }
-
-//         // If there are packages
-//         return (
-//           <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
-//             {/* Show individual tests first */}
-//             {individualTests.length > 0 && (
-//               <div className="flex flex-col gap-1">
-//                 {displayTests.map((test) => (
-//                   <div key={test.id} className="flex items-center gap-1 py-1">
-//                     <span className="bg-success-50 text-success-900 px-2 py-1 rounded-full text-p2 inline-block w-fit">
-//                       {test.name}
-//                     </span>
-//                   </div>
-//                 ))}
-                
-//                 {hasMoreTests && (
-//                   <button
-//                     onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
-//                     className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
-//                   >
-//                     {isExpanded ? 'Show Less' : `View All (${individualTests.length})`}
-//                   </button>
-//                 )}
-//               </div>
-//             )}
-
-//             {/* Show packages */}
-//             {row.packageIds.map((packageId) => {
-//               const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-//               if (!packageDetails) return null;
-
-//               return (
-//                 <div key={packageDetails.id} className="flex flex-col gap-1">
-//                   <div className="flex items-center gap-1">
-//                     <span className="text-xs">📦</span>
-//                     <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs font-medium">
-//                       {packageDetails.packageName}
-//                     </span>
-//                     <span className="text-xs text-green-600">({packageDetails.tests.length} completed)</span>
-//                   </div>
-                  
-//                   {/* Show all tests inside package (all completed) */}
-//                   <div className="flex flex-col gap-1 ml-2">
-//                     {packageDetails.tests.map((test, index) => (
-//                       <div key={index} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
-//                         <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs inline-block w-fit">
-//                           {test.name}
-//                         </span>
-//                       </div>
-//                     ))}
-//                   </div>
-//                 </div>
-//               );
-//             }).filter(Boolean)}
-//           </div>
-//         );
-//       },
-//     },
-//     {
-//       header: "Actions",
-//       accessor: "actions",
-//       render: (row: Patient) => (
-//         <div className="flex items-center gap-2">
-//           {canEdit && (
-//             <button
-//               onClick={() => {
-//                 // Find first completed test to edit
-//                 const completedTest = row.testResult?.find(tr => tr.reportStatus === 'Completed');
-//                 if (completedTest) {
-//                   handleEditReport(row, completedTest.testId);
-//                 }
-//               }}
-//               className="p-1.5 text-blue-600 hover:text-blue-800 transition-colors rounded hover:bg-blue-50"
-//               title="Edit Report"
-//             >
-//               <Edit size={16} />
-//             </button>
-//           )}
 //           {canView && (
 //             <button
 //               onClick={() => handleViewReport(row)}
 //               className="p-1.5 text-info-500 hover:text-info-700 transition-colors rounded hover:bg-info-50"
 //               title="View Report"
 //             >
-//               <Eye size={16} />
-//             </button>
-//           )}
-//           {canDelete && (
-//             <button
-//               onClick={() => handleDeleteReport(row.visitId)}
-//               className="p-1.5 text-red-500 hover:text-red-700 transition-colors rounded hover:bg-red-50"
-//               title="Delete Report"
-//             >
-//               <Trash2 size={16} />
+//               <Eye size={20} />
 //             </button>
 //           )}
 //         </div>
@@ -1988,7 +1351,6 @@ export default CompletedTable;
 
 //   return (
 //     <div className="w-full">
-//       {/* Header */}
 //       <div className="mb-5">
 //         <h1 className="text-2xl font-semibold text-pneutral-900">
 //           Completed Tests
@@ -1998,7 +1360,6 @@ export default CompletedTable;
 //         </p>
 //       </div>
 
-//       {/* Filters */}
 //       <div className="mt-5 rounded-xl border border-pneutral-200 bg-white p-4">
 //         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 //           <div className="relative flex-1 max-w-xl">
@@ -2064,7 +1425,6 @@ export default CompletedTable;
 //         </div>
 //       </div>
 
-//       {/* Table */}
 //       <div className="mt-5 relative">
 //         {filteredPatients.length === 0 ? (
 //           <div className="flex flex-col items-center justify-center rounded-xl border border-pneutral-200 bg-white py-16">
@@ -2101,7 +1461,6 @@ export default CompletedTable;
 //         )}
 //       </div>
 
-//       {/* View Report Modal */}
 //       {viewModel && viewPatient && (
 //         <NewModal
 //           isOpen={viewModel}
@@ -2127,7 +1486,6 @@ export default CompletedTable;
 //         </NewModal>
 //       )}
 
-//       {/* Edit Report Modal */}
 //       {editModel && editPatient && editTest && editReportId !== null && (
 //         <NewModal
 //           isOpen={editModel}
@@ -2138,7 +1496,7 @@ export default CompletedTable;
 //             setEditTest(null);
 //             setEditReportId(null);
 //           }}
-//           modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+//           modalClassName="max-w-6xl max-h-[90vh] rounded-lg overflow-y-auto overflow-y-auto"
 //         >
 //           <Editreport
 //             editPatient={editPatient}
@@ -2164,9 +1522,6 @@ export default CompletedTable;
 // };
 
 // export default CompletedTable;
-
-
-
 
 
 

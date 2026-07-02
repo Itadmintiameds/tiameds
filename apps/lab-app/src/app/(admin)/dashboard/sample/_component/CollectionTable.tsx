@@ -70,12 +70,21 @@ interface CollectionTableProps {
   onHideKPI?: () => void;
   onShowKPI?: () => void;
   onDateFilterChange?: (filter: DateFilterOption, startDate?: Date | null, endDate?: Date | null) => void;
+  refreshTrigger?: number;
+  onResultAdded?: () => void;
 }
 
-const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideKPI, onShowKPI, onDateFilterChange }) => {
+const CollectionTable: React.FC<CollectionTableProps> = ({
+  onDataUpdate,
+  onHideKPI,
+  onShowKPI,
+  onDateFilterChange,
+  refreshTrigger,
+  onResultAdded
+}) => {
   const { currentLab } = useLabs();
   const { isAdmin, isSuperAdmin } = useAuth();
-  
+
   // State management
   const [patientList, setPatientList] = useState<Patient[]>([]);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
@@ -86,7 +95,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('patientId');
-  
+
   // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedVisitId, setSelectedVisitId] = useState<number | null>(null);
@@ -97,13 +106,13 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
   const [viewPatient, setViewPatient] = useState<Patient | null>(null);
   const [updateCollectionTable, setUpdateCollectionTable] = useState(false);
   const [showPatientReportScreen, setShowPatientReportScreen] = useState(false);
-  
+
   // Edit Report Modal states
   const [showEditReportModal, setShowEditReportModal] = useState(false);
   const [editPatient, setEditPatient] = useState<Patient | null>(null);
   const [editTest, setEditTest] = useState<TestList | null>(null);
   const [editReportId, setEditReportId] = useState<number | null>(null);
-  
+
   // Expanded row state for dropdown
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
@@ -127,6 +136,13 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
       onDateFilterChange(dateFilter, customStartDate, customEndDate);
     }
   }, [dateFilter, customStartDate, customEndDate, onDateFilterChange]);
+
+  // Listen for refresh trigger from parent
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      fetchVisits();
+    }
+  }, [refreshTrigger]);
 
   // Fetch collected visits data
   const fetchVisits = async () => {
@@ -187,7 +203,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
         );
         setHealthPackages(fetchedPackages.map((pkg) => pkg.data));
       }
-      
+
     } catch (error: unknown) {
       toast.error((error as Error).message || 'An error occurred while fetching collected samples', { autoClose: 2000 });
     } finally {
@@ -202,7 +218,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
     // Apply search filter
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = patientList.filter(patient => 
+      filtered = patientList.filter(patient =>
         patient.visitCode?.toLowerCase().includes(searchLower) ||
         patient.patientname?.toLowerCase().includes(searchLower) ||
         patient.visitId.toString().includes(searchTerm)
@@ -242,7 +258,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
 
     const visitTests = patient.tests || [];
     const individualTests = visitTests.filter(test => !packageTestIds.has(test.id));
-    
+
     return {
       tests: individualTests,
       hasPackages: patient.packageIds.length > 0,
@@ -250,7 +266,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
         const pkg = healthPackages.find((p) => p.id === packageId);
         return total + (pkg?.tests?.length || 0);
       }, 0),
-      packageNames: patient.packageIds.map(id => 
+      packageNames: patient.packageIds.map(id =>
         healthPackages.find(pkg => pkg.id === id)?.packageName
       ).filter(Boolean)
     };
@@ -276,13 +292,13 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
     const visitTest = patient.tests?.find((t) => t.id === testId);
     let selected: TestList | null = visitTest
       ? {
-          id: visitTest.id,
-          name: visitTest.name,
-          price: 0,
-          category: '',
-        }
+        id: visitTest.id,
+        name: visitTest.name,
+        price: 0,
+        category: '',
+      }
       : null;
-    
+
     // If not found in individual tests, search in package tests
     if (!selected) {
       for (const packageId of patient.packageIds) {
@@ -318,13 +334,13 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
     const visitTest = patient.tests?.find((t) => t.id === testId);
     let test: TestList | null = visitTest
       ? {
-          id: visitTest.id,
-          name: visitTest.name,
-          price: 0,
-          category: '',
-        }
+        id: visitTest.id,
+        name: visitTest.name,
+        price: 0,
+        category: '',
+      }
       : null;
-    
+
     // If not found in individual tests, search in package tests
     if (!test) {
       for (const packageId of patient.packageIds) {
@@ -364,7 +380,14 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
     setShowPatientReportScreen(false);
     setSelectedPatient(null);
     setSelectedTest(null);
-    
+    // Refresh this table
+    fetchVisits();
+
+    // Notify parent to refresh other tables
+    if (onResultAdded) {
+      onResultAdded();
+    }
+
     // Show KPI when exiting result screen
     if (onShowKPI) {
       onShowKPI();
@@ -456,7 +479,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
       accessor: "title",
       render: (row: Patient) => {
         const { hasPackages } = getPatientTestItems(row);
-        
+
         // Get all test IDs that belong to packages
         const packageTestIds = new Set<number>();
         row.packageIds.forEach(packageId => {
@@ -469,7 +492,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
         });
 
         // Filter out tests that belong to packages from individual tests
-        const individualTests = (row.tests || []).filter(test => 
+        const individualTests = (row.tests || []).filter(test =>
           !packageTestIds.has(test.id)
         );
 
@@ -515,9 +538,9 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
                             {packageDetails.tests.map((test, index) => {
                               const testResult = row.testResult?.find(tr => tr.testId === test.id);
                               const isCompleted = testResult?.isFilled && testResult?.reportStatus === 'Completed';
-                              
+
                               let statusColor = 'bg-warning-50 text-warning-600';
-                              
+
                               if (testResult) {
                                 if (isCompleted) {
                                   statusColor = 'bg-success-50 text-success-900';
@@ -525,7 +548,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
                                   statusColor = 'bg-warning-50 text-warning-600';
                                 }
                               }
-                              
+
                               return (
                                 <div key={`${packageDetails.id}-${index}`} className="flex items-center gap-1 py-1">
                                   <span className={`${statusColor} px-2 py-1 rounded-full text-p2 inline-block w-fit`}>
@@ -573,14 +596,14 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
                 {hasPackages && (
                   <div className="border-t border-white"></div>
                 )}
-                
+
                 {/* Show individual tests */}
                 {displayTests.map((test) => {
                   const testResult = row.testResult?.find(tr => tr.testId === test.id);
                   const isCompleted = testResult?.isFilled && testResult?.reportStatus === 'Completed';
-                  
+
                   let statusColor = 'bg-warning-50 text-warning-600';
-                  
+
                   if (testResult) {
                     if (isCompleted) {
                       statusColor = 'bg-success-50 text-success-900';
@@ -588,7 +611,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
                       statusColor = 'bg-warning-50 text-warning-600';
                     }
                   }
-                  
+
                   return (
                     <div key={test.id} className="flex items-center gap-1 py-1">
                       <span className={`${statusColor} px-2 py-1 rounded-full text-p2 inline-block w-fit`}>
@@ -620,7 +643,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
                     </div>
                   );
                 }).filter(Boolean)}
-                
+
                 {hasMoreTests && (
                   <button
                     onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
@@ -722,7 +745,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
                 ))}
               </select>
             </div>
-            
+
             {dateFilter === 'custom' && (
               <>
                 <input
@@ -785,9 +808,9 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
             )}
           </div>
         ) : (
-          <NewCommonTable 
-            columns={columns} 
-            data={filteredPatients} 
+          <NewCommonTable
+            columns={columns}
+            data={filteredPatients}
             pageSize={10}
             showPagination={true}
           />
@@ -815,6 +838,11 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
               setSelectedSampleNames([]);
               setUpdateCollectionTable(prev => !prev);
               fetchVisits();
+
+              // 🔥 NOTIFY PARENT TO REFRESH OTHER TABLES
+              if (onResultAdded) {
+                onResultAdded();
+              }
             }}
           />
         </NewModal>
@@ -831,7 +859,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
           }}
           modalClassName="max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
         >
-          <ViewReport 
+          <ViewReport
             viewPatient={{
               ...viewPatient,
               gender: viewPatient.gender ?? '',
@@ -870,6 +898,11 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
                   setEditPatient(null);
                   setEditTest(null);
                   setEditReportId(null);
+
+                  // 🔥 NOTIFY PARENT TO REFRESH OTHER TABLES
+                  if (onResultAdded) {
+                    onResultAdded();
+                  }
                 }
                 return next;
               });
@@ -894,6 +927,7 @@ export default CollectionTable;
 
 
 
+// working code without refresh logic data dated 02.07.2026
 
 // "use client";
 
@@ -918,12 +952,13 @@ export default CollectionTable;
 // import Loader from '@/app/(admin)/component/common/Loader';
 // import NewModal from "../../newcommoncomponent/NewModal";
 // import {
-//   //  deleteVisitSample, 
-//    getCollectedCompleted } from '../../../../../../services/sampleServices';
+//   getCollectedCompleted,
+// } from '../../../../../../services/sampleServices';
 // import UpdateSample from "./UpdateSample";
 // import { TestResult } from '@/types/sample/sample';
 // import PatientReportDataFill from './Report/PatientReportDataFill';
 // import ViewReport from './Report/ViewReport';
+// import Editreport from '@/app/(admin)/dashboard/sample/_component/Report/Editreport';
 
 // interface HealthPackage {
 //   id: number;
@@ -955,7 +990,7 @@ export default CollectionTable;
 //   dateOfBirth?: string;
 //   testResult?: TestResult[];
 //   doctorName?: string;
-//    visitType?: string;
+//   visitType?: string;
 // }
 
 // type SortOption = 'patientName' | 'patientId';
@@ -965,9 +1000,10 @@ export default CollectionTable;
 //   onDataUpdate?: (count: number) => void;
 //   onHideKPI?: () => void;
 //   onShowKPI?: () => void;
+//   onDateFilterChange?: (filter: DateFilterOption, startDate?: Date | null, endDate?: Date | null) => void;
 // }
 
-// const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideKPI, onShowKPI  }) => {
+// const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideKPI, onShowKPI, onDateFilterChange }) => {
 //   const { currentLab } = useLabs();
 //   const { isAdmin, isSuperAdmin } = useAuth();
   
@@ -986,7 +1022,6 @@ export default CollectionTable;
 //   const [showEditModal, setShowEditModal] = useState(false);
 //   const [selectedVisitId, setSelectedVisitId] = useState<number | null>(null);
 //   const [selectedSampleNames, setSelectedSampleNames] = useState<string[]>([]);
-//   // const [showResultModal, setShowResultModal] = useState(false);
 //   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 //   const [selectedTest, setSelectedTest] = useState<TestList | null>(null);
 //   const [showViewReportModal, setShowViewReportModal] = useState(false);
@@ -994,14 +1029,35 @@ export default CollectionTable;
 //   const [updateCollectionTable, setUpdateCollectionTable] = useState(false);
 //   const [showPatientReportScreen, setShowPatientReportScreen] = useState(false);
   
+//   // Edit Report Modal states
+//   const [showEditReportModal, setShowEditReportModal] = useState(false);
+//   const [editPatient, setEditPatient] = useState<Patient | null>(null);
+//   const [editTest, setEditTest] = useState<TestList | null>(null);
+//   const [editReportId, setEditReportId] = useState<number | null>(null);
+  
 //   // Expanded row state for dropdown
 //   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
 //   useEffect(() => {
 //     if (onDataUpdate) {
-//       onDataUpdate(filteredPatients.length);
+//       // Count actual incomplete tests across all partially/un-completed visits,
+//       // not the number of patients, so the KPI reflects real pending test work.
+//       const incompleteTestCount = filteredPatients.reduce((sum, patient) => {
+//         const { totalTestCount } = getPatientTestItems(patient);
+//         const completedTests = patient.testResult?.filter(
+//           (tr) => tr.isFilled && tr.reportStatus === 'Completed'
+//         ).length || 0;
+//         return sum + Math.max(totalTestCount - completedTests, 0);
+//       }, 0);
+//       onDataUpdate(incompleteTestCount);
 //     }
-//   }, [filteredPatients, onDataUpdate]);
+//   }, [filteredPatients, healthPackages, onDataUpdate]);
+
+//   useEffect(() => {
+//     if (onDateFilterChange) {
+//       onDateFilterChange(dateFilter, customStartDate, customEndDate);
+//     }
+//   }, [dateFilter, customStartDate, customEndDate, onDateFilterChange]);
 
 //   // Fetch collected visits data
 //   const fetchVisits = async () => {
@@ -1048,7 +1104,7 @@ export default CollectionTable;
 //           dateOfBirth: visit.dateOfBirth,
 //           testResult: visit.testResult as TestResult[] | undefined,
 //           doctorName: visit.doctorName ?? '',
-//     visitType: visit.visitType ?? '',
+//           visitType: visit.visitType ?? '',
 //         };
 //       });
 
@@ -1132,24 +1188,12 @@ export default CollectionTable;
 //   };
 
 //   // Handle edit sample
+//   // eslint-disable-next-line @typescript-eslint/no-unused-vars
 //   const handleEditSample = (visitId: number, sampleNames: string[]) => {
 //     setSelectedVisitId(visitId);
 //     setSelectedSampleNames(sampleNames);
 //     setShowEditModal(true);
 //   };
-
-//   // Handle delete sample
-//   // const handleDeleteSample = async (visitId: number) => {
-//   //   if (!window.confirm('Are you sure you want to delete this sample?')) return;
-    
-//   //   try {
-//   //     await deleteVisitSample(visitId, []);
-//   //     toast.success('Sample deleted successfully');
-//   //     fetchVisits();
-//   //   } catch (error) {
-//   //     toast.error((error as Error).message || 'Error deleting sample');
-//   //   }
-//   // };
 
 //   // Handle view report
 //   const handleViewReport = (patient: Patient) => {
@@ -1157,7 +1201,7 @@ export default CollectionTable;
 //     setShowViewReportModal(true);
 //   };
 
-//   // Handle open result modal
+//   // Handle open result modal (for entering results)
 //   const handleOpenResultModal = (patient: Patient, testId: number) => {
 //     // Find the test
 //     const visitTest = patient.tests?.find((t) => t.id === testId);
@@ -1191,14 +1235,62 @@ export default CollectionTable;
 
 //     if (!selected) return;
 
-//    setSelectedPatient(patient);
-// setSelectedTest(selected);
-// setShowPatientReportScreen(true);
-// if (onHideKPI) {
+//     setSelectedPatient(patient);
+//     setSelectedTest(selected);
+//     setShowPatientReportScreen(true);
+//     if (onHideKPI) {
 //       onHideKPI();
 //     }
 //   };
-//    // When closing the result entry screen, show KPI
+
+//   // Handle edit result (for editing completed results) - Opens modal with Editreport
+//   const handleEditResult = (patient: Patient, testId: number) => {
+//     // Find the test
+//     const visitTest = patient.tests?.find((t) => t.id === testId);
+//     let test: TestList | null = visitTest
+//       ? {
+//           id: visitTest.id,
+//           name: visitTest.name,
+//           price: 0,
+//           category: '',
+//         }
+//       : null;
+    
+//     // If not found in individual tests, search in package tests
+//     if (!test) {
+//       for (const packageId of patient.packageIds) {
+//         const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+//         if (packageDetails) {
+//           const packageTest = packageDetails.tests.find((t) => t.id === testId);
+//           if (packageTest) {
+//             test = {
+//               id: packageTest.id,
+//               name: packageTest.name,
+//               price: packageTest.price,
+//               category: packageTest.category || ''
+//             };
+//             break;
+//           }
+//         }
+//       }
+//     }
+
+//     if (!test) return;
+
+//     // Find the test result to get the reportId
+//     const testResult = patient.testResult?.find(tr => tr.testId === testId);
+//     if (!testResult || !testResult.reportId) {
+//       toast.error('Report ID missing for this test.');
+//       return;
+//     }
+
+//     setEditPatient(patient);
+//     setEditTest(test);
+//     setEditReportId(testResult.reportId);
+//     setShowEditReportModal(true);
+//   };
+
+//   // When closing the result entry screen, show KPI
 //   const handleCloseResultScreen = () => {
 //     setShowPatientReportScreen(false);
 //     setSelectedPatient(null);
@@ -1210,26 +1302,8 @@ export default CollectionTable;
 //     }
 //   };
 
-//   // Update the return statement for PatientReportDataFill
-//   if (
-//     showPatientReportScreen &&
-//     selectedPatient &&
-//     selectedTest
-//   ) {
-//     return (
-//       <PatientReportDataFill
-//         selectedPatient={selectedPatient}
-//         selectedTest={selectedTest}
-//         updateCollectionTable={updateCollectionTable}
-//         setUpdateCollectionTable={setUpdateCollectionTable}
-//         setShowModal={handleCloseResultScreen} 
-//       />
-//     );
-//   }
-
 //   // Check if user has permission for actions
 //   const canEdit = isAdmin || isSuperAdmin;
-//   // const canDelete = isAdmin || isSuperAdmin;
 //   const canView = true; // All users can view
 
 //   // Table columns definition
@@ -1262,224 +1336,241 @@ export default CollectionTable;
 //         </div>
 //       ),
 //     },
-
-
 //     {
-//   header: "Status",
-//   accessor: "status",
-//   render: (row: Patient) => {
-//     if (!row.testResult || row.testResult.length === 0) {
-//       return (
-//         <span className="inline-flex items-center rounded-full bg-danger-100 px-3 py-1 text-p2 font-medium text-warning-800">
-//           Pending
-//         </span>
-//       );
-//     }
+//       header: "Status",
+//       accessor: "status",
+//       render: (row: Patient) => {
+//         if (!row.testResult || row.testResult.length === 0) {
+//           return (
+//             <span className="inline-flex items-center rounded-full bg-danger-100 px-3 py-1 text-p2 font-medium text-warning-800">
+//               Pending
+//             </span>
+//           );
+//         }
 
-//     const totalTests = row.testResult.length;
-//     const completedTests = row.testResult.filter(tr => tr.isFilled && tr.reportStatus === 'Completed').length;
-//     const allTestsCompleted = completedTests === totalTests;
-//     const someTestsCompleted = completedTests > 0 && completedTests < totalTests;
+//         const totalTests = row.testResult.length;
+//         const completedTests = row.testResult.filter(tr => tr.isFilled && tr.reportStatus === 'Completed').length;
+//         const allTestsCompleted = completedTests === totalTests;
+//         const someTestsCompleted = completedTests > 0 && completedTests < totalTests;
 
-//     if (allTestsCompleted) {
-//       return (
-//         <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
-//           Completed
-//         </span>
-//       );
-//     } else if (someTestsCompleted) {
-//       return (
-//         <div className="flex flex-col items-start gap-1">
-//           <span className="inline-flex items-center rounded-full bg-info-50 px-3 py-1 text-p2 font-medium text-info-600">
-//             {completedTests}/{totalTests} Completed
-//           </span>
-//           <button
-//             onClick={() => handleViewReport(row)}
-//             className="text-label-l2 text-info-700 hover:text-info-700 font-medium"
-//           >
-//             View Report
-//           </button>
-//         </div>
-//       );
-//     } else {
-//       return (
-//         <span className="inline-flex items-center rounded-full bg-danger-100 px-3 py-1 text-p2 font-medium text-warning-800">
-//           Pending
-//         </span>
-//       );
-//     }
-//   },
-// },
-
-// {
-//   header: "Tests/Package",
-//   accessor: "title",
-//   render: (row: Patient) => {
-//     const { hasPackages } = getPatientTestItems(row);
-    
-//     // Get all test IDs that belong to packages
-//     const packageTestIds = new Set<number>();
-//     row.packageIds.forEach(packageId => {
-//       const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-//       if (packageDetails) {
-//         packageDetails.tests.forEach(test => {
-//           packageTestIds.add(test.id);
-//         });
-//       }
-//     });
-
-//     // Filter out tests that belong to packages from individual tests
-//     const individualTests = (row.tests || []).filter(test => 
-//       !packageTestIds.has(test.id)
-//     );
-
-//     const isExpanded = expandedRow === row.visitId.toString();
-//     const displayTests = isExpanded ? individualTests : individualTests.slice(0, 3);
-//     const hasMoreTests = individualTests.length > 3;
-
-//     return (
-//       <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
-//         {/* Packages Section */}
-//         {hasPackages && (
-//           <div className="flex flex-col gap-1">
-//             {row.packageIds.map((packageId) => {
-//               const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-//               if (!packageDetails) return null;
-
-//               const isPackageExpanded = expandedRow === `package-${row.visitId}-${packageId}`;
-
-//               return (
-//                 <div key={packageDetails.id} className="flex flex-col">
-//                   {/* Package dropdown button - matches other pages */}
-//                   <button
-//                     onClick={() => setExpandedRow(isPackageExpanded ? null : `package-${row.visitId}-${packageId}`)}
-//                     className={`flex w-full items-center justify-between rounded-xl border px-3 py-2
-//                     ${isPackageExpanded
-//                         ? "border-secondary-300 bg-secondary-50 rounded-b-none border-b-0"
-//                         : "border-secondary-200 bg-secondary-50"
-//                       }`}
-//                   >
-//                     <div className="flex items-center gap-2">
-//                       <Package size={16} />
-//                       <span className="font-medium text-label-l4 text-pneutral-900">
-//                         {packageDetails.packageName}
-//                       </span>
-//                     </div>
-//                     {isPackageExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-//                   </button>
-
-//                   {/* Package tests - shown when expanded */}
-//                   {isPackageExpanded && (
-//                     <div className="w-full rounded-xl rounded-t-none border border-t-0 border-secondary-300 bg-pneutral-50 p-3">
-//                       <div className="flex flex-col gap-1.5">
-//                         {packageDetails.tests.map((test, index) => {
-//                           const testResult = row.testResult?.find(tr => tr.testId === test.id);
-                          
-//                           let statusColor = 'bg-warning-50 text-warning-600';
-                          
-//                           if (testResult) {
-//                             if (testResult.isFilled && testResult.reportStatus === 'Completed') {
-//                               statusColor = 'bg-success-50 text-success-900';
-//                             } else if (testResult.isFilled) {
-//                               statusColor = 'bg-warning-50 text-warning-600';
-//                             }
-//                           }
-                          
-//                           return (
-//                             <div key={`${packageDetails.id}-${index}`} className="flex items-center gap-1 py-1">
-//                               <span className={`${statusColor} px-2 py-1 rounded-full text-p2 inline-block w-fit`}>
-//                                 {test.name}
-//                               </span>
-//                               {(!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
-//                                 <button
-//                                   onClick={() => handleOpenResultModal(row, test.id)}
-//                                   className="flex items-center gap-1 bg-warning-500 text-pneutral-50 px-3 py-1 rounded-full text-xs whitespace-nowrap"
-//                                 >
-//                                   <PlusIcon className="w-3 h-3 text-pneutral-50" strokeWidth={3} />
-//                                   <span className='text-pneutral-50 text-label-l2'>Result</span>
-//                                 </button>
-//                               )}
-//                             </div>
-//                           );
-//                         })}
-//                       </div>
-//                     </div>
-//                   )}
-//                 </div>
-//               );
-//             }).filter(Boolean)}
-//           </div>
-//         )}
-
-//         {/* Individual Tests Section - Show regardless of packages */}
-//         {individualTests.length > 0 && (
-//           <div className="flex flex-col gap-1">
-//             {/* Add divider if both sections exist */}
-//             {hasPackages && (
-//               <div className="border-t border-white"></div>
-//             )}
-            
-//             {/* Show individual tests */}
-//             {displayTests.map((test) => {
-//               const testResult = row.testResult?.find(tr => tr.testId === test.id);
-              
-//               let statusColor = 'bg-warning-50 text-warning-600';
-              
-//               if (testResult) {
-//                 if (testResult.isFilled && testResult.reportStatus === 'Completed') {
-//                   statusColor = 'bg-success-50 text-success-900';
-//                 } else if (testResult.isFilled) {
-//                   statusColor = 'bg-warning-50 text-warning-600';
-//                 }
-//               }
-              
-//               return (
-//                 <div key={test.id} className="flex items-center gap-1 py-1">
-//                   <span className={`${statusColor} px-2 py-1 rounded-full text-p2 inline-block w-fit`}>
-//                     {test.name}
-//                   </span>
-//                   {(!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
-//                     <button
-//                       onClick={() => handleOpenResultModal(row, test.id)}
-//                       className="flex items-center gap-1 bg-warning-500 text-pneutral-50 px-3 py-1 rounded-full text-xs whitespace-nowrap"
-//                     >
-//                       <PlusIcon className="w-3 h-3 text-pneutral-50" strokeWidth={3} />
-//                       <span className='text-pneutral-50 text-label-l2'>Result</span>
-//                     </button>
-//                   )}
-//                 </div>
-//               );
-//             }).filter(Boolean)}
-            
-//             {hasMoreTests && (
+//         if (allTestsCompleted) {
+//           return (
+//             <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
+//               Completed
+//             </span>
+//           );
+//         } else if (someTestsCompleted) {
+//           return (
+//             <div className="flex flex-col items-start gap-1">
+//               <span className="inline-flex items-center rounded-full bg-info-50 px-3 py-1 text-p2 font-medium text-info-600">
+//                 {completedTests}/{totalTests} Completed
+//               </span>
 //               <button
-//                 onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
-//                 className="text-xs text-blue-600 font-medium mt-1 w-fit"
+//                 onClick={() => handleViewReport(row)}
+//                 className="text-label-l2 text-info-700 hover:text-info-700 font-medium"
 //               >
-//                 {isExpanded ? 'Show Less' : `View All (${individualTests.length})`}
+//                 View Report
 //               </button>
+//             </div>
+//           );
+//         } else {
+//           return (
+//             <span className="inline-flex items-center rounded-full bg-danger-100 px-3 py-1 text-p2 font-medium text-warning-800">
+//               Pending
+//             </span>
+//           );
+//         }
+//       },
+//     },
+//     {
+//       header: "Tests/Package",
+//       accessor: "title",
+//       render: (row: Patient) => {
+//         const { hasPackages } = getPatientTestItems(row);
+        
+//         // Get all test IDs that belong to packages
+//         const packageTestIds = new Set<number>();
+//         row.packageIds.forEach(packageId => {
+//           const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+//           if (packageDetails) {
+//             packageDetails.tests.forEach(test => {
+//               packageTestIds.add(test.id);
+//             });
+//           }
+//         });
+
+//         // Filter out tests that belong to packages from individual tests
+//         const individualTests = (row.tests || []).filter(test => 
+//           !packageTestIds.has(test.id)
+//         );
+
+//         const isExpanded = expandedRow === row.visitId.toString();
+//         const displayTests = isExpanded ? individualTests : individualTests.slice(0, 3);
+//         const hasMoreTests = individualTests.length > 3;
+
+//         return (
+//           <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
+//             {/* Packages Section */}
+//             {hasPackages && (
+//               <div className="flex flex-col gap-1">
+//                 {row.packageIds.map((packageId) => {
+//                   const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
+//                   if (!packageDetails) return null;
+
+//                   const isPackageExpanded = expandedRow === `package-${row.visitId}-${packageId}`;
+
+//                   return (
+//                     <div key={packageDetails.id} className="flex flex-col">
+//                       {/* Package dropdown button */}
+//                       <button
+//                         onClick={() => setExpandedRow(isPackageExpanded ? null : `package-${row.visitId}-${packageId}`)}
+//                         className={`flex w-full items-center justify-between rounded-xl border px-3 py-2
+//                         ${isPackageExpanded
+//                             ? "border-secondary-300 bg-secondary-50 rounded-b-none border-b-0"
+//                             : "border-secondary-200 bg-secondary-50"
+//                           }`}
+//                       >
+//                         <div className="flex items-center gap-2">
+//                           <Package size={16} />
+//                           <span className="font-medium text-label-l4 text-pneutral-900">
+//                             {packageDetails.packageName}
+//                           </span>
+//                         </div>
+//                         {isPackageExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+//                       </button>
+
+//                       {/* Package tests - shown when expanded */}
+//                       {isPackageExpanded && (
+//                         <div className="w-full rounded-xl rounded-t-none border border-t-0 border-secondary-300 bg-pneutral-50 p-3">
+//                           <div className="flex flex-col gap-1.5">
+//                             {packageDetails.tests.map((test, index) => {
+//                               const testResult = row.testResult?.find(tr => tr.testId === test.id);
+//                               const isCompleted = testResult?.isFilled && testResult?.reportStatus === 'Completed';
+                              
+//                               let statusColor = 'bg-warning-50 text-warning-600';
+                              
+//                               if (testResult) {
+//                                 if (isCompleted) {
+//                                   statusColor = 'bg-success-50 text-success-900';
+//                                 } else if (testResult.isFilled) {
+//                                   statusColor = 'bg-warning-50 text-warning-600';
+//                                 }
+//                               }
+                              
+//                               return (
+//                                 <div key={`${packageDetails.id}-${index}`} className="flex items-center gap-1 py-1">
+//                                   <span className={`${statusColor} px-2 py-1 rounded-full text-p2 inline-block w-fit`}>
+//                                     {test.name}
+//                                   </span>
+//                                   {isCompleted ? (
+//                                     // Show Edit button for completed tests (Admin/SuperAdmin only)
+//                                     canEdit && (
+//                                       <button
+//                                         onClick={() => handleEditResult(row, test.id)}
+//                                         className="text-blue-600"
+//                                         title="Edit Result"
+//                                       >
+//                                         <Edit size={20} />
+//                                       </button>
+//                                     )
+//                                   ) : (
+//                                     // Show Result button for pending tests
+//                                     (!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
+//                                       <button
+//                                         onClick={() => handleOpenResultModal(row, test.id)}
+//                                         className="flex items-center gap-1 bg-warning-500 text-pneutral-50 px-3 py-1 rounded-full text-xs whitespace-nowrap"
+//                                       >
+//                                         <PlusIcon className="w-3 h-3 text-pneutral-50" strokeWidth={3} />
+//                                         <span className='text-pneutral-50 text-label-l2'>Result</span>
+//                                       </button>
+//                                     )
+//                                   )}
+//                                 </div>
+//                               );
+//                             })}
+//                           </div>
+//                         </div>
+//                       )}
+//                     </div>
+//                   );
+//                 }).filter(Boolean)}
+//               </div>
+//             )}
+
+//             {/* Individual Tests Section */}
+//             {individualTests.length > 0 && (
+//               <div className="flex flex-col gap-1">
+//                 {/* Add divider if both sections exist */}
+//                 {hasPackages && (
+//                   <div className="border-t border-white"></div>
+//                 )}
+                
+//                 {/* Show individual tests */}
+//                 {displayTests.map((test) => {
+//                   const testResult = row.testResult?.find(tr => tr.testId === test.id);
+//                   const isCompleted = testResult?.isFilled && testResult?.reportStatus === 'Completed';
+                  
+//                   let statusColor = 'bg-warning-50 text-warning-600';
+                  
+//                   if (testResult) {
+//                     if (isCompleted) {
+//                       statusColor = 'bg-success-50 text-success-900';
+//                     } else if (testResult.isFilled) {
+//                       statusColor = 'bg-warning-50 text-warning-600';
+//                     }
+//                   }
+                  
+//                   return (
+//                     <div key={test.id} className="flex items-center gap-1 py-1">
+//                       <span className={`${statusColor} px-2 py-1 rounded-full text-p2 inline-block w-fit`}>
+//                         {test.name}
+//                       </span>
+//                       {isCompleted ? (
+//                         // Show Edit button for completed tests (Admin/SuperAdmin only)
+//                         canEdit && (
+//                           <button
+//                             onClick={() => handleEditResult(row, test.id)}
+//                             className="text-blue-600"
+//                             title="Edit Result"
+//                           >
+//                             <Edit size={20} />
+//                           </button>
+//                         )
+//                       ) : (
+//                         // Show Result button for pending tests
+//                         (!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
+//                           <button
+//                             onClick={() => handleOpenResultModal(row, test.id)}
+//                             className="flex items-center gap-1 bg-warning-500 text-pneutral-50 px-3 py-1 rounded-full text-xs whitespace-nowrap"
+//                           >
+//                             <PlusIcon className="w-3 h-3 text-pneutral-50" strokeWidth={3} />
+//                             <span className='text-pneutral-50 text-label-l2'>Result</span>
+//                           </button>
+//                         )
+//                       )}
+//                     </div>
+//                   );
+//                 }).filter(Boolean)}
+                
+//                 {hasMoreTests && (
+//                   <button
+//                     onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
+//                     className="text-xs text-blue-600 font-medium mt-1 w-fit"
+//                   >
+//                     {isExpanded ? 'Show Less' : `View All (${individualTests.length})`}
+//                   </button>
+//                 )}
+//               </div>
 //             )}
 //           </div>
-//         )}
-//       </div>
-//     );
-//   },
-// },
-
+//         );
+//       },
+//     },
 //     {
 //       header: "Actions",
 //       accessor: "actions",
 //       render: (row: Patient) => (
 //         <div className="flex items-center gap-2">
-//           {canEdit && (
-//             <button
-//               onClick={() => handleEditSample(row.visitId, row.sampleNames)}
-//               className="p-1.5 text-blue-600 hover:text-blue-800 transition-colors rounded hover:bg-blue-50"
-//               title="Edit Sample"
-//             >
-//               <Edit size={16} />
-//             </button>
-//           )}
 //           {canView && (
 //             <button
 //               onClick={() => handleViewReport(row)}
@@ -1514,7 +1605,7 @@ export default CollectionTable;
 //         selectedTest={selectedTest}
 //         updateCollectionTable={updateCollectionTable}
 //         setUpdateCollectionTable={setUpdateCollectionTable}
-//         setShowModal={setShowPatientReportScreen}
+//         setShowModal={handleCloseResultScreen}
 //       />
 //     );
 //   }
@@ -1616,7 +1707,7 @@ export default CollectionTable;
 //               />
 //             </svg>
 //             <p className="mt-4 text-sm font-medium text-pneutral-500">
-//               {searchTerm ? `No results found for "${searchTerm}"` : "No collected samples found"}
+//               {searchTerm ? `No results found for "${searchTerm}"` : "No pending test results found"}
 //             </p>
 //             {searchTerm && (
 //               <p className="mt-1 text-xs text-pneutral-400">
@@ -1685,828 +1776,36 @@ export default CollectionTable;
 //           />
 //         </NewModal>
 //       )}
-//     </div>
-//   );
-// };
 
-// export default CollectionTable;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// code dated 30.06.2026 
-
-// "use client";
-
-// import React, { useEffect, useState } from "react";
-// import {
-//   Search,
-//   ChevronDown,
-//   ChevronUp,
-//   Edit,
-//   Eye,
-//   PlusIcon,
-// } from "lucide-react";
-// import NewCommonTable from "../../newcommoncomponent/NewCommonTable";
-// import { getHealthPackageById } from '@/../services/packageServices';
-// import { useLabs } from '@/context/LabContext';
-// import { useAuth } from '@/hooks/useAuth';
-// import { TestList } from '@/types/test/testlist';
-// import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, getDateRange } from '@/utils/dateUtils';
-// import { calculateAgeInYears } from '@/utils/ageUtils';
-// import { toast } from 'react-toastify';
-// import Loader from '@/app/(admin)/component/common/Loader';
-// import NewModal from "../../newcommoncomponent/NewModal";
-// import {
-//   //  deleteVisitSample, 
-//    getCollectedCompleted } from '../../../../../../services/sampleServices';
-// import UpdateSample from "./UpdateSample";
-// import { TestResult } from '@/types/sample/sample';
-// import PatientReportDataFill from './Report/PatientReportDataFill';
-// import ViewReport from './Report/ViewReport';
-
-// interface HealthPackage {
-//   id: number;
-//   packageName: string;
-//   tests: Array<{
-//     id: number;
-//     name: string;
-//     price: number;
-//     category?: string;
-//   }>;
-// }
-
-// interface Patient {
-//   visitId: number;
-//   patientname: string;
-//   gender: string;
-//   contactNumber: string;
-//   email: string;
-//   visitDate: string;
-//   visitStatus: string;
-//   sampleNames: string[];
-//   visitCode?: string;
-//   testIds: number[];
-//   tests?: Array<{
-//     id: number;
-//     name: string;
-//   }>;
-//   packageIds: number[];
-//   dateOfBirth?: string;
-//   testResult?: TestResult[];
-//   doctorName?: string;
-//    visitType?: string;
-// }
-
-// type SortOption = 'patientName' | 'patientId';
-
-// interface CollectionTableProps {
-//   closeModal?: () => void;
-//   onDataUpdate?: (count: number) => void;
-//   onHideKPI?: () => void;
-//   onShowKPI?: () => void;
-// }
-
-// const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideKPI, onShowKPI  }) => {
-//   const { currentLab } = useLabs();
-//   const { isAdmin, isSuperAdmin } = useAuth();
-  
-//   // State management
-//   const [patientList, setPatientList] = useState<Patient[]>([]);
-//   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
-//   const [healthPackages, setHealthPackages] = useState<HealthPackage[]>([]);
-//   const [searchTerm, setSearchTerm] = useState("");
-//   const [dateFilter, setDateFilter] = useState<DateFilterOption>('today');
-//   const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
-//   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
-//   const [isFetching, setIsFetching] = useState(false);
-//   const [sortBy, setSortBy] = useState<SortOption>('patientId');
-  
-//   // Modal states
-//   const [showEditModal, setShowEditModal] = useState(false);
-//   const [selectedVisitId, setSelectedVisitId] = useState<number | null>(null);
-//   const [selectedSampleNames, setSelectedSampleNames] = useState<string[]>([]);
-//   // const [showResultModal, setShowResultModal] = useState(false);
-//   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-//   const [selectedTest, setSelectedTest] = useState<TestList | null>(null);
-//   const [showViewReportModal, setShowViewReportModal] = useState(false);
-//   const [viewPatient, setViewPatient] = useState<Patient | null>(null);
-//   const [updateCollectionTable, setUpdateCollectionTable] = useState(false);
-//   const [showPatientReportScreen, setShowPatientReportScreen] = useState(false);
-  
-//   // Expanded row state for dropdown
-//   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-
-//   useEffect(() => {
-//     if (onDataUpdate) {
-//       onDataUpdate(filteredPatients.length);
-//     }
-//   }, [filteredPatients, onDataUpdate]);
-
-//   // Fetch collected visits data
-//   const fetchVisits = async () => {
-//     if (!currentLab?.id) return;
-
-//     try {
-//       setIsFetching(true);
-//       const { startDate, endDate } = getDateRange(dateFilter, customStartDate, customEndDate);
-
-//       if (!startDate || !endDate) return;
-
-//       const response = await getCollectedCompleted(
-//         currentLab.id,
-//         formatDateForAPI(startDate),
-//         formatDateForAPI(endDate),
-//       );
-
-//       // Filter out visits where all tests are completed
-//       const collectedVisits = response
-//         .filter(visit => {
-//           if (!visit.testResult || visit.testResult.length === 0) {
-//             return true;
-//           }
-//           const allTestsCompleted = visit.testResult.every(tr => tr.reportStatus === 'Completed');
-//           return !allTestsCompleted;
-//         })
-//         .sort((a, b) => b.visitId - a.visitId);
-
-//       const normalizedVisits: Patient[] = collectedVisits.map((visit) => {
-//         const visitTests = visit.tests ?? [];
-//         return {
-//           visitId: visit.visitId,
-//           patientname: visit.patientname,
-//           gender: visit.gender ?? '',
-//           contactNumber: visit.contactNumber ?? '',
-//           email: visit.email ?? '',
-//           visitDate: visit.visitDate,
-//           visitStatus: visit.visitStatus,
-//           sampleNames: visit.sampleNames,
-//           visitCode: visit.visitCode,
-//           testIds: visit.testIds ?? visitTests.map((test) => test.id),
-//           tests: visitTests,
-//           packageIds: visit.packageIds,
-//           dateOfBirth: visit.dateOfBirth,
-//           testResult: visit.testResult as TestResult[] | undefined,
-//           doctorName: visit.doctorName ?? '',
-//     visitType: visit.visitType ?? '',
-//         };
-//       });
-
-//       setPatientList(normalizedVisits);
-
-//       // Fetch health packages
-//       const uniquePackageIds = Array.from(new Set(normalizedVisits.flatMap((visit) => visit.packageIds)));
-//       if (uniquePackageIds.length > 0) {
-//         const fetchedPackages = await Promise.all(
-//           uniquePackageIds.map((packageId) => getHealthPackageById(currentLab.id, packageId))
-//         );
-//         setHealthPackages(fetchedPackages.map((pkg) => pkg.data));
-//       }
-      
-//     } catch (error: unknown) {
-//       toast.error((error as Error).message || 'An error occurred while fetching collected samples', { autoClose: 2000 });
-//     } finally {
-//       setIsFetching(false);
-//     }
-//   };
-
-//   // Handle search and filter
-//   useEffect(() => {
-//     let filtered = patientList;
-
-//     // Apply search filter
-//     if (searchTerm.trim()) {
-//       const searchLower = searchTerm.toLowerCase();
-//       filtered = patientList.filter(patient => 
-//         patient.visitCode?.toLowerCase().includes(searchLower) ||
-//         patient.patientname?.toLowerCase().includes(searchLower) ||
-//         patient.visitId.toString().includes(searchTerm)
-//       );
-//     }
-
-//     // Apply sorting
-//     filtered = [...filtered].sort((a, b) => {
-//       if (sortBy === 'patientName') {
-//         const nameA = a.patientname?.toLowerCase() || '';
-//         const nameB = b.patientname?.toLowerCase() || '';
-//         return nameA.localeCompare(nameB);
-//       } else {
-//         return a.visitId - b.visitId;
-//       }
-//     });
-
-//     setFilteredPatients(filtered);
-//   }, [patientList, searchTerm, sortBy]);
-
-//   // Effects
-//   useEffect(() => {
-//     fetchVisits();
-//   }, [currentLab, dateFilter, customStartDate, customEndDate, updateCollectionTable]);
-
-//   // Get test items for a patient
-//   const getPatientTestItems = (patient: Patient) => {
-//     const packageTestIds = new Set<number>();
-//     patient.packageIds.forEach(packageId => {
-//       const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-//       if (packageDetails) {
-//         packageDetails.tests.forEach(test => {
-//           packageTestIds.add(test.id);
-//         });
-//       }
-//     });
-
-//     const visitTests = patient.tests || [];
-//     const individualTests = visitTests.filter(test => !packageTestIds.has(test.id));
-    
-//     return {
-//       tests: individualTests,
-//       hasPackages: patient.packageIds.length > 0,
-//       totalTestCount: individualTests.length + patient.packageIds.reduce((total, packageId) => {
-//         const pkg = healthPackages.find((p) => p.id === packageId);
-//         return total + (pkg?.tests?.length || 0);
-//       }, 0),
-//       packageNames: patient.packageIds.map(id => 
-//         healthPackages.find(pkg => pkg.id === id)?.packageName
-//       ).filter(Boolean)
-//     };
-//   };
-
-//   // Handle edit sample
-//   const handleEditSample = (visitId: number, sampleNames: string[]) => {
-//     setSelectedVisitId(visitId);
-//     setSelectedSampleNames(sampleNames);
-//     setShowEditModal(true);
-//   };
-
-//   // Handle delete sample
-//   // const handleDeleteSample = async (visitId: number) => {
-//   //   if (!window.confirm('Are you sure you want to delete this sample?')) return;
-    
-//   //   try {
-//   //     await deleteVisitSample(visitId, []);
-//   //     toast.success('Sample deleted successfully');
-//   //     fetchVisits();
-//   //   } catch (error) {
-//   //     toast.error((error as Error).message || 'Error deleting sample');
-//   //   }
-//   // };
-
-//   // Handle view report
-//   const handleViewReport = (patient: Patient) => {
-//     setViewPatient(patient);
-//     setShowViewReportModal(true);
-//   };
-
-//   // Handle open result modal
-//   const handleOpenResultModal = (patient: Patient, testId: number) => {
-//     // Find the test
-//     const visitTest = patient.tests?.find((t) => t.id === testId);
-//     let selected: TestList | null = visitTest
-//       ? {
-//           id: visitTest.id,
-//           name: visitTest.name,
-//           price: 0,
-//           category: '',
-//         }
-//       : null;
-    
-//     // If not found in individual tests, search in package tests
-//     if (!selected) {
-//       for (const packageId of patient.packageIds) {
-//         const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-//         if (packageDetails) {
-//           const packageTest = packageDetails.tests.find((t) => t.id === testId);
-//           if (packageTest) {
-//             selected = {
-//               id: packageTest.id,
-//               name: packageTest.name,
-//               price: packageTest.price,
-//               category: packageTest.category || ''
-//             };
-//             break;
-//           }
-//         }
-//       }
-//     }
-
-//     if (!selected) return;
-
-//    setSelectedPatient(patient);
-// setSelectedTest(selected);
-// setShowPatientReportScreen(true);
-// if (onHideKPI) {
-//       onHideKPI();
-//     }
-//   };
-//    // When closing the result entry screen, show KPI
-//   const handleCloseResultScreen = () => {
-//     setShowPatientReportScreen(false);
-//     setSelectedPatient(null);
-//     setSelectedTest(null);
-    
-//     // Show KPI when exiting result screen
-//     if (onShowKPI) {
-//       onShowKPI();
-//     }
-//   };
-
-//   // Update the return statement for PatientReportDataFill
-//   if (
-//     showPatientReportScreen &&
-//     selectedPatient &&
-//     selectedTest
-//   ) {
-//     return (
-//       <PatientReportDataFill
-//         selectedPatient={selectedPatient}
-//         selectedTest={selectedTest}
-//         updateCollectionTable={updateCollectionTable}
-//         setUpdateCollectionTable={setUpdateCollectionTable}
-//         setShowModal={handleCloseResultScreen} 
-//       />
-//     );
-//   }
-
-//   // Check if user has permission for actions
-//   const canEdit = isAdmin || isSuperAdmin;
-//   // const canDelete = isAdmin || isSuperAdmin;
-//   const canView = true; // All users can view
-
-//   // Table columns definition
-//   const columns = [
-//     {
-//       header: "Patient ID",
-//       accessor: "id",
-//       render: (row: Patient) => (
-//         <div>
-//           <p className="font-semibold text-p3 text-pneutral-900">
-//             {row.visitCode || `#${row.visitId}`}
-//           </p>
-//           <p className="text-[12px] leading-[16px] font-normal text-pneutral-500">
-//             {row.visitDate ? new Date(row.visitDate).toLocaleDateString('en-IN') : ''}
-//           </p>
-//         </div>
-//       ),
-//     },
-//     {
-//       header: "Patient Details",
-//       accessor: "name",
-//       render: (row: Patient) => (
-//         <div>
-//           <p className="font-semibold text-p3 text-pneutral-900">
-//             {row.patientname}
-//           </p>
-//           <p className="text-p2 leading-[16px] font-normal text-pneutral-500">
-//             {row.dateOfBirth ? calculateAgeInYears(row.dateOfBirth) : 'N/A'} | {row.gender}
-//           </p>
-//         </div>
-//       ),
-//     },
-
-
-//     {
-//   header: "Status",
-//   accessor: "status",
-//   render: (row: Patient) => {
-//     if (!row.testResult || row.testResult.length === 0) {
-//       return (
-//         <span className="inline-flex items-center rounded-full bg-danger-100 px-3 py-1 text-p2 font-medium text-warning-800">
-//           Pending
-//         </span>
-//       );
-//     }
-
-//     const totalTests = row.testResult.length;
-//     const completedTests = row.testResult.filter(tr => tr.isFilled && tr.reportStatus === 'Completed').length;
-//     const allTestsCompleted = completedTests === totalTests;
-//     const someTestsCompleted = completedTests > 0 && completedTests < totalTests;
-
-//     if (allTestsCompleted) {
-//       return (
-//         <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
-//           Completed
-//         </span>
-//       );
-//     } else if (someTestsCompleted) {
-//       return (
-//         <div className="flex flex-col items-start gap-1">
-//           <span className="inline-flex items-center rounded-full bg-info-50 px-3 py-1 text-p2 font-medium text-info-600">
-//             {completedTests}/{totalTests} Completed
-//           </span>
-//           <button
-//             onClick={() => handleViewReport(row)}
-//             className="text-label-l2 text-info-700 hover:text-info-700 font-medium"
-//           >
-//             View Report
-//           </button>
-//         </div>
-//       );
-//     } else {
-//       return (
-//         <span className="inline-flex items-center rounded-full bg-danger-100 px-3 py-1 text-p2 font-medium text-warning-800">
-//           Pending
-//         </span>
-//       );
-//     }
-//   },
-// },
-
-// {
-//       header: "Tests/Package",
-//       accessor: "title",
-//       render: (row: Patient) => {
-//         const {  hasPackages } = getPatientTestItems(row);
-        
-//         // Get all test IDs that belong to packages
-//         const packageTestIds = new Set<number>();
-//         row.packageIds.forEach(packageId => {
-//           const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-//           if (packageDetails) {
-//             packageDetails.tests.forEach(test => {
-//               packageTestIds.add(test.id);
-//             });
-//           }
-//         });
-
-//         // Filter out tests that belong to packages from individual tests
-//         const individualTests = (row.tests || []).filter(test => 
-//           !packageTestIds.has(test.id)
-//         );
-
-//         const isExpanded = expandedRow === row.visitId.toString();
-//         const displayTests = isExpanded ? individualTests : individualTests.slice(0, 3);
-//         const hasMoreTests = individualTests.length > 3;
-
-//         // If there are only individual tests (no packages)
-//         if (!hasPackages) {
-//           return (
-//             <div className="flex flex-col gap-1 min-w-[250px] max-w-[350px]">
-//               {displayTests.map((test) => {
-//                 const testResult = row.testResult?.find(tr => tr.testId === test.id);
-                
-//                 // Determine test status color
-//                 let statusColor = 'bg-warning-50 text-warning-600';
-                
-//                 if (testResult) {
-//                   if (testResult.isFilled && testResult.reportStatus === 'Completed') {
-//                     statusColor = 'bg-success-50 text-success-900';
-//                   } else if (testResult.isFilled) {
-//                     statusColor = 'bg-warning-50 text-warning-600';
-//                   }
+//       {/* Edit Report Modal - Uses Editreport component */}
+//       {showEditReportModal && editPatient && editTest && editReportId !== null && (
+//         <NewModal
+//           isOpen={showEditReportModal}
+//           title={`Edit Report - ${editTest.name}`}
+//           onClose={() => {
+//             setShowEditReportModal(false);
+//             setEditPatient(null);
+//             setEditTest(null);
+//             setEditReportId(null);
+//           }}
+//           modalClassName="max-w-6xl max-h-[90vh] rounded-lg overflow-y-auto overflow-y-auto"
+//         >
+//           <Editreport
+//             editPatient={editPatient}
+//             selectedTest={editTest}
+//             reportId={editReportId}
+//             setShowModal={(value) => {
+//               setShowEditReportModal((prev) => {
+//                 const next = typeof value === 'function' ? value(prev) : value;
+//                 if (!next) {
+//                   setEditPatient(null);
+//                   setEditTest(null);
+//                   setEditReportId(null);
 //                 }
-                
-//                 return (
-//                   <div key={test.id} className="flex items-center gap-1 py-1">
-//                     <span className={`${statusColor} px-2 py-1 rounded-full text-p2 inline-block w-fit`}>
-//                       {test.name}
-//                     </span>
-//                     {/* Only show result button if test is not completed */}
-//                     {(!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
-//                       <button
-//                         onClick={() => handleOpenResultModal(row, test.id)}
-//                         className="flex items-center gap-1 bg-warning-500 text-pneutral-50 px-3 py-1 rounded-full text-xs transition-colors whitespace-nowrap"
-//                       >
-//                         <PlusIcon className="w-3 h-3 text-pneutral-50" strokeWidth={3} />
-//                         <span className='text-pneutral-50 text-label-l2'>Result</span>
-//                       </button>
-//                     )}
-//                   </div>
-//                 );
-//               }).filter(Boolean)}
-              
-//               {hasMoreTests && (
-//                 <button
-//                   onClick={() => setExpandedRow(isExpanded ? null : row.visitId.toString())}
-//                   className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
-//                 >
-//                   {isExpanded ? 'Show Less' : `View All (${individualTests.length})`}
-//                 </button>
-//               )}
-//             </div>
-//           );
-//         }
-
-//         // If there are packages
-//         return (
-//           <div className="flex flex-col gap-2 min-w-[250px] max-w-[350px]">
-//             {row.packageIds.map((packageId) => {
-//               const packageDetails = healthPackages.find((pkg) => pkg.id === packageId);
-//               if (!packageDetails) return null;
-
-//               const isPackageExpanded = expandedRow === `package-${row.visitId}-${packageId}`;
-
-//               return (
-//                 <div key={packageDetails.id} className="flex flex-col gap-1">
-//                   {/* Package name with dropdown toggle */}
-//                   <button
-//                     onClick={() => setExpandedRow(isPackageExpanded ? null : `package-${row.visitId}-${packageId}`)}
-//                     className="flex items-center justify-between w-full"
-//                   >
-//                     <div className="flex items-center gap-1">
-//                       <span className="text-xs">📦</span>
-//                       <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs font-medium">
-//                         {packageDetails.packageName}
-//                       </span>
-//                     </div>
-//                     {isPackageExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-//                   </button>
-                  
-//                   {/* Package tests - shown when expanded */}
-//                   {isPackageExpanded && (
-//                     <div className="flex flex-col gap-1 ml-2">
-//                       {packageDetails.tests.map((test, index) => {
-//                         const testResult = row.testResult?.find(tr => tr.testId === test.id);
-                        
-//                         // Determine test status color
-//                         let statusColor = 'bg-warning-50 text-warning-600';
-                        
-//                         if (testResult) {
-//                           if (testResult.isFilled && testResult.reportStatus === 'Completed') {
-//                             statusColor = 'bg-success-50 text-success-900';
-//                           } else if (testResult.isFilled) {
-//                             statusColor = 'bg-warning-50 text-warning-600';
-//                           }
-//                         }
-                        
-//                         return (
-//                           <div key={`${packageDetails.id}-${index}`} className="flex items-center gap-1 py-1 border-b border-gray-100 last:border-b-0">
-//                             <span className={`${statusColor} px-2 py-0.5 rounded-full text-xs inline-block w-fit`}>
-//                               {test.name}
-//                             </span>
-//                             {/* Only show result button if test is not completed */}
-//                             {(!testResult || !testResult.isFilled || testResult.reportStatus !== 'Completed') && (
-//                               <button
-//                                 onClick={() => handleOpenResultModal(row, test.id)}
-//                                 className="flex items-center gap-1 bg-purple-500 text-white px-1.5 py-0.5 rounded text-xs hover:bg-purple-600 transition-colors whitespace-nowrap"
-//                               >
-//                                 <PlusIcon className="w-2.5 h-2.5 text-white" />
-//                                 <span className='text-white text-xs'>Result</span>
-//                               </button>
-//                             )}
-//                           </div>
-//                         );
-//                       })}
-//                     </div>
-//                   )}
-//                 </div>
-//               );
-//             }).filter(Boolean)}
-//           </div>
-//         );
-//       },
-//     },
-
-//     {
-//       header: "Actions",
-//       accessor: "actions",
-//       render: (row: Patient) => (
-//         <div className="flex items-center gap-2">
-//           {canEdit && (
-//             <button
-//               onClick={() => handleEditSample(row.visitId, row.sampleNames)}
-//               className="p-1.5 text-blue-600 hover:text-blue-800 transition-colors rounded hover:bg-blue-50"
-//               title="Edit Sample"
-//             >
-//               <Edit size={16} />
-//             </button>
-//           )}
-//           {canView && (
-//             <button
-//               onClick={() => handleViewReport(row)}
-//               className="p-1.5 text-info-700 hover:text-info-700 transition-colors rounded hover:bg-info-50"
-//               title="View Report"
-//             >
-//               <Eye size={16} />
-//             </button>
-//           )}
-//         </div>
-//       ),
-//     },
-//   ];
-
-//   if (isFetching) {
-//     return (
-//       <div className="flex flex-col items-center justify-center h-64">
-//         <Loader type="progress" fullScreen={false} text="Loading collected samples..." />
-//         <p className="mt-4 text-sm text-gray-500">Fetching the latest collected samples...</p>
-//       </div>
-//     );
-//   }
-
-//   if (
-//     showPatientReportScreen &&
-//     selectedPatient &&
-//     selectedTest
-//   ) {
-//     return (
-//       <PatientReportDataFill
-//         selectedPatient={selectedPatient}
-//         selectedTest={selectedTest}
-//         updateCollectionTable={updateCollectionTable}
-//         setUpdateCollectionTable={setUpdateCollectionTable}
-//         setShowModal={setShowPatientReportScreen}
-//       />
-//     );
-//   }
-
-//   return (
-//     <div className="w-full">
-//       {/* Header */}
-//       <div className="mb-5">
-//         <h1 className="text-2xl font-semibold text-pneutral-900">
-//           Partially Completed Test
-//         </h1>
-//         <p className="mt-1 text-sm text-pneutral-500">
-//           Manage and track Partially Completed Test Results
-//         </p>
-//       </div>
-
-//       {/* Filters */}
-//       <div className="mt-5 rounded-xl border border-pneutral-200 bg-white p-4">
-//         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-//           <div className="relative flex-1 max-w-xl">
-//             <Search
-//               size={18}
-//               className="absolute left-3 top-1/2 -translate-y-1/2 text-sneutral-700"
-//             />
-//             <input
-//               type="text"
-//               placeholder="Search by ID or Name"
-//               value={searchTerm}
-//               onChange={(e) => setSearchTerm(e.target.value)}
-//               className="h-10 w-full rounded-lg border border-pneutral-200 pl-10 pr-4 text-sm outline-none focus:border-pneutral-500"
-//             />
-//           </div>
-//           <div className="flex flex-wrap items-center gap-4">
-//             <div className="flex items-center gap-2">
-//               <span className="text-sm text-gray-500">Date Range:</span>
-//               <select
-//                 value={dateFilter}
-//                 onChange={(e) => setDateFilter(e.target.value as DateFilterOption)}
-//                 className="h-10 rounded-md border border-pneutral-200 px-3 text-sm focus:border-pneutral-500"
-//               >
-//                 {DATE_FILTER_OPTIONS.map(option => (
-//                   <option key={option.value} value={option.value}>
-//                     {option.label}
-//                   </option>
-//                 ))}
-//               </select>
-//             </div>
-            
-//             {dateFilter === 'custom' && (
-//               <>
-//                 <input
-//                   type="date"
-//                   value={customStartDate ? customStartDate.toISOString().split('T')[0] : ''}
-//                   onChange={(e) => setCustomStartDate(e.target.value ? new Date(e.target.value) : null)}
-//                   className="h-10 rounded-md border border-pneutral-200 px-3 text-sm focus:border-pneutral-500"
-//                   placeholder="Start Date"
-//                 />
-//                 <input
-//                   type="date"
-//                   value={customEndDate ? customEndDate.toISOString().split('T')[0] : ''}
-//                   onChange={(e) => setCustomEndDate(e.target.value ? new Date(e.target.value) : null)}
-//                   className="h-10 rounded-md border border-pneutral-200 px-3 text-sm focus:border-pneutral-500"
-//                   placeholder="End Date"
-//                 />
-//               </>
-//             )}
-
-//             <div className="flex items-center gap-2">
-//               <span className="text-sm text-pneutral-500">Sort by:</span>
-//               <select
-//                 value={sortBy}
-//                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-//                 className="h-10 rounded-md border border-pneutral-200 px-3 text-sm focus:border-pneutral-500"
-//               >
-//                 <option value="patientId">Patient ID</option>
-//                 <option value="patientName">Patient Name</option>
-//               </select>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* Table */}
-//       <div className="mt-5 relative">
-//         {filteredPatients.length === 0 ? (
-//           <div className="flex flex-col items-center justify-center rounded-xl border border-pneutral-200 bg-white py-16">
-//             <svg
-//               xmlns="http://www.w3.org/2000/svg"
-//               className="h-16 w-16 text-pneutral-300"
-//               fill="none"
-//               viewBox="0 0 24 24"
-//               stroke="currentColor"
-//             >
-//               <path
-//                 strokeLinecap="round"
-//                 strokeLinejoin="round"
-//                 strokeWidth={1}
-//                 d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-//               />
-//             </svg>
-//             <p className="mt-4 text-sm font-medium text-pneutral-500">
-//               {searchTerm ? `No results found for "${searchTerm}"` : "No collected samples found"}
-//             </p>
-//             {searchTerm && (
-//               <p className="mt-1 text-xs text-pneutral-400">
-//                 Try adjusting your search or filter criteria
-//               </p>
-//             )}
-//           </div>
-//         ) : (
-//           <NewCommonTable 
-//             columns={columns} 
-//             data={filteredPatients} 
-//             pageSize={10}
-//             showPagination={true}
-//           />
-//         )}
-//       </div>
-
-//       {/* Edit Sample Modal */}
-//       {showEditModal && selectedVisitId && (
-//         <NewModal
-//           isOpen={showEditModal}
-//           title="Edit Sample"
-//           onClose={() => {
-//             setShowEditModal(false);
-//             setSelectedVisitId(null);
-//             setSelectedSampleNames([]);
-//           }}
-//           modalClassName="max-w-xl"
-//         >
-//           <UpdateSample
-//             visitId={selectedVisitId}
-//             sampleNames={selectedSampleNames}
-//             onClose={() => {
-//               setShowEditModal(false);
-//               setSelectedVisitId(null);
-//               setSelectedSampleNames([]);
-//               setUpdateCollectionTable(prev => !prev);
-//               fetchVisits();
+//                 return next;
+//               });
 //             }}
-//           />
-//         </NewModal>
-//       )}
-
-//       {/* Result Entry Modal */}
-//       {/* {showResultModal && selectedPatient && selectedTest && (
-//         <NewModal
-//           isOpen={showResultModal}
-//           title={`Enter Result Data - ${selectedTest.name}`}
-//           onClose={() => {
-//             setShowResultModal(false);
-//             setSelectedPatient(null);
-//             setSelectedTest(null);
-//           }}
-//           modalClassName="max-w-5xl"
-//         >
-//           <PatientReportDataFill
-//             selectedPatient={selectedPatient}
-//             selectedTest={selectedTest}
-//             updateCollectionTable={updateCollectionTable}
-//             setUpdateCollectionTable={setUpdateCollectionTable}
-//             setShowModal={setShowResultModal}
-//           />
-//         </NewModal>
-//       )} */}
-
-//       {/* View Report Modal */}
-//       {showViewReportModal && viewPatient && (
-//         <NewModal
-//           isOpen={showViewReportModal}
-//           title="View Report"
-//           onClose={() => {
-//             setShowViewReportModal(false);
-//             setViewPatient(null);
-//           }}
-//           modalClassName="max-w-4xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
-//         >
-//           <ViewReport 
-//             viewPatient={{
-//               ...viewPatient,
-//               gender: viewPatient.gender ?? '',
-//               contactNumber: viewPatient.contactNumber ?? '',
-//               email: viewPatient.email ?? '',
-//               doctorName: viewPatient.doctorName ?? '',
-//               visitType: viewPatient.visitType ?? '',
-//               visitStatus: viewPatient.visitStatus ?? ''
-//             }}
-//             hidePrintButton={false}
+//             refreshReports={fetchVisits}
 //           />
 //         </NewModal>
 //       )}
@@ -2515,7 +1814,6 @@ export default CollectionTable;
 // };
 
 // export default CollectionTable;
-
 
 
 

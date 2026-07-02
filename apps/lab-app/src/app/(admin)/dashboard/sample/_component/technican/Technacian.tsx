@@ -2,8 +2,6 @@
 
 import React, { useCallback, useState } from 'react';
 import KPISection from '../KPISection';
-
-// import { useLabs } from '@/context/LabContext';
 import PendingTable from '../PendingTable';
 import CompletedTable from '../CompletedTable';
 import CollectionTable from '../CollectionTable';
@@ -12,9 +10,11 @@ import CollectedSample from '../CollectedSample';
 type ViewType = 'pending' | 'collected' | 'partial' | 'completed';
 
 const Technician = () => {
-  // const { currentLab } = useLabs();
   const [currentView, setCurrentView] = useState<ViewType>('pending');
-  const [hideKPI, setHideKPI] = useState(false); // Add this state
+  const [hideKPI, setHideKPI] = useState(false);
+  
+  // Add refresh trigger state
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // State to hold KPI data from child components
   const [kpiData, setKpiData] = useState({
@@ -27,6 +27,11 @@ const Technician = () => {
   // Handler to update KPI data from child components
   const updateKPIData = useCallback((type: ViewType, count: number) => {
     setKpiData(prev => (prev[type] === count ? prev : { ...prev, [type]: count }));
+  }, []);
+
+  // Function to trigger refresh of all tables
+  const refreshAllTables = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
   }, []);
 
   const handlePendingUpdate = useCallback((count: number) => updateKPIData('pending', count), [updateKPIData]);
@@ -64,30 +69,40 @@ const Technician = () => {
   const handleCardChange = (index: number) => {
     const views: ViewType[] = ['pending', 'collected', 'partial', 'completed'];
     setCurrentView(views[index]);
-    setHideKPI(false); // Show KPI when changing views
+    setHideKPI(false);
   };
 
-  // All four tables stay mounted at all times (hidden via CSS instead of
-  // unmounted) so each one fetches its data and reports its KPI count as
-  // soon as the screen opens, instead of only after its tab is clicked.
   const renderContent = () => {
     return (
       <>
         <div className={currentView === 'pending' ? '' : 'hidden'}>
-          <PendingTable onDataUpdate={handlePendingUpdate} />
+          <PendingTable 
+            onDataUpdate={handlePendingUpdate} 
+            refreshTrigger={refreshTrigger}
+            onSampleAdded={refreshAllTables}
+          />
         </div>
         <div className={currentView === 'collected' ? '' : 'hidden'}>
-          <CollectedSample onDataUpdate={handleCollectedUpdate} />
+          <CollectedSample 
+            onDataUpdate={handleCollectedUpdate}
+            refreshTrigger={refreshTrigger}
+            onSampleEdited={refreshAllTables}
+          />
         </div>
         <div className={currentView === 'partial' ? '' : 'hidden'}>
           <CollectionTable
             onDataUpdate={handlePartialUpdate}
             onHideKPI={handleHideKPI}
             onShowKPI={handleShowKPI}
+            refreshTrigger={refreshTrigger}
+            onResultAdded={refreshAllTables}
           />
         </div>
         <div className={currentView === 'completed' ? '' : 'hidden'}>
-          <CompletedTable onDataUpdate={handleCompletedUpdate} />
+          <CompletedTable 
+            onDataUpdate={handleCompletedUpdate}
+            refreshTrigger={refreshTrigger}
+          />
         </div>
       </>
     );
@@ -128,23 +143,26 @@ export default Technician;
 
 
 
+// working code but without refresh of the data .....................
+
 // "use client";
 
-// import React, { useState} from 'react';
+// import React, { useCallback, useState } from 'react';
 // import KPISection from '../KPISection';
 
-// import { useLabs } from '@/context/LabContext';
+// // import { useLabs } from '@/context/LabContext';
 // import PendingTable from '../PendingTable';
-// import CollectedSample from '../CollectedSample';
-// import CollectionTable from '../CollectionTable';
 // import CompletedTable from '../CompletedTable';
+// import CollectionTable from '../CollectionTable';
+// import CollectedSample from '../CollectedSample';
 
 // type ViewType = 'pending' | 'collected' | 'partial' | 'completed';
 
 // const Technician = () => {
-//   const { currentLab } = useLabs();
+//   // const { currentLab } = useLabs();
 //   const [currentView, setCurrentView] = useState<ViewType>('pending');
-  
+//   const [hideKPI, setHideKPI] = useState(false); // Add this state
+
 //   // State to hold KPI data from child components
 //   const [kpiData, setKpiData] = useState({
 //     pending: 0,
@@ -154,12 +172,16 @@ export default Technician;
 //   });
 
 //   // Handler to update KPI data from child components
-//   const updateKPIData = (type: ViewType, count: number) => {
-//     setKpiData(prev => ({
-//       ...prev,
-//       [type]: count
-//     }));
-//   };
+//   const updateKPIData = useCallback((type: ViewType, count: number) => {
+//     setKpiData(prev => (prev[type] === count ? prev : { ...prev, [type]: count }));
+//   }, []);
+
+//   const handlePendingUpdate = useCallback((count: number) => updateKPIData('pending', count), [updateKPIData]);
+//   const handleCollectedUpdate = useCallback((count: number) => updateKPIData('collected', count), [updateKPIData]);
+//   const handlePartialUpdate = useCallback((count: number) => updateKPIData('partial', count), [updateKPIData]);
+//   const handleCompletedUpdate = useCallback((count: number) => updateKPIData('completed', count), [updateKPIData]);
+//   const handleHideKPI = useCallback(() => setHideKPI(true), []);
+//   const handleShowKPI = useCallback(() => setHideKPI(false), []);
 
 //   // Stats for KPISection
 //   const stats = [
@@ -174,7 +196,7 @@ export default Technician;
 //       count: kpiData.collected
 //     },
 //     {
-//       title: "Partially Completed Test Results",
+//       title: "Pending Test Results",
 //       value: kpiData.partial.toString(),
 //       count: kpiData.partial
 //     },
@@ -189,22 +211,33 @@ export default Technician;
 //   const handleCardChange = (index: number) => {
 //     const views: ViewType[] = ['pending', 'collected', 'partial', 'completed'];
 //     setCurrentView(views[index]);
+//     setHideKPI(false); // Show KPI when changing views
 //   };
 
-//   // Render the appropriate component based on current view
+//   // All four tables stay mounted at all times (hidden via CSS instead of
+//   // unmounted) so each one fetches its data and reports its KPI count as
+//   // soon as the screen opens, instead of only after its tab is clicked.
 //   const renderContent = () => {
-//     switch (currentView) {
-//       case 'pending':
-//         return <PendingTable onDataUpdate={(count) => updateKPIData('pending', count)} />;
-//       case 'collected':
-//         return <CollectedSample onDataUpdate={(count) => updateKPIData('collected', count)} />;
-//       case 'partial':
-//         return <CollectionTable onDataUpdate={(count) => updateKPIData('partial', count)} />;
-//       case 'completed':
-//         return <CompletedTable onDataUpdate={(count) => updateKPIData('completed', count)} />;
-//       default:
-//         return <PendingTable onDataUpdate={(count) => updateKPIData('pending', count)} />;
-//     }
+//     return (
+//       <>
+//         <div className={currentView === 'pending' ? '' : 'hidden'}>
+//           <PendingTable onDataUpdate={handlePendingUpdate} />
+//         </div>
+//         <div className={currentView === 'collected' ? '' : 'hidden'}>
+//           <CollectedSample onDataUpdate={handleCollectedUpdate} />
+//         </div>
+//         <div className={currentView === 'partial' ? '' : 'hidden'}>
+//           <CollectionTable
+//             onDataUpdate={handlePartialUpdate}
+//             onHideKPI={handleHideKPI}
+//             onShowKPI={handleShowKPI}
+//           />
+//         </div>
+//         <div className={currentView === 'completed' ? '' : 'hidden'}>
+//           <CompletedTable onDataUpdate={handleCompletedUpdate} />
+//         </div>
+//       </>
+//     );
 //   };
 
 //   return (
@@ -219,15 +252,17 @@ export default Technician;
 //         </p>
 //       </div>
 
-//       {/* KPI Section */}
-//       <KPISection
-//         data={stats}
-//         onCardChange={handleCardChange}
-//         selectedIndex={['pending', 'collected', 'partial', 'completed'].indexOf(currentView)}
-//       />
+//       {/* KPI Section - Hide when on result entry screen */}
+//       {!hideKPI && (
+//         <KPISection
+//           data={stats}
+//           onCardChange={handleCardChange}
+//           selectedIndex={['pending', 'collected', 'partial', 'completed'].indexOf(currentView)}
+//         />
+//       )}
 
 //       {/* Dynamic Content */}
-//       <div className="mt-5">
+//       <div className={`mt-5 ${hideKPI ? 'mt-0' : ''}`}>
 //         {renderContent()}
 //       </div>
 //     </div>
@@ -235,6 +270,11 @@ export default Technician;
 // };
 
 // export default Technician;
+
+
+
+
+
 
 
 

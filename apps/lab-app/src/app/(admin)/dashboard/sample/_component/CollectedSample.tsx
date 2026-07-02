@@ -54,11 +54,14 @@ interface CollectedPatient {
 interface CollectedSampleProps {
   onDataUpdate?: (count: number) => void;
   onDateFilterChange?: (filter: DateFilterOption, startDate?: Date | null, endDate?: Date | null) => void;
+  refreshTrigger?: number; 
+  onSampleEdited?: () => void;
 }
 
 type SortOption = 'patientName' | 'patientId';
 
-const CollectedSample = ({ onDataUpdate, onDateFilterChange }: CollectedSampleProps) => {
+const CollectedSample = ({ onDataUpdate, onDateFilterChange, refreshTrigger, 
+  onSampleEdited  }: CollectedSampleProps) => {
   const { currentLab } = useLabs();
   
   // State management
@@ -94,6 +97,12 @@ const CollectedSample = ({ onDataUpdate, onDateFilterChange }: CollectedSamplePr
       onDateFilterChange(dateFilter, customStartDate, customEndDate);
     }
   }, [dateFilter, customStartDate, customEndDate, onDateFilterChange]);
+
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      fetchVisits();
+    }
+  }, [refreshTrigger]);
 
   // Fetch collected visits data
   const fetchVisits = async () => {
@@ -593,6 +602,9 @@ const CollectedSample = ({ onDataUpdate, onDateFilterChange }: CollectedSamplePr
               setSelectedSampleNames([]);
               setUpdateCollectionTable(prev => !prev);
               fetchVisits();
+              if (onSampleEdited) {
+          onSampleEdited();
+        }
             }}
           />
         </NewModal>
@@ -608,11 +620,7 @@ export default CollectedSample;
 
 
 
-
-
-
-
-// code dated 30.06.2026 with package/test bug..........
+// working code but without refresh data ................
 
 // "use client";
 
@@ -627,7 +635,6 @@ export default CollectedSample;
 // import NewCommonTable from "../../newcommoncomponent/NewCommonTable";
 // import { getHealthPackageById } from '@/../services/packageServices';
 // import { useLabs } from '@/context/LabContext';
-// // import { Patient } from '@/types/pendingTable/PendingTatbleDataType';
 // import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, getDateRange } from '@/utils/dateUtils';
 // import { calculateAgeInYears } from '@/utils/ageUtils';
 // import { toast } from 'react-toastify';
@@ -670,11 +677,12 @@ export default CollectedSample;
 
 // interface CollectedSampleProps {
 //   onDataUpdate?: (count: number) => void;
+//   onDateFilterChange?: (filter: DateFilterOption, startDate?: Date | null, endDate?: Date | null) => void;
 // }
 
 // type SortOption = 'patientName' | 'patientId';
 
-// const CollectedSample = ({ onDataUpdate }: CollectedSampleProps) => {
+// const CollectedSample = ({ onDataUpdate, onDateFilterChange }: CollectedSampleProps) => {
 //   const { currentLab } = useLabs();
   
 //   // State management
@@ -694,14 +702,22 @@ export default CollectedSample;
 //   const [selectedSampleNames, setSelectedSampleNames] = useState<string[]>([]);
 //   const [updateCollectionTable, setUpdateCollectionTable] = useState(false);
   
-//   // Expanded row state for dropdown
-//   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+//   // Expanded sections state for dropdowns
+//   const [expandedSections, setExpandedSections] = useState<{
+//     [key: string]: boolean;
+//   }>({});
 
 //   useEffect(() => {
 //     if (onDataUpdate) {
 //       onDataUpdate(filteredPatients.length);
 //     }
 //   }, [filteredPatients, onDataUpdate]);
+  
+//   useEffect(() => {
+//     if (onDateFilterChange) {
+//       onDateFilterChange(dateFilter, customStartDate, customEndDate);
+//     }
+//   }, [dateFilter, customStartDate, customEndDate, onDateFilterChange]);
 
 //   // Fetch collected visits data
 //   const fetchVisits = async () => {
@@ -741,7 +757,7 @@ export default CollectedSample;
 //           visitDate: visit.visitDate,
 //           visitStatus: visit.visitStatus,
 //           sampleNames: visit.sampleNames,
-//           visitCode: visit.visitCode, // Keep the original visitCode
+//           visitCode: visit.visitCode,
 //           testIds: visit.testIds ?? visitTests.map((test) => test.id),
 //           tests: visitTests,
 //           packageIds: visit.packageIds,
@@ -836,7 +852,7 @@ export default CollectedSample;
 //     fetchVisits();
 //   }, [currentLab, dateFilter, customStartDate, customEndDate, updateCollectionTable]);
 
-//   // Table columns definition (matching PendingTable structure)
+//   // Table columns definition
 //   const columns = [
 //     {
 //       header: "Patient ID",
@@ -879,82 +895,162 @@ export default CollectedSample;
 //       header: "Tests/Package",
 //       accessor: "title",
 //       render: (row: CollectedPatient) => {
-//         const { tests, hasPackages, totalTestCount, packageNames } = getPatientTestItems(row);
+//         const { tests, hasPackages } = getPatientTestItems(row);
         
-//         // Get all test names
-//         const allTestNames = [
-//           ...tests.map(t => t.name),
-//           ...healthPackages
-//             .filter(pkg => row.packageIds.includes(pkg.id))
-//             .flatMap(pkg => pkg.tests.map(test => test.name))
-//         ];
-        
-//         const isSingleTest = allTestNames.length === 1;
-//         const isOpen = expandedRow === row.visitId.toString();
+//         const toggleSection = (key: string) => {
+//           setExpandedSections(prev => ({
+//             ...prev,
+//             [key]: !prev[key]
+//           }));
+//         };
 
-//         if (isSingleTest) {
+//         // If only one individual test and no packages
+//         if (tests.length === 1 && !hasPackages) {
 //           return (
 //             <span className="rounded-full bg-secondary-50 px-3 py-1 text-xs font-medium text-secondary-700">
-//               {allTestNames[0]}
+//               {tests[0].name}
 //             </span>
 //           );
 //         }
 
-//         return (
-//           <div className="w-[274px]">
-//             <button
-//               onClick={() => setExpandedRow(isOpen ? null : row.visitId.toString())}
-//               className={`flex w-full items-center justify-between rounded-xl border px-3 py-3
-//               ${isOpen
-//                   ? "border-secondary-300 bg-secondary-50 rounded-b-none border-b-0"
-//                   : "border-secondary-200 bg-secondary-50"
-//                 }`}
-//             >
-//               <div className="flex items-center gap-2">
-//                 {hasPackages && <Package size={18} />}
-//                 <span className="font-medium text-label-l4">
-//                   {hasPackages && packageNames.length > 0
-//                     ? packageNames.join(', ')
-//                     : `${totalTestCount} Tests`
-//                   }
-//                 </span>
-//               </div>
+//         // If only packages and no individual tests
+//         if (!tests.length && hasPackages) {
+//           return (
+//             <div className="w-[274px] space-y-2">
+//               {row.packageIds.map((packageId) => {
+//                 const pkg = healthPackages.find(p => p.id === packageId);
+//                 if (!pkg) return null;
+                
+//                 const packageKey = `package-${pkg.id}-${row.visitId}`;
+//                 const isPackageOpen = expandedSections[packageKey] || false;
+                
+//                 return (
+//                   <div key={packageId}>
+//                     <button
+//                       onClick={() => toggleSection(packageKey)}
+//                       className={`flex w-full items-center justify-between rounded-xl border px-3 py-3
+//                       ${isPackageOpen
+//                           ? "border-secondary-300 bg-secondary-50 rounded-b-none border-b-0"
+//                           : "border-secondary-200 bg-secondary-50"
+//                         }`}
+//                     >
+//                       <div className="flex items-center gap-2">
+//                         <span className="font-medium text-label-l4">
+//                           {pkg.packageName}
+//                         </span>
+//                       </div>
+//                       {isPackageOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+//                     </button>
 
-//               {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-//             </button>
-
-//             {isOpen && (
-//               <div className="w-full rounded-xl rounded-t-none border border-t-0 border-secondary-300 bg-pneutral-50 p-4">
-//                 <div className="space-y-4">
-//                   {/* Show packages and their tests */}
-//                   {row.packageIds.map((packageId) => {
-//                     const pkg = healthPackages.find(p => p.id === packageId);
-//                     if (!pkg) return null;
-//                     return (
-//                       <div key={packageId}>
-//                         <p className="text-sm font-semibold text-secondary-700 mb-1">
-//                           📦 {pkg.packageName}
-//                         </p>
+//                     {isPackageOpen && (
+//                       <div className="w-full rounded-xl rounded-t-none border border-t-0 border-secondary-300 bg-pneutral-50 p-4">
 //                         {pkg.tests.map((test, index) => (
-//                           <p key={index} className="text-sm font-medium text-secondary-700 ml-4">
+//                           <p key={index} className="text-sm font-medium text-secondary-700">
 //                             {test.name}
 //                           </p>
 //                         ))}
 //                       </div>
-//                     );
-//                   })}
+//                     )}
+//                   </div>
+//                 );
+//               })}
+//             </div>
+//           );
+//         }
+
+//         // If both packages and individual tests exist
+//         return (
+//           <div className="w-[274px] space-y-2">
+//             {/* Packages - Each package as separate dropdown */}
+//             {hasPackages && (
+//               <div className="space-y-2">
+//                 {row.packageIds.map((packageId) => {
+//                   const pkg = healthPackages.find(p => p.id === packageId);
+//                   if (!pkg) return null;
                   
-//                   {/* Show individual tests */}
-//                   {tests.length > 0 && (
-//                     <div>
-//                       {tests.map((test, index) => (
-//                         <p key={index} className="text-sm font-medium text-secondary-700 ml-4">
-//                           {test.name}
-//                         </p>
-//                       ))}
+//                   const packageKey = `package-${pkg.id}-${row.visitId}`;
+//                   const isPackageOpen = expandedSections[packageKey] || false;
+                  
+//                   return (
+//                     <div key={packageId}>
+//                       <button
+//                         onClick={() => toggleSection(packageKey)}
+//                         className={`flex w-full items-center justify-between rounded-xl border px-3 py-3
+//                         ${isPackageOpen
+//                             ? "border-secondary-300 bg-secondary-50 rounded-b-none border-b-0"
+//                             : "border-secondary-200 bg-secondary-50"
+//                           }`}
+//                       >
+//                         <div className="flex items-center gap-2">
+//                           <Package size={18} />
+//                           <span className="font-medium text-label-l4">
+//                             {pkg.packageName}
+//                           </span>
+//                         </div>
+//                         {isPackageOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+//                       </button>
+
+//                       {isPackageOpen && (
+//                         <div className="w-full rounded-xl rounded-t-none border border-t-0 border-secondary-300 bg-pneutral-50 p-4">
+//                           {pkg.tests.map((test, index) => (
+//                             <p key={index} className="text-sm font-medium text-secondary-700">
+//                               {test.name}
+//                             </p>
+//                           ))}
+//                         </div>
+//                       )}
 //                     </div>
-//                   )}
-//                 </div>
+//                   );
+//                 })}
+//               </div>
+//             )}
+
+
+//             {/* Individual Tests Section */}
+//             {tests.length > 0 && (
+//               <div>
+//                 {tests.length === 1 ? (
+//                   // Single individual test - show as badge
+//                   <span className="inline-block rounded-full bg-secondary-50 px-3 py-1 text-xs font-medium text-secondary-700">
+//                     {tests[0].name}
+//                   </span>
+//                 ) : (
+//                   // Multiple individual tests - show as dropdown
+//                   (() => {
+//                     const individualKey = `individual-${row.visitId}`;
+//                     const isIndividualOpen = expandedSections[individualKey] || false;
+                    
+//                     return (
+//                       <div>
+//                         <button
+//                           onClick={() => toggleSection(individualKey)}
+//                           className={`flex w-full items-center justify-between rounded-xl border px-3 py-3
+//                           ${isIndividualOpen
+//                               ? "border-secondary-300 bg-secondary-50 rounded-b-none border-b-0"
+//                               : "border-secondary-200 bg-secondary-50"
+//                             }`}
+//                         >
+//                           <div className="flex items-center gap-2">
+//                             <span className="font-medium text-label-l4">
+//                               {tests.length} Tests
+//                             </span>
+//                           </div>
+//                           {isIndividualOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+//                         </button>
+
+//                         {isIndividualOpen && (
+//                           <div className="w-full rounded-xl rounded-t-none border border-t-0 border-secondary-300 bg-pneutral-50 p-4">
+//                             {tests.map((test, index) => (
+//                               <p key={index} className="text-sm font-medium text-secondary-700">
+//                                 {test.name}
+//                               </p>
+//                             ))}
+//                           </div>
+//                         )}
+//                       </div>
+//                     );
+//                   })()
+//                 )}
 //               </div>
 //             )}
 //           </div>
