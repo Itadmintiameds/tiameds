@@ -127,7 +127,7 @@ const Loader: React.FC<LoaderProps> = ({
   };
 
   return (
-    <div className={`flex flex-col items-center justify-center ${fullScreen ? 'fixed inset-0 bg-black bg-opacity-50 z-50' : 'p-4'}`}>
+    <div className={`flex flex-col items-center justify-center ${fullScreen ? 'fixed inset-0 bg-white/20 backdrop-blur-md z-50' : 'p-4'}`}>
       <div className="text-primary mb-2">
         {renderLoader()}
       </div>

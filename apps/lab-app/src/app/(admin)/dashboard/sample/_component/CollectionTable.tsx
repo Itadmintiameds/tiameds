@@ -67,9 +67,11 @@ interface CollectionTableProps {
   onDataUpdate?: (count: number) => void;
   onHideKPI?: () => void;
   onShowKPI?: () => void;
+  refreshTick?: number;
+  onMutated?: () => void;
 }
 
-const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideKPI, onShowKPI  }) => {
+const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideKPI, onShowKPI, refreshTick, onMutated }) => {
   const { currentLab } = useLabs();
   const { isAdmin, isSuperAdmin } = useAuth();
   
@@ -212,7 +214,16 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
   // Effects
   useEffect(() => {
     fetchVisits();
-  }, [currentLab, dateFilter, customStartDate, customEndDate, updateCollectionTable]);
+  }, [currentLab, dateFilter, customStartDate, customEndDate, updateCollectionTable, refreshTick]);
+
+  // Wraps setUpdateCollectionTable so that whenever a test result is saved
+  // (via PatientReportDataFill) or a sample edited (via UpdateSample), the
+  // sibling dashboard tables (Collected/Completed) refetch instantly too,
+  // instead of only this table refreshing.
+  const handleUpdateCollectionTable: React.Dispatch<React.SetStateAction<boolean>> = (value) => {
+    setUpdateCollectionTable(value);
+    onMutated?.();
+  };
 
   // Get test items for a patient
   const getPatientTestItems = (patient: Patient) => {
@@ -257,6 +268,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({ onDataUpdate, onHideK
       await deleteVisitSample(visitId, []);
       toast.success('Sample deleted successfully');
       fetchVisits();
+      onMutated?.();
     } catch (error) {
       toast.error((error as Error).message || 'Error deleting sample');
     }
@@ -332,8 +344,8 @@ if (onHideKPI) {
         selectedPatient={selectedPatient}
         selectedTest={selectedTest}
         updateCollectionTable={updateCollectionTable}
-        setUpdateCollectionTable={setUpdateCollectionTable}
-        setShowModal={handleCloseResultScreen} 
+        setUpdateCollectionTable={handleUpdateCollectionTable}
+        setShowModal={handleCloseResultScreen}
       />
     );
   }
@@ -770,7 +782,7 @@ if (onHideKPI) {
         selectedPatient={selectedPatient}
         selectedTest={selectedTest}
         updateCollectionTable={updateCollectionTable}
-        setUpdateCollectionTable={setUpdateCollectionTable}
+        setUpdateCollectionTable={handleUpdateCollectionTable}
         setShowModal={setShowPatientReportScreen}
       />
     );
@@ -912,6 +924,7 @@ if (onHideKPI) {
               setSelectedSampleNames([]);
               setUpdateCollectionTable(prev => !prev);
               fetchVisits();
+              onMutated?.();
             }}
           />
         </NewModal>

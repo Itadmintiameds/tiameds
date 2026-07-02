@@ -70,9 +70,10 @@ type SortOption = 'patientName' | 'patientId';
 interface CompletedTableProps {
   closeModal?: () => void;
   onDataUpdate?: (count: number) => void;
+  refreshTick?: number;
 }
 
-const CompletedTable: React.FC<CompletedTableProps> = ({ onDataUpdate }) => {
+const CompletedTable: React.FC<CompletedTableProps> = ({ onDataUpdate, refreshTick }) => {
   const { currentLab } = useLabs();
   const { isAdmin, isSuperAdmin } = useAuth();
   
@@ -100,7 +101,15 @@ const CompletedTable: React.FC<CompletedTableProps> = ({ onDataUpdate }) => {
   
   useEffect(() => {
     if (onDataUpdate) {
-      onDataUpdate(filteredPatients.length);
+      // Count individual completed tests, not completed visits/samples —
+      // every visit here already has all its tests marked "Completed"
+      // (see the fetchVisits filter below), so testResult.length per
+      // visit is exactly its completed test count.
+      const completedTestCount = filteredPatients.reduce(
+        (sum, patient) => sum + (patient.testResult?.length || 0),
+        0
+      );
+      onDataUpdate(completedTestCount);
     }
   }, [filteredPatients, onDataUpdate]);
 
@@ -219,7 +228,10 @@ const CompletedTable: React.FC<CompletedTableProps> = ({ onDataUpdate }) => {
   // Effects
   useEffect(() => {
     fetchVisits();
-  }, [currentLab, dateFilter, customStartDate, customEndDate]);
+    // refreshTick bumps whenever another dashboard table (pending/collected/
+    // partial) mutates a sample, so this table picks up the change instantly
+    // instead of waiting for its own filters to change.
+  }, [currentLab, dateFilter, customStartDate, customEndDate, refreshTick]);
 
   // Get test items for a patient
   const getPatientTestItems = (patient: Patient) => {

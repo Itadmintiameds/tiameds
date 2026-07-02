@@ -54,11 +54,13 @@ interface CollectedPatient {
 
 interface CollectedSampleProps {
   onDataUpdate?: (count: number) => void;
+  refreshTick?: number;
+  onMutated?: () => void;
 }
 
 type SortOption = 'patientName' | 'patientId';
 
-const CollectedSample = ({ onDataUpdate }: CollectedSampleProps) => {
+const CollectedSample = ({ onDataUpdate, refreshTick, onMutated }: CollectedSampleProps) => {
   const { currentLab } = useLabs();
   
   // State management
@@ -218,7 +220,7 @@ const CollectedSample = ({ onDataUpdate }: CollectedSampleProps) => {
   // Effects
   useEffect(() => {
     fetchVisits();
-  }, [currentLab, dateFilter, customStartDate, customEndDate, updateCollectionTable]);
+  }, [currentLab, dateFilter, customStartDate, customEndDate, updateCollectionTable, refreshTick]);
 
   // Table columns definition (matching PendingTable structure)
   const columns = [
@@ -505,6 +507,9 @@ const CollectedSample = ({ onDataUpdate }: CollectedSampleProps) => {
               setSelectedSampleNames([]);
               setUpdateCollectionTable(prev => !prev);
               fetchVisits();
+              // A collected sample may now be partially/fully tested — let
+              // the other tables refetch immediately.
+              onMutated?.();
             }}
           />
         </NewModal>

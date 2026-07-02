@@ -24,9 +24,11 @@ import NewModal from "../../newcommoncomponent/NewModal";
 type SortOption = 'patientName' | 'patientId';
 interface PendingTableProps {
   onDataUpdate?: (count: number) => void;
+  refreshTick?: number;
+  onMutated?: () => void;
 }
 
-const PendingTable = ({ onDataUpdate }: PendingTableProps) => {
+const PendingTable = ({ onDataUpdate, refreshTick, onMutated }: PendingTableProps) => {
   const { currentLab } = useLabs();
   
   // State management
@@ -184,6 +186,9 @@ const PendingTable = ({ onDataUpdate }: PendingTableProps) => {
       setShowModal(false);
       // Refresh the list
       fetchVisits();
+      // Let sibling tables (e.g. "Samples Collected") know a sample just
+      // moved out of pending, so they refetch instantly instead of waiting.
+      onMutated?.();
     } catch (error) {
       setLoading(false);
       toast.error("Failed to add samples");
@@ -193,7 +198,7 @@ const PendingTable = ({ onDataUpdate }: PendingTableProps) => {
   // Effects
   useEffect(() => {
     fetchVisits();
-  }, [currentLab, dateFilter, customStartDate, customEndDate]);
+  }, [currentLab, dateFilter, customStartDate, customEndDate, refreshTick]);
 
   // Table columns definition
   const columns = [
