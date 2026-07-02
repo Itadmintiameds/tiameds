@@ -8,7 +8,7 @@ import { useLabs } from '@/context/LabContext';
 import { packageDataSchema } from '@/schema/packageDataSchema';
 import { TestList } from '@/types/test/testlist';
 import { useEffect, useState } from 'react';
-import { FiCheck, FiSearch } from 'react-icons/fi';
+import { FiCheck, FiSearch, FiAlertTriangle } from 'react-icons/fi';
 import { FaTimes, FaPlus, FaMinus } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
@@ -213,6 +213,13 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
             <FaTimes className="h-5 w-5" />
           </button>
         )}
+      </div>
+
+      <div className="flex items-start gap-2 mb-6 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
+        <FiAlertTriangle className="text-base mt-0.5 shrink-0" />
+        <p className="text-sm">
+          Packages cannot be deleted once created. Please review the package name, tests, and pricing carefully before submitting.
+        </p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">

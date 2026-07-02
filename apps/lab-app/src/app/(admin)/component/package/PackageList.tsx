@@ -2,17 +2,18 @@
 
 'use client';
 
-import { getPackage, packageDelete, updatePackage } from '@/../services/packageServices';
+import { getPackage, updatePackage } from '@/../services/packageServices';
+// import { packageDelete } from '@/../services/packageServices'; // Deletion disabled — see note near confirmDeletePackage below
 import Modal from '@/app/(admin)/component/common/Model';
 import { useLabs } from '@/context/LabContext';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { FaEdit, FaEye, FaSearch, FaTrash, FaTimes, FaSortAmountDown, FaSortAmountUp } from 'react-icons/fa';
+import { FaEdit, FaEye, FaSearch, FaTimes, FaSortAmountDown, FaSortAmountUp } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import Loader from '../common/Loader';
 import UpdatePackage from './UpdatePackage';
 import ViewPackage from './ViewPackage';
-import DeletePackage from './DeletePackage';
+// import DeletePackage from './DeletePackage'; // Deletion disabled — see note near confirmDeletePackage below
 import { TestList } from '@/types/test/testlist';
 import Pagination from '../common/Pagination';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -56,8 +57,10 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [editingPackage, setEditingPackage] = useState<editingPackage | null>(null);
   const [viewingPackage, setViewingPackage] = useState<Package | null>(null);
-  const [deletingPackage, setDeletingPackage] = useState<Package | null>(null);
-  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  // Package deletion is disabled — once created, a package cannot be deleted
+  // (backend silently fails to remove packages linked to orders/reports).
+  // const [deletingPackage, setDeletingPackage] = useState<Package | null>(null);
+  // const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const itemsPerPage = 5;
 
   const { currentLab } = useLabs();
@@ -133,42 +136,48 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
     setCurrentPage(page);
   };
 
-  const handleDeletePackage = (pkgId: number) => {
-    const pkgToDelete = packages.find(pkg => pkg.id === pkgId);
-    if (pkgToDelete) {
-      setDeletingPackage(pkgToDelete);
-    }
-  };
-
-  const confirmDeletePackage = async () => {
-    if (!deletingPackage) return;
-    const pkgId = deletingPackage.id;
-
-    setIsDeleting(pkgId);
-    try {
-      if (currentLab) {
-        const response = await packageDelete(currentLab.id, pkgId);
-        if (response && response.status && response.status !== 'success') {
-          throw new Error(response.message || 'Failed to delete package');
-        }
-        setPackages(packages.filter(pkg => pkg.id !== pkgId));
-        toast.success('Package deleted successfully', {
-          autoClose: 2000,
-          className: 'bg-success text-white'
-        });
-      } else {
-        setError('No lab selected');
-      }
-    } catch (error) {
-      const message = (error as { message?: string })?.message || 'Failed to delete package';
-      toast.error(message, {
-        className: 'bg-error text-white'
-      });
-    } finally {
-      setIsDeleting(null);
-      setDeletingPackage(null);
-    }
-  };
+  // Package deletion is disabled — once created, a package cannot be deleted.
+  // Backend deletes on packages linked to orders/reports silently no-op
+  // (returns success without removing the row), so the feature is turned
+  // off here rather than showing users a false success/failure state.
+  // Users are warned about this at creation time instead (see Pakage.tsx).
+  //
+  // const handleDeletePackage = (pkgId: number) => {
+  //   const pkgToDelete = packages.find(pkg => pkg.id === pkgId);
+  //   if (pkgToDelete) {
+  //     setDeletingPackage(pkgToDelete);
+  //   }
+  // };
+  //
+  // const confirmDeletePackage = async () => {
+  //   if (!deletingPackage) return;
+  //   const pkgId = deletingPackage.id;
+  //
+  //   setIsDeleting(pkgId);
+  //   try {
+  //     if (currentLab) {
+  //       const response = await packageDelete(currentLab.id, pkgId);
+  //       if (response && response.status && response.status !== 'success') {
+  //         throw new Error(response.message || 'Failed to delete package');
+  //       }
+  //       setPackages(prev => prev.filter(pkg => pkg.id !== pkgId));
+  //       toast.success('Package deleted successfully', {
+  //         autoClose: 2000,
+  //         className: 'bg-success text-white'
+  //       });
+  //     } else {
+  //       setError('No lab selected');
+  //     }
+  //   } catch (error) {
+  //     const message = (error as { message?: string })?.message || 'Failed to delete package';
+  //     toast.error(message, {
+  //       className: 'bg-error text-white'
+  //     });
+  //   } finally {
+  //     setIsDeleting(null);
+  //     setDeletingPackage(null);
+  //   }
+  // };
 
   const handleEditPackage = (pkgId: number) => {
     const pkgToEdit = packages.find(pkg => pkg.id === pkgId);
@@ -364,18 +373,7 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
                           >
                             <FaEye className="text-sm" />
                           </button>
-                          <button
-                            onClick={() => handleDeletePackage(pkg.id)}
-                            disabled={isDeleting === pkg.id}
-                            className="w-8 h-8 flex items-center justify-center rounded-full border border-red-300 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                            title="Delete package"
-                          >
-                            {isDeleting === pkg.id ? (
-                              <Loader type="progress" fullScreen={false} text="" />
-                            ) : (
-                              <FaTrash className="text-sm" />
-                            )}
-                          </button>
+                          {/* Delete disabled — packages cannot be deleted once created */}
                         </div>
                       </td>
                     </motion.tr>
@@ -461,8 +459,8 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
         )}
       </AnimatePresence>
 
-      {/* Delete Package Confirmation Modal */}
-      <AnimatePresence>
+      {/* Delete Package Confirmation Modal — disabled, packages cannot be deleted once created */}
+      {/* <AnimatePresence>
         {deletingPackage && (
           <Modal
             isOpen={!!deletingPackage}
@@ -478,7 +476,7 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
             />
           </Modal>
         )}
-      </AnimatePresence>
+      </AnimatePresence> */}
     </div>
   );
 };
