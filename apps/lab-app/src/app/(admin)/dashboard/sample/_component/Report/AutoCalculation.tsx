@@ -388,28 +388,99 @@ private static calculateAEC(inputs: Record<string | number, string>, referenceDa
   /**
    * Check if a field is auto-calculated
    */
-  static isAutoCalculatedField(testDescription: string): boolean {
-    const desc = testDescription?.toUpperCase() || '';
+ // AutoCalculation.ts
 
-     if (desc.includes('ABSOLUTE') && desc.includes('EOSINOPHIL')) {
-    return true;
-  }
-    const otherAutoFields = [
-    'GLOBULIN',
-    'S.GLOBULIN',
-    'INDIRECT BILIRUBIN',
-    'A/G RATIO',
-    'A/G',
-    'MEAN BLOOD GLUCOSE',
-    'MEAN GLUCOSE',
-    'HDL CHOLESTEROL - DIRECT',
-    'HDL CHOLESTEROL',
-    'LDL CHOLESTEROL - DIRECT',
-    'LDL CHOLESTEROL',
-    'VLDL CHOLESTEROL',
-    'VLDL'
-  ];
-    return otherAutoFields.some(field => desc.includes(field.toUpperCase()));
+/**
+ * Check if a field is auto-calculated based on the test context
+ * @param testDescription - The description of the test parameter
+ * @param testName - The name of the test panel (optional)
+ * @returns boolean - true if the field should be auto-calculated
+ */
+static isAutoCalculatedField(testDescription: string, testName?: string): boolean {
+    const desc = testDescription?.toUpperCase() || '';
+    const testNameUpper = testName?.toUpperCase() || '';
+
+    // 1. AEC auto-calculation (always auto-calc when absolute eosinophil is found)
+    if (desc.includes('ABSOLUTE') && desc.includes('EOSINOPHIL')) {
+        return true;
+    }
+
+    // 2. LFT (Liver Function Test) auto-calculated fields
+    // Only mark as auto-calculated if the test is actually LFT
+    const isLFT = testNameUpper.includes('LIVER FUNCTION TEST') || 
+                  testNameUpper.includes('LFT') ||
+                  testNameUpper === 'LFT';
+    
+    if (isLFT) {
+        const lftAutoFields = [
+            'GLOBULIN',
+            'S.GLOBULIN', 
+            'INDIRECT BILIRUBIN',
+            'A/G RATIO',
+            'A/G'
+        ];
+        if (lftAutoFields.some(field => desc.includes(field.toUpperCase()))) {
+            return true;
+        }
+    }
+
+    // 3. LPT (Lipid Profile Test) auto-calculated fields
+    const isLPT = testNameUpper.includes('LIPID PROFILE') || 
+                  testNameUpper.includes('LPT') ||
+                  testNameUpper === 'LPT';
+    
+    if (isLPT) {
+        const lptAutoFields = [
+            'HDL CHOLESTEROL - DIRECT',
+            'HDL CHOLESTEROL',
+            'LDL CHOLESTEROL - DIRECT',
+            'LDL CHOLESTEROL',
+            'VLDL CHOLESTEROL',
+            'VLDL'
+        ];
+        if (lptAutoFields.some(field => desc.includes(field.toUpperCase()))) {
+            return true;
+        }
+    }
+
+    // 4. HbA1c auto-calculated fields
+    const isHbA1c = testNameUpper.includes('HB A1 C') || 
+                    testNameUpper.includes('GLYCOSYLATED') || 
+                    testNameUpper.includes('HBA1C');
+    
+    if (isHbA1c) {
+        if (desc.includes('MEAN BLOOD GLUCOSE') || desc.includes('MEAN GLUCOSE')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Get auto-calculated field mapping for a specific test
+ * Useful for debugging and displaying which fields are auto-calculated
+ */
+static getAutoCalculatedFieldsForTest(testName: string): string[] {
+    const testNameUpper = testName?.toUpperCase() || '';
+    
+    if (testNameUpper.includes('LIVER FUNCTION TEST') || testNameUpper.includes('LFT')) {
+        return ['GLOBULIN', 'S.GLOBULIN', 'INDIRECT BILIRUBIN', 'A/G RATIO', 'A/G'];
+    }
+    
+    if (testNameUpper.includes('LIPID PROFILE') || testNameUpper.includes('LPT')) {
+        return ['HDL CHOLESTEROL - DIRECT', 'HDL CHOLESTEROL', 'LDL CHOLESTEROL - DIRECT', 'LDL CHOLESTEROL', 'VLDL CHOLESTEROL', 'VLDL'];
+    }
+    
+    if (testNameUpper.includes('HB A1 C') || testNameUpper.includes('GLYCOSYLATED') || testNameUpper.includes('HBA1C')) {
+        return ['MEAN BLOOD GLUCOSE', 'MEAN GLUCOSE'];
+    }
+    
+    if (testNameUpper.includes('AEC') || testNameUpper.includes('ABSOLUTE EOSINOPHIL')) {
+        return ['ABSOLUTE EOSINOPHIL COUNT'];
+    }
+    
+    return [];
 }
 }
 
@@ -424,8 +495,7 @@ export default AutoCalculation;
 
 
 
-
-
+// code dated 02.07.2026 ..............
 
 // import { TestReferancePoint } from '@/types/test/testlist';
 
@@ -745,53 +815,101 @@ export default AutoCalculation;
 //   /**
 //    * AEC Auto-calculations
 //    */
-//   private static calculateAEC(inputs: Record<string | number, string>, referenceData: TestReferancePoint[]): AutoCalculationResult {
-//     const updatedInputs = { ...inputs };
 
-//     const eosinophilIdx = this.findIndexByDescription(referenceData, ['EOSINOPHIL COUNT', 'EOSINOPHILS']);
-//     const totalCountIdx = this.findIndexByDescription(referenceData, ['TOTAL COUNT', 'TOTAL COUNT/ W.B.C', 'TOTAL WBC']);
-//     const absEosIdx = this.findIndexByDescription(referenceData, ['ABSOLUTE EOSINOPHIL COUNT', 'ABSOLUTE EOSINOPHILS']);
+// private static calculateAEC(inputs: Record<string | number, string>, referenceData: TestReferancePoint[]): AutoCalculationResult {
+//   const updatedInputs = { ...inputs };
 
-//     if (absEosIdx >= 0 && eosinophilIdx >= 0 && totalCountIdx >= 0) {
-//       const eosinophil = this.getNumericValue(inputs, eosinophilIdx);
-//       const totalCount = this.getNumericValue(inputs, totalCountIdx);
-//       const eosinophilRaw = inputs[eosinophilIdx] || '';
-//       const totalCountRaw = inputs[totalCountIdx] || '';
+//   // Find indices using MORE SPECIFIC logic
+//   let eosinophilIdx = -1;
+//   let totalCountIdx = -1;
+//   let absEosIdx = -1;
+
+//   referenceData.forEach((point, index) => {
+//     const desc = point.testDescription?.toUpperCase() || '';
+    
+//     // Find Eosinophil Count (exclude Absolute Eosinophil Count)
+//     if ((desc === 'EOSINOPHIL COUNT' || desc.includes('EOSINOPHIL COUNT')) && !desc.includes('ABSOLUTE')) {
+//       eosinophilIdx = index;
+//     }
+    
+//     // Find Total Count
+//     if (desc.includes('TOTAL COUNT') || desc === 'TOTAL WBC' || desc === 'TOTAL COUNT/ W.B.C') {
+//       totalCountIdx = index;
+//     }
+    
+//     // Find Absolute Eosinophil Count (must contain both ABSOLUTE and EOSINOPHIL)
+//     if (desc.includes('ABSOLUTE') && desc.includes('EOSINOPHIL')) {
+//       absEosIdx = index;
+//     }
+//   });
+
+//   // Only proceed if all three fields exist
+//   if (absEosIdx >= 0 && eosinophilIdx >= 0 && totalCountIdx >= 0) {
+//     // Get raw values from inputs
+//     const eosinophilRaw = inputs[eosinophilIdx] || '';
+//     const totalCountRaw = inputs[totalCountIdx] || '';
+    
+//     // Parse to numbers
+//     const eosinophilCount = parseFloat(eosinophilRaw);
+//     const totalCount = parseFloat(totalCountRaw);
+
+//     // EXACT same logic as the old AECComponent:
+//     // Calculate only if BOTH values exist and are greater than 0
+//     if (eosinophilRaw !== '' && totalCountRaw !== '' && 
+//         !isNaN(eosinophilCount) && !isNaN(totalCount) && 
+//         eosinophilCount > 0 && totalCount > 0) {
       
-//       if (eosinophil !== null && totalCount !== null && eosinophil > 0 && totalCount > 0 && 
-//           eosinophilRaw !== '' && totalCountRaw !== '') {
-//         const absEos = (totalCount * eosinophil) / 100;
-//         this.setValue(updatedInputs, absEosIdx, absEos.toFixed(0));
+//       // EXACT formula from old component: (totalCount * eosinophilCount) / 100
+//       const calculatedAbsEos = (totalCount * eosinophilCount) / 100;
+      
+//       // Round to 0 decimal places (same as old component with .toFixed(0))
+//       const newValue = Math.round(calculatedAbsEos).toString();
+      
+//       // Get current value at the absolute eosinophil index
+//       const currentValue = inputs[absEosIdx] || '';
+      
+//       // Only update if the value has changed (prevents unnecessary re-renders)
+//       if (currentValue !== newValue) {
+//         this.setValue(updatedInputs, absEosIdx, newValue);
+//       }
+//     } else {
+//       // If either source field is empty or invalid, clear the auto-calculated field
+//       const currentValue = inputs[absEosIdx] || '';
+//       if (currentValue !== '') {
+//         this.setValue(updatedInputs, absEosIdx, '');
 //       }
 //     }
-
-//     return { updatedInputs };
 //   }
+
+//   return { updatedInputs };
+// }
 
 //   /**
 //    * Check if a field is auto-calculated
 //    */
 //   static isAutoCalculatedField(testDescription: string): boolean {
 //     const desc = testDescription?.toUpperCase() || '';
-//     const autoFields = [
-//       'GLOBULIN',
-//       'S.GLOBULIN',
-//       'INDIRECT BILIRUBIN',
-//       'A/G RATIO',
-//       'A/G',
-//       'MEAN BLOOD GLUCOSE',
-//       'MEAN GLUCOSE',
-//       'ABSOLUTE EOSINOPHIL COUNT',
-//       'ABSOLUTE EOSINOPHILS',
-//       'HDL CHOLESTEROL - DIRECT',
-//       'HDL CHOLESTEROL',
-//       'LDL CHOLESTEROL - DIRECT',
-//       'LDL CHOLESTEROL',
-//       'VLDL CHOLESTEROL',
-//       'VLDL'
-//     ];
-//     return autoFields.some(field => desc.includes(field));
+
+//      if (desc.includes('ABSOLUTE') && desc.includes('EOSINOPHIL')) {
+//     return true;
 //   }
+//     const otherAutoFields = [
+//     'GLOBULIN',
+//     'S.GLOBULIN',
+//     'INDIRECT BILIRUBIN',
+//     'A/G RATIO',
+//     'A/G',
+//     'MEAN BLOOD GLUCOSE',
+//     'MEAN GLUCOSE',
+//     'HDL CHOLESTEROL - DIRECT',
+//     'HDL CHOLESTEROL',
+//     'LDL CHOLESTEROL - DIRECT',
+//     'LDL CHOLESTEROL',
+//     'VLDL CHOLESTEROL',
+//     'VLDL'
+//   ];
+//     return otherAutoFields.some(field => desc.includes(field.toUpperCase()));
+// }
 // }
 
 // export default AutoCalculation;
