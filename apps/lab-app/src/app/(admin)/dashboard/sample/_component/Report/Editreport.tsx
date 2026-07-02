@@ -10,16 +10,18 @@ import { TestList, TestReferancePoint } from '@/types/test/testlist';
 import { calculateAgeObject } from '@/utils/ageUtils';
 import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
 import React, { useCallback, useEffect, useState } from 'react';
-import { 
-  // TbInfoCircle, 
-  TbReportMedical, 
-  // TbArrowDownCircle, 
-  // TbArrowUpCircle, 
-  // TbSquareRoundedCheck,
-  TbChevronLeft
+import {
+  // TbInfoCircle,
+  TbReportMedical,
+  // TbArrowDownCircle,
+  // TbArrowUpCircle,
+  TbSquareRoundedCheck,
+  TbChevronLeft,
+  TbX
 } from "react-icons/tb";
 import { toast } from 'react-toastify';
 import AutoCalculation from './AutoCalculation';
+import NewModal from "../../../newcommoncomponent/NewModal";
 
 export interface Patient {
   visitId: number;
@@ -183,6 +185,18 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
     message: string;
     calculation: string;
   } | null>(null);
+
+  // Modal states for differential count validation
+  const [showDifferentialModal, setShowDifferentialModal] = useState(false);
+  const [differentialResult, setDifferentialResult] = useState<{
+    total: number;
+    type: string;
+    message: string;
+    calculation: string;
+  } | null>(null);
+  const [lastDifferentialValues, setLastDifferentialValues] = useState<string>('');
+  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const isModalManuallyClosed = React.useRef(false);
 
   // const patientForInfo: PatientData = useMemo(() => ({
   //   ...(editPatient as PatientData),
@@ -358,6 +372,49 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
     fetchReferenceData();
   }, [fetchReferenceData]);
 
+  // Reset modal state when test changes
+  useEffect(() => {
+    setShowDifferentialModal(false);
+    setDifferentialResult(null);
+    setLastDifferentialValues('');
+    isModalManuallyClosed.current = false;
+  }, [selectedTest]);
+
+  // Monitor differential validation changes and show modal
+  useEffect(() => {
+    // Clear any existing timer
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+
+    // Set a new debounced timer
+    const timer = setTimeout(() => {
+      // Check if we have differential validation from AutoCalculation
+      if (differentialValidation) {
+        const currentValues = JSON.stringify(differentialValidation);
+        // Only show modal if values have changed, modal is not already showing,
+        // and not manually closed recently
+        if (currentValues !== lastDifferentialValues &&
+            !showDifferentialModal &&
+            !isModalManuallyClosed.current) {
+          setDifferentialResult(differentialValidation);
+          setShowDifferentialModal(true);
+          setLastDifferentialValues(currentValues);
+        }
+      }
+    }, 1000);
+
+    setDebounceTimer(timer);
+
+    // Cleanup function
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+    // IMPORTANT: Remove showDifferentialModal from dependencies to prevent re-trigger on modal close
+  }, [differentialValidation, lastDifferentialValues]);
+
   const handleInputChange = (testName: string, index: number | string, value: string) => {
     const numericValue = parseFloat(value);
 
@@ -366,7 +423,8 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
       const referenceData = referencePoints[testName] || [];
       const point = referenceData[typeof index === 'number' ? index : 0];
       
-      if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
+      // Pass testName to isAutoCalculatedField
+      if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '', testName)) {
         toast.error('Negative values are not allowed');
         return;
       }
@@ -384,12 +442,17 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
       // Trigger auto-calculation for the specific test
       const refData = referencePoints[testName] || [];
       if (refData.length > 0) {
-        const result = AutoCalculation.calculate(testName, updated[testName], refData);
-        updated[testName] = result.updatedInputs;
+        const point = refData[typeof index === 'number' ? index : 0];
+        const isDropdownField = point?.testDescription?.toUpperCase().includes('DROPDOWN') || 
+                                point?.testDescription?.toUpperCase().includes('DROPDOWN WITH DESCRIPTION');
         
-        // Update differential validation for CBC
-        if (result.differentialValidation) {
-          setDifferentialValidation(result.differentialValidation);
+        if (!isDropdownField) {
+          const result = AutoCalculation.calculate(testName, updated[testName], refData);
+          updated[testName] = result.updatedInputs;
+          
+          if (result.differentialValidation) {
+            setDifferentialValidation(result.differentialValidation);
+          }
         }
       }
 
@@ -422,8 +485,8 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
         return;
       }
 
-      // Skip validation for auto-calculated fields
-      if (AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
+      // Pass test name to isAutoCalculatedField
+      if (AutoCalculation.isAutoCalculatedField(point.testDescription || '', selectedTest.name)) {
         return;
       }
 
@@ -624,18 +687,105 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
     <div className="w-full">
       {/* Differential Count Validation Alert - Only for CBC */}
       {differentialValidation && (
-        <div className="mb-4 rounded-2xl border p-4 bg-red-50 border-red-300">
+        <div className={`mb-4 rounded-2xl border p-4 ${
+          differentialValidation.type === 'error'
+            ? 'bg-red-50 border-red-300'
+            : 'bg-green-50 border-green-300'
+        }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <div className={`text-lg font-bold ${differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
-                Total: {differentialValidation.total}
+              {differentialValidation.type === 'error' ? (
+                <TbX className="text-red-500 mr-3" size={24} />
+              ) : (
+                <TbSquareRoundedCheck className="text-green-500 mr-3" size={24} />
+              )}
+              <div>
+                <span className={`text-base font-semibold ${
+                  differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'
+                }`}>
+                  {differentialValidation.message}
+                </span>
+                <p className={`text-sm mt-1 ${
+                  differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
+                }`}>
+                  {differentialValidation.type === 'error' ?
+                    'Please check your differential count values' :
+                    'Differential count is correctly balanced'
+                  }
+                </p>
               </div>
-              <span className={`ml-3 text-sm font-medium ${differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'}`}>
-                {differentialValidation.message}
-              </span>
+            </div>
+            <div className={`text-lg font-bold ${
+              differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
+            }`}>
+              Total: {differentialValidation.total}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Differential Count Validation Modal */}
+      {differentialResult && (
+        <NewModal
+          isOpen={showDifferentialModal}
+          onClose={() => {
+            setShowDifferentialModal(false);
+            isModalManuallyClosed.current = true;
+            setTimeout(() => {
+              isModalManuallyClosed.current = false;
+            }, 2000);
+          }}
+          title="Differential Count Validation"
+          modalClassName="max-w-xl"
+        >
+          <div className={`text-center p-6 rounded-lg border-2 ${
+            differentialResult.type === 'success'
+              ? 'bg-green-50 border-green-300'
+              : 'bg-red-50 border-red-300'
+          }`}>
+            <div className={`text-4xl font-bold mb-2 ${
+              differentialResult.type === 'success'
+                ? 'text-green-600'
+                : 'text-red-600'
+            }`}>
+              {differentialResult.total}
+            </div>
+            <div className={`text-lg font-semibold ${
+              differentialResult.type === 'success'
+                ? 'text-green-800'
+                : 'text-red-800'
+            }`}>
+              Differential Count
+            </div>
+            <div className={`text-sm mt-2 ${
+              differentialResult.type === 'success'
+                ? 'text-green-700'
+                : 'text-red-700'
+            }`}>
+              {differentialResult.type === 'success'
+                ? 'Perfect! All values are balanced.'
+                : 'Please review your differential count values.'}
+            </div>
+            <div className={`text-p3 mt-3 text-pneutral-900`}>
+              Calculation: {differentialResult.calculation} = {differentialResult.total}
+            </div>
+          </div>
+
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => {
+                setShowDifferentialModal(false);
+                isModalManuallyClosed.current = true;
+                setTimeout(() => {
+                  isModalManuallyClosed.current = false;
+                }, 2000);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </NewModal>
       )}
 
       {/* Header */}
@@ -704,10 +854,20 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
                     const hasApiDropdown = dropdownResult.isValid;
                     const dropdownItems = dropdownResult.data;
 
-                    const isDropdown = hasApiDropdown || 
+                    // Check if this is RANDOM URINE SUGAR test
+                    const isRandomUrineSugar = selectedTest?.name?.toUpperCase().includes('RANDOM URINE SUGAR') || 
+                                              selectedTest?.name?.toUpperCase().includes('RUS');
+
+                    // For RANDOM URINE SUGAR with DROPDOWN-PERCENTAGE, use numeric input instead of dropdown
+                    const isPercentageTest = isRandomUrineSugar && 
+                      (point.testDescription?.toUpperCase().includes('DROPDOWN-PERCENTAGE') || 
+                       point.testDescription?.toUpperCase().includes('PERCENTAGE'));
+
+                    // Override isDropdown for percentage tests
+                    const isDropdown = !isPercentageTest && (hasApiDropdown || 
                       ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
                        "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DROPDOWN-COMPATIBLE/INCOMPATIBLE"]
-                      .includes(point.testDescription || '');
+                      .includes(point.testDescription || ''));
 
                     const isDropdownWithDescription = 
                       point.testDescription === "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE" ||
@@ -760,7 +920,13 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
                       return null;
                     }
 
-                    const isAutoCalculated = AutoCalculation.isAutoCalculatedField(point.testDescription || '');
+                    const isAutoCalculated = AutoCalculation.isAutoCalculatedField(
+                      point.testDescription || '', 
+                      selectedTest?.name || ''
+                    );
+
+                    // Check if this is a DESCRIPTION field
+                    const isDescriptionField = point.testDescription === "DESCRIPTION";
 
                     return (
                       <tr
@@ -798,14 +964,14 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
                               />
                             </div>
                           ) : isDescription ? (
-                            <input
-                              type="text"
+                            <textarea
                               value={currentValue}
                               placeholder="Enter description"
                               onChange={(e) =>
                                 handleInputChange(selectedTest?.name, index, e.target.value)
                               }
-                              className="h-9 w-48 rounded-full border border-info-500 bg-white px-3 text-p3 outline-none transition focus:border-secondary-700"
+                              className="w-full min-w-[200px] rounded-lg border border-info-500 bg-white px-3 py-2 text-p3 outline-none transition focus:border-secondary-700 resize-y"
+                              rows={4}
                             />
                           ) : isDropdown ? (
                             <DropdownInput
@@ -817,37 +983,50 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
                               placeholder="Select value"
                             />
                           ) : (
-                            <input
-                              type="number"
-                              value={currentValue}
-                              placeholder="Enter value"
-                              onChange={(e) =>
-                                handleInputChange(selectedTest?.name, index, e.target.value)
-                              }
-                              className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(status)}`}
-                              disabled={isAutoCalculated}
-                              step="any"
-                            />
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                value={currentValue}
+                                placeholder="Enter value"
+                                onChange={(e) =>
+                                  handleInputChange(selectedTest?.name, index, e.target.value)
+                                }
+                                className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(status)}`}
+                                disabled={isAutoCalculated}
+                                step="any"
+                              />
+                              {/* Show % symbol for RANDOM URINE SUGAR test with percentage unit */}
+                              {isPercentageTest && point.units?.toUpperCase() === '%' && (
+                                <span className="text-p3 text-pneutral-600 font-medium">%</span>
+                              )}
+                            </div>
                           )}
                         </td>
 
-                        <td className="px-4 py-3 text-p3 text-pneutral-900">
-                          {isDescription || isDropdown || isDropdownWithDescription ? '-' : (point.units || 'N/A')}
-                        </td>
-
-                        <td className="px-4 py-3 text-p3 text-sneutral-500">
-                          {isDescription || isDropdown || isDropdownWithDescription ? '-' : (
-                            point.minReferenceRange !== null && point.maxReferenceRange !== null
-                              ? `${point.minReferenceRange} - ${point.maxReferenceRange}`
-                              : 'N/A'
-                          )}
-                        </td>
-
-                        <td
-                          className={`px-4 py-3 text-p3 font-medium ${getStatusTextColor(status)}`}
-                        >
-                          {isDescription || isDropdown || isDropdownWithDescription  ? '-' : (getStatusLabel(status) || '-')}
-                        </td>
+                        {/* Hide Unit, Ref. Range, and Status columns for DESCRIPTION field */}
+                        {isDescriptionField ? (
+                          <>
+                            <td className="px-4 py-3 text-p3 text-pneutral-900">-</td>
+                            <td className="px-4 py-3 text-p3 text-sneutral-500">-</td>
+                            <td className="px-4 py-3 text-p3 font-medium text-pneutral-400">-</td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3 text-p3 text-pneutral-900">
+                              {isDescription || isDropdown || isDropdownWithDescription ? '-' : (point.units || 'N/A')}
+                            </td>
+                            <td className="px-4 py-3 text-p3 text-sneutral-500">
+                              {isDescription || isDropdown || isDropdownWithDescription ? '-' : (
+                                point.minReferenceRange !== null && point.maxReferenceRange !== null
+                                  ? `${point.minReferenceRange} - ${point.maxReferenceRange}`
+                                  : 'N/A'
+                              )}
+                            </td>
+                            <td className={`px-4 py-3 text-p3 font-medium ${getStatusTextColor(status)}`}>
+                              {isDescription || isDropdown || isDropdownWithDescription ? '-' : (getStatusLabel(status) || '-')}
+                            </td>
+                          </>
+                        )}
                       </tr>
                     );
                   })}
@@ -914,6 +1093,29 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
 };
 
 export default PatientReportDataEdit;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

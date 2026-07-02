@@ -59,7 +59,19 @@ export default function RootLayout({
           <TokenExpirationHandler />
           <IdleLogoutHandler />
           {children}
-          <ToastContainer />
+          {/* <ToastContainer /> */}
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            style={{ zIndex: 99999 }}
+          />
         </body>
       </html>
     </LabProvider>
