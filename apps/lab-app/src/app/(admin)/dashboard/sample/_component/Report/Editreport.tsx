@@ -423,7 +423,8 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
       const referenceData = referencePoints[testName] || [];
       const point = referenceData[typeof index === 'number' ? index : 0];
       
-      if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
+      // Pass testName to isAutoCalculatedField
+      if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '', testName)) {
         toast.error('Negative values are not allowed');
         return;
       }
@@ -441,12 +442,17 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
       // Trigger auto-calculation for the specific test
       const refData = referencePoints[testName] || [];
       if (refData.length > 0) {
-        const result = AutoCalculation.calculate(testName, updated[testName], refData);
-        updated[testName] = result.updatedInputs;
+        const point = refData[typeof index === 'number' ? index : 0];
+        const isDropdownField = point?.testDescription?.toUpperCase().includes('DROPDOWN') || 
+                                point?.testDescription?.toUpperCase().includes('DROPDOWN WITH DESCRIPTION');
         
-        // Update differential validation for CBC
-        if (result.differentialValidation) {
-          setDifferentialValidation(result.differentialValidation);
+        if (!isDropdownField) {
+          const result = AutoCalculation.calculate(testName, updated[testName], refData);
+          updated[testName] = result.updatedInputs;
+          
+          if (result.differentialValidation) {
+            setDifferentialValidation(result.differentialValidation);
+          }
         }
       }
 
@@ -479,8 +485,8 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
         return;
       }
 
-      // Skip validation for auto-calculated fields
-      if (AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
+      // Pass test name to isAutoCalculatedField
+      if (AutoCalculation.isAutoCalculatedField(point.testDescription || '', selectedTest.name)) {
         return;
       }
 
@@ -848,10 +854,20 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
                     const hasApiDropdown = dropdownResult.isValid;
                     const dropdownItems = dropdownResult.data;
 
-                    const isDropdown = hasApiDropdown || 
+                    // Check if this is RANDOM URINE SUGAR test
+                    const isRandomUrineSugar = selectedTest?.name?.toUpperCase().includes('RANDOM URINE SUGAR') || 
+                                              selectedTest?.name?.toUpperCase().includes('RUS');
+
+                    // For RANDOM URINE SUGAR with DROPDOWN-PERCENTAGE, use numeric input instead of dropdown
+                    const isPercentageTest = isRandomUrineSugar && 
+                      (point.testDescription?.toUpperCase().includes('DROPDOWN-PERCENTAGE') || 
+                       point.testDescription?.toUpperCase().includes('PERCENTAGE'));
+
+                    // Override isDropdown for percentage tests
+                    const isDropdown = !isPercentageTest && (hasApiDropdown || 
                       ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
                        "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DROPDOWN-COMPATIBLE/INCOMPATIBLE"]
-                      .includes(point.testDescription || '');
+                      .includes(point.testDescription || ''));
 
                     const isDropdownWithDescription = 
                       point.testDescription === "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE" ||
@@ -904,7 +920,13 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
                       return null;
                     }
 
-                    const isAutoCalculated = AutoCalculation.isAutoCalculatedField(point.testDescription || '');
+                    const isAutoCalculated = AutoCalculation.isAutoCalculatedField(
+                      point.testDescription || '', 
+                      selectedTest?.name || ''
+                    );
+
+                    // Check if this is a DESCRIPTION field
+                    const isDescriptionField = point.testDescription === "DESCRIPTION";
 
                     return (
                       <tr
@@ -942,14 +964,14 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
                               />
                             </div>
                           ) : isDescription ? (
-                            <input
-                              type="text"
+                            <textarea
                               value={currentValue}
                               placeholder="Enter description"
                               onChange={(e) =>
                                 handleInputChange(selectedTest?.name, index, e.target.value)
                               }
-                              className="h-9 w-48 rounded-full border border-info-500 bg-white px-3 text-p3 outline-none transition focus:border-secondary-700"
+                              className="w-full min-w-[200px] rounded-lg border border-info-500 bg-white px-3 py-2 text-p3 outline-none transition focus:border-secondary-700 resize-y"
+                              rows={4}
                             />
                           ) : isDropdown ? (
                             <DropdownInput
@@ -961,37 +983,50 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
                               placeholder="Select value"
                             />
                           ) : (
-                            <input
-                              type="number"
-                              value={currentValue}
-                              placeholder="Enter value"
-                              onChange={(e) =>
-                                handleInputChange(selectedTest?.name, index, e.target.value)
-                              }
-                              className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(status)}`}
-                              disabled={isAutoCalculated}
-                              step="any"
-                            />
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                value={currentValue}
+                                placeholder="Enter value"
+                                onChange={(e) =>
+                                  handleInputChange(selectedTest?.name, index, e.target.value)
+                                }
+                                className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(status)}`}
+                                disabled={isAutoCalculated}
+                                step="any"
+                              />
+                              {/* Show % symbol for RANDOM URINE SUGAR test with percentage unit */}
+                              {isPercentageTest && point.units?.toUpperCase() === '%' && (
+                                <span className="text-p3 text-pneutral-600 font-medium">%</span>
+                              )}
+                            </div>
                           )}
                         </td>
 
-                        <td className="px-4 py-3 text-p3 text-pneutral-900">
-                          {isDescription || isDropdown || isDropdownWithDescription ? '-' : (point.units || 'N/A')}
-                        </td>
-
-                        <td className="px-4 py-3 text-p3 text-sneutral-500">
-                          {isDescription || isDropdown || isDropdownWithDescription ? '-' : (
-                            point.minReferenceRange !== null && point.maxReferenceRange !== null
-                              ? `${point.minReferenceRange} - ${point.maxReferenceRange}`
-                              : 'N/A'
-                          )}
-                        </td>
-
-                        <td
-                          className={`px-4 py-3 text-p3 font-medium ${getStatusTextColor(status)}`}
-                        >
-                          {isDescription || isDropdown || isDropdownWithDescription  ? '-' : (getStatusLabel(status) || '-')}
-                        </td>
+                        {/* Hide Unit, Ref. Range, and Status columns for DESCRIPTION field */}
+                        {isDescriptionField ? (
+                          <>
+                            <td className="px-4 py-3 text-p3 text-pneutral-900">-</td>
+                            <td className="px-4 py-3 text-p3 text-sneutral-500">-</td>
+                            <td className="px-4 py-3 text-p3 font-medium text-pneutral-400">-</td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3 text-p3 text-pneutral-900">
+                              {isDescription || isDropdown || isDropdownWithDescription ? '-' : (point.units || 'N/A')}
+                            </td>
+                            <td className="px-4 py-3 text-p3 text-sneutral-500">
+                              {isDescription || isDropdown || isDropdownWithDescription ? '-' : (
+                                point.minReferenceRange !== null && point.maxReferenceRange !== null
+                                  ? `${point.minReferenceRange} - ${point.maxReferenceRange}`
+                                  : 'N/A'
+                              )}
+                            </td>
+                            <td className={`px-4 py-3 text-p3 font-medium ${getStatusTextColor(status)}`}>
+                              {isDescription || isDropdown || isDropdownWithDescription ? '-' : (getStatusLabel(status) || '-')}
+                            </td>
+                          </>
+                        )}
                       </tr>
                     );
                   })}
@@ -1058,6 +1093,29 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
 };
 
 export default PatientReportDataEdit;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

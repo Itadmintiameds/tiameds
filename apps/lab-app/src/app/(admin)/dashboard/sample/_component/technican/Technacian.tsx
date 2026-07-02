@@ -49,7 +49,7 @@ const Technician = () => {
       count: kpiData.collected
     },
     {
-      title: "Partially Completed Test Results",
+      title: "Pending Test Results",
       value: kpiData.partial.toString(),
       count: kpiData.partial
     },
