@@ -67,26 +67,30 @@ const Technician = () => {
     setHideKPI(false); // Show KPI when changing views
   };
 
-  // Render the appropriate component based on current view
+  // All four tables stay mounted at all times (hidden via CSS instead of
+  // unmounted) so each one fetches its data and reports its KPI count as
+  // soon as the screen opens, instead of only after its tab is clicked.
   const renderContent = () => {
-    switch (currentView) {
-      case 'pending':
-        return <PendingTable onDataUpdate={handlePendingUpdate} />;
-      case 'collected':
-        return <CollectedSample onDataUpdate={handleCollectedUpdate} />;
-      case 'partial':
-        return (
+    return (
+      <>
+        <div className={currentView === 'pending' ? '' : 'hidden'}>
+          <PendingTable onDataUpdate={handlePendingUpdate} />
+        </div>
+        <div className={currentView === 'collected' ? '' : 'hidden'}>
+          <CollectedSample onDataUpdate={handleCollectedUpdate} />
+        </div>
+        <div className={currentView === 'partial' ? '' : 'hidden'}>
           <CollectionTable
             onDataUpdate={handlePartialUpdate}
             onHideKPI={handleHideKPI}
             onShowKPI={handleShowKPI}
           />
-        );
-      case 'completed':
-        return <CompletedTable onDataUpdate={handleCompletedUpdate} />;
-      default:
-        return <PendingTable onDataUpdate={handlePendingUpdate} />;
-    }
+        </div>
+        <div className={currentView === 'completed' ? '' : 'hidden'}>
+          <CompletedTable onDataUpdate={handleCompletedUpdate} />
+        </div>
+      </>
+    );
   };
 
   return (
