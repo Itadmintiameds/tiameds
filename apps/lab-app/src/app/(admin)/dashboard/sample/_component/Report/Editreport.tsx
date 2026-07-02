@@ -10,16 +10,18 @@ import { TestList, TestReferancePoint } from '@/types/test/testlist';
 import { calculateAgeObject } from '@/utils/ageUtils';
 import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
 import React, { useCallback, useEffect, useState } from 'react';
-import { 
-  // TbInfoCircle, 
-  TbReportMedical, 
-  // TbArrowDownCircle, 
-  // TbArrowUpCircle, 
-  // TbSquareRoundedCheck,
-  TbChevronLeft
+import {
+  // TbInfoCircle,
+  TbReportMedical,
+  // TbArrowDownCircle,
+  // TbArrowUpCircle,
+  TbSquareRoundedCheck,
+  TbChevronLeft,
+  TbX
 } from "react-icons/tb";
 import { toast } from 'react-toastify';
 import AutoCalculation from './AutoCalculation';
+import NewModal from "../../../newcommoncomponent/NewModal";
 
 export interface Patient {
   visitId: number;
@@ -183,6 +185,18 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
     message: string;
     calculation: string;
   } | null>(null);
+
+  // Modal states for differential count validation
+  const [showDifferentialModal, setShowDifferentialModal] = useState(false);
+  const [differentialResult, setDifferentialResult] = useState<{
+    total: number;
+    type: string;
+    message: string;
+    calculation: string;
+  } | null>(null);
+  const [lastDifferentialValues, setLastDifferentialValues] = useState<string>('');
+  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const isModalManuallyClosed = React.useRef(false);
 
   // const patientForInfo: PatientData = useMemo(() => ({
   //   ...(editPatient as PatientData),
@@ -357,6 +371,49 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
   useEffect(() => {
     fetchReferenceData();
   }, [fetchReferenceData]);
+
+  // Reset modal state when test changes
+  useEffect(() => {
+    setShowDifferentialModal(false);
+    setDifferentialResult(null);
+    setLastDifferentialValues('');
+    isModalManuallyClosed.current = false;
+  }, [selectedTest]);
+
+  // Monitor differential validation changes and show modal
+  useEffect(() => {
+    // Clear any existing timer
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+
+    // Set a new debounced timer
+    const timer = setTimeout(() => {
+      // Check if we have differential validation from AutoCalculation
+      if (differentialValidation) {
+        const currentValues = JSON.stringify(differentialValidation);
+        // Only show modal if values have changed, modal is not already showing,
+        // and not manually closed recently
+        if (currentValues !== lastDifferentialValues &&
+            !showDifferentialModal &&
+            !isModalManuallyClosed.current) {
+          setDifferentialResult(differentialValidation);
+          setShowDifferentialModal(true);
+          setLastDifferentialValues(currentValues);
+        }
+      }
+    }, 1000);
+
+    setDebounceTimer(timer);
+
+    // Cleanup function
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+    // IMPORTANT: Remove showDifferentialModal from dependencies to prevent re-trigger on modal close
+  }, [differentialValidation, lastDifferentialValues]);
 
   const handleInputChange = (testName: string, index: number | string, value: string) => {
     const numericValue = parseFloat(value);
@@ -624,18 +681,105 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
     <div className="w-full">
       {/* Differential Count Validation Alert - Only for CBC */}
       {differentialValidation && (
-        <div className="mb-4 rounded-2xl border p-4 bg-red-50 border-red-300">
+        <div className={`mb-4 rounded-2xl border p-4 ${
+          differentialValidation.type === 'error'
+            ? 'bg-red-50 border-red-300'
+            : 'bg-green-50 border-green-300'
+        }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <div className={`text-lg font-bold ${differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
-                Total: {differentialValidation.total}
+              {differentialValidation.type === 'error' ? (
+                <TbX className="text-red-500 mr-3" size={24} />
+              ) : (
+                <TbSquareRoundedCheck className="text-green-500 mr-3" size={24} />
+              )}
+              <div>
+                <span className={`text-base font-semibold ${
+                  differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'
+                }`}>
+                  {differentialValidation.message}
+                </span>
+                <p className={`text-sm mt-1 ${
+                  differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
+                }`}>
+                  {differentialValidation.type === 'error' ?
+                    'Please check your differential count values' :
+                    'Differential count is correctly balanced'
+                  }
+                </p>
               </div>
-              <span className={`ml-3 text-sm font-medium ${differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'}`}>
-                {differentialValidation.message}
-              </span>
+            </div>
+            <div className={`text-lg font-bold ${
+              differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
+            }`}>
+              Total: {differentialValidation.total}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Differential Count Validation Modal */}
+      {differentialResult && (
+        <NewModal
+          isOpen={showDifferentialModal}
+          onClose={() => {
+            setShowDifferentialModal(false);
+            isModalManuallyClosed.current = true;
+            setTimeout(() => {
+              isModalManuallyClosed.current = false;
+            }, 2000);
+          }}
+          title="Differential Count Validation"
+          modalClassName="max-w-xl"
+        >
+          <div className={`text-center p-6 rounded-lg border-2 ${
+            differentialResult.type === 'success'
+              ? 'bg-green-50 border-green-300'
+              : 'bg-red-50 border-red-300'
+          }`}>
+            <div className={`text-4xl font-bold mb-2 ${
+              differentialResult.type === 'success'
+                ? 'text-green-600'
+                : 'text-red-600'
+            }`}>
+              {differentialResult.total}
+            </div>
+            <div className={`text-lg font-semibold ${
+              differentialResult.type === 'success'
+                ? 'text-green-800'
+                : 'text-red-800'
+            }`}>
+              Differential Count
+            </div>
+            <div className={`text-sm mt-2 ${
+              differentialResult.type === 'success'
+                ? 'text-green-700'
+                : 'text-red-700'
+            }`}>
+              {differentialResult.type === 'success'
+                ? 'Perfect! All values are balanced.'
+                : 'Please review your differential count values.'}
+            </div>
+            <div className={`text-p3 mt-3 text-pneutral-900`}>
+              Calculation: {differentialResult.calculation} = {differentialResult.total}
+            </div>
+          </div>
+
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => {
+                setShowDifferentialModal(false);
+                isModalManuallyClosed.current = true;
+                setTimeout(() => {
+                  isModalManuallyClosed.current = false;
+                }, 2000);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </NewModal>
       )}
 
       {/* Header */}

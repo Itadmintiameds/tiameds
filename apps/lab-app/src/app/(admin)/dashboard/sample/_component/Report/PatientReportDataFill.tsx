@@ -12,6 +12,8 @@ import { createReportWithTestResult } from '@/../services/reportServices';
 import { calculateAgeObject } from '@/utils/ageUtils';
 import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
 import AutoCalculation from './AutoCalculation';
+import { TbSquareRoundedCheck, TbX } from "react-icons/tb";
+import NewModal from "../../../newcommoncomponent/NewModal";
 
 // Interfaces
 export interface Patient {
@@ -181,6 +183,18 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     calculation: string;
   } | null>(null);
 
+  // Modal states for differential count validation
+  const [showDifferentialModal, setShowDifferentialModal] = useState(false);
+  const [differentialResult, setDifferentialResult] = useState<{
+    total: number;
+    type: string;
+    message: string;
+    calculation: string;
+  } | null>(null);
+  const [lastDifferentialValues, setLastDifferentialValues] = useState<string>('');
+  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const isModalManuallyClosed = React.useRef(false);
+
   const filterReferenceData = useCallback((referenceData: Record<string, TestReferancePoint[]>) => {
     const filteredData: Record<string, TestReferancePoint[]> = {};
 
@@ -284,174 +298,112 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     }
   }, [selectedTest, fetchReferenceData]);
 
-  const handleInputChange = (testName: string, index: number | string, value: string) => {
-  const numericValue = parseFloat(value);
+  // Reset modal state when test changes
+  useEffect(() => {
+    setShowDifferentialModal(false);
+    setDifferentialResult(null);
+    setLastDifferentialValues('');
+    isModalManuallyClosed.current = false;
+  }, [selectedTest]);
 
-  // Prevent negative values for non-auto-calculated fields
-  if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
-    const referenceData = referencePoints[testName] || [];
-    const point = referenceData[typeof index === 'number' ? index : 0];
-    
-    if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
-      toast.error('Negative values are not allowed');
-      return;
+  // Monitor differential validation changes and show modal
+  useEffect(() => {
+    // Clear any existing timer
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
     }
-  }
 
-  setInputValues(prev => {
-    // First update the input
-    const currentTestInputs = prev[testName] || {};
-    const updated = {
-      ...prev,
-      [testName]: {
-        ...currentTestInputs,
-        [index]: value
+    // Set a new debounced timer
+    const timer = setTimeout(() => {
+      // Check if we have differential validation from AutoCalculation
+      if (differentialValidation) {
+        const currentValues = JSON.stringify(differentialValidation);
+        // Only show modal if values have changed, modal is not already showing, 
+        // and not manually closed recently
+        if (currentValues !== lastDifferentialValues && 
+            !showDifferentialModal && 
+            !isModalManuallyClosed.current) {
+          setDifferentialResult(differentialValidation);
+          setShowDifferentialModal(true);
+          setLastDifferentialValues(currentValues);
+        }
+      }
+    }, 1000);
+
+    setDebounceTimer(timer);
+
+    // Cleanup function
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
       }
     };
+    // IMPORTANT: Remove showDifferentialModal from dependencies to prevent re-trigger on modal close
+  }, [differentialValidation, lastDifferentialValues]);
 
-    // Get the updated inputs for this test
-    const updatedInputs = updated[testName];
-    const refData = referencePoints[testName] || [];
+  const handleInputChange = (testName: string, index: number | string, value: string) => {
+    const numericValue = parseFloat(value);
 
-    // Trigger auto-calculation if we have reference data
-    if (refData.length > 0) {
-      // Skip auto-calculation for dropdown fields to avoid conflicts
-      const point = refData[typeof index === 'number' ? index : 0];
-      const isDropdownField = point?.testDescription?.toUpperCase().includes('DROPDOWN') || 
-                              point?.testDescription?.toUpperCase().includes('DROPDOWN WITH DESCRIPTION');
+    // Prevent negative values for non-auto-calculated fields
+    if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
+      const referenceData = referencePoints[testName] || [];
+      const point = referenceData[typeof index === 'number' ? index : 0];
       
-      // Only run auto-calculation for non-dropdown fields or when the change is from a non-dropdown field
-      if (!isDropdownField) {
-        console.log('Triggering auto-calculation for:', testName);
-        console.log('Current inputs:', updatedInputs);
-        
-        const result = AutoCalculation.calculate(testName, updatedInputs, refData);
-        updated[testName] = result.updatedInputs;
-        
-        // Update differential validation for CBC
-        if (result.differentialValidation) {
-          setDifferentialValidation(result.differentialValidation);
-        }
-        
-        console.log('After auto-calculation:', updated[testName]);
+      if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
+        toast.error('Negative values are not allowed');
+        return;
       }
     }
 
-    return updated;
-  });
+    setInputValues(prev => {
+      // First update the input
+      const currentTestInputs = prev[testName] || {};
+      const updated = {
+        ...prev,
+        [testName]: {
+          ...currentTestInputs,
+          [index]: value
+        }
+      };
 
-  if (validationErrors[`${testName}-${index}`]) {
-    setValidationErrors(prev => ({
-      ...prev,
-      [`${testName}-${index}`]: false
-    }));
-  }
-};
+      // Get the updated inputs for this test
+      const updatedInputs = updated[testName];
+      const refData = referencePoints[testName] || [];
 
-
-
-// this is working 
-//   const handleInputChange = (testName: string, index: number | string, value: string) => {
-//   const numericValue = parseFloat(value);
-
-//   // Prevent negative values for non-auto-calculated fields
-//   if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
-//     const referenceData = referencePoints[testName] || [];
-//     const point = referenceData[typeof index === 'number' ? index : 0];
-    
-//     if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
-//       toast.error('Negative values are not allowed');
-//       return;
-//     }
-//   }
-
-//   setInputValues(prev => {
-//     // First update the input
-//     const currentTestInputs = prev[testName] || {};
-//     const updated = {
-//       ...prev,
-//       [testName]: {
-//         ...currentTestInputs,
-//         [index]: value
-//       }
-//     };
-
-//     // Get the updated inputs for this test
-//     const updatedInputs = updated[testName];
-//     const refData = referencePoints[testName] || [];
-
-//     // Trigger auto-calculation if we have reference data
-//     if (refData.length > 0) {
-//       console.log('Triggering auto-calculation for:', testName);
-//       console.log('Current inputs:', updatedInputs);
-      
-//       const result = AutoCalculation.calculate(testName, updatedInputs, refData);
-//       updated[testName] = result.updatedInputs;
-      
-//       // Update differential validation for CBC
-//       if (result.differentialValidation) {
-//         setDifferentialValidation(result.differentialValidation);
-//       }
-      
-//       console.log('After auto-calculation:', updated[testName]);
-//     }
-
-//     return updated;
-//   });
-
-//   if (validationErrors[`${testName}-${index}`]) {
-//     setValidationErrors(prev => ({
-//       ...prev,
-//       [`${testName}-${index}`]: false
-//     }));
-//   }
-// };
-
-  // const handleInputChange = (testName: string, index: number | string, value: string) => {
-  //   const numericValue = parseFloat(value);
-
-  //   // Prevent negative values for non-auto-calculated fields
-  //   if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
-  //     const referenceData = referencePoints[testName] || [];
-  //     const point = referenceData[typeof index === 'number' ? index : 0];
-      
-  //     if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
-  //       toast.error('Negative values are not allowed');
-  //       return;
-  //     }
-  //   }
-
-  //   setInputValues(prev => {
-  //     const updated = {
-  //       ...prev,
-  //       [testName]: {
-  //         ...prev[testName],
-  //         [index]: value
-  //       }
-  //     };
-
-  //     // Trigger auto-calculation for the specific test
-  //     const refData = referencePoints[testName] || [];
-  //     if (refData.length > 0) {
-  //       const result = AutoCalculation.calculate(testName, updated[testName], refData);
-  //       updated[testName] = result.updatedInputs;
+      // Trigger auto-calculation if we have reference data
+      if (refData.length > 0) {
+        // Skip auto-calculation for dropdown fields to avoid conflicts
+        const point = refData[typeof index === 'number' ? index : 0];
+        const isDropdownField = point?.testDescription?.toUpperCase().includes('DROPDOWN') || 
+                                point?.testDescription?.toUpperCase().includes('DROPDOWN WITH DESCRIPTION');
         
-  //       // Update differential validation for CBC
-  //       if (result.differentialValidation) {
-  //         setDifferentialValidation(result.differentialValidation);
-  //       }
-  //     }
+        // Only run auto-calculation for non-dropdown fields or when the change is from a non-dropdown field
+        if (!isDropdownField) {
+          console.log('Triggering auto-calculation for:', testName);
+          console.log('Current inputs:', updatedInputs);
+          
+          const result = AutoCalculation.calculate(testName, updatedInputs, refData);
+          updated[testName] = result.updatedInputs;
+          
+          // Update differential validation for CBC
+          if (result.differentialValidation) {
+            setDifferentialValidation(result.differentialValidation);
+          }
+          
+          console.log('After auto-calculation:', updated[testName]);
+        }
+      }
 
-  //     return updated;
-  //   });
+      return updated;
+    });
 
-  //   if (validationErrors[`${testName}-${index}`]) {
-  //     setValidationErrors(prev => ({
-  //       ...prev,
-  //       [`${testName}-${index}`]: false
-  //     }));
-  //   }
-  // };
+    if (validationErrors[`${testName}-${index}`]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [`${testName}-${index}`]: false
+      }));
+    }
+  };
 
   const validateForm = () => {
     const errors: Record<string, boolean> = {};
@@ -669,18 +621,105 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     <div className="min-h-screen bg-info-50">
       {/* Differential Count Validation Alert - Only for CBC */}
       {differentialValidation && (
-        <div className="mb-4 rounded-2xl border p-4 bg-red-50 border-red-300">
+        <div className={`mb-4 rounded-2xl border p-4 ${
+          differentialValidation.type === 'error' 
+            ? 'bg-red-50 border-red-300' 
+            : 'bg-green-50 border-green-300'
+        }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <div className={`text-lg font-bold ${differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
-                Total: {differentialValidation.total}
+              {differentialValidation.type === 'error' ? (
+                <TbX className="text-red-500 mr-3" size={24} />
+              ) : (
+                <TbSquareRoundedCheck className="text-green-500 mr-3" size={24} />
+              )}
+              <div>
+                <span className={`text-base font-semibold ${
+                  differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'
+                }`}>
+                  {differentialValidation.message}
+                </span>
+                <p className={`text-sm mt-1 ${
+                  differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
+                }`}>
+                  {differentialValidation.type === 'error' ? 
+                    'Please check your differential count values' :
+                    'Differential count is correctly balanced'
+                  }
+                </p>
               </div>
-              <span className={`ml-3 text-sm font-medium ${differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'}`}>
-                {differentialValidation.message}
-              </span>
+            </div>
+            <div className={`text-lg font-bold ${
+              differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
+            }`}>
+              Total: {differentialValidation.total}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Differential Count Validation Modal */}
+      {differentialResult && (
+        <NewModal
+          isOpen={showDifferentialModal}
+          onClose={() => {
+            setShowDifferentialModal(false);
+            isModalManuallyClosed.current = true;
+            setTimeout(() => {
+              isModalManuallyClosed.current = false;
+            }, 2000);
+          }}
+          title="Differential Count Validation"
+          modalClassName="max-w-xl"
+        >
+          <div className={`text-center p-6 rounded-lg border-2 ${
+            differentialResult.type === 'success'
+              ? 'bg-green-50 border-green-300'
+              : 'bg-red-50 border-red-300'
+          }`}>
+            <div className={`text-4xl font-bold mb-2 ${
+              differentialResult.type === 'success'
+                ? 'text-green-600'
+                : 'text-red-600'
+            }`}>
+              {differentialResult.total}
+            </div>
+            <div className={`text-lg font-semibold ${
+              differentialResult.type === 'success'
+                ? 'text-green-800'
+                : 'text-red-800'
+            }`}>
+              Differential Count
+            </div>
+            <div className={`text-sm mt-2 ${
+              differentialResult.type === 'success'
+                ? 'text-green-700'
+                : 'text-red-700'
+            }`}>
+              {differentialResult.type === 'success'
+                ? 'Perfect! All values are balanced.'
+                : 'Please review your differential count values.'}
+            </div>
+            <div className={`text-p3 mt-3 text-pneutral-900`}>
+              Calculation: {differentialResult.calculation} = {differentialResult.total}
+            </div>
+          </div>
+
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => {
+                setShowDifferentialModal(false);
+                isModalManuallyClosed.current = true;
+                setTimeout(() => {
+                  isModalManuallyClosed.current = false;
+                }, 2000);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </NewModal>
       )}
 
       {/* Header */}
@@ -957,7 +996,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   );
 };
 
-export default PatientReportDataFill; 
+export default PatientReportDataFill;
 
 
 
@@ -969,7 +1008,11 @@ export default PatientReportDataFill;
 
 
 
-// code dated 01.07.2026 with the auto calculation not showing normal high low status.............
+
+
+
+
+//code dated 02.07.2026.................
 
 // "use client";
 
@@ -1154,6 +1197,7 @@ export default PatientReportDataFill;
 //     calculation: string;
 //   } | null>(null);
 
+
 //   const filterReferenceData = useCallback((referenceData: Record<string, TestReferancePoint[]>) => {
 //     const filteredData: Record<string, TestReferancePoint[]> = {};
 
@@ -1320,111 +1364,6 @@ export default PatientReportDataFill;
 //     }));
 //   }
 // };
-
-
-
-// // this is working 
-// //   const handleInputChange = (testName: string, index: number | string, value: string) => {
-// //   const numericValue = parseFloat(value);
-
-// //   // Prevent negative values for non-auto-calculated fields
-// //   if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
-// //     const referenceData = referencePoints[testName] || [];
-// //     const point = referenceData[typeof index === 'number' ? index : 0];
-    
-// //     if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
-// //       toast.error('Negative values are not allowed');
-// //       return;
-// //     }
-// //   }
-
-// //   setInputValues(prev => {
-// //     // First update the input
-// //     const currentTestInputs = prev[testName] || {};
-// //     const updated = {
-// //       ...prev,
-// //       [testName]: {
-// //         ...currentTestInputs,
-// //         [index]: value
-// //       }
-// //     };
-
-// //     // Get the updated inputs for this test
-// //     const updatedInputs = updated[testName];
-// //     const refData = referencePoints[testName] || [];
-
-// //     // Trigger auto-calculation if we have reference data
-// //     if (refData.length > 0) {
-// //       console.log('Triggering auto-calculation for:', testName);
-// //       console.log('Current inputs:', updatedInputs);
-      
-// //       const result = AutoCalculation.calculate(testName, updatedInputs, refData);
-// //       updated[testName] = result.updatedInputs;
-      
-// //       // Update differential validation for CBC
-// //       if (result.differentialValidation) {
-// //         setDifferentialValidation(result.differentialValidation);
-// //       }
-      
-// //       console.log('After auto-calculation:', updated[testName]);
-// //     }
-
-// //     return updated;
-// //   });
-
-// //   if (validationErrors[`${testName}-${index}`]) {
-// //     setValidationErrors(prev => ({
-// //       ...prev,
-// //       [`${testName}-${index}`]: false
-// //     }));
-// //   }
-// // };
-
-//   // const handleInputChange = (testName: string, index: number | string, value: string) => {
-//   //   const numericValue = parseFloat(value);
-
-//   //   // Prevent negative values for non-auto-calculated fields
-//   //   if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
-//   //     const referenceData = referencePoints[testName] || [];
-//   //     const point = referenceData[typeof index === 'number' ? index : 0];
-      
-//   //     if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '')) {
-//   //       toast.error('Negative values are not allowed');
-//   //       return;
-//   //     }
-//   //   }
-
-//   //   setInputValues(prev => {
-//   //     const updated = {
-//   //       ...prev,
-//   //       [testName]: {
-//   //         ...prev[testName],
-//   //         [index]: value
-//   //       }
-//   //     };
-
-//   //     // Trigger auto-calculation for the specific test
-//   //     const refData = referencePoints[testName] || [];
-//   //     if (refData.length > 0) {
-//   //       const result = AutoCalculation.calculate(testName, updated[testName], refData);
-//   //       updated[testName] = result.updatedInputs;
-        
-//   //       // Update differential validation for CBC
-//   //       if (result.differentialValidation) {
-//   //         setDifferentialValidation(result.differentialValidation);
-//   //       }
-//   //     }
-
-//   //     return updated;
-//   //   });
-
-//   //   if (validationErrors[`${testName}-${index}`]) {
-//   //     setValidationErrors(prev => ({
-//   //       ...prev,
-//   //       [`${testName}-${index}`]: false
-//   //     }));
-//   //   }
-//   // };
 
 //   const validateForm = () => {
 //     const errors: Record<string, boolean> = {};
@@ -1865,7 +1804,7 @@ export default PatientReportDataFill;
 //                         <td
 //                           className={`px-4 py-3 text-p3 font-medium ${getStatusTextColor(status)}`}
 //                         >
-//                           {isDescription || isDropdown || isDropdownWithDescription || isAutoCalculated ? '-' : (getStatusLabel(status) || '-')}
+//                           {isDescription || isDropdown || isDropdownWithDescription ? '-' : (getStatusLabel(status) || '-')}
 //                         </td>
 //                       </tr>
 //                     );
@@ -1930,7 +1869,8 @@ export default PatientReportDataFill;
 //   );
 // };
 
-// export default PatientReportDataFill;
+// export default PatientReportDataFill; 
+
 
 
 
