@@ -40,11 +40,11 @@ const baseNavigation: BaseNavigationItem[] = [
       href: "/dashboard/pendingsamples?tab=completed",
       icon: ClipboardListIcon,
     },
-    {
-      name: "New Sample Configuration",
-      href: "/dashboard/pendingsamples?tab=configuration",
-      icon: ClipboardListIcon,
-    },
+    // {
+    //   name: "New Sample Configuration",
+    //   href: "/dashboard/pendingsamples?tab=configuration",
+    //   icon: ClipboardListIcon,
+    // },
   ],
 },
 //   {
@@ -60,7 +60,7 @@ const baseNavigation: BaseNavigationItem[] = [
       { name: "Packages", href: "/dashboard/package", icon: PiPackageFill },
       { name: "Doctors", href: "/dashboard/doctor", icon: FaUserDoctor },
       { name: "Sample List", href: "/dashboard/sample/add", icon: FaPeriscope },
-      { name: "Sample Collection", href: "/dashboard/sample", icon: ClipboardListIcon },
+      // { name: "Sample Collection", href: "/dashboard/sample", icon: ClipboardListIcon },
       // {name : "Patient Details",href : "/dashboard/patientdetails", icon: MdMan}, // Hidden for this release
     ],
   },
