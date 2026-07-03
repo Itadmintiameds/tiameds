@@ -15,9 +15,9 @@ import {
   TbReportMedical,
   // TbArrowDownCircle,
   // TbArrowUpCircle,
-  TbSquareRoundedCheck,
+  // TbSquareRoundedCheck,
   TbChevronLeft,
-  TbX
+  // TbX
 } from "react-icons/tb";
 import { toast } from 'react-toastify';
 import AutoCalculation from './AutoCalculation';
@@ -913,7 +913,7 @@ mappedReportData.forEach((reportItem) => {
   return (
     <div className="w-full">
       {/* Differential Count Validation Alert - Only for CBC */}
-      {differentialValidation && (
+      {/* {differentialValidation && (
         <div className={`mb-4 rounded-2xl border p-4 ${
           differentialValidation.type === 'error'
             ? 'bg-red-50 border-red-300'
@@ -949,7 +949,7 @@ mappedReportData.forEach((reportItem) => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Differential Count Validation Modal */}
       {differentialResult && (

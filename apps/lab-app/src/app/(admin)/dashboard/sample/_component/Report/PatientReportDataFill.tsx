@@ -12,7 +12,7 @@ import { createReportWithTestResult } from '@/../services/reportServices';
 import { calculateAgeObject } from '@/utils/ageUtils';
 import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
 import AutoCalculation from './AutoCalculation';
-import { TbSquareRoundedCheck, TbX } from "react-icons/tb";
+// import { TbSquareRoundedCheck, TbX } from "react-icons/tb";
 import NewModal from "../../../newcommoncomponent/NewModal";
 import { FaChevronDown } from "react-icons/fa";
 import { createPortal } from "react-dom";
@@ -792,7 +792,7 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
   return (
     <div className="min-h-screen bg-info-50">
       {/* Differential Count Validation Alert - Only for CBC */}
-      {differentialValidation && (
+      {/* {differentialValidation && (
         <div className={`mb-4 rounded-2xl border p-4 ${
           differentialValidation.type === 'error' 
             ? 'bg-red-50 border-red-300' 
@@ -828,7 +828,7 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Differential Count Validation Modal */}
       {differentialResult && (
