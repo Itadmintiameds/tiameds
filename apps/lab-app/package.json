@@ -24,7 +24,6 @@
     "@tiptap/react": "^2.6.6",
     "@tiptap/starter-kit": "^2.6.6",
     "@types/formidable": "^3.4.5",
-    "@types/html2canvas": "^0.5.35",
     "@types/jsbarcode": "^3.11.4",
     "@types/recharts": "^1.8.29",
     "antd": "^5.26.7",

@@ -237,7 +237,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                 const canvasOptions: Html2CanvasEnhancedOptions = {
                     useCORS: true,
                     allowTaint: true,
-                    background: '#ffffff',
+                    backgroundColor: '#ffffff',
                     scale: renderScale,
                     windowWidth: sectionClone.scrollWidth,
                     windowHeight: sectionClone.scrollHeight,
