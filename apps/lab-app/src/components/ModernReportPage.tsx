@@ -117,7 +117,7 @@ const ModernReportPage: React.FC<ModernReportPageProps> = ({
       const canvas = await html2canvas(printElement, {
         useCORS: true,
         allowTaint: true,
-        background: '#ffffff'
+        backgroundColor: '#ffffff'
       });
 
       const imgData = canvas.toDataURL('image/png');

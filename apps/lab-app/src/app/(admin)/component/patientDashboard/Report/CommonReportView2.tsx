@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 //import Image from "next/image";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -18,17 +19,30 @@ type Html2CanvasEnhancedOptions = Html2CanvasBaseOptions & {
 
 const DEFAULT_FONT_FAMILY = '"Inter", "Helvetica Neue", Arial, sans-serif';
 const BASE_TEXT_COLOR = "#0f172a";
-const RADIOLOGY_PATTERNS = [
-    /\bRADIOLOGY\b/i,
-    /\bX[\s-]?RAY\b/i,
-    /\bUSG\b/i,
-    /\bULTRASOUND\b/i,
-    /\bCT\b/i,
-    /\bMRI\b/i,
-    /\bPET\b/i,
-    /\bMAMMO(?:GRAPHY)?\b/i,
-    /\bDOPPLER\b/i,
-];
+
+// Plain hex values (not Tailwind color-* classes) on purpose: Tailwind v4 generates
+// its color palette via oklch()/color-mix(), which html2canvas cannot parse and will
+// throw on mid-PDF-capture. Inline hex keeps the report visually matching the Figma
+// palette while staying safe for the PDF export pipeline.
+const REPORT_COLORS = {
+    neutral900: "#101828",
+    neutral800: "#1D2939",
+    neutral600: "#475467",
+    neutral100: "#F2F4F7",
+    secondary50: "#F8F6FD",
+    secondary100: "#F1EDFB",
+    secondary200: "#E4DEF7",
+    secondary700: "#6941C6",
+    secondary800: "#53389E",
+    warning500: "#F79009",
+    warning600: "#DC6803",
+    danger500: "#F04438",
+    danger600: "#D92D20",
+    success600: "#079455",
+    success700: "#067647",
+    success900: "#074D31",
+    white: "#FFFFFF",
+};
 // const PAGE_WIDTH_MM = 190;
 // const PAGE_HEIGHT_MM = 297;
 // const MARGIN_X_MM = 10;
@@ -41,10 +55,10 @@ const PAGE_WIDTH_MM = 190;
 const PAGE_HEIGHT_MM = 297;
 const MARGIN_X_MM = 10;
 const TOP_MARGIN_MM = 2;
-const BOTTOM_MARGIN_MM = 8;
+const BOTTOM_MARGIN_MM = 4;
 // Extra buffer to avoid edge clipping when html2canvas output is placed into jsPDF.
-const CONTENT_SAFETY_MM = 2;
-const BLOCK_GAP_MM = 6;
+const CONTENT_SAFETY_MM = 1;
+const BLOCK_GAP_MM = 2;
 const USABLE_HEIGHT_MM = PAGE_HEIGHT_MM - TOP_MARGIN_MM - BOTTOM_MARGIN_MM;
 
 const normalizeFieldKey = (value?: string) =>
@@ -53,10 +67,6 @@ const normalizeFieldKey = (value?: string) =>
         .replace(/–/g, "-")
         .replace(/\s+/g, "")
         .trim();
-
-const isDescriptionRow = (row?: { referenceDescription?: string; testParameter?: string }) =>
-    normalizeFieldKey(row?.referenceDescription) === "DESCRIPTION" ||
-    normalizeFieldKey(row?.testParameter) === "DESCRIPTION";
 
 const EXCLUDED_FIELD_TYPES = new Set(
     [
@@ -171,6 +181,18 @@ interface TestRow {
     referenceAgeRange?: string;
     referenceDescription?: string;
     description?: string;
+}
+
+type RowScore =
+    | { kind: "normal" }
+    | { kind: "unscored" }
+    | { kind: "critical" | "borderline"; direction: "high" | "low" };
+
+interface ClinicalFinding {
+    report: ConsolidatedReport;
+    row: TestRow;
+    kind: "critical" | "borderline";
+    direction: "high" | "low";
 }
 
 interface ReferenceRangeEntry {
@@ -448,6 +470,125 @@ const CommonReportView2 = ({
         [selectedReports]
     );
 
+    // Lab systems typically carry a separate "critical" threshold band beyond the plain
+    // reference range, but this data model only stores a single min-max range. We
+    // approximate that band as a percentage of the range's own width: a result just past
+    // the boundary reads as borderline, one far past it reads as critical.
+    const BORDERLINE_RANGE_RATIO = 0.15;
+
+    const scoreValue = (enteredValue?: string, normalRange?: string): RowScore => {
+        if (!enteredValue || !normalRange || enteredValue === "N/A" || normalRange === "N/A") {
+            return { kind: "unscored" };
+        }
+
+        const value = parseFloat(enteredValue);
+        if (isNaN(value)) {
+            return { kind: "unscored" };
+        }
+
+        const range = normalRange.trim();
+        const bucket = (overshoot: number, direction: "high" | "low"): RowScore => ({
+            kind: overshoot > BORDERLINE_RANGE_RATIO ? "critical" : "borderline",
+            direction,
+        });
+
+        // Format 1: "1000 - 4800" or "1000-4800" (min-max range)
+        const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+        if (rangeMatch) {
+            const min = parseFloat(rangeMatch[1]);
+            const max = parseFloat(rangeMatch[2]);
+            const width = Math.max(max - min, Number.EPSILON);
+            if (value < min) return bucket((min - value) / width, "low");
+            if (value > max) return bucket((value - max) / width, "high");
+            return { kind: "normal" };
+        }
+
+        // Format 2: "< 5.0" or "<5.0" (less than threshold)
+        const lessThanMatch = range.match(/<\s*(\d+(?:\.\d+)?)/);
+        if (lessThanMatch) {
+            const threshold = parseFloat(lessThanMatch[1]);
+            if (value >= threshold) return bucket(threshold > 0 ? (value - threshold) / threshold : 1, "high");
+            return { kind: "normal" };
+        }
+
+        // Format 3: "> 10.0" or ">10.0" (greater than threshold)
+        const greaterThanMatch = range.match(/>\s*(\d+(?:\.\d+)?)/);
+        if (greaterThanMatch) {
+            const threshold = parseFloat(greaterThanMatch[1]);
+            if (value <= threshold) return bucket(threshold > 0 ? (threshold - value) / threshold : 1, "low");
+            return { kind: "normal" };
+        }
+
+        // Format 4: Qualitative ranges (Normal, Negative, Positive, etc.) can't be scored numerically
+        return { kind: "unscored" };
+    };
+
+    // Drives the Clinical Alert Summary counts, Key Findings list, Overall Risk Score,
+    // and Clinical Attention Required section from the same row data already rendered in
+    // Detailed Lab Results -- no separate AI/analytics backend involved.
+    const clinicalSummary = useMemo(() => {
+        let critical = 0;
+        let borderline = 0;
+        let normal = 0;
+        const findings: ClinicalFinding[] = [];
+        const normalReportNames: string[] = [];
+
+        sortedReports.forEach((report) => {
+            const rows =
+                report.testRows && report.testRows.length > 0
+                    ? report.testRows
+                    : [
+                        {
+                            testParameter: report.referenceDescription || report.testName,
+                            normalRange: report.referenceRange,
+                            enteredValue: report.enteredValue,
+                            unit: report.unit,
+                        },
+                    ];
+
+            let reportHasScoredRow = false;
+            let reportHasAbnormality = false;
+
+            rows.forEach((row) => {
+                if (isExcludedQualitativeRow(row)) return;
+                const score = scoreValue(row.enteredValue, row.normalRange);
+                if (score.kind === "unscored") return;
+
+                reportHasScoredRow = true;
+                if (score.kind === "normal") {
+                    normal += 1;
+                    return;
+                }
+
+                reportHasAbnormality = true;
+                if (score.kind === "critical") critical += 1;
+                else borderline += 1;
+                findings.push({ report, row, kind: score.kind, direction: score.direction });
+            });
+
+            if (reportHasScoredRow && !reportHasAbnormality) {
+                normalReportNames.push(report.testName);
+            }
+        });
+
+        const severityRank: Record<ClinicalFinding["kind"], number> = { critical: 0, borderline: 1 };
+        findings.sort((a, b) => severityRank[a.kind] - severityRank[b.kind]);
+
+        const totalScored = critical + borderline + normal;
+        const overallRisk: "HIGH" | "MODERATE" | "LOW" | null =
+            totalScored === 0 ? null : critical > 0 ? "HIGH" : borderline > 0 ? "MODERATE" : "LOW";
+
+        return { critical, borderline, normal, findings, normalReportNames, overallRisk };
+    }, [sortedReports]);
+
+    const getFindingBadge = (finding: ClinicalFinding) => {
+        const directionLabel = finding.direction === "high" ? "HIGH" : "LOW";
+        return {
+            label: finding.kind === "borderline" ? `BORDERLINE ${directionLabel}` : directionLabel,
+            color: finding.kind === "critical" ? REPORT_COLORS.warning500 : REPORT_COLORS.danger500,
+        };
+    };
+
     const totalReports = reportsData.length;
     const selectedCount = selectedReportIds.length;
     const isAllSelected = totalReports > 0 && selectedCount === totalReports;
@@ -468,25 +609,11 @@ const CommonReportView2 = ({
         );
     };
 
-    const isRadiologyReport = (testName?: string, testCategory?: string) => {
-        const normalizedCategory = (testCategory || "").trim().toUpperCase();
-        if (normalizedCategory === "RADIOLOGY") {
-            return true;
-        }
-
-        const name = (testName || "").trim();
-        if (!name) {
-            return false;
-        }
-
-        return RADIOLOGY_PATTERNS.some((pattern) => pattern.test(name));
-    };
-
     const renderNodeToCanvas = async (node: HTMLElement, scale: number) => {
         const canvasOptions: Html2CanvasEnhancedOptions = {
             useCORS: true,
             allowTaint: true,
-            background: "#ffffff",
+            backgroundColor: "#ffffff",
             scale,
             windowWidth: node.scrollWidth,
             windowHeight: node.scrollHeight,
@@ -501,14 +628,24 @@ const CommonReportView2 = ({
         return canvas;
     };
 
+    // Blocks carry their own on-screen mt-4/mt-6 spacing via Tailwind classes, which gets baked into
+    // each block's captured canvas. BLOCK_GAP_MM already adds spacing between blocks programmatically,
+    // so leaving the CSS margin in place doubles the gap. Zero it out on the clone before capture.
+    const stripBlockMargins = (el: HTMLElement) => {
+        el.style.marginTop = "0";
+        el.style.marginBottom = "0";
+    };
+
     const canvasToMm = (canvas: HTMLCanvasElement, widthMm: number) => {
         const heightMm = (canvas.height * widthMm) / canvas.width;
         return { widthMm, heightMm };
     };
 
     const addCanvasAtCursor = (pdf: jsPDF, canvas: HTMLCanvasElement, xMm: number, yMm: number, widthMm: number, heightMm: number) => {
-        const imgData = canvas.toDataURL("image/jpeg", 1);
-        pdf.addImage(imgData, "JPEG", xMm, yMm, widthMm, heightMm, undefined, "FAST");
+        // PNG (lossless) instead of JPEG: JPEG's chroma subsampling blurs/ghosts small bold text
+        // (patient names, values) even at quality 1, and jsPDF's "FAST" compression compounds it.
+        const imgData = canvas.toDataURL("image/png");
+        pdf.addImage(imgData, "PNG", xMm, yMm, widthMm, heightMm, undefined, "NONE");
     };
 
     const sliceCanvasByHeight = (canvas: HTMLCanvasElement, maxSliceHeightPx: number) => {
@@ -612,9 +749,8 @@ const CommonReportView2 = ({
                 compress: true,
             });
             const selectedSet = new Set(selectedReportIds);
-            const sections = Array.from(reportRef.current.querySelectorAll("[data-report-id]")).filter((section) =>
-                selectedSet.has(Number(section.getAttribute("data-report-id")))
-            );
+            const shell = reportRef.current.querySelector("[data-report-shell]") as HTMLElement | null;
+            const sections = shell ? [shell] : [];
 
             if (sections.length === 0) {
                 toast.error("Selected reports are unavailable for printing");
@@ -655,24 +791,28 @@ const CommonReportView2 = ({
             const footerTemplate = pageTemplateSection.querySelector('[data-print-role="footer"]') as HTMLElement | null;
 
             if (headerTemplate) {
+                stripBlockMargins(headerTemplate);
                 headerCanvas = await renderNodeToCanvas(headerTemplate, renderScale);
                 headerHeightMm = canvasToMm(headerCanvas, PAGE_WIDTH_MM).heightMm;
             }
             if (signatureTemplate) {
+                stripBlockMargins(signatureTemplate);
                 signatureCanvas = await renderNodeToCanvas(signatureTemplate, renderScale);
                 signatureHeightMm = canvasToMm(signatureCanvas, PAGE_WIDTH_MM).heightMm;
             }
             if (footerTemplate) {
+                stripBlockMargins(footerTemplate);
                 footerCanvas = await renderNodeToCanvas(footerTemplate, renderScale);
                 footerHeightMm = canvasToMm(footerCanvas, PAGE_WIDTH_MM).heightMm;
             }
             tempContainer.removeChild(pageTemplateSection);
 
             const contentTopMm = TOP_MARGIN_MM + (headerHeightMm > 0 ? headerHeightMm + BLOCK_GAP_MM : 0);
-            const reservedBottomMm =
-                (signatureHeightMm > 0 ? signatureHeightMm + BLOCK_GAP_MM : 0) +
-                (footerHeightMm > 0 ? footerHeightMm + BLOCK_GAP_MM : 0);
-            const contentBottomMm = PAGE_HEIGHT_MM - BOTTOM_MARGIN_MM - reservedBottomMm - CONTENT_SAFETY_MM;
+            // Signature/footer are no longer reserved on every page -- they're appended to the
+            // normal content flow after the last block, so a report that fits on one page (the
+            // Figma target) actually stays on one page instead of leaving a permanent blank gap
+            // sized for a footer that only ever gets drawn on the final page.
+            const contentBottomMm = PAGE_HEIGHT_MM - BOTTOM_MARGIN_MM - CONTENT_SAFETY_MM;
             const usableContentHeightMm = contentBottomMm - contentTopMm > 0 ? contentBottomMm - contentTopMm : USABLE_HEIGHT_MM;
 
             let currentPageNumber = 1;
@@ -745,10 +885,42 @@ const CommonReportView2 = ({
 
                 tempContainer.appendChild(sectionClone);
 
-                const testName = (section as HTMLElement).getAttribute("data-test-name") || "";
-                const testCategory = (section as HTMLElement).getAttribute("data-test-category") || "";
-                if (isRadiologyReport(testName, testCategory) && hasContentOnPage) {
-                    startNewPage();
+                const gridCards = Array.from(sectionClone.querySelectorAll("[data-report-id]")) as HTMLElement[];
+                gridCards.forEach((card) => {
+                    const cardId = Number(card.getAttribute("data-report-id"));
+                    if (!selectedSet.has(cardId)) {
+                        card.remove();
+                    }
+                });
+
+                // A merged multi-report table with every one of its <tbody> groups
+                // deselected would otherwise leave a floating header row with no data.
+                const mergedTables = Array.from(sectionClone.querySelectorAll('[data-print-table="true"] table')) as HTMLTableElement[];
+                mergedTables.forEach((table) => {
+                    if (table.querySelectorAll("tbody").length === 0) {
+                        table.closest('[data-print-table="true"]')?.remove();
+                    }
+                });
+
+                // Keep the on-screen 2-column grid intact for capture so the PDF matches the
+                // preview exactly instead of flattening into a single stacked column.
+                const resultsGrid = sectionClone.querySelector("[data-results-grid]") as HTMLElement | null;
+                if (resultsGrid) {
+                    // Deselecting every test in a balanced column would otherwise leave an empty
+                    // bordered box in the export -- drop columns that ended up with nothing in them.
+                    Array.from(resultsGrid.children).forEach((column) => {
+                        if (!column.querySelector("[data-report-id]")) {
+                            column.remove();
+                        }
+                    });
+                }
+                const detailedResultsList = sectionClone.querySelector("[data-detailed-results]") as HTMLElement | null;
+                if (detailedResultsList) {
+                    Array.from(detailedResultsList.children).forEach((entry) => {
+                        if (!entry.querySelector("[data-report-id]")) {
+                            entry.remove();
+                        }
+                    });
                 }
 
                 const blocks = Array.from(sectionClone.querySelectorAll("[data-print-block]")) as HTMLElement[];
@@ -758,6 +930,7 @@ const CommonReportView2 = ({
                     return role !== "header" && role !== "signature" && role !== "footer";
                 });
                 const nodesToRender = contentBlocks.length > 0 ? contentBlocks : [sectionClone];
+                nodesToRender.forEach(stripBlockMargins);
 
                 for (const node of nodesToRender) {
                     const isTableBlock = node.getAttribute("data-print-table") === "true";
@@ -833,23 +1006,21 @@ const CommonReportView2 = ({
                 tempContainer.removeChild(sectionClone);
             }
 
+            // Signature and footer are just the last two blocks in the flow: they land right after
+            // the content on the same page when there's room (the Figma single-page case), and only
+            // push to a new page if they genuinely don't fit.
+            if (signatureCanvas && signatureHeightMm > 0) {
+                placeCanvasWithPagination(signatureCanvas);
+            }
+            if (footerCanvas && footerHeightMm > 0) {
+                placeCanvasWithPagination(footerCanvas);
+            }
+
             const pagesToStamp = Array.from(contentPages).sort((a, b) => a - b);
             pagesToStamp.forEach((pageNo) => {
                 pdf.setPage(pageNo);
                 if (headerCanvas && headerHeightMm > 0) {
                     addCanvasAtCursor(pdf, headerCanvas, MARGIN_X_MM, TOP_MARGIN_MM, PAGE_WIDTH_MM, headerHeightMm);
-                }
-                if (signatureCanvas && signatureHeightMm > 0) {
-                    const signatureY =
-                        PAGE_HEIGHT_MM -
-                        BOTTOM_MARGIN_MM -
-                        (footerHeightMm > 0 ? footerHeightMm + BLOCK_GAP_MM : 0) -
-                        signatureHeightMm;
-                    addCanvasAtCursor(pdf, signatureCanvas, MARGIN_X_MM, signatureY, PAGE_WIDTH_MM, signatureHeightMm);
-                }
-                if (footerCanvas && footerHeightMm > 0) {
-                    const footerY = PAGE_HEIGHT_MM - BOTTOM_MARGIN_MM - footerHeightMm;
-                    addCanvasAtCursor(pdf, footerCanvas, MARGIN_X_MM, footerY, PAGE_WIDTH_MM, footerHeightMm);
                 }
             });
 
@@ -880,6 +1051,362 @@ const CommonReportView2 = ({
     }
 
     const displayDoctorName = doctorName || "N/A";
+    const primaryReport = sortedReports[0];
+    const latestReportDateTime = sortedReports.reduce<string | undefined>((latest, r) => {
+        if (!r.createdDateTime) return latest;
+        if (!latest) return r.createdDateTime;
+        return new Date(r.createdDateTime) > new Date(latest) ? r.createdDateTime : latest;
+    }, undefined);
+
+    const formatReportDateTime = (
+        dateTimeString?: string
+    ): { date: string; time: string } => {
+        if (!dateTimeString) {
+            return { date: '--/--/----', time: '--:--' };
+        }
+
+        // Check if dateTimeString already has a timezone (Z, +HH:MM, +HHMM, -HH:MM, -HHMM)
+        const hasTimezone = /[Z+-]\d{2}:?\d{2}$|[Z+-]\d{4}$/.test(dateTimeString);
+
+        // Only append +05:30 if no timezone exists
+        const dateStrWithTimezone = hasTimezone ? dateTimeString : `${dateTimeString}+05:30`;
+
+        const dateObj = new Date(dateStrWithTimezone);
+
+        if (isNaN(dateObj.getTime())) {
+            return { date: '--/--/----', time: '--:--' };
+        }
+
+        const date = dateObj.toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            timeZone: 'Asia/Kolkata'
+        });
+
+        const time = dateObj.toLocaleTimeString('en-IN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Kolkata'
+        });
+
+        return { date, time };
+    };
+
+    const isDetailedReportEntry = (report: ConsolidatedReport) => {
+        if (report.reportJson) return true;
+        const rows = report.testRows && report.testRows.length > 0 ? report.testRows : [];
+        return rows.some((row) => (row.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
+    };
+
+    const estimateReportWeight = (report: ConsolidatedReport) => {
+        const rowCount = report.testRows && report.testRows.length > 0 ? report.testRows.length : 1;
+        const isCBC = (report.testName || '').toUpperCase().includes('CBC');
+        return 1 + rowCount + (isCBC ? 1 : 0);
+    };
+
+    // Status icon uses the pre-colored assets in public/report: green tick for
+    // in-range results, amber triangle for borderline, red/yellow directional arrow
+    // for critical values (elevated vs. reduced).
+    const getStatusIndicator = (enteredValue?: string, normalRange?: string) => {
+        const score = scoreValue(enteredValue, normalRange);
+        if (score.kind === "normal" || score.kind === "unscored") {
+            return { src: "/report/check-circle.png", alt: "Normal" };
+        }
+        if (score.kind === "borderline") {
+            return { src: "/report/exclamation-triangle/outline.png", alt: "Borderline" };
+        }
+        return score.direction === "low"
+            ? { src: "/report/arrow-down-circle.png", alt: "Below range" }
+            : { src: "/report/arrow-up-circle.png", alt: "Above range" };
+    };
+
+    // Explicit pixel widths (not just Tailwind width classes) so the numeric columns
+    // reserve real space and never get squeezed into the wrapped parameter text.
+    const RESULT_COL_WIDTHS = { parameter: undefined, result: 50, reference: 90, units: 70, status: 34 } as const;
+    const RESULT_TABLE_ROW_BORDER = `1px solid ${REPORT_COLORS.secondary100}`;
+    const RESULT_CELL_VALIGN: CSSProperties = { verticalAlign: "top" };
+
+    const renderResultTableHeaderRow = () => (
+        <tr style={{ backgroundColor: REPORT_COLORS.secondary200 }}>
+            <th className="px-3 py-3 text-left text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, ...RESULT_CELL_VALIGN }}>Test Parameter</th>
+            <th className="px-1 py-3 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.result, ...RESULT_CELL_VALIGN }}>Result</th>
+            <th className="px-1 py-3 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.reference, ...RESULT_CELL_VALIGN }}>Reference Range</th>
+            <th className="px-1 py-3 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.units, ...RESULT_CELL_VALIGN }}>Units</th>
+            <th className="px-1 py-3 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.status, ...RESULT_CELL_VALIGN }}>Status</th>
+        </tr>
+    );
+
+    const renderSectionTitleRow = (key: string | number, label: string) => (
+        <tr key={`section-${key}`}>
+            <td
+                colSpan={5}
+                className="px-3 py-1.5 text-[10px] font-bold uppercase"
+                style={{ backgroundColor: REPORT_COLORS.secondary50, color: REPORT_COLORS.neutral800 }}
+            >
+                {label}
+            </td>
+        </tr>
+    );
+
+    // Non-tabular content (a full JSON detailed report, or a qualitative-only
+    // Test Name/Result table) can't use a table row for its title band.
+    const renderSectionTitleBand = (label: string) => (
+        <div
+            className="px-3 py-1.5 text-[10px] font-bold uppercase"
+            style={{ backgroundColor: REPORT_COLORS.secondary50, color: REPORT_COLORS.neutral800 }}
+        >
+            {label}
+        </div>
+    );
+
+    // Shared row-builder used both by standalone report cards and by the merged
+    // multi-report table (Figma groups several "pure quantitative" tests under one
+    // continuous table with a single header instead of repeating it per test).
+    const buildResultTableRows = (
+        reportId: number,
+        rows: TestRow[],
+        isCBCTest: boolean,
+        emptyMessage: string = "No quantitative results available."
+    ): JSX.Element[] => {
+        if (rows.length === 0) {
+            return [
+                <tr key={`no-quant-${reportId}`}>
+                    <td colSpan={5} className="px-3 py-3 text-center text-xs" style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER }}>
+                        {emptyMessage}
+                    </td>
+                </tr>,
+            ];
+        }
+
+        const entries: RenderRowEntry[] = isCBCTest ? buildOrderedCBCRows(rows) : rows.map((row) => ({ type: "row", row }));
+        const elements: JSX.Element[] = [];
+
+        entries.forEach((entry, idx) => {
+            if (entry.type === "header") {
+                elements.push(renderSectionTitleRow(`${reportId}-${entry.key}-${idx}`, entry.key));
+                return;
+            }
+
+            const row = entry.row;
+            const parameterLabel = isCBCTest ? (row.testParameter || "").toUpperCase() : row.testParameter;
+            const status = getStatusIndicator(row.enteredValue, row.normalRange);
+
+            elements.push(
+                <tr key={`${reportId}-${idx}`}>
+                    <td
+                        className="px-3 py-2 text-xs font-normal"
+                        style={{
+                            color: REPORT_COLORS.neutral900,
+                            borderBottom: RESULT_TABLE_ROW_BORDER,
+                            wordBreak: "break-word",
+                            ...RESULT_CELL_VALIGN,
+                        }}
+                    >
+                        {parameterLabel}
+                    </td>
+                    <td
+                        className="px-1 py-2 text-center text-xs font-semibold"
+                        style={{ color: REPORT_COLORS.neutral900, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.result, whiteSpace: "nowrap", ...RESULT_CELL_VALIGN }}
+                    >
+                        {row.enteredValue || "N/A"}
+                    </td>
+                    <td
+                        className="px-1 py-2 text-center text-xs font-normal"
+                        style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.reference, whiteSpace: "nowrap", ...RESULT_CELL_VALIGN }}
+                    >
+                        {row.normalRange || "N/A"}
+                    </td>
+                    <td
+                        className="px-1 py-2 text-center text-xs font-normal"
+                        style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.units, whiteSpace: "nowrap", ...RESULT_CELL_VALIGN }}
+                    >
+                        {row.unit || "N/A"}
+                    </td>
+                    <td
+                        className="px-1 py-2 text-center"
+                        style={{ borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.status, ...RESULT_CELL_VALIGN }}
+                    >
+                        <img
+                            src={status.src}
+                            alt={status.alt}
+                            title={status.alt}
+                            className="inline-block w-3.5 h-3.5"
+                            crossOrigin="anonymous"
+                        />
+                    </td>
+                </tr>
+            );
+        });
+
+        return elements;
+    };
+
+    // A report can be folded into the shared multi-test table only if every row is a
+    // plain numeric/qualitative-range result -- reports with free-text qualitative rows
+    // or a full JSON "detailed report" keep their own standalone card instead.
+    const isPureQuantitativeReport = (report: ConsolidatedReport) => {
+        if (isDetailedReportEntry(report)) return false;
+        const rows =
+            report.testRows && report.testRows.length > 0
+                ? report.testRows
+                : [
+                    {
+                        testParameter: report.referenceDescription || report.testName,
+                        normalRange: report.referenceRange || "N/A",
+                        enteredValue: report.enteredValue || "N/A",
+                        unit: report.unit || "N/A",
+                    },
+                ];
+        return !rows.some((row) => isExcludedQualitativeRow(row));
+    };
+
+    const renderTestCardBody = (report: ConsolidatedReport, index: number) => {
+        const rows =
+            report.testRows && report.testRows.length > 0
+                ? report.testRows
+                : [
+                    {
+                        testParameter: report.referenceDescription || report.testName,
+                        normalRange: report.referenceRange || "N/A",
+                        enteredValue: report.enteredValue || "N/A",
+                        unit: report.unit || "N/A",
+                        referenceAgeRange: report.referenceAgeRange || "N/A",
+                        referenceDescription: report.referenceDescription,
+                        description: report.referenceDescription,
+                    },
+                ];
+        const qualitativeRows = rows.filter((row) => isExcludedQualitativeRow(row));
+        const quantitativeRows = rows.filter((row) => !isExcludedQualitativeRow(row));
+        const isCBCTest = (report.testName || "").toUpperCase().includes("CBC");
+        const firstRow = rows[0];
+        const shouldHideResultTable = rows.length > 0 && isExcludedQualitativeRow(firstRow);
+
+        const hasDetailedReportRow = rows.some(row => (row.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
+        const detailedEntry = (report.reportJson || hasDetailedReportRow)
+            ? { reportJson: report.reportJson, referenceRanges: report.referenceRanges }
+            : null;
+
+        const referenceRangesContent = renderReferenceRanges(report.referenceRanges, report.testName);
+        const resultRows = !shouldHideResultTable
+            ? buildResultTableRows(
+                report.reportId,
+                quantitativeRows,
+                isCBCTest,
+                qualitativeRows.length > 0 ? "Qualitative results for this report are listed below." : "No quantitative results available."
+            )
+            : [];
+
+        return (
+            <div key={report.reportId} data-report-id={report.reportId} data-print-block data-print-table="true" className="mb-3">
+                {!detailedEntry && !shouldHideResultTable && (
+                    <table className="w-full table-fixed text-[12px] border-collapse">
+                        <thead>{renderResultTableHeaderRow()}</thead>
+                        <tbody>
+                            {renderSectionTitleRow(report.reportId, `${index}. ${report.testName}`)}
+                            {resultRows}
+                        </tbody>
+                    </table>
+                )}
+
+                {(detailedEntry || shouldHideResultTable) && renderSectionTitleBand(`${index}. ${report.testName}`)}
+
+                <div className={detailedEntry || shouldHideResultTable ? "p-2" : ""}>
+                    {detailedEntry && detailedEntry.reportJson && (
+                        <div className="w-full">
+                            <div
+                                className="report-html"
+                                style={{
+                                    background: '#ffffff',
+                                    fontSize: '11px',
+                                    lineHeight: '1.4'
+                                }}
+                                dangerouslySetInnerHTML={{ __html: buildDetailedReportHTML(detailedEntry.reportJson) }}
+                            />
+                            {renderReferenceRanges(detailedEntry.referenceRanges, report.testName)}
+                        </div>
+                    )}
+
+                    {!detailedEntry && !shouldHideResultTable && referenceRangesContent}
+
+                    {!detailedEntry && qualitativeRows.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                            {(() => {
+                                const getQualitativeDisplayName = (row: TestRow) => {
+                                    const candidate = row.testParameter || row.referenceDescription || "";
+                                    if (!candidate) return report.testName || "Test";
+                                    return doesRowMatchFieldType(row, EXCLUDED_FIELD_TYPES)
+                                        ? (report.testName || candidate)
+                                        : candidate;
+                                };
+                                const descriptionRows = qualitativeRows.filter((row) =>
+                                    shouldShowQualitativeDescriptionRow(row)
+                                );
+                                const otherQualitativeRows = qualitativeRows.filter(
+                                    (row) => !shouldShowQualitativeDescriptionRow(row)
+                                );
+
+                                return (
+                                    <>
+                                        {otherQualitativeRows.length > 0 && (
+                                            <table className="w-full text-[12px] border-collapse table-fixed">
+                                                <thead>
+                                                    <tr>
+                                                        <th className="p-2 text-left font-semibold text-black w-2/3">Test Name</th>
+                                                        <th className="p-2 text-center font-semibold text-black w-1/3">Result</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {otherQualitativeRows.map((row, idx) => (
+                                                        <tr key={`qual-row-${report.reportId}-${idx}`} className="border-t border-black">
+                                                            <td className="p-2 text-black w-2/3">
+                                                                {getQualitativeDisplayName(row)}
+                                                            </td>
+                                                            <td className="p-2 text-black font-semibold text-center w-1/3">
+                                                                {row.enteredValue || "N/A"}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+
+                                        {descriptionRows.length > 0 && (
+                                            <div className="space-y-2">
+                                                {descriptionRows.map((row, idx) => {
+                                                    const resultValue = row.enteredValue || "N/A";
+                                                    const normalizedResult = resultValue.toString().trim().toLowerCase();
+                                                    const normalizedDescription = (row.description || "").toString().trim().toLowerCase();
+                                                    const showDescription =
+                                                        !!row.description && normalizedDescription !== normalizedResult;
+
+                                                    return (
+                                                        <div key={`qual-desc-${report.reportId}-${idx}`} className="text-xs">
+                                                            <p className="text-black leading-normal font-semibold whitespace-pre-wrap">{resultValue}</p>
+                                                            {showDescription && (
+                                                                <p className="text-black mb-1">{row.description}</p>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const highPriorityFindings = clinicalSummary.findings.filter((f) => f.kind === "critical");
+    const moderatePriorityFindings = clinicalSummary.findings.filter((f) => f.kind === "borderline");
+    const moderatePriorityNames = Array.from(
+        new Set(moderatePriorityFindings.map((f) => f.row.testParameter || f.report.testName))
+    );
 
     return (
         <div className="max-w-4xl mx-auto text-black font-sans" style={{ fontFamily: DEFAULT_FONT_FAMILY }}>
@@ -957,585 +1484,513 @@ const CommonReportView2 = ({
 
             <div
                 ref={reportRef}
-                className="bg-white p-8 space-y-12"
+                className="bg-white p-8"
                 style={{
                     width: "210mm",
                     margin: "0 auto",
                     boxSizing: "border-box",
                 }}
             >
-                {sortedReports.map((report) => {
-                    const rows =
-                        report.testRows && report.testRows.length > 0
-                            ? report.testRows
-                            : [
-                                {
-                                    testParameter: report.referenceDescription || report.testName,
-                                    normalRange: report.referenceRange || "N/A",
-                                    enteredValue: report.enteredValue || "N/A",
-                                    unit: report.unit || "N/A",
-                                    referenceAgeRange: report.referenceAgeRange || "N/A",
-                                    referenceDescription: report.referenceDescription,
-                                    description: report.referenceDescription,
-                                },
-                            ];
-                    const qualitativeRows = rows.filter((row) => isExcludedQualitativeRow(row));
-                    const quantitativeRows = rows.filter((row) => !isExcludedQualitativeRow(row));
-                    const isCBCTest = (report.testName || "").toUpperCase().includes("CBC");
-
-                    const firstRow = rows[0];
-                    const shouldHideResultTable = rows.length > 0 && isExcludedQualitativeRow(firstRow);
-                    const hasDescriptionRow = rows.some(isDescriptionRow);
-                    const shouldIsolateDescriptionReport = hasDescriptionRow && shouldHideResultTable;
-                    const shouldHideTestNameHeading =
-                        rows.length > 0 &&
-                        isExcludedQualitativeRow(firstRow) &&
-                        !shouldShowQualitativeDescriptionRow(firstRow);
-
-                    // Check for detailed report - either reportJson exists on report or testRow has DETAILED REPORT
-                    const hasDetailedReportRow = rows.some(row => (row.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
-                    const detailedEntry = (report.reportJson || hasDetailedReportRow)
-                        ? { reportJson: report.reportJson, referenceRanges: report.referenceRanges }
-                        : null;
-
-                    const renderedRows: JSX.Element[] = [];
-                    const quantitativeRowEntries: RenderRowEntry[] = isCBCTest
-                        ? buildOrderedCBCRows(quantitativeRows)
-                        : quantitativeRows.map((row) => ({ type: "row", row }));
-                    const referenceRangesContent = renderReferenceRanges(report.referenceRanges, report.testName);
-
-                    const formatReportDateTime = (
-                        dateTimeString?: string
-                    ): { date: string; time: string } => {
-                        if (!dateTimeString) {
-                            return { date: '--/--/----', time: '--:--' };
-                        }
-
-                        // Check if dateTimeString already has a timezone (Z, +HH:MM, +HHMM, -HH:MM, -HHMM)
-                        const hasTimezone = /[Z+-]\d{2}:?\d{2}$|[Z+-]\d{4}$/.test(dateTimeString);
-
-                        // Only append +05:30 if no timezone exists
-                        const dateStrWithTimezone = hasTimezone ? dateTimeString : `${dateTimeString}+05:30`;
-
-                        const dateObj = new Date(dateStrWithTimezone);
-
-                        if (isNaN(dateObj.getTime())) {
-                            return { date: '--/--/----', time: '--:--' };
-                        }
-
-                        const date = dateObj.toLocaleDateString('en-IN', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            timeZone: 'Asia/Kolkata'
-                        });
-
-                        const time = dateObj.toLocaleTimeString('en-IN', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true,
-                            timeZone: 'Asia/Kolkata'
-                        });
-
-                        return { date, time };
-                    };
-
-
-
-                    const isValueOutOfRange = (enteredValue?: string, normalRange?: string): boolean => {
-                        if (!enteredValue || !normalRange || enteredValue === "N/A" || normalRange === "N/A") {
-                            return false;
-                        }
-
-                        const value = parseFloat(enteredValue);
-                        if (isNaN(value)) {
-                            return false;
-                        }
-
-                        const range = normalRange.trim();
-
-
-                        // Format 1: "1000 - 4800" or "1000-4800" (min-max range)
-                        const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-                        if (rangeMatch) {
-                            const min = parseFloat(rangeMatch[1]);
-                            const max = parseFloat(rangeMatch[2]);
-                            return value < min || value > max;
-                        }
-
-                        // Format 2: "< 5.0" or "<5.0" (less than threshold)
-                        const lessThanMatch = range.match(/<\s*(\d+(?:\.\d+)?)/);
-                        if (lessThanMatch) {
-                            const threshold = parseFloat(lessThanMatch[1]);
-                            return value >= threshold;
-                        }
-
-                        // Format 3: "> 10.0" or ">10.0" (greater than threshold)
-                        const greaterThanMatch = range.match(/>\s*(\d+(?:\.\d+)?)/);
-                        if (greaterThanMatch) {
-                            const threshold = parseFloat(greaterThanMatch[1]);
-                            return value <= threshold;
-                        }
-
-                        // Format 4: Qualitative ranges (Normal, Negative, Positive, etc.)
-                        const lowerRange = range.toLowerCase();
-                        if (lowerRange.includes('normal') ||
-                            lowerRange.includes('negative') ||
-                            lowerRange.includes('positive') ||
-                            lowerRange.includes('reactive') ||
-                            lowerRange.includes('non-reactive') ||
-                            lowerRange.includes('present') ||
-                            lowerRange.includes('absent')) {
-                            return false;
-                        }
-
-                        return false;
-                    };
-
-                    const formatResultContent = (row: TestRow) => {
-                        const value = row.enteredValue || "N/A";
-                        const isOutOfRange = isValueOutOfRange(row.enteredValue, row.normalRange);
-                        const boldClass = isOutOfRange ? "font-semibold" : "";
-
-                        if (!isCBCTest) {
-                            return isOutOfRange ? (
-                                <span className={`${boldClass} text-black`}>{value}</span>
-                            ) : value;
-                        }
-                        return (
-                            <span className={`${boldClass} text-black`}>
-                                {value}
-                            </span>
-                        );
-                    };
-
-                    const formatReferenceContent = (row: TestRow) => {
-                        const rangeValue = row.normalRange || "N/A";
-                        if (!isCBCTest) {
-                            return rangeValue;
-                        }
-                        return (
-                            <span className="text-black">
-                                {rangeValue}
-                            </span>
-                        );
-                    };
-
-                    if (!shouldHideResultTable) {
-                        if (quantitativeRows.length === 0) {
-                            renderedRows.push(
-                                <tr key={`no-quant-${report.reportId}`} className="border-t border-black">
-                                    <td colSpan={4} className="p-4 text-center text-black">
-                                        {qualitativeRows.length > 0
-                                            ? "Qualitative results for this report are listed below."
-                                            : "No quantitative results available."}
-                                    </td>
-                                </tr>
-                            );
-                        } else {
-                            quantitativeRowEntries.forEach((entry, idx) => {
-                                if (entry.type === "header") {
-                                    renderedRows.push(
-                                        <tr
-                                            key={`cbc-header-${report.reportId}-${entry.key}-${idx}`}
-                                            className=" text-left text-[13px] font-bold text-black border-t border-b border-black"
-                                        >
-                                            <td className="p-2" colSpan={4}>
-                                                {entry.key}
-                                            </td>
-                                        </tr>
-                                    );
-                                    return;
-                                }
-
-                                const row = entry.row;
-                                const parameterLabel = isCBCTest ? (row.testParameter || "").toUpperCase() : row.testParameter;
-
-                                renderedRows.push(
-                                    <tr key={`${report.reportId}-${idx}`} className="border-t border-black">
-                                        <td className="p-2 font-medium text-black">
-                                            {parameterLabel}
-                                        </td>
-                                        <td className="p-2 text-center text-black">
-                                            {formatResultContent(row)}
-                                        </td>
-                                        <td className="p-2 text-black">{formatReferenceContent(row)}</td>
-                                        <td className="p-2 text-black">{row.unit || "N/A"}</td>
-                                    </tr>
-                                );
-                            });
-                        }
-                    }
-
-                    const sectionClassName = `mb-16 page-break${shouldIsolateDescriptionReport ? " description-only-report" : ""}`;
-
-                    return (
-                        <section
-                            key={report.reportId}
-                            data-report-id={report.reportId}
-                            data-test-name={report.testName}
-                            data-test-category={report.testCategory || ""}
-                            className={sectionClassName}
-                        >
-                            <div className="flex flex-col">
-                                <div className=" bg-white border-black" data-print-block data-print-role="header">
-                                    {/* Top Section - Logo and Lab Info */}
-                                    <div className="flex flex-row items-center gap-4 mb-4">
-                                        {/* Logo */}
-                                        <div className="flex-shrink-0 flex items-center justify-center w-36 h-36">
-                                            <img
-                                                src="/CUREPLUS HOSPITALS (1).png"
-                                                alt="Lab Logo"
-                                                className="max-w-full max-h-full w-auto h-auto object-contain"
-                                                crossOrigin="anonymous"
-                                                data-print-logo="true"
-                                            />
-                                        </div>
-                                        {/* Lab Name and Address - smaller text, uniform design */}
-                                        <div className="flex flex-col justify-center gap-0.5 flex-1">
-                                            <h1 className="text-base font-bold text-black leading-tight uppercase tracking-wide">{currentLab?.name}</h1>
-                                            <p className="text-[10px] text-black leading-tight uppercase">
-                                                {[currentLab?.address, currentLab?.city, currentLab?.state]
-                                                    .filter(Boolean)
-                                                    .join(', ')}
-                                            </p>
-                                            {currentLab?.labPhone && (
-                                                <p className="text-[10px] text-black leading-tight uppercase">Phone: {currentLab.labPhone}</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Patient Details Box - Single container, compact, no divider */}
-                                    <div className="w-full border border-black bg-white">
-                                        <div className="grid grid-cols-2">
-                                            {/* Left Section */}
-
-                                            <div className="p-3">
-                                                <div className="space-y-1.5 text-xs">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-black font-normal">NAME:</span>
-                                                        <span className="text-black font-normal text-left ml-3 flex-1">{patientData?.patientname || 'N/A'}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-black font-normal">REFERRED BY:</span>
-                                                        <span className="text-black font-normal text-left ml-3 flex-1">{displayDoctorName}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-black font-normal">LAB NO:</span>
-                                                        <span className="text-black font-normal text-left ml-3 flex-1">{currentLab?.id || 'N/A'}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-black font-normal">OPD/IPD:</span>
-                                                        <span className="text-black font-normal text-left ml-3 flex-1">{patientData?.visitType || 'N/A'}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Right Section */}
-                                            <div className="p-3">
-                                                <div className="space-y-1.5 text-xs">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-black font-normal">AGE/SEX:</span>
-                                                        <span className="text-black font-normal text-left ml-3 flex-1">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-black font-normal">DATE & TIME:</span>
-                                                        <span className="text-black font-normal text-left ml-3 flex-1">
-                                                            {(() => {
-                                                                const { date, time } = formatReportDateTime(report.createdDateTime);
-                                                                return `${date} ${time}`;
-                                                            })()}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-black font-normal">REPORT NO:</span>
-                                                        <span className="text-black font-normal text-left ml-3 flex-1">{report.reportCode || "N/A"}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-black font-normal">PATIENT NO:</span>
-                                                        <span className="text-black font-normal text-left ml-3 flex-1">{report.patientCode || "N/A"}</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-black font-normal">VISIT NO:</span>
-                                                        <span className="text-black font-normal text-left ml-3 flex-1">{report.visitCode || "N/A"}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                <section data-report-shell className="flex flex-col">
+                    {/* ================= HEADER ================= */}
+                    <div className="bg-white" data-print-block data-print-role="header">
+                        <div className="flex flex-row items-center justify-between gap-4 mb-4">
+                            <div className="flex flex-row items-center gap-3">
+                                <img
+                                    src="/report/image%201.png"
+                                    alt="Lab Logo"
+                                    className="w-28 h-16 object-contain"
+                                    crossOrigin="anonymous"
+                                    data-print-logo="true"
+                                />
+                                <div
+                                    className="flex flex-col justify-center gap-0.5 pl-4"
+                                    style={{ borderLeft: `1px solid ${REPORT_COLORS.neutral100}` }}
+                                >
+                                    <h1 className="text-base font-bold leading-tight" style={{ color: REPORT_COLORS.neutral900 }}>{currentLab?.name}</h1>
+                                    <p className="text-[9px] leading-tight w-44" style={{ color: REPORT_COLORS.neutral600 }}>
+                                        {[currentLab?.address, currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
+                                        {currentLab?.labPhone && ` PHONE: ${currentLab.labPhone}`}
+                                    </p>
                                 </div>
+                            </div>
+                            <img
+                                src="/report/Logo.png"
+                                alt="Tiamed Logo"
+                                className="w-44 h-14 object-contain flex-shrink-0"
+                                crossOrigin="anonymous"
+                            />
+                        </div>
 
-
-
-                                {/* If DETAILED REPORT -> render reportJson content and optional reference ranges, skip table */}
-                                {detailedEntry && detailedEntry.reportJson && (
-                                    <div className="w-full">
-                                        {/* Detailed Report Section */}
-                                        <div className="mb-3" data-print-block>
-                                            <div className="p-2 bg-white">
-                                                <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-black text-center " data-print-block>{report.testName}</h3>
+                        {/* Patient Details Card */}
+                        {/*
+                            No Tailwind `gap-*` and no `truncate`/overflow-hidden here on purpose:
+                            html2canvas (the PDF capture engine) has long-standing bugs rendering
+                            flex `gap` and text-overflow clipping, which was chopping the bottom off
+                            patient name/age-sex/patient-no in the exported PDF even though it looked
+                            fine on screen. Spacing below is done with explicit margins instead, and
+                            values are allowed to wrap rather than being clipped.
+                        */}
+                        <div
+                            className="w-full rounded-xl p-3"
+                            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+                        >
+                            {[
+                                [
+                                    { icon: "/report/user.png", label: "Patient Name", value: patientData?.patientname || 'N/A', noWrap: false },
+                                    { icon: "/report/users.png", label: "Age / Sex", value: `${formatAgeForDisplay(patientData?.dateOfBirth || '')} / ${patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}`, noWrap: true },
+                                    {
+                                        icon: "/report/calendar.png", label: "Date & Time", value: (() => {
+                                            const { date, time } = formatReportDateTime(primaryReport?.createdDateTime);
+                                            return `${date} ${time}`;
+                                        })(), noWrap: true
+                                    },
+                                    { icon: "/report/id-card.png", label: "Patient No.", value: primaryReport?.patientCode || "N/A", noWrap: true },
+                                ],
+                                [
+                                    { icon: "/report/stethoscope.png", label: "Referred By", value: displayDoctorName, noWrap: false },
+                                    { icon: "/report/file-text.png", label: "Lab No.", value: currentLab?.id || 'N/A', noWrap: true },
+                                    { icon: "/report/clipboard.png", label: "Report No.", value: primaryReport?.reportCode || "N/A", noWrap: true },
+                                    { icon: "/report/map-pin.png", label: "Visit No.", value: primaryReport?.visitCode || "N/A", noWrap: true },
+                                ],
+                            ].map((row, rowIdx) => (
+                                <div key={rowIdx} className="flex items-start" style={{ marginTop: rowIdx > 0 ? "0.4rem" : 0 }}>
+                                    {row.map((field, fieldIdx) => (
+                                        <div
+                                            key={field.label}
+                                            className="flex-1 flex items-center"
+                                            style={{ marginLeft: fieldIdx > 0 ? "0.75rem" : 0, minWidth: 0 }}
+                                        >
+                                            <div
+                                                className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+                                                style={{ backgroundColor: REPORT_COLORS.secondary100, marginRight: "0.5rem" }}
+                                            >
+                                                <img src={field.icon} alt="" className="w-3 h-3" crossOrigin="anonymous" />
+                                            </div>
+                                            <div className="flex-1" style={{ minWidth: 0 }}>
                                                 <div
-                                                    className="report-html"
+                                                    className="text-[8px] font-semibold uppercase"
+                                                    style={{ color: REPORT_COLORS.neutral600, lineHeight: 1.3 }}
+                                                >
+                                                    {field.label}
+                                                </div>
+                                                <div
+                                                    className="text-[11px] font-bold"
                                                     style={{
-                                                        background: '#ffffff',
-                                                        fontSize: '11px',
-                                                        lineHeight: '1.4'
+                                                        color: REPORT_COLORS.neutral900,
+                                                        lineHeight: 1.35,
+                                                        marginTop: "1px",
+                                                        overflow: "visible",
+                                                        whiteSpace: field.noWrap ? "nowrap" : "normal",
+                                                        wordBreak: "break-word",
                                                     }}
-
-
-                                                    dangerouslySetInnerHTML={{ __html: buildDetailedReportHTML(detailedEntry.reportJson) }}
-                                                />
+                                                >
+                                                    {field.value}
+                                                </div>
                                             </div>
                                         </div>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
-
-                                        {/* Reference Ranges Table */}
-                                        {renderReferenceRanges(detailedEntry.referenceRanges, report.testName)}
-
-                                        {/* Signature Block - appears right after detailed report content */}
-                                        <div className="grid grid-cols-2 gap-4 pt-4 mt-4" data-print-block data-print-role="signature">
-                                            <div className="text-center">
-                                                <div className="h-14 flex items-center justify-center"></div>
-                                                <div className="mt-1 text-xs text-black font-medium">Lab Technician</div>
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="flex items-center justify-center">
-                                                    <img
-                                                        src="/signature.png"
-                                                        alt="Authorized Pathologist Signature"
-                                                        className="h-14 w-auto object-contain"
-                                                        crossOrigin="anonymous"
-                                                    />
-                                                </div>
-                                                <div className="mt-1 text-xs leading-tight text-black">
-                                                    <p>Dr. Sini Arjun</p>
-                                                    <p>MBBS, MD (Pathology)</p>
-                                                    <p>Consultant Pathologist</p>
-                                                </div>
-                                                {/* <div className="mt-2 h-12 flex items-center justify-center">
-                                                <span className="text-xs text-black font-medium">Authorized Pathologist</span>
-                                            </div> */}
-                                            </div>
-                                        </div>
+                    {/* ================= CLINICAL ALERT SUMMARY + KEY FINDINGS ================= */}
+                    <div className="mt-3 flex items-stretch gap-4" data-print-block>
+                        <div
+                            className="w-[46%] rounded-xl p-2.5 flex flex-col gap-2"
+                            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+                        >
+                            <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Clinical Alert Summary</h3>
+                            <div className="flex items-stretch gap-2">
+                                {[
+                                    { label: "Critical", sub: "Abnormality", icon: "/report/exclamation-triangle/red.jpg", color: REPORT_COLORS.danger600, value: clinicalSummary.critical },
+                                    { label: "Borderline", sub: "Abnormalities", icon: "/report/exclamation-triangle/outline.png", color: REPORT_COLORS.warning500, value: clinicalSummary.borderline },
+                                    { label: "Normal", sub: "Parameters", icon: "/report/check-circle/solid.png", color: REPORT_COLORS.success600, value: clinicalSummary.normal },
+                                ].map((item) => (
+                                    <div
+                                        key={item.label}
+                                        className="flex-1 p-2 rounded-lg flex flex-col items-center gap-0.5 text-center"
+                                        style={{ border: `1px solid ${item.color}` }}
+                                    >
+                                        <img src={item.icon} alt="" className="w-5 h-5" crossOrigin="anonymous" />
+                                        <p className="text-xl font-extrabold" style={{ color: REPORT_COLORS.neutral900 }}>{item.value}</p>
+                                        <p className="text-[9px] font-bold uppercase" style={{ color: item.color }}>{item.label}</p>
+                                        <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>{item.sub}</p>
                                     </div>
-                                )}
-
-                                {/* If not detailed report, render the classic table */}
-                                {!detailedEntry && !shouldHideResultTable && (
-
-                                    <div className="overflow-hidden  border border-black " data-print-block data-print-table="true" style={{ marginTop: shouldHideTestNameHeading ? '0' : '1rem' }}>
-                                        {/* report name */}
-                                        {!shouldHideTestNameHeading && (
-                                            <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-black text-center my-1" data-print-block>{report.testName}</h3>
+                                ))}
+                                <div
+                                    className="flex-1 p-2 rounded-lg flex flex-col items-center gap-0.5 text-center"
+                                    style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+                                >
+                                    <img src="/report/Purpose.png" alt="" className="w-5 h-5" crossOrigin="anonymous" />
+                                    <p className="text-base font-extrabold whitespace-nowrap" style={{ color: REPORT_COLORS.secondary800 }}>{clinicalSummary.overallRisk || "—"}</p>
+                                    <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>Overall Risk Score</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div
+                            className="flex-1 rounded-xl p-2.5 flex flex-col gap-1.5"
+                            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+                        >
+                            <h3 className="text-xs font-bold uppercase px-1" style={{ color: REPORT_COLORS.secondary800 }}>Key Findings for Doctor</h3>
+                            <div className="p-1.5 flex flex-col gap-1.5">
+                                {clinicalSummary.findings.length === 0 ? (
+                                    <p className="text-[10px] italic" style={{ color: REPORT_COLORS.neutral600 }}>No abnormal findings to flag.</p>
+                                ) : (
+                                    <>
+                                        {clinicalSummary.findings.slice(0, 6).map((finding, idx) => {
+                                            const badge = getFindingBadge(finding);
+                                            const paramLabel = finding.row.testParameter || finding.report.testName;
+                                            const valueLabel = `${finding.row.enteredValue || "N/A"}${finding.row.unit ? ` ${finding.row.unit}` : ""}`;
+                                            return (
+                                                <div key={`${finding.report.reportId}-${idx}`} className="flex items-start justify-between gap-2">
+                                                    <div className="flex items-start gap-2">
+                                                        <span className="mt-1 w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: badge.color }} />
+                                                        <div>
+                                                            <p className="text-xs" style={{ color: REPORT_COLORS.neutral900 }}>
+                                                                <span className="font-bold">{paramLabel} : </span>
+                                                                <span className="font-extrabold">{valueLabel}</span>
+                                                            </p>
+                                                            <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>Reference : {finding.row.normalRange || "N/A"}</p>
+                                                        </div>
+                                                    </div>
+                                                    <span
+                                                        className="px-2 py-1 rounded text-[9px] font-extrabold flex-shrink-0"
+                                                        style={{ backgroundColor: badge.color, color: REPORT_COLORS.white }}
+                                                    >
+                                                        {badge.label}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                        {clinicalSummary.findings.length > 6 && (
+                                            <p className="text-[10px] italic" style={{ color: REPORT_COLORS.neutral600 }}>
+                                                +{clinicalSummary.findings.length - 6} more abnormal result{clinicalSummary.findings.length - 6 === 1 ? "" : "s"} in Detailed Lab Results below.
+                                            </p>
                                         )}
-                                        <table className="w-full text-[13px] border-collapse rounded-lg" >
-                                            <thead className=" ">
-                                                <tr>
-                                                    <th className="p-2 text-left font-semibold text-black">TEST PARAMETER</th>
-                                                    <th className="p-2 text-center font-semibold text-black">RESULT</th>
-                                                    <th className="p-2 text-left font-semibold text-black">REFERENCE RANGE</th>
-                                                    <th className="p-2 text-left font-semibold text-black">UNITS</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>{renderedRows}</tbody>
-                                        </table>
-
-                                    </div>
+                                    </>
                                 )}
+                            </div>
+                        </div>
+                    </div>
 
-                                {!detailedEntry && !shouldHideResultTable && referenceRangesContent}
-
-                                {!detailedEntry && qualitativeRows.length > 0 && (
-                                    <div className="mt-4">
-                                        <div className="space-y-3">
-                                            {(() => {
-                                                const getQualitativeDisplayName = (row: TestRow) => {
-                                                    const candidate = row.testParameter || row.referenceDescription || "";
-                                                    if (!candidate) return report.testName || "Test";
-                                                    return doesRowMatchFieldType(row, EXCLUDED_FIELD_TYPES)
-                                                        ? (report.testName || candidate)
-                                                        : candidate;
-                                                };
-                                                const descriptionRows = qualitativeRows.filter((row) =>
-                                                    shouldShowQualitativeDescriptionRow(row)
-                                                );
-                                                const otherQualitativeRows = qualitativeRows.filter(
-                                                    (row) => !shouldShowQualitativeDescriptionRow(row)
-                                                );
-                                                const shouldPageBreakBeforeDescription =
-                                                    descriptionRows.length > 0 && !shouldHideResultTable;
-
-                                                return (
-                                                    <>
-                                                        {/* {otherQualitativeRows.length > 0 && (
-                                                            <div className="overflow-hidden border border-black" data-print-block data-print-table="true">
-                                                                <table className="w-full text-[13px] border-collapse">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th className="p-2 text-left font-semibold text-black">Test Name</th>
-                                                                            <th className="p-2 text-right font-semibold text-black">Result</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {otherQualitativeRows.map((row, idx) => (
-                                                                            <tr key={`qual-row-${report.reportId}-${idx}`} className="border-t border-black">
-                                                                                <td className="p-2 text-black">
-                                                                                    {getQualitativeDisplayName(row)}
-                                                                                </td>
-                                                                                <td className="p-2 text-black font-semibold text-right">
-                                                                                    {row.enteredValue || "N/A"}
-                                                                                </td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        )} */}
-
-
-                                                        {otherQualitativeRows.length > 0 && (
-                                                            <div className="overflow-hidden border border-black" data-print-block data-print-table="true">
-                                                                <table className="w-full text-[13px] border-collapse table-fixed">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th className="p-2 text-left font-semibold text-black w-2/3">Test Name</th>
-                                                                            <th className="p-2 text-center font-semibold text-black w-1/3">Result</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {otherQualitativeRows.map((row, idx) => (
-                                                                            <tr key={`qual-row-${report.reportId}-${idx}`} className="border-t border-black">
-                                                                                <td className="p-2 text-black w-2/3">
-                                                                                    {getQualitativeDisplayName(row)}
-                                                                                </td>
-                                                                                <td className="p-2 text-black font-semibold text-center w-1/3">
-                                                                                    {row.enteredValue || "N/A"}
-                                                                                </td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        )}
-
-
-                                                        {descriptionRows.length > 0 && (
-                                                            <div
-                                                                className={`space-y-2 pb-4 ${shouldPageBreakBeforeDescription ? " description-print-block" : ""}`}
-                                                                data-print-block
-                                                            >
-                                                                {/*  test name */}
-                                                                {descriptionRows.some(row => getQualitativeDisplayName(row)) && (
-                                                                    <h3 className="text-sm font-bold uppercase tracking-wide text-black text-center my-1" data-print-block>
-                                                                        {report.testName}
-                                                                    </h3>
-                                                                )}
-                                                                {descriptionRows.map((row, idx) => {
-                                                                    const resultValue = row.enteredValue || "N/A";
-                                                                    const normalizedResult = resultValue.toString().trim().toLowerCase();
-                                                                    const normalizedDescription = (row.description || "").toString().trim().toLowerCase();
-                                                                    const showDescription =
-                                                                        !!row.description && normalizedDescription !== normalizedResult;
-
-                                                                    return (
-                                                                        <div key={`qual-desc-${report.reportId}-${idx}`} className="text-xs">
-                                                                            <p className="text-black leading-0.5 font-semibold whitespace-pre-wrap">{resultValue}</p>
-                                                                            {showDescription && (
-                                                                                <p className="text-black mb-1">{row.description}</p>
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                );
-                                            })()}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Signature Block - appears right after report content (only for non-detailed reports) */}
-                                {!detailedEntry && (
-                                    <div className="grid grid-cols-2 gap-4 pt-4 mt-4" data-print-block data-print-role="signature">
-                                        <div className="text-center">
-                                            <div className="h-14 flex items-center justify-center"></div>
-                                            <div className="mt-1 text-xs text-black font-medium">Lab Technician</div>
-                                        </div>
-                                        <div className="text-center">
-                                            <div className="flex items-center justify-center">
-                                                <img
-                                                    src="/signature.png"
-                                                    alt="Authorized Pathologist Signature"
-                                                    className="h-14 w-auto object-contain"
-                                                    crossOrigin="anonymous"
-                                                />
+                    <div className="mt-3 flex items-stretch gap-3" data-print-block>
+                        <div className="flex-1 flex flex-col gap-3">
+                            <div
+                                className="rounded-xl p-2.5 flex flex-col gap-1.5"
+                                style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
+                                        <img src="/report/reddit.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
+                                    </span>
+                                    <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>AI Clinical Observations</h3>
+                                </div>
+                                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>No AI observations available yet.</p>
+                            </div>
+                            <div
+                                className="rounded-xl p-2.5 flex flex-col gap-1.5"
+                                style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
+                                        <img src="/report/Purpose.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
+                                    </span>
+                                    <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>Clinical Attention Required</h3>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex flex-col gap-0.5">
+                                        <p className="text-[11px] font-extrabold" style={{ color: REPORT_COLORS.warning500 }}>HIGH PRIORITY</p>
+                                        {highPriorityFindings.length === 0 ? (
+                                            <p className="text-[11px] italic" style={{ color: REPORT_COLORS.neutral600 }}>No critical abnormalities detected.</p>
+                                        ) : (
+                                            <div className="flex flex-col gap-0.5">
+                                                {highPriorityFindings.slice(0, 2).map((finding, idx) => (
+                                                    <p key={idx} className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
+                                                        {(finding.row.testParameter || finding.report.testName)} {finding.direction === "high" ? "elevated" : "reduced"} ({finding.row.enteredValue}). Requires clinical correlation.
+                                                    </p>
+                                                ))}
+                                                {highPriorityFindings.length > 2 && (
+                                                    <p className="text-[10px] italic" style={{ color: REPORT_COLORS.neutral600 }}>
+                                                        +{highPriorityFindings.length - 2} more critical result{highPriorityFindings.length - 2 === 1 ? "" : "s"}.
+                                                    </p>
+                                                )}
                                             </div>
-                                            <div className="mt-1 text-xs leading-tight text-black my-1">
-                                                <p>Dr. Sini Arjun</p>
-                                                <p>MBBS, MD (Pathology)</p>
-                                                <p>Consultant Pathologist</p>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col gap-0.5" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}`, paddingTop: "0.25rem" }}>
+                                        <p className="text-[11px] font-extrabold" style={{ color: REPORT_COLORS.danger500 }}>MODERATE PRIORITY</p>
+                                        {moderatePriorityNames.length === 0 ? (
+                                            <p className="text-[11px] italic" style={{ color: REPORT_COLORS.neutral600 }}>No borderline deviations noted.</p>
+                                        ) : (
+                                            <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
+                                                {moderatePriorityNames.slice(0, 3).join(", ")}
+                                                {moderatePriorityNames.length > 3 ? ` +${moderatePriorityNames.length - 3} more` : ""} show borderline deviations. Review if clinically indicated.
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col gap-0.5" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}`, paddingTop: "0.25rem" }}>
+                                        <p className="text-[11px] font-extrabold" style={{ color: REPORT_COLORS.success700 }}>LOW PRIORITY</p>
+                                        {clinicalSummary.normalReportNames.length === 0 ? (
+                                            <p className="text-[11px] italic" style={{ color: REPORT_COLORS.neutral600 }}>No data available.</p>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                                                {clinicalSummary.normalReportNames.map((name) => (
+                                                    <p key={name} className="text-[11px]" style={{ color: REPORT_COLORS.neutral800 }}>{name} normal.</p>
+                                                ))}
                                             </div>
-                                            {/* <div className="mt-2 h-12 flex items-center justify-center">
-                                                <span className="text-xs text-black font-medium">Authorized Pathologist</span>
-                                            </div> */}
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div data-footer-section data-print-block data-print-role="footer" className="  border-black" style={{ marginTop: "auto" }}>
-
-                                    <div className="mt-4 text-center">
-                                        <h4 className="text-[9px] font-bold text-black mt-4 mb-1 text-left italic">Disclaimer</h4>
-                                        <p className="text-[9px] text-black italic text-left mb-1">
-                                            *This laboratory report is intended for clinical correlation only. Results should be interpreted by a qualified medical professional. Laboratory values may vary based on methodology and biological variance. The diagnostic center is not responsible for misinterpretation or misuse of results.*
-                                        </p>
-                                        <p className="text-[9px] text-black mb-1">
-                                            This is an electronically generated report. No physical signature required.
-                                        </p>
-                                        <p className="text-[9px] font-medium text-black mt-1">
-                                            Thank you for choosing {currentLab?.name || "Our Lab"}
-                                        </p>
-                                    </div>
-
-                                    <div className="flex justify-between items-center mt-4">
-                                        <div className="flex items-center">
-                                            <img
-                                                src="/tiamed1.svg"
-                                                alt="Tiamed Logo"
-                                                className="max-h-6 w-auto mr-2 opacity-80 object-contain"
-                                                crossOrigin="anonymous"
-                                            />
-                                            <span className="text-xs font-medium text-black">
-                                                Powered by Tiameds Technologies Pvt.Ltd
-                                            </span>
-                                        </div>
-                                        <div className="text-left">
-                                            <p className="text-xs text-black">Generated on:  {(() => {
-                                                const { date, time } = formatReportDateTime(report.createdDateTime);
-                                                return `${date} at ${time}`;
-                                            })()}</p>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
-                        </section>
-                    );
-                })}
-            </div>
-            <style jsx global>{`
-                @media print {
-                    .page-break {
-                        page-break-after: always;
-                    }
-                    .description-only-report {
-                        page-break-before: always;
-                        page-break-inside: avoid;
+                        </div>
+                        <div
+                            className="w-64 rounded-xl p-2.5 flex flex-col gap-1.5"
+                            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+                        >
+                            <div className="flex items-center gap-2">
+                                <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
+                                    <img src="/report/chart-bar/solid.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
+                                </span>
+                                <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>Health Snapshot</h3>
+                            </div>
+                            <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Trend data will appear here once available.</p>
+                        </div>
+                    </div>
 
-                    }
-                    
-                }
-            `}</style>
+                    {/* ================= DETAILED LAB RESULTS ================= */}
+                    <div className="mt-4">
+                        <div className="flex items-center justify-between mb-3" data-print-block>
+                            <div className="flex items-center gap-2">
+                                <img src="/report/microscope.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
+                                <h2 className="text-sm font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>Detailed Lab Results</h2>
+                            </div>
+                            <div className="flex items-center gap-3 text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>
+                                <span className="font-semibold" style={{ color: REPORT_COLORS.neutral800 }}>LEGEND:</span>
+                                <span className="inline-flex items-center gap-1">
+                                    <img src="/report/Ellipse.png" alt="" className="w-2 h-2" crossOrigin="anonymous" /> Normal
+                                </span>
+                                <span className="inline-flex items-center gap-1">
+                                    <img src="/report/Ellipse-2.png" alt="" className="w-2 h-2" crossOrigin="anonymous" /> Borderline
+                                </span>
+                                <span className="inline-flex items-center gap-1">
+                                    <img src="/report/Ellipse-1.png" alt="" className="w-2 h-2" crossOrigin="anonymous" /> High
+                                </span>
+                                <span className="inline-flex items-center gap-1">
+                                    <img src="/report/Ellipse-6.png" alt="" className="w-2 h-2" crossOrigin="anonymous" /> Critical
+                                </span>
+                            </div>
+                        </div>
+                        {(() => {
+                            const numberByReportId = new Map(sortedReports.map((r, i) => [r.reportId, i + 1]));
+                            const detailedReports = sortedReports.filter(isDetailedReportEntry);
+                            const simpleReports = sortedReports.filter((r) => !isDetailedReportEntry(r));
+
+                            // Balance tests across two columns by estimated content weight (header + row
+                            // count), assigning each test to whichever column is currently shorter. This
+                            // keeps the layout looking like the Figma masonry regardless of how many tests
+                            // are selected -- including a single test, which simply fills one full-width column.
+                            const columns: ConsolidatedReport[][] = [[], []];
+                            const columnWeights = [0, 0];
+                            simpleReports.forEach((report) => {
+                                const col = columnWeights[0] <= columnWeights[1] ? 0 : 1;
+                                columns[col].push(report);
+                                columnWeights[col] += estimateReportWeight(report);
+                            });
+                            const nonEmptyColumns = columns.filter((col) => col.length > 0);
+
+                            // Figma groups consecutive plain-numeric tests under one continuous table with
+                            // a single shared header instead of repeating the header per test -- only
+                            // reports with qualitative rows or a full JSON detailed report break the run.
+                            const renderColumnBlocks = (col: ConsolidatedReport[]) => {
+                                const blocks: JSX.Element[] = [];
+                                let run: ConsolidatedReport[] = [];
+
+                                const flushRun = () => {
+                                    if (run.length === 0) return;
+                                    const runItems = run;
+                                    blocks.push(
+                                        <div
+                                            key={`table-${runItems[0].reportId}`}
+                                            className="mb-3"
+                                            data-print-block
+                                            data-print-table="true"
+                                        >
+                                            <table className="w-full table-fixed text-[12px] border-collapse">
+                                                <thead>{renderResultTableHeaderRow()}</thead>
+                                                {runItems.map((r) => {
+                                                    const rows =
+                                                        r.testRows && r.testRows.length > 0
+                                                            ? r.testRows
+                                                            : [
+                                                                {
+                                                                    testParameter: r.referenceDescription || r.testName,
+                                                                    normalRange: r.referenceRange || "N/A",
+                                                                    enteredValue: r.enteredValue || "N/A",
+                                                                    unit: r.unit || "N/A",
+                                                                },
+                                                            ];
+                                                    const isCBCTest = (r.testName || "").toUpperCase().includes("CBC");
+                                                    return (
+                                                        <tbody key={r.reportId} data-report-id={r.reportId}>
+                                                            {renderSectionTitleRow(r.reportId, `${numberByReportId.get(r.reportId)}. ${r.testName}`)}
+                                                            {buildResultTableRows(r.reportId, rows, isCBCTest)}
+                                                        </tbody>
+                                                    );
+                                                })}
+                                            </table>
+                                        </div>
+                                    );
+                                    run = [];
+                                };
+
+                                col.forEach((report) => {
+                                    if (isPureQuantitativeReport(report)) {
+                                        run.push(report);
+                                    } else {
+                                        flushRun();
+                                        blocks.push(
+                                            <div key={report.reportId}>
+                                                {renderTestCardBody(report, numberByReportId.get(report.reportId)!)}
+                                            </div>
+                                        );
+                                    }
+                                });
+                                flushRun();
+                                return blocks;
+                            };
+
+                            return (
+                                <>
+                                    {detailedReports.length > 0 && (
+                                        <div className="flex flex-col gap-3 mb-3" data-detailed-results>
+                                            {detailedReports.map((report) => (
+                                                <div key={report.reportId}>
+                                                    {renderTestCardBody(report, numberByReportId.get(report.reportId)!)}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {nonEmptyColumns.length > 0 && (
+                                        <div className="flex items-start gap-6" data-results-grid data-print-block>
+                                            {nonEmptyColumns.map((col, colIdx) => (
+                                                <div key={colIdx} className="flex-1">
+                                                    {renderColumnBlocks(col)}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
+                    </div>
+
+                    {/* ================= DOCTOR REVIEW / NOTES / APPROVAL ================= */}
+                    <div className="mt-3 grid grid-cols-3 gap-3" data-print-block data-print-role="signature">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <img src="/report/clipboard-check.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
+                                <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Doctor Review Checklist</h3>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[10px]" style={{ color: REPORT_COLORS.neutral800 }}>
+                                {[
+                                    "Reviewed Critical Parameters",
+                                    "Follow-up Recommended",
+                                    "Clinical Correlation Done",
+                                    "Medication Prescribed",
+                                    "Additional Investigations Needed",
+                                    "Patient Counseled",
+                                ].map((label) => (
+                                    <div key={label} className="flex items-center gap-1.5">
+                                        <span className="inline-block w-3 h-3 flex-shrink-0 rounded-sm" style={{ border: `1px solid ${REPORT_COLORS.neutral600}` }} />
+                                        {label}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <img src="/report/edit.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
+                                <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Doctor Notes</h3>
+                            </div>
+                            <div className="space-y-4 mt-3">
+                                <div className="h-2" style={{ borderBottom: `1px solid ${REPORT_COLORS.neutral100}` }} />
+                                <div className="h-2" style={{ borderBottom: `1px solid ${REPORT_COLORS.neutral100}` }} />
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-xs font-bold uppercase mb-1.5" style={{ color: REPORT_COLORS.secondary800 }}>Lab Approval</h3>
+                            <img
+                                src="/signature.png"
+                                alt="Authorized Pathologist Signature"
+                                className="h-10 w-auto object-contain"
+                                crossOrigin="anonymous"
+                            />
+                            <div className="mt-0.5 text-[10px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
+                                <p className="font-semibold">Dr. Sini Arjun</p>
+                                <p style={{ color: REPORT_COLORS.neutral600 }}>MBBS, MD (Pathology)</p>
+                                <p style={{ color: REPORT_COLORS.neutral600 }}>Consultant Pathologist</p>
+                            </div>
+                            <div className="mt-2 text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>Lab Technician</div>
+                        </div>
+                    </div>
+
+                    {/* ================= FOOTER ================= */}
+                    <div data-print-block data-print-role="footer">
+                        <div
+                            className="mt-3 rounded-xl p-3 flex items-center"
+                            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+                        >
+                            <div className="flex-[1.4] pr-3">
+                                <h4 className="text-[10px] font-bold mb-0.5" style={{ color: REPORT_COLORS.danger600 }}>Disclaimer</h4>
+                                <p className="text-[9px] leading-tight" style={{ color: REPORT_COLORS.neutral600 }}>
+                                    *This laboratory report is intended for clinical correlation only. Results should be interpreted by a qualified medical professional. Laboratory values may vary based on methodology and biological variance. The diagnostic center is not responsible for misinterpretation or misuse of results. This is an electronically generated report. No physical signature required.
+                                </p>
+                            </div>
+
+                            <div className="self-stretch flex-shrink-0" style={{ borderLeft: `1px solid ${REPORT_COLORS.secondary200}` }} />
+
+                            <div className="flex-1 flex items-center gap-2 px-3">
+                                <img
+                                    src="/report/Rectangle.png"
+                                    alt="QR Code"
+                                    className="h-10 w-10 object-contain flex-shrink-0"
+                                    crossOrigin="anonymous"
+                                />
+                                <div>
+                                    <p className="text-xs font-bold text-black">
+                                        Thank you for choosing {currentLab?.name || "Our Lab"}
+                                    </p>
+                                    <div className="flex items-center mt-0.5">
+                                        <img
+                                            src="/tiamed1.svg"
+                                            alt="Tiamed Logo"
+                                            className="max-h-3.5 w-auto mr-1 opacity-80 object-contain"
+                                            crossOrigin="anonymous"
+                                        />
+                                        <span className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>
+                                            Powered by Tiameds Technologies Pvt.Ltd
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="self-stretch flex-shrink-0" style={{ borderLeft: `1px solid ${REPORT_COLORS.secondary200}` }} />
+
+                            <div className="flex-shrink-0 pl-3 text-right">
+                                <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>Generated on:</p>
+                                <p className="text-xs font-bold text-black">{(() => {
+                                    const { date, time } = formatReportDateTime(latestReportDateTime);
+                                    return `${date} at ${time}`;
+                                })()}</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
         </div>
     );
 };
