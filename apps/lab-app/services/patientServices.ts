@@ -1,6 +1,7 @@
 import api from '@/utils/api';
 
 import { Patient } from '@/types/patient/patient';
+import { HealthSnapshot } from '@/types/patient/healthSnapshot';
 import { debounce } from '@/utils/debounce';
 
 interface ApiResponse {
@@ -148,13 +149,23 @@ export const getVisitsByPatientId = async (labId: number, patientId: number) => 
     }
 }
 
-// getPatientById 
+// getPatientById
 export const getPatientById = async (labId: number, patientId: number) => {
     try {
         const response = await api.get(`/lab/${labId}/patient/${patientId}`);
         return response.data;
     } catch (error: unknown) {
         throw new Error('An error occurred while fetching patient details.');
+    }
+}
+
+// getPatientHealthSnapshot - patient's test history across visits, used for report trend view + AI context
+export const getPatientHealthSnapshot = async (labId: number, patientId: number): Promise<HealthSnapshot> => {
+    try {
+        const response = await api.get(`/lab/${labId}/patient/${patientId}/health-snapshot`);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error('An error occurred while fetching patient health snapshot.');
     }
 }
 

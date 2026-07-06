@@ -42,6 +42,7 @@ interface HealthPackage {
 
 interface Patient {
   visitId: number;
+  patientId?: number;
   patientname: string;
   gender: string;
   contactNumber: string;
@@ -175,6 +176,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({
         const visitTests = visit.tests ?? [];
         return {
           visitId: visit.visitId,
+          patientId: visit.patientId,
           patientname: visit.patientname,
           gender: visit.gender ?? '',
           contactNumber: visit.contactNumber ?? '',

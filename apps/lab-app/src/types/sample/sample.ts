@@ -37,6 +37,7 @@ export interface TestResult {
 export interface VisitSampleList {
     visitId: number;
     visitCode?: string;
+    patientId?: number;
     patientname: string;
     gender: string;
     contactNumber: string;
@@ -72,6 +73,7 @@ export interface VisitSampleList {
 
 export interface PatientData {
   visitId: number;
+  patientId?: number; // Needed to fetch patient-scoped data (e.g. health snapshot)
   patientname: string;
   gender: string;
   contactNumber: string;

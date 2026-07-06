@@ -757,6 +757,7 @@ const PatientVisitListTable: React.FC = () => {
             viewReportDetailsbyId={viewReportDetails.visit?.visitId ?? 0}
             viewPatient={{
               visitId: viewReportDetails.visit?.visitId ?? 0,
+              patientId: viewReportDetails.id,
               patientname: `${viewReportDetails.firstName} ${viewReportDetails.lastName}`.trim(),
               contactNumber: viewReportDetails.phone,
               visitDate: viewReportDetails.visit?.visitDate ?? '',

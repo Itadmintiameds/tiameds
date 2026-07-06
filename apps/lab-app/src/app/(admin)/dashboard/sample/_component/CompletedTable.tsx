@@ -37,6 +37,7 @@ interface HealthPackage {
 interface Patient {
   visitId: number;
   visitCode?: string;
+  patientId?: number;
   patientname: string;
   visitDate: string;
   visitStatus: string;

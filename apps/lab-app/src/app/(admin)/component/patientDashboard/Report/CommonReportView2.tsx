@@ -9,6 +9,10 @@ import { useLabs } from "@/context/LabContext";
 import { formatAgeForDisplay } from "@/utils/ageUtils";
 import type { PatientData } from "@/types/sample/sample";
 import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
+import { getPatientHealthSnapshot } from "../../../../../../services/patientServices";
+import type { HealthSnapshot } from "@/types/patient/healthSnapshot";
+import type { AiReportInsights } from "@/types/aiInsights";
+import type { AiHistoryPoint, AiTestFinding } from "@/lib/ai/labReportPrompt";
 
 type Html2CanvasBaseOptions = NonNullable<Parameters<typeof html2canvas>[1]>;
 type Html2CanvasEnhancedOptions = Html2CanvasBaseOptions & {
@@ -431,6 +435,12 @@ const CommonReportView2 = ({
     const reportRef = useRef<HTMLDivElement>(null);
     const [printing, setPrinting] = useState(false);
     const [selectedReports, setSelectedReports] = useState<Record<number, boolean>>({});
+    const [healthSnapshot, setHealthSnapshot] = useState<HealthSnapshot | null>(null);
+    const [healthSnapshotLoading, setHealthSnapshotLoading] = useState(false);
+    const [aiInsights, setAiInsights] = useState<AiReportInsights | null>(null);
+    const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
+    const [aiInsightsError, setAiInsightsError] = useState<string | null>(null);
+    const [healthSnapshotFetched, setHealthSnapshotFetched] = useState(false);
     const sortedReports = useMemo(() => {
         const copy = [...reportsData];
         copy.sort((a, b) => {
@@ -580,6 +590,134 @@ const CommonReportView2 = ({
 
         return { critical, borderline, normal, findings, normalReportNames, overallRisk };
     }, [sortedReports]);
+
+    // Full (not just abnormal) row-level view of the current report, shaped for the AI prompt --
+    // reuses the same row extraction/scoring as clinicalSummary above.
+    const aiTestFindings = useMemo<AiTestFinding[]>(() => {
+        const results: AiTestFinding[] = [];
+        sortedReports.forEach((report) => {
+            const rows =
+                report.testRows && report.testRows.length > 0
+                    ? report.testRows
+                    : [
+                        {
+                            testParameter: report.referenceDescription || report.testName,
+                            normalRange: report.referenceRange,
+                            enteredValue: report.enteredValue,
+                            unit: report.unit,
+                        },
+                    ];
+
+            rows.forEach((row) => {
+                if (isExcludedQualitativeRow(row)) return;
+                const score = scoreValue(row.enteredValue, row.normalRange);
+                results.push({
+                    testName: report.testName,
+                    parameter: row.testParameter || report.testName,
+                    value: row.enteredValue || "N/A",
+                    unit: row.unit,
+                    normalRange: row.normalRange,
+                    status: score.kind,
+                    direction: score.kind === "critical" || score.kind === "borderline" ? score.direction : undefined,
+                });
+            });
+        });
+        return results;
+    }, [sortedReports]);
+
+    // Flattens the patient's Health Snapshot (test-by-test visit history) into the
+    // shape the AI prompt expects, so it can reason about trends vs. the current report.
+    const aiHistoryPoints = useMemo<AiHistoryPoint[]>(() => {
+        if (!healthSnapshot) return [];
+        const points: AiHistoryPoint[] = [];
+        healthSnapshot.tests.forEach((test) => {
+            test.results.forEach((result) => {
+                points.push({
+                    testName: test.testName,
+                    visitDate: result.visitDate,
+                    value: result.enteredValue,
+                    unit: result.unit,
+                    normalRange: result.referenceRange,
+                });
+            });
+        });
+        return points;
+    }, [healthSnapshot]);
+
+    // Fetch the patient's Health Snapshot (test history across visits) whenever the report is viewed.
+    useEffect(() => {
+        if (!currentLab?.id || !patientData?.patientId) {
+            setHealthSnapshot(null);
+            setHealthSnapshotFetched(true);
+            return;
+        }
+
+        let cancelled = false;
+        setHealthSnapshotLoading(true);
+        getPatientHealthSnapshot(currentLab.id, patientData.patientId)
+            .then((snapshot) => {
+                if (!cancelled) setHealthSnapshot(snapshot);
+            })
+            .catch(() => {
+                if (!cancelled) setHealthSnapshot(null);
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setHealthSnapshotLoading(false);
+                    setHealthSnapshotFetched(true);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [currentLab?.id, patientData?.patientId]);
+
+    // Auto-generate AI Clinical Observations once the report data (and, if available, the
+    // Health Snapshot history) are ready. Cached only in this component's state for the
+    // session -- reopening the report later regenerates it.
+    useEffect(() => {
+        if (!healthSnapshotFetched || aiTestFindings.length === 0) {
+            return;
+        }
+
+        let cancelled = false;
+        setAiInsightsLoading(true);
+        setAiInsightsError(null);
+        fetch("/api/ai-report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                patient: {
+                    name: patientData?.patientname,
+                    age: formatAgeForDisplay(patientData?.dateOfBirth || ""),
+                    gender: patientData?.gender,
+                },
+                testFindings: aiTestFindings,
+                history: aiHistoryPoints,
+            }),
+        })
+            .then(async (response) => {
+                if (!response.ok) {
+                    const body = await response.json().catch(() => null);
+                    throw new Error(body?.message || "Failed to generate AI insights");
+                }
+                return response.json() as Promise<AiReportInsights>;
+            })
+            .then((data) => {
+                if (!cancelled) setAiInsights(data);
+            })
+            .catch((err) => {
+                if (!cancelled) setAiInsightsError(err instanceof Error ? err.message : "Failed to generate AI insights");
+            })
+            .finally(() => {
+                if (!cancelled) setAiInsightsLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [healthSnapshotFetched, aiTestFindings, aiHistoryPoints, patientData?.patientname, patientData?.dateOfBirth, patientData?.gender]);
 
     const getFindingBadge = (finding: ClinicalFinding) => {
         const directionLabel = finding.direction === "high" ? "HIGH" : "LOW";
@@ -1687,7 +1825,28 @@ const CommonReportView2 = ({
                                     </span>
                                     <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>AI Clinical Observations</h3>
                                 </div>
-                                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>No AI observations available yet.</p>
+                                {aiInsightsLoading ? (
+                                    <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Generating AI observations...</p>
+                                ) : aiInsightsError ? (
+                                    <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>AI observations unavailable for this report.</p>
+                                ) : aiInsights ? (
+                                    <div className="flex flex-col gap-1.5 px-1">
+                                        {[
+                                            { label: "Provisional Diagnosis", value: aiInsights.provisionalDiagnosis },
+                                            { label: "Patient Interpretation", value: aiInsights.patientInterpretation },
+                                            { label: "Clinical Interpretation", value: aiInsights.clinicalInterpretation },
+                                            { label: "Tips", value: aiInsights.tips },
+                                            { label: "Doctor to Visit", value: aiInsights.doctorToVisit },
+                                        ].filter((field) => field.value).map((field) => (
+                                            <div key={field.label}>
+                                                <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>{field.label}</p>
+                                                <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>{field.value}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>No AI observations available yet.</p>
+                                )}
                             </div>
                             <div
                                 className="rounded-xl p-2.5 flex flex-col gap-1.5"
@@ -1755,7 +1914,36 @@ const CommonReportView2 = ({
                                 </span>
                                 <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>Health Snapshot</h3>
                             </div>
-                            <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Trend data will appear here once available.</p>
+                            {healthSnapshotLoading ? (
+                                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Loading history...</p>
+                            ) : (() => {
+                                const trendTests = (healthSnapshot?.tests || []).filter((t) => t.totalVisits > 1);
+                                if (trendTests.length === 0) {
+                                    return (
+                                        <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>
+                                            {healthSnapshot ? "No prior visit history for these tests yet." : "Trend data will appear here once available."}
+                                        </p>
+                                    );
+                                }
+                                return (
+                                    <div className="flex flex-col gap-1.5 px-1">
+                                        {trendTests.slice(0, 4).map((test) => {
+                                            const lastTwo = test.results.slice(-2);
+                                            return (
+                                                <div key={test.testName}>
+                                                    <p className="text-[10px] font-extrabold" style={{ color: REPORT_COLORS.neutral800 }}>{test.testName}</p>
+                                                    <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>
+                                                        {lastTwo.map((r) => `${r.enteredValue}${r.unit ? ` ${r.unit}` : ""} (${r.visitDate})`).join(" -> ")}
+                                                    </p>
+                                                </div>
+                                            );
+                                        })}
+                                        {trendTests.length > 4 && (
+                                            <p className="text-[10px] italic" style={{ color: REPORT_COLORS.neutral600 }}>+{trendTests.length - 4} more tests with history.</p>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
 
