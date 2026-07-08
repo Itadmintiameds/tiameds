@@ -8,10 +8,10 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const aiInsightsSchema = z.object({
-  provisionalDiagnosis: z.string().nullable(),
-  patientInterpretation: z.string().nullable(),
-  clinicalInterpretation: z.string().nullable(),
-  tips: z.string().nullable(),
+  provisionalDiagnosis: z.array(z.string()).nullable(),
+  patientInterpretation: z.array(z.string()).nullable(),
+  clinicalInterpretation: z.array(z.string()).nullable(),
+  tips: z.array(z.string()).nullable(),
   doctorToVisit: z.string().nullable(),
 });
 
@@ -35,8 +35,14 @@ export async function POST(req: NextRequest) {
       history: body.history || [],
     });
 
+    const model = process.env.AI_MODEL || "gpt-5";
+    const temperature = process.env.AI_TEMPERATURE ? parseFloat(process.env.AI_TEMPERATURE) : 1.0;
+    const topP = process.env.AI_TOP_P ? parseFloat(process.env.AI_TOP_P) : 1;
+
     const completion = await client.chat.completions.create({
-      model: "gpt-5",
+      model,
+      temperature,
+      top_p: topP,
       messages,
       response_format: { type: "json_object" },
     });

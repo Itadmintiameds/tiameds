@@ -29,19 +29,25 @@ export interface BuildLabReportPromptInput {
 }
 
 const SYSTEM_PROMPT =
-  "You are an expert clinical assistant. Read the structured lab report data and produce a concise, structured JSON summary. " +
+  "You are an expert clinical assistant. Read the structured lab report data and produce a short, point-wise, structured JSON summary. " +
   "Be medically accurate, avoid speculation, and reflect uncertainty when data is insufficient. If a field cannot be determined, set it to null. " +
+  "Every bullet must be a single short sentence, maximum 15 words, plain and direct — no compound sentences, no hedging filler, no repeating the field name. " +
+  "Never write a paragraph. Never merge multiple ideas into one bullet. " +
+  "Be rigid and deterministic: given the same or clinically equivalent lab values, always produce the same conclusions, the same bullet count, and the same phrasing style — do not introduce stylistic variation, synonyms, or reordering between runs. " +
+  "Use standard, conservative clinical terminology consistently across reports. " +
   "Do NOT include any prose outside JSON. Respond with valid JSON only.";
 
 const JSON_SHAPE =
-  "Return ONLY valid JSON in this exact shape and key order (no extra keys, no comments, no backticks):\n" +
+  "Return ONLY valid JSON in this exact shape and key order (no extra keys, no comments, no backticks). " +
+  "Every array field must contain short bullet strings (max 15 words each, no trailing period unless it's an abbreviation):\n" +
   "{\n" +
-  '  "provisionalDiagnosis": "Give the list of possible diagnoses.",\n' +
-  '  "patientInterpretation": "Plain-language explanation in 2-4 short sentences, no jargon.",\n' +
-  '  "clinicalInterpretation": "Detailed clinical reasoning: key abnormal results with brief interpretation, prioritized differentials with likelihood, pertinent positives/negatives, and immediate next tests/referrals.",\n' +
-  '  "tips": "2 concise, general guidance points for patient self-care and preparation (no prescriptions), relevant to the diagnosis.",\n' +
-  '  "doctorToVisit": "Most appropriate specialty (e.g., Endocrinologist)."\n' +
-  "}";
+  '  "provisionalDiagnosis": ["Up to 3 bullets, most likely diagnosis first, ordered by likelihood."],\n' +
+  '  "patientInterpretation": ["Up to 2 bullets, plain language, no jargon."],\n' +
+  '  "clinicalInterpretation": ["Up to 4 bullets: key abnormal result(s), most likely differential, and the single next test/referral. One idea per bullet."],\n' +
+  '  "tips": ["Exactly 2 bullets: general self-care/preparation guidance relevant to the diagnosis, no prescriptions."],\n' +
+  '  "doctorToVisit": "Single most appropriate specialty as a plain string (e.g., Endocrinologist)."\n' +
+  "}\n" +
+  "If a lab report shows no significant abnormalities, keep provisionalDiagnosis and clinicalInterpretation to 1-2 bullets stating findings are within normal limits.";
 
 export function buildLabReportPrompt({ patient, testFindings, history }: BuildLabReportPromptInput) {
   const patientLines = [

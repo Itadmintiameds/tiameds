@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 // import localFont from "next/font/local";
 import "./globals.css";
-import { Noto_Sans, Work_Sans, Open_Sans } from "next/font/google";
+import { Noto_Sans, Work_Sans, Open_Sans, Inter } from "next/font/google";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { LabProvider } from '@/context/LabContext';
@@ -21,6 +21,11 @@ const workSans = Work_Sans({
 const openSans = Open_Sans({
   subsets: ["latin"],
   variable: "--font-open-sans",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
 });
 
 // const geistSans = localFont({
@@ -54,7 +59,7 @@ export default function RootLayout({
     <LabProvider>
       <html lang="en">
         <body
-  className={`${notoSans.variable} ${workSans.variable} ${openSans.variable}`}
+  className={`${notoSans.variable} ${workSans.variable} ${openSans.variable} ${inter.variable}`}
 >
           <TokenExpirationHandler />
           <IdleLogoutHandler />

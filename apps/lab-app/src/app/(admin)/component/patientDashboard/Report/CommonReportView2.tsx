@@ -10,9 +10,10 @@ import { formatAgeForDisplay } from "@/utils/ageUtils";
 import type { PatientData } from "@/types/sample/sample";
 import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
 import { getPatientHealthSnapshot } from "../../../../../../services/patientServices";
-import type { HealthSnapshot } from "@/types/patient/healthSnapshot";
+import type { HealthSnapshot, HealthSnapshotTest } from "@/types/patient/healthSnapshot";
 import type { AiReportInsights } from "@/types/aiInsights";
 import type { AiHistoryPoint, AiTestFinding } from "@/lib/ai/labReportPrompt";
+import { buildAiReportCacheKey, readAiReportCache, writeAiReportCache } from "@/lib/ai/aiReportCache";
 
 type Html2CanvasBaseOptions = NonNullable<Parameters<typeof html2canvas>[1]>;
 type Html2CanvasEnhancedOptions = Html2CanvasBaseOptions & {
@@ -21,7 +22,7 @@ type Html2CanvasEnhancedOptions = Html2CanvasBaseOptions & {
     windowHeight?: number;
 };
 
-const DEFAULT_FONT_FAMILY = '"Inter", "Helvetica Neue", Arial, sans-serif';
+const DEFAULT_FONT_FAMILY = 'var(--font-inter), "Inter", "Helvetica Neue", Arial, sans-serif';
 const BASE_TEXT_COLOR = "#0f172a";
 
 // Plain hex values (not Tailwind color-* classes) on purpose: Tailwind v4 generates
@@ -533,6 +534,56 @@ const CommonReportView2 = ({
         return { kind: "unscored" };
     };
 
+    // Health Snapshot card shows trend as a small colored line chart instead of raw
+    // numbers -- color reflects the latest reading's status (reuses the same
+    // normal/borderline/critical scoring as Detailed Lab Results), shape reflects the
+    // last few visits' relative movement.
+    const buildTestSparkline = (test: HealthSnapshotTest) => {
+        const parsedPoints = test.results
+            .map((r) => ({
+                value: parseFloat(r.enteredValue),
+                score: scoreValue(r.enteredValue, r.referenceRange),
+            }))
+            .filter((p) => Number.isFinite(p.value));
+
+        if (parsedPoints.length < 2) return null;
+
+        const usable = parsedPoints.slice(-5);
+        const values = usable.map((p) => p.value);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const range = max - min || 1;
+
+        const width = 200;
+        const height = 28;
+        const padX = 6;
+        const padY = 5;
+        const stepX = (width - padX * 2) / (usable.length - 1);
+
+        const points = usable.map((p, i) => ({
+            x: padX + stepX * i,
+            y: height - padY - ((p.value - min) / range) * (height - padY * 2),
+        }));
+
+        const latest = usable[usable.length - 1].score;
+        const color =
+            latest.kind === "critical"
+                ? REPORT_COLORS.danger500
+                : latest.kind === "borderline"
+                    ? REPORT_COLORS.warning500
+                    : latest.kind === "normal"
+                        ? REPORT_COLORS.success600
+                        : REPORT_COLORS.neutral600;
+
+        return {
+            width,
+            height,
+            color,
+            points,
+            pointsAttr: points.map((p) => `${p.x},${p.y}`).join(" "),
+        };
+    };
+
     // Drives the Clinical Alert Summary counts, Key Findings list, Overall Risk Score,
     // and Clinical Attention Required section from the same row data already rendered in
     // Detailed Lab Results -- no separate AI/analytics backend involved.
@@ -674,10 +725,23 @@ const CommonReportView2 = ({
     }, [currentLab?.id, patientData?.patientId]);
 
     // Auto-generate AI Clinical Observations once the report data (and, if available, the
-    // Health Snapshot history) are ready. Cached only in this component's state for the
-    // session -- reopening the report later regenerates it.
+    // Health Snapshot history) are ready. Result is cached in localStorage keyed by the
+    // report set + its content, so reopening the same report skips the OpenAI call entirely.
     useEffect(() => {
         if (!healthSnapshotFetched || aiTestFindings.length === 0) {
+            return;
+        }
+
+        const cacheKey = buildAiReportCacheKey(
+            sortedReports.map((r) => r.reportId),
+            aiTestFindings,
+            aiHistoryPoints
+        );
+        const cached = readAiReportCache(cacheKey);
+        if (cached) {
+            setAiInsights(cached);
+            setAiInsightsError(null);
+            setAiInsightsLoading(false);
             return;
         }
 
@@ -705,7 +769,10 @@ const CommonReportView2 = ({
                 return response.json() as Promise<AiReportInsights>;
             })
             .then((data) => {
-                if (!cancelled) setAiInsights(data);
+                if (!cancelled) {
+                    setAiInsights(data);
+                    writeAiReportCache(cacheKey, data);
+                }
             })
             .catch((err) => {
                 if (!cancelled) setAiInsightsError(err instanceof Error ? err.message : "Failed to generate AI insights");
@@ -717,7 +784,7 @@ const CommonReportView2 = ({
         return () => {
             cancelled = true;
         };
-    }, [healthSnapshotFetched, aiTestFindings, aiHistoryPoints, patientData?.patientname, patientData?.dateOfBirth, patientData?.gender]);
+    }, [healthSnapshotFetched, aiTestFindings, aiHistoryPoints, sortedReports, patientData?.patientname, patientData?.dateOfBirth, patientData?.gender]);
 
     const getFindingBadge = (finding: ClinicalFinding) => {
         const directionLabel = finding.direction === "high" ? "HIGH" : "LOW";
@@ -1546,6 +1613,21 @@ const CommonReportView2 = ({
         new Set(moderatePriorityFindings.map((f) => f.row.testParameter || f.report.testName))
     );
 
+    // Block the whole report (including the print/PDF button) behind a loader until AI
+    // insights have either arrived, failed, or aren't applicable -- otherwise a PDF could be
+    // generated mid-generation with "Generating..." baked into it instead of real insights.
+    const aiReady = healthSnapshotFetched && (aiTestFindings.length === 0 || aiInsights !== null || aiInsightsError !== null);
+    if (!aiReady) {
+        return (
+            <div className="flex h-64 items-center justify-center">
+                <div className="text-center">
+                    <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+                    <p className="mt-4 text-lg font-medium text-gray-700">Generating AI insights...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-4xl mx-auto text-black font-sans" style={{ fontFamily: DEFAULT_FONT_FAMILY }}>
             {!hidePrintButton && (
@@ -1655,7 +1737,7 @@ const CommonReportView2 = ({
                             <img
                                 src="/report/Logo.png"
                                 alt="Tiamed Logo"
-                                className="w-44 h-14 object-contain flex-shrink-0"
+                                className="w-28 h-9 object-contain flex-shrink-0"
                                 crossOrigin="anonymous"
                             />
                         </div>
@@ -1762,7 +1844,7 @@ const CommonReportView2 = ({
                                     style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
                                 >
                                     <img src="/report/Purpose.png" alt="" className="w-5 h-5" crossOrigin="anonymous" />
-                                    <p className="text-base font-extrabold whitespace-nowrap" style={{ color: REPORT_COLORS.secondary800 }}>{clinicalSummary.overallRisk || "—"}</p>
+                                    <p className="text-sm font-extrabold text-center" style={{ color: REPORT_COLORS.secondary800 }}>{clinicalSummary.overallRisk || "—"}</p>
                                     <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>Overall Risk Score</p>
                                 </div>
                             </div>
@@ -1813,8 +1895,8 @@ const CommonReportView2 = ({
                         </div>
                     </div>
 
-                    <div className="mt-3 flex items-stretch gap-3" data-print-block>
-                        <div className="flex-1 flex flex-col gap-3">
+                    <div className="mt-3 flex flex-wrap items-start gap-3" data-print-block>
+                        <div className="flex-1 min-w-[260px] flex flex-col gap-3">
                             <div
                                 className="rounded-xl p-2.5 flex flex-col gap-1.5"
                                 style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
@@ -1836,13 +1918,29 @@ const CommonReportView2 = ({
                                             { label: "Patient Interpretation", value: aiInsights.patientInterpretation },
                                             { label: "Clinical Interpretation", value: aiInsights.clinicalInterpretation },
                                             { label: "Tips", value: aiInsights.tips },
-                                            { label: "Doctor to Visit", value: aiInsights.doctorToVisit },
-                                        ].filter((field) => field.value).map((field) => (
+                                        ].filter((field) => field.value && field.value.length > 0).map((field) => (
                                             <div key={field.label}>
                                                 <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>{field.label}</p>
-                                                <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>{field.value}</p>
+                                                <ul className="flex flex-col gap-0.5">
+                                                    {field.value!.map((line, idx) => (
+                                                        <li key={idx} className="text-[11px] leading-tight flex gap-1" style={{ color: REPORT_COLORS.neutral800 }}>
+                                                            <span aria-hidden="true">&bull;</span>
+                                                            <span>{line}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
                                             </div>
                                         ))}
+                                        {aiInsights.doctorToVisit && (
+                                            <div>
+                                                <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>Doctor to Visit</p>
+                                                <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>{aiInsights.doctorToVisit}</p>
+                                            </div>
+                                        )}
+                                        <p className="text-[9px] mt-0.5" style={{ color: REPORT_COLORS.secondary800 }}>
+                                            <span className="font-semibold">Note: </span>
+                                            <span className="font-normal">This is an AI generated observation based on lab values only. Not a diagnosis.</span>
+                                        </p>
                                     </div>
                                 ) : (
                                     <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>No AI observations available yet.</p>
@@ -1905,7 +2003,7 @@ const CommonReportView2 = ({
                             </div>
                         </div>
                         <div
-                            className="w-64 rounded-xl p-2.5 flex flex-col gap-1.5"
+                            className="flex-[0_1_340px] min-w-[220px] w-full sm:w-auto rounded-xl p-2.5 flex flex-col gap-2"
                             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
                         >
                             <div className="flex items-center gap-2">
@@ -1926,21 +2024,34 @@ const CommonReportView2 = ({
                                     );
                                 }
                                 return (
-                                    <div className="flex flex-col gap-1.5 px-1">
-                                        {trendTests.slice(0, 4).map((test) => {
-                                            const lastTwo = test.results.slice(-2);
+                                    <div className="flex flex-col gap-2 px-1">
+                                        {trendTests.map((test: HealthSnapshotTest) => {
+                                            const sparkline = buildTestSparkline(test);
                                             return (
-                                                <div key={test.testName}>
-                                                    <p className="text-[10px] font-extrabold" style={{ color: REPORT_COLORS.neutral800 }}>{test.testName}</p>
-                                                    <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>
-                                                        {lastTwo.map((r) => `${r.enteredValue}${r.unit ? ` ${r.unit}` : ""} (${r.visitDate})`).join(" -> ")}
-                                                    </p>
+                                                <div key={test.testName} className="flex items-center gap-2">
+                                                    <p className="text-[10px] font-extrabold leading-tight flex-[0_0_42%] min-w-0" style={{ color: REPORT_COLORS.neutral800 }}>{test.testName}</p>
+                                                    {sparkline ? (
+                                                        <svg className="flex-1 min-w-0" height="24" viewBox={`0 0 ${sparkline.width} ${sparkline.height}`} preserveAspectRatio="none">
+                                                            <polyline
+                                                                points={sparkline.pointsAttr}
+                                                                fill="none"
+                                                                stroke={sparkline.color}
+                                                                strokeWidth="2"
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                            />
+                                                            {sparkline.points.map((p, i) => (
+                                                                <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={sparkline.color} />
+                                                            ))}
+                                                        </svg>
+                                                    ) : (
+                                                        <span className="flex-1 flex justify-center">
+                                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: REPORT_COLORS.neutral600 }} />
+                                                        </span>
+                                                    )}
                                                 </div>
                                             );
                                         })}
-                                        {trendTests.length > 4 && (
-                                            <p className="text-[10px] italic" style={{ color: REPORT_COLORS.neutral600 }}>+{trendTests.length - 4} more tests with history.</p>
-                                        )}
                                     </div>
                                 );
                             })()}
@@ -2075,13 +2186,18 @@ const CommonReportView2 = ({
                     </div>
 
                     {/* ================= DOCTOR REVIEW / NOTES / APPROVAL ================= */}
-                    <div className="mt-3 grid grid-cols-3 gap-3" data-print-block data-print-role="signature">
-                        <div>
-                            <div className="flex items-center gap-2 mb-1.5">
+                    <div
+                        className="mt-6 pt-6 flex items-start gap-6"
+                        style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }}
+                        data-print-block
+                        data-print-role="signature"
+                    >
+                        <div className="w-96 flex-shrink-0">
+                            <div className="flex items-center gap-2 mb-2">
                                 <img src="/report/clipboard-check.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
                                 <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Doctor Review Checklist</h3>
                             </div>
-                            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[10px]" style={{ color: REPORT_COLORS.neutral800 }}>
+                            <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-[10px]" style={{ color: REPORT_COLORS.neutral900 }}>
                                 {[
                                     "Reviewed Critical Parameters",
                                     "Follow-up Recommended",
@@ -2090,39 +2206,40 @@ const CommonReportView2 = ({
                                     "Additional Investigations Needed",
                                     "Patient Counseled",
                                 ].map((label) => (
-                                    <div key={label} className="flex items-center gap-1.5">
-                                        <span className="inline-block w-3 h-3 flex-shrink-0 rounded-sm" style={{ border: `1px solid ${REPORT_COLORS.neutral600}` }} />
+                                    <div key={label} className="flex items-center gap-2">
+                                        <span className="inline-block w-3.5 h-3.5 flex-shrink-0 rounded-[3px]" style={{ border: `1px solid ${REPORT_COLORS.neutral100}` }} />
                                         {label}
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        <div>
-                            <div className="flex items-center gap-2 mb-1.5">
+                        <div className="flex-1 min-w-[160px]">
+                            <div className="flex items-center gap-2 mb-2 whitespace-nowrap">
                                 <img src="/report/edit.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
                                 <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Doctor Notes</h3>
                             </div>
-                            <div className="space-y-4 mt-3">
-                                <div className="h-2" style={{ borderBottom: `1px solid ${REPORT_COLORS.neutral100}` }} />
-                                <div className="h-2" style={{ borderBottom: `1px solid ${REPORT_COLORS.neutral100}` }} />
+                            <div className="flex flex-col gap-3">
+                                <div className="h-0" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }} />
+                                <div className="h-0" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }} />
+                                <div className="h-0" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }} />
                             </div>
                         </div>
 
-                        <div>
-                            <h3 className="text-xs font-bold uppercase mb-1.5" style={{ color: REPORT_COLORS.secondary800 }}>Lab Approval</h3>
+                        <div className="w-48 flex-shrink-0 ml-auto flex flex-col items-center gap-3 text-center">
+                            <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Lab Approval</h3>
                             <img
                                 src="/signature.png"
                                 alt="Authorized Pathologist Signature"
                                 className="h-10 w-auto object-contain"
                                 crossOrigin="anonymous"
                             />
-                            <div className="mt-0.5 text-[10px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
-                                <p className="font-semibold">Dr. Sini Arjun</p>
-                                <p style={{ color: REPORT_COLORS.neutral600 }}>MBBS, MD (Pathology)</p>
-                                <p style={{ color: REPORT_COLORS.neutral600 }}>Consultant Pathologist</p>
+                            <div className="flex flex-col items-center gap-1">
+                                <p className="text-xs font-bold" style={{ color: REPORT_COLORS.neutral900 }}>Dr. Sini Arjun</p>
+                                <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>MBBS, MD (Pathology)</p>
+                                <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>Consultant Pathologist</p>
                             </div>
-                            <div className="mt-2 text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>Lab Technician</div>
+                            <p className="text-[9px] font-bold" style={{ color: REPORT_COLORS.neutral600 }}>Lab Technician</p>
                         </div>
                     </div>
 
