@@ -384,11 +384,11 @@
      SPACING
   ========================= */
 
+  /* Do not define --spacing-sm/-md/-lg here: Tailwind v4 resolves sizing
+     utilities through --spacing-* before --container-*, so they would turn
+     max-w-sm/md/lg (used across the app) into 12-20px widths. */
   --spacing-xxsm: 4px;
   --spacing-xsm: 8px;
-  --spacing-sm: 12px;
-  --spacing-md: 16px;
-  --spacing-lg: 20px;
   --spacing-xlg: 24px;
   --spacing-xxlg: 28px;
   --spacing-hg: 32px;
