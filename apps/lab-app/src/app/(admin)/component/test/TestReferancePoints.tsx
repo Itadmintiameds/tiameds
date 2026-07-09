@@ -1,3 +1,4 @@
+'use client';
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   getTestReferences,
@@ -9,20 +10,19 @@ import {
 import { TestReferancePoint } from "@/types/test/testlist";
 import Loader from "../../component/common/Loader";
 import { useLabs } from "@/context/LabContext";
-import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaFilter, FaChevronDown, FaChevronUp, FaChevronRight, FaVial, FaBook } from "react-icons/fa";
+import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaChevronDown, FaChevronUp, FaChevronRight, FaBook } from "react-icons/fa";
 import { useRouter } from "next/navigation";
-import Modal from "../common/Model";
+import NewModal from "@/app/(admin)/dashboard/newcommoncomponent/NewModal";
 import TestEditReferance from "./TestEditReferance";
 import { toast } from "react-toastify";
 import AddTestReferanceNew from "./AddTestReferanceNew";
-// import Button from "../common/Button";
 import AddExistingTestReferance from "./AddExistingTestReferance";
-import Pagination from "../common/Pagination";
 import * as XLSX from 'xlsx';
 import { saveAs } from "file-saver";
 import { fetchTestReferenceRangeCsv } from '@/../services/testService';
 import Papa from 'papaparse';
 import { z } from "zod";
+
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -93,13 +93,10 @@ export const TestReferancePointSchema = z.object({
 }).superRefine((data, ctx) => {
   const desc = (data.testDescription || "").toUpperCase();
   
-  // For DETAILED REPORT and DROPDOWN types, skip range and units validation
   if (desc === "DETAILED REPORT" || desc.startsWith("DROPDOWN")) {
-    // Skip all range-related validation for these types
     return;
   }
   
-  // For other types, validate that units and ranges are provided
   if (!data.units || data.units.trim() === "") {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -107,11 +104,8 @@ export const TestReferancePointSchema = z.object({
       message: "Units are required",
     });
   }
-  
-  // Min/Max reference ranges are optional for all types
 }).refine(data => {
   const desc = (data.testDescription || "").toUpperCase();
-  // Skip age validation for DETAILED REPORT and DROPDOWN types
   if (desc === "DETAILED REPORT" || desc.startsWith("DROPDOWN")) {
     return true;
   }
@@ -124,7 +118,6 @@ export const TestReferancePointSchema = z.object({
   path: ["ageMax"]
 }).refine(data => {
   const desc = (data.testDescription || "").toUpperCase();
-  // Skip range validation for DETAILED REPORT and DROPDOWN types
   if (desc === "DETAILED REPORT" || desc.startsWith("DROPDOWN")) {
     return true;
   }
@@ -138,7 +131,7 @@ export const TestReferancePointSchema = z.object({
   path: ["maxReferenceRange"]
 });
 
-const ITEMS_PER_PAGE = 700; // Items per page for API pagination
+const ITEMS_PER_PAGE = 700;
 
 type ReferenceRangeItem = {
   Gender?: string;
@@ -184,7 +177,7 @@ const TestReferancePoints = () => {
   const [existingModalOpen, setExistingModalOpen] = useState(false);
   const [existingTestReferanceRecord, setExistingTestReferanceRecord] = useState<TestReferancePoint>({} as TestReferancePoint);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(0); // API uses 0-based indexing
+  const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const { currentLab } = useLabs();
@@ -199,7 +192,6 @@ const TestReferancePoints = () => {
       try {
         const response: PaginatedResponse = await getTestReferences(currentLab.id, page, size);
         
-        // Safety checks for response structure
         const content = Array.isArray(response?.content) ? response.content : [];
         const totalPages = response?.totalPages ?? 0;
         const totalElements = response?.totalElements ?? 0;
@@ -215,7 +207,6 @@ const TestReferancePoints = () => {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An error occurred while fetching test references.';
         toast.error(errorMessage);
-        // Reset to empty state on error
         setReferencePoints([]);
         setTotalPages(0);
         setTotalElements(0);
@@ -253,9 +244,7 @@ const TestReferancePoints = () => {
     setExpandedRows(newExpandedRows);
   };
 
-  
   const { filteredGroupedData, stats } = useMemo(() => {
-    // Ensure referencePoints is always an array
     const safeReferencePoints = Array.isArray(referencePoints) ? referencePoints : [];
     
     let filtered = safeReferencePoints;
@@ -283,7 +272,7 @@ const TestReferancePoints = () => {
     });
 
     const stats = {
-      totalTests: totalElements, // Use total from API
+      totalTests: totalElements,
       totalCategories: new Set(safeReferencePoints.map(t => t?.category).filter(Boolean)).size,
       filteredTests: filtered.length,
       filteredCategories: new Set(filtered.map(t => t?.category).filter(Boolean)).size
@@ -298,14 +287,11 @@ const TestReferancePoints = () => {
       return acc;
     }, {});
 
-    // No need for client-side category pagination since API handles pagination
-    // Just return all filtered and grouped data for current page
     return {
       filteredGroupedData: grouped,
       stats
     };
   }, [referencePoints, searchTerm, activeFilter, activeTab, totalElements]);
-
 
   const handleDownloadCsv = async () => {
     try {
@@ -388,12 +374,11 @@ const TestReferancePoints = () => {
         dataToUpdate
       );
       
-      await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after update
+      await fetchReferencePoints(currentPage, ITEMS_PER_PAGE);
       
       toast.success("Test reference range updated successfully.");
       setEditModalOpen(false);
     } catch (error) {
-      // Handle update error
       toast.error((error as Error).message || "Failed to update test reference range");
     } finally {
       setLoading(false);
@@ -426,7 +411,7 @@ const TestReferancePoints = () => {
     try {
       setLoading(true);
       await deleteTestReferanceRange(currentLab.id, testReferenceCode);
-      await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after delete
+      await fetchReferencePoints(currentPage, ITEMS_PER_PAGE);
       toast.success("Test reference range deleted successfully.", { autoClose: 2000 });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "An unexpected error occurred while deleting the test reference range.";
@@ -457,7 +442,7 @@ const TestReferancePoints = () => {
         gender: newReferanceRecord.gender === "B" ? "MF" : newReferanceRecord.gender,
       };
       await addTestReferanceRange(currentLab.id.toString(), dataToAdd);
-      await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after adding
+      await fetchReferencePoints(currentPage, ITEMS_PER_PAGE);
       
       toast.success("Test reference range added successfully.", { autoClose: 2000 });
       setAddModalOpen(false);
@@ -490,7 +475,7 @@ const TestReferancePoints = () => {
         gender: existingTestReferanceRecord.gender === "B" ? "MF" : existingTestReferanceRecord.gender,
       };
       await addTestReferanceRange(currentLab.id.toString(), dataToAdd);
-      await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after adding
+      await fetchReferencePoints(currentPage, ITEMS_PER_PAGE);
       
       toast.success("Test reference range added successfully.", { autoClose: 2000 });
       setExistingModalOpen(false);
@@ -504,115 +489,134 @@ const TestReferancePoints = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-6">
+      <div className="flex flex-col items-center justify-center h-64">
         <Loader type="progress" fullScreen={false} text="Loading test reference ranges..." />
-        <p className="mt-4 text-sm text-gray-600">Please wait while we fetch the data.</p>
+        <p className="mt-4 text-sm text-gray-500">Please wait while we fetch the data.</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full bg-gray-50 p-6 rounded-xl shadow-lg">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
-        <div className="flex items-center gap-3">
+    <div className="w-full">
+      {/* Header Section */}
+      <div className="mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Test Reference Ranges</h2>
-            <p className="text-gray-600 text-sm">Manage laboratory test reference values</p>
-          </div>
-          <button
-            onClick={() => router.push('/dashboard/test-reference-docs')}
-            className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all duration-200 flex items-center gap-2 group"
-            title="View Documentation"
-          >
-            <FaBook className="h-5 w-5 group-hover:scale-110 transition-transform" />
-            <span className="text-sm font-medium hidden sm:inline">Help</span>
-          </button>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaSearch className="text-gray-400" />
-            </div>
-            <div className="absolute inset-y-0 right-0 flex items-center">
-              <div className="relative">
-                <button
-                  className="h-full px-2 flex items-center text-gray-500 hover:text-blue-600"
-                  onClick={() => setActiveFilter(prev => prev === "all" ? "category" : prev === "category" ? "test" : prev === "test" ? "description" : "all")}
-                >
-                  <FaFilter className="mr-1" />
-                  <span className="text-xs capitalize">{activeFilter}</span>
-                </button>
-              </div>
-            </div>
-            <input
-              type="text"
-              placeholder={`Search by ${activeFilter}...`}
-              className="pl-10 pr-20 py-2 w-full bg-white border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(0); // Reset to first page when searching
-              }}
-            />
+            <h1 className="text-h3 font-semibold text-pneutral-900">
+              Test Reference Ranges
+            </h1>
+            <p className="mt-1 text-p3 text-pneutral-500">
+              Manage laboratory test reference values
+            </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setAddModalOpen(true)}
-              className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center gap-2"
-              style={{
-                background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
-              }}
+              className="flex items-center gap-2 rounded-full bg-secondary-700 px-4 py-2 text-label-l3 font-medium text-pneutral-50"
             >
               <FaPlus className="h-4 w-4" />
-              Add New
+              Add New Reference
             </button>
             <button
               onClick={handleDownloadExcel}
-              className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all duration-200 flex items-center gap-2"
+              className="flex items-center gap-2 rounded-full bg-success-600 px-4 py-2 text-label-l3 font-medium text-pneutral-50"
             >
               <FaFileExcel className="h-4 w-4" />
-              Excel
+              Download as Excel
             </button>
             <button
               onClick={handleDownloadCsv}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all duration-200 flex items-center gap-2"
+              className="flex items-center gap-2 rounded-full bg-info-600 px-4 py-2 text-label-l3 font-medium text-pneutral-50"
             >
               <FaDownload className="h-4 w-4" />
-              CSV
+              Download as CSV
             </button>
           </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="bg-green-50 p-3 rounded-lg border border-green-100 mb-4">
-        <h4 className="font-semibold text-green-800 mb-2 flex items-center">
-          <FaVial className="mr-2 text-green-600" /> Test Statistics
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="bg-white p-3 rounded-lg border border-green-200">
-            <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Total Tests Reference</h3>
-            <p className="text-xl font-bold text-gray-900">{stats.totalTests}</p>
+      {/* KPI Section */}
+      <div className="mb-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
+            <h3 className="text-sm font-medium text-pneutral-900">
+              Total Tests Reference
+            </h3>
+            <p className="mt-4 text-3xl font-semibold text-pneutral-900">
+              {stats.totalTests}
+            </p>
           </div>
-          <div className="bg-white p-3 rounded-lg border border-green-200">
-            <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Categories</h3>
-            <p className="text-xl font-bold text-gray-900">{stats.totalCategories}</p>
+
+          <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
+            <h3 className="text-sm font-medium text-pneutral-900">
+              Categories
+            </h3>
+            <p className="mt-4 text-3xl font-semibold text-info-500">
+              {stats.totalCategories}
+            </p>
           </div>
-          <div className="bg-white p-3 rounded-lg border border-green-200">
-            <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Showing Tests Reference</h3>
-            <p className="text-xl font-bold text-gray-900">
+
+          <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
+            <h3 className="text-sm font-medium text-pneutral-900">
+              Showing Tests Reference
+            </h3>
+            <p className="mt-4 text-3xl font-semibold text-danger-600">
               {stats.filteredTests} {searchTerm ? "results" : "tests"}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-4">
-        <div className="flex border-b border-blue-200">
+      {/* Search and Help Section */}
+      <div className="mb-6 rounded-xl bg-white border border-pneutral-200 p-4">
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          {/* Search Bar */}
+          <div className="relative flex-1 w-full">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FaSearch className="text-pneutral-400" size={16} />
+            </div>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+              <button
+                className="h-full px-3 flex items-center text-pneutral-500 hover:text-info-600 transition-colors"
+                onClick={() => setActiveFilter(prev => prev === "all" ? "category" : prev === "category" ? "test" : prev === "test" ? "description" : "all")}
+              >
+                <span className="text-p2 font-medium capitalize">{activeFilter}</span>
+              </button>
+            </div>
+            <input
+              type="text"
+              placeholder={`Search by ${activeFilter}...`}
+              className="h-10 w-full rounded-lg border border-pneutral-200 pl-10 pr-24 text-p3 outline-none focus:border-pneutral-500 bg-white"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(0);
+              }}
+            />
+          </div>
+
+          {/* Help Button */}
           <button
-            className={`py-2 px-4 font-medium text-sm ${activeTab === "all" ? "text-blue-800 border-b-2 border-blue-700" : "text-gray-600 hover:text-gray-800"}`}
+            onClick={() => router.push('/dashboard/test-reference-docs')}
+            className="flex items-center gap-2 px-4 py-2 text-p3 font-medium text-info-600 hover:text-info-700 hover:bg-info-50 rounded-lg transition-all duration-200 whitespace-nowrap"
+            title="View Documentation"
+          >
+            <FaBook className="h-5 w-5" />
+            <span>Help</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Filter */}
+      <div className="mb-6 rounded-xl bg-white border border-pneutral-200 p-4">
+        <div className="flex items-center gap-4">
+          <button
+            className={`py-2 px-4 text-p3 font-medium rounded-lg transition-colors ${
+              activeTab === "all" 
+                ? "bg-secondary-700 text-pneutral-50" 
+                : "text-pneutral-600 hover:bg-pneutral-100"
+            }`}
             onClick={() => setActiveTab("all")}
           >
             All Tests
@@ -620,44 +624,45 @@ const TestReferancePoints = () => {
         </div>
       </div>
 
+      {/* Content */}
       {Object.keys(filteredGroupedData).length > 0 ? (
         <>
           {Object.entries(filteredGroupedData).map(([category, tests]) => (
-            <div key={category} className="bg-white rounded-xl shadow-lg border border-gray-200 mb-4 overflow-hidden">
+            <div key={category} className="bg-white rounded-xl border border-pneutral-200 mb-4 overflow-hidden">
               <button
                 onClick={() => toggleCategory(category)}
-                className="w-full flex justify-between items-center p-3 hover:bg-gray-50 transition-colors"
+                className="w-full flex justify-between items-center p-4 hover:bg-pneutral-50 transition-colors"
               >
                 <div className="flex items-center">
-                  <h3 className="text-lg font-semibold text-blue-700">{category}</h3>
-                  <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                  <h3 className="text-h6 font-semibold text-secondary-700">{category}</h3>
+                  <span className="ml-2 px-2 py-0.5 bg-info-50 text-info-700 text-p2 rounded-full">
                     {Object.keys(tests).length} tests
                   </span>
                 </div>
                 {expandedCategories[category] ? (
-                  <FaChevronUp className="text-gray-500" />
+                  <FaChevronUp className="text-pneutral-500" />
                 ) : (
-                  <FaChevronDown className="text-gray-500" />
+                  <FaChevronDown className="text-pneutral-500" />
                 )}
               </button>
 
               {expandedCategories[category] && (
-                <div className="p-3">
+                <div className="p-4 pt-0">
                   {Object.entries(tests).map(([testName, records]) => (
                     <div key={testName} className="mb-4 last:mb-0">
-                      <div className="flex justify-between items-center bg-gray-50 p-2 rounded-lg mb-2">
-                        <h4 className="font-medium text-blue-700 text-sm">{testName}</h4>
-                        <div className="flex gap-1">
+                      <div className="flex justify-between items-center bg-pneutral-50 p-3 rounded-lg mb-3">
+                        <h4 className="font-medium text-secondary-700 text-p3">{testName}</h4>
+                        <div className="flex gap-2">
                           <button
                             onClick={() => toggleAllRows(true)}
-                            className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-lg text-xs transition-all duration-200 flex items-center gap-1"
+                            className="px-3 py-1 text-p2 font-medium text-pneutral-50 bg-success-600 rounded-full hover:bg-success-700 transition-colors flex items-center gap-1"
                           >
                             <FaChevronDown className="h-3 w-3" />
                             Expand All
                           </button>
                           <button
                             onClick={() => toggleAllRows(false)}
-                            className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded-lg text-xs transition-all duration-200 flex items-center gap-1"
+                            className="px-3 py-1 text-p2 font-medium text-pneutral-50 bg-pneutral-500 rounded-full hover:bg-pneutral-600 transition-colors flex items-center gap-1"
                           >
                             <FaChevronUp className="h-3 w-3" />
                             Collapse All
@@ -667,10 +672,7 @@ const TestReferancePoints = () => {
                               setExistingModalOpen(true);
                               setExistingTestReferanceRecord(prev => ({ ...prev, testName, category }));
                             }}
-                            className="px-2 py-1 text-xs font-medium text-white rounded-lg transition-all duration-200 flex items-center gap-1"
-                            style={{
-                              background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
-                            }}
+                            className="px-3 py-1 text-p2 font-medium text-pneutral-50 bg-secondary-700 rounded-full hover:bg-secondary-800 transition-colors flex items-center gap-1"
                           >
                             <FaPlus className="h-3 w-3" />
                             Add Reference
@@ -679,8 +681,8 @@ const TestReferancePoints = () => {
                       </div>
 
                       {/* Table Header */}
-                      <div className="bg-gray-100 p-3 rounded-lg mb-2">
-                        <div className="grid grid-cols-12 gap-3 items-center font-medium text-gray-700 text-sm">
+                      <div className="bg-pneutral-50 p-3 rounded-lg mb-2">
+                        <div className="grid grid-cols-12 gap-3 items-center font-medium text-p3 text-pneutral-700">
                           <div className="col-span-1">Code</div>
                           <div className="col-span-2">Test Name</div>
                           <div className="col-span-2">Description</div>
@@ -694,47 +696,47 @@ const TestReferancePoints = () => {
 
                       <div className="space-y-1">
                         {records.map((test) => (
-                          <div key={test.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                          <div key={test.id} className="bg-white border border-pneutral-200 rounded-lg overflow-hidden">
                             {/* Main Row */}
                             <div className="p-3">
                               <div className="grid grid-cols-12 gap-3 items-center">
                                 <div className="col-span-1">
-                                  <span className="text-xs font-semibold text-blue-600">{test.testReferenceCode || "N/A"}</span>
+                                  <span className="text-p2 font-semibold text-info-600">{test.testReferenceCode || "N/A"}</span>
                                 </div>
                                 <div className="col-span-2">
                                   <div className="flex items-center gap-2">
                                     <button
                                       onClick={() => test.id && toggleRow(test.id)}
-                                      className="p-1 hover:bg-gray-100 rounded"
+                                      className="p-1 hover:bg-pneutral-100 rounded"
                                     >
                                       {expandedRows[test.id || 0] ? (
-                                        <FaChevronDown className="text-gray-500" size={12} />
+                                        <FaChevronDown className="text-pneutral-500" size={12} />
                                       ) : (
-                                        <FaChevronRight className="text-gray-500" size={12} />
+                                        <FaChevronRight className="text-pneutral-500" size={12} />
                                       )}
                                     </button>
-                                    <span className="font-medium text-gray-800 text-sm">{test.testName}</span>
+                                    <span className="font-medium text-pneutral-900 text-p3">{test.testName}</span>
                                   </div>
                                 </div>
                                 <div className="col-span-2">
-                                  <span className="text-xs text-gray-600">{test.testDescription || "N/A"}</span>
+                                  <span className="text-p2 text-pneutral-600">{test.testDescription || "N/A"}</span>
                                 </div>
                                 <div className="col-span-1 text-center">
-                                  <span className="text-xs font-medium">{test.gender}</span>
+                                  <span className="text-p2 font-medium">{test.gender}</span>
                                 </div>
                                 <div className="col-span-2 text-center">
-                                  <span className="text-xs text-gray-600">
+                                  <span className="text-p2 text-pneutral-600">
                                     {test.ageMin || "0"} {test.minAgeUnit || "Years"} - {test.ageMax || "∞"} {test.maxAgeUnit || "Years"}
                                   </span>
                                 </div>
                                 <div className="col-span-2">
-                                  <span className="text-xs font-medium">
-                                    {test.minReferenceRange} - {test.maxReferenceRange} {test.units && <span className="text-gray-500">{test.units}</span>}
+                                  <span className="text-p2 font-medium">
+                                    {test.minReferenceRange} - {test.maxReferenceRange} {test.units && <span className="text-pneutral-500">{test.units}</span>}
                                   </span>
                                 </div>
                                 <div className="col-span-1">
                                   {test.reportJson ? (
-                                    <div className="text-xs text-gray-500 truncate" title="Report Available">
+                                    <div className="text-p2 text-pneutral-500 truncate" title="Report Available">
                                       {(() => {
                                         try {
                                           const parsed = JSON.parse(test.reportJson);
@@ -745,21 +747,21 @@ const TestReferancePoints = () => {
                                       })()}
                                     </div>
                                   ) : (
-                                    <span className="text-gray-400 text-xs">N/A</span>
+                                    <span className="text-pneutral-400 text-p2">N/A</span>
                                   )}
                                 </div>
                                 <div className="col-span-1">
-                                  <div className="flex gap-1 justify-end">
-                            <FaEdit
-                              onClick={() => test?.id && handleEditRecord(test)}
-                              className="text-blue-500 cursor-pointer hover:text-blue-700"
-                              title="Edit"
+                                  <div className="flex gap-2 justify-end">
+                                    <FaEdit
+                                      onClick={() => test?.id && handleEditRecord(test)}
+                                      className="text-info-600 cursor-pointer hover:text-info-800"
+                                      title="Edit"
                                       size={14}
-                            />
-                            <FaTrash
-                              onClick={() => test?.testReferenceCode && handleDelete(test.testReferenceCode)}
-                              className="text-red-500 cursor-pointer hover:text-red-700"
-                              title="Delete"
+                                    />
+                                    <FaTrash
+                                      onClick={() => test?.testReferenceCode && handleDelete(test.testReferenceCode)}
+                                      className="text-warning-500 cursor-pointer hover:text-warning-700"
+                                      title="Delete"
                                       size={14}
                                     />
                                   </div>
@@ -769,189 +771,189 @@ const TestReferancePoints = () => {
 
                             {/* Expanded Row - Full Data View */}
                             {expandedRows[test.id || 0] && (
-                              <div className="border-t border-gray-100 bg-gray-50 p-3">
+                              <div className="border-t border-pneutral-200 bg-pneutral-50 p-4">
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                   {/* Report JSON Details */}
                                   <div>
-                                    <h4 className="font-semibold text-blue-700 mb-2 flex items-center gap-2 text-sm">
-                                      <FaChevronDown className="text-blue-500" size={12} />
+                                    <h4 className="font-semibold text-secondary-700 mb-3 flex items-center gap-2 text-p3">
+                                      <FaChevronDown className="text-info-500" size={12} />
                                       Medical Report Details
                                     </h4>
                                     {test.reportJson ? (
-                                      <div className="bg-white p-3 rounded-lg border border-gray-200">
-                                    {(() => {
-                                        try {
-                                          const parsed = JSON.parse(test.reportJson) as ParsedReport;
-                                          return (
-                                            <div className="space-y-3">
-                                              {parsed.testName ? (
-                                                <div>
-                                                  <h5 className="font-semibold text-blue-700 text-xs mb-1">Test Name</h5>
-                                                  <p className="text-gray-700 bg-blue-50 p-2 rounded text-sm">{String(parsed.testName)}</p>
-                                                </div>
-                                              ) : null}
-                                              {parsed.note ? (
-                                                <div>
-                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Note</h5>
-                                                  <p className="text-gray-700 bg-yellow-50 p-2 rounded italic">{String(parsed.note)}</p>
-                                                </div>
-                                              ) : null}
-                                              {parsed.impression ? (
-                                                <div>
-                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Impression</h5>
-                                                  <p className="text-gray-700 bg-green-50 p-2 rounded">{String(parsed.impression)}</p>
-                                                </div>
-                                              ) : null}
-                                              {parsed.interpretation ? (
-                                                <div>
-                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Interpretation</h5>
-                                                  <p className="text-gray-700 bg-green-50 p-2 rounded">{String(parsed.interpretation)}</p>
-                                                </div>
-                                              ) : null}
-                                              {Array.isArray(parsed.limitations) && parsed.limitations.length > 0 ? (
-                                                <div>
-                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Limitations</h5>
-                                                  <ul className="list-disc list-inside space-y-1">
-                                                    {parsed.limitations.map((limitation: unknown, idx: number) => (
-                                                      <li key={idx} className="text-gray-700 text-sm bg-orange-50 p-2 rounded">
-                                                        {renderValue(limitation)}
-                                                      </li>
-                                                    ))}
-                                                  </ul>
-                                                </div>
-                                              ) : null}
-                                              {Array.isArray(parsed.organReview) && parsed.organReview.length > 0 ? (
-                                                <div>
-                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Organ Review</h5>
-                                                  <ul className="list-disc list-inside space-y-1">
-                                                    {parsed.organReview.map((organ: unknown, idx: number) => (
-                                                      <li key={idx} className="text-gray-700 text-sm bg-blue-50 p-2 rounded">
-                                                        {renderValue(organ)}
-                                                      </li>
-                                                    ))}
-                                                  </ul>
-                                                </div>
-                                              ) : null}
-                                              {Array.isArray(parsed.observations) && parsed.observations.length > 0 ? (
-                                                <div>
-                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Observations</h5>
-                                                  <ul className="list-disc list-inside space-y-1">
-                                                    {parsed.observations.map((observation: unknown, idx: number) => (
-                                                      <li key={idx} className="text-gray-700 text-sm bg-purple-50 p-2 rounded">
-                                                        {renderValue(observation)}
-                                                      </li>
-                                                    ))}
-                                                  </ul>
-                                                </div>
-                                              ) : null}
-                                              {parsed.fetalParameters && isPlainObject(parsed.fetalParameters) ? (
-                                                <div>
-                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Fetal Parameters</h5>
-                                                  <div className="space-y-3">
-                                                    {Object.entries(parsed.fetalParameters).map(([fetus, params]) =>
-                                                      isPlainObject(params) ? (
-                                                        <div key={fetus} className="bg-gray-50 p-3 rounded">
-                                                          <h6 className="font-medium text-gray-800 mb-2">{fetus}</h6>
-                                                          <div className="grid grid-cols-2 gap-2">
-                                                            {Object.entries(params).map(([key, value]) => (
-                                                              <div key={key} className="text-sm">
-                                                                <span className="font-medium text-gray-600">{key}:</span>
-                                                                <span className="ml-2 text-gray-800">{renderValue(value)}</span>
-                                                              </div>
-                                                            ))}
-                                                          </div>
-                                                        </div>
-                                                      ) : null
-                                                    )}
+                                      <div className="bg-white p-4 rounded-lg border border-pneutral-200">
+                                        {(() => {
+                                          try {
+                                            const parsed = JSON.parse(test.reportJson) as ParsedReport;
+                                            return (
+                                              <div className="space-y-3">
+                                                {parsed.testName ? (
+                                                  <div>
+                                                    <h5 className="font-semibold text-secondary-700 text-p2 mb-1">Test Name</h5>
+                                                    <p className="text-pneutral-900 bg-info-50 p-2 rounded text-p3">{String(parsed.testName)}</p>
                                                   </div>
-                                                </div>
-                                              ) : null}
-                                              {parsed.parameters && isPlainObject(parsed.parameters) ? (
-                                                <div>
-                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Test Parameters</h5>
-                                                  <div className="space-y-2">
-                                                    {Object.entries(parsed.parameters).map(([param, data]) =>
-                                                      isPlainObject(data) ? (
-                                                        <div key={param} className="bg-gray-50 p-3 rounded">
-                                                          <h6 className="font-medium text-gray-800 mb-1 capitalize">{param.replace(/_/g, ' ')}</h6>
-                                                          <div className="grid grid-cols-2 gap-2 text-sm">
-                                                            {Object.entries(data).map(([key, value]) => (
-                                                              <div key={key}>
-                                                                <span className="font-medium text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</span>
-                                                                <span className="ml-2 text-gray-800">{renderValue(value)}</span>
-                                                              </div>
-                                                            ))}
-                                                          </div>
-                                                        </div>
-                                                      ) : null
-                                                    )}
+                                                ) : null}
+                                                {parsed.note ? (
+                                                  <div>
+                                                    <h5 className="font-semibold text-pneutral-800 text-p2 mb-1">Note</h5>
+                                                    <p className="text-pneutral-900 bg-warning-50 p-2 rounded italic text-p3">{String(parsed.note)}</p>
                                                   </div>
-                                                </div>
-                                              ) : null}
-                                              {parsed.sections ? (
-                                                <div>
-                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Report Sections</h5>
-                                                  <div className="space-y-2">
-                                                    {Array.isArray(parsed.sections)
-                                                      ? parsed.sections.map((section, idx) => (
-                                                          <div key={section.title ?? idx} className="bg-gray-50 p-3 rounded">
-                                                            <h6 className="text-gray-800 mb-1">{section.title || `Section ${idx + 1}`}</h6>
-                                                            <p className="text-gray-700 text-sm">{renderValue(section.content)}</p>
+                                                ) : null}
+                                                {parsed.impression ? (
+                                                  <div>
+                                                    <h5 className="font-semibold text-pneutral-800 text-p2 mb-1">Impression</h5>
+                                                    <p className="text-pneutral-900 bg-success-50 p-2 rounded text-p3">{String(parsed.impression)}</p>
+                                                  </div>
+                                                ) : null}
+                                                {parsed.interpretation ? (
+                                                  <div>
+                                                    <h5 className="font-semibold text-pneutral-800 text-p2 mb-1">Interpretation</h5>
+                                                    <p className="text-pneutral-900 bg-success-50 p-2 rounded text-p3">{String(parsed.interpretation)}</p>
+                                                  </div>
+                                                ) : null}
+                                                {Array.isArray(parsed.limitations) && parsed.limitations.length > 0 ? (
+                                                  <div>
+                                                    <h5 className="font-semibold text-pneutral-800 text-p2 mb-1">Limitations</h5>
+                                                    <ul className="list-disc list-inside space-y-1">
+                                                      {parsed.limitations.map((limitation: unknown, idx: number) => (
+                                                        <li key={idx} className="text-pneutral-900 text-p3 bg-orange-50 p-2 rounded">
+                                                          {renderValue(limitation)}
+                                                        </li>
+                                                      ))}
+                                                    </ul>
+                                                  </div>
+                                                ) : null}
+                                                {Array.isArray(parsed.organReview) && parsed.organReview.length > 0 ? (
+                                                  <div>
+                                                    <h5 className="font-semibold text-pneutral-800 text-p2 mb-1">Organ Review</h5>
+                                                    <ul className="list-disc list-inside space-y-1">
+                                                      {parsed.organReview.map((organ: unknown, idx: number) => (
+                                                        <li key={idx} className="text-pneutral-900 text-p3 bg-info-50 p-2 rounded">
+                                                          {renderValue(organ)}
+                                                        </li>
+                                                      ))}
+                                                    </ul>
+                                                  </div>
+                                                ) : null}
+                                                {Array.isArray(parsed.observations) && parsed.observations.length > 0 ? (
+                                                  <div>
+                                                    <h5 className="font-semibold text-pneutral-800 text-p2 mb-1">Observations</h5>
+                                                    <ul className="list-disc list-inside space-y-1">
+                                                      {parsed.observations.map((observation: unknown, idx: number) => (
+                                                        <li key={idx} className="text-pneutral-900 text-p3 bg-purple-50 p-2 rounded">
+                                                          {renderValue(observation)}
+                                                        </li>
+                                                      ))}
+                                                    </ul>
+                                                  </div>
+                                                ) : null}
+                                                {parsed.fetalParameters && isPlainObject(parsed.fetalParameters) ? (
+                                                  <div>
+                                                    <h5 className="font-semibold text-pneutral-800 text-p2 mb-1">Fetal Parameters</h5>
+                                                    <div className="space-y-3">
+                                                      {Object.entries(parsed.fetalParameters).map(([fetus, params]) =>
+                                                        isPlainObject(params) ? (
+                                                          <div key={fetus} className="bg-pneutral-50 p-3 rounded">
+                                                            <h6 className="font-medium text-pneutral-800 text-p3 mb-2">{fetus}</h6>
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                              {Object.entries(params).map(([key, value]) => (
+                                                                <div key={key} className="text-p3">
+                                                                  <span className="font-medium text-pneutral-600">{key}:</span>
+                                                                  <span className="ml-2 text-pneutral-900">{renderValue(value)}</span>
+                                                                </div>
+                                                              ))}
+                                                            </div>
                                                           </div>
-                                                        ))
-                                                      : isPlainObject(parsed.sections)
-                                                        ? Object.entries(parsed.sections as Record<string, unknown>).map(([sectionTitle, description]) => (
-                                                            <div key={sectionTitle} className="bg-gray-50 p-3 rounded">
-                                                              <h6 className="font-medium text-gray-800 mb-1">{sectionTitle}</h6>
-                                                              <p className="text-gray-700 text-sm">{renderValue(description)}</p>
+                                                        ) : null
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                ) : null}
+                                                {parsed.parameters && isPlainObject(parsed.parameters) ? (
+                                                  <div>
+                                                    <h5 className="font-semibold text-pneutral-800 text-p2 mb-1">Test Parameters</h5>
+                                                    <div className="space-y-2">
+                                                      {Object.entries(parsed.parameters).map(([param, data]) =>
+                                                        isPlainObject(data) ? (
+                                                          <div key={param} className="bg-pneutral-50 p-3 rounded">
+                                                            <h6 className="font-medium text-pneutral-800 text-p3 mb-1 capitalize">{param.replace(/_/g, ' ')}</h6>
+                                                            <div className="grid grid-cols-2 gap-2 text-p3">
+                                                              {Object.entries(data).map(([key, value]) => (
+                                                                <div key={key}>
+                                                                  <span className="font-medium text-pneutral-600 capitalize">{key.replace(/_/g, ' ')}:</span>
+                                                                  <span className="ml-2 text-pneutral-900">{renderValue(value)}</span>
+                                                                </div>
+                                                              ))}
+                                                            </div>
+                                                          </div>
+                                                        ) : null
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                ) : null}
+                                                {parsed.sections ? (
+                                                  <div>
+                                                    <h5 className="font-semibold text-pneutral-800 text-p2 mb-1">Report Sections</h5>
+                                                    <div className="space-y-2">
+                                                      {Array.isArray(parsed.sections)
+                                                        ? parsed.sections.map((section, idx) => (
+                                                            <div key={section.title ?? idx} className="bg-pneutral-50 p-3 rounded">
+                                                              <h6 className="text-pneutral-800 text-p3 mb-1">{section.title || `Section ${idx + 1}`}</h6>
+                                                              <p className="text-pneutral-900 text-p3">{renderValue(section.content)}</p>
                                                             </div>
                                                           ))
-                                                        : null}
+                                                        : isPlainObject(parsed.sections)
+                                                          ? Object.entries(parsed.sections as Record<string, unknown>).map(([sectionTitle, description]) => (
+                                                              <div key={sectionTitle} className="bg-pneutral-50 p-3 rounded">
+                                                                <h6 className="font-medium text-pneutral-800 text-p3 mb-1">{sectionTitle}</h6>
+                                                                <p className="text-pneutral-900 text-p3">{renderValue(description)}</p>
+                                                              </div>
+                                                            ))
+                                                          : null}
+                                                    </div>
                                                   </div>
-                                                </div>
-                                              ) : null}
-                                              {parsed.calculation ? (
-                                                <div>
-                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Calculation</h5>
-                                                  <p className="text-gray-700 bg-blue-50 p-2 rounded font-mono">{String(parsed.calculation)}</p>
-                                                </div>
-                                              ) : null}
-                                              {parsed.significance ? (
-                                                <div>
-                                                  <h5 className="font-semibold text-gray-800 text-sm mb-2">Significance</h5>
-                                                  <p className="text-gray-700 bg-green-50 p-2 rounded">{String(parsed.significance)}</p>
-                                                </div>
-                                              ) : null}
-                                            </div>
-                                          );
-                                        } catch {
-                                          return (
-                                            <div className="text-gray-400 text-sm">
-                                              <p>Unable to parse report data</p>
-                                              <details className="mt-2">
-                                                <summary className="cursor-pointer text-blue-600">View Raw Data</summary>
-                                                <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-32">
-                                                  {test.reportJson}
-                                                </pre>
-                                              </details>
-                                            </div>
-                                          );
-                                        }
-                                      })()}
+                                                ) : null}
+                                                {parsed.calculation ? (
+                                                  <div>
+                                                    <h5 className="font-semibold text-pneutral-800 text-p2 mb-1">Calculation</h5>
+                                                    <p className="text-pneutral-900 bg-info-50 p-2 rounded font-mono text-p3">{String(parsed.calculation)}</p>
+                                                  </div>
+                                                ) : null}
+                                                {parsed.significance ? (
+                                                  <div>
+                                                    <h5 className="font-semibold text-pneutral-800 text-p2 mb-1">Significance</h5>
+                                                    <p className="text-pneutral-900 bg-success-50 p-2 rounded text-p3">{String(parsed.significance)}</p>
+                                                  </div>
+                                                ) : null}
+                                              </div>
+                                            );
+                                          } catch {
+                                            return (
+                                              <div className="text-pneutral-400 text-p3">
+                                                <p>Unable to parse report data</p>
+                                                <details className="mt-2">
+                                                  <summary className="cursor-pointer text-info-600">View Raw Data</summary>
+                                                  <pre className="mt-2 text-p2 bg-pneutral-100 p-2 rounded overflow-auto max-h-32">
+                                                    {test.reportJson}
+                                                  </pre>
+                                                </details>
+                                              </div>
+                                            );
+                                          }
+                                        })()}
                                       </div>
                                     ) : (
-                                      <div className="text-gray-400 text-sm">No report data available</div>
+                                      <div className="text-pneutral-400 text-p3">No report data available</div>
                                     )}
                                   </div>
 
                                   {/* Reference Ranges Details */}
                                   <div>
-                                    <h4 className="font-semibold text-blue-700 mb-2 flex items-center gap-2 text-sm">
-                                      <FaChevronDown className="text-green-500" size={12} />
+                                    <h4 className="font-semibold text-secondary-700 mb-3 flex items-center gap-2 text-p3">
+                                      <FaChevronDown className="text-success-500" size={12} />
                                       Reference Ranges
                                     </h4>
                                     {test.referenceRanges ? (
-                                      <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                      <div className="bg-white p-4 rounded-lg border border-pneutral-200">
                                         {(() => {
                                           try {
                                             const parsed = JSON.parse(test.referenceRanges);
@@ -959,28 +961,28 @@ const TestReferancePoints = () => {
                                               <div className="space-y-2">
                                                 {Array.isArray(parsed) ? (
                                                   (parsed as ReferenceRangeItem[]).map((range, idx) => (
-                                                    <div key={idx} className="bg-green-50 p-3 rounded-lg border border-green-200">
+                                                    <div key={idx} className="bg-success-50 p-3 rounded-lg border border-success-200">
                                                       <div className="flex justify-between items-start mb-2">
                                                         <div className="flex items-center gap-2">
-                                                          <span className="font-semibold text-green-800">
+                                                          <span className="font-semibold text-success-800 text-p3">
                                                             {range.Gender === 'M' ? 'Male' : range.Gender === 'F' ? 'Female' : range.Gender}
                                                           </span>
-                                                          <span className="text-green-600 text-sm">
+                                                          <span className="text-success-600 text-p3">
                                                             {range.AgeMin} - {range.AgeMax} {range.AgeMinUnit}
                                                           </span>
                                                         </div>
-                                                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">
+                                                        <span className="bg-success-100 text-success-800 px-2 py-1 rounded text-p2 font-medium">
                                                           {range.ReferenceRange}
                                                         </span>
                                                       </div>
-                                                      <div className="text-sm text-gray-600">
+                                                      <div className="text-p3 text-pneutral-600">
                                                         Age Range: {range.AgeMin} - {range.AgeMax} {range.AgeMinUnit}
                                                         {range.AgeMaxUnit && range.AgeMaxUnit !== range.AgeMinUnit && ` - ${range.AgeMaxUnit}`}
                                                       </div>
                                                     </div>
                                                   ))
                                                 ) : (
-                                                  <div className="text-gray-600 text-sm">
+                                                  <div className="text-pneutral-600 text-p3">
                                                     <p>Reference Range: {parsed.ReferenceRange || 'N/A'}</p>
                                                     {parsed.Gender && <p>Gender: {parsed.Gender}</p>}
                                                     {parsed.AgeMin && parsed.AgeMax && (
@@ -992,11 +994,11 @@ const TestReferancePoints = () => {
                                             );
                                           } catch {
                                             return (
-                                              <div className="text-gray-400 text-sm">
+                                              <div className="text-pneutral-400 text-p3">
                                                 <p>Unable to parse reference ranges data</p>
                                                 <details className="mt-2">
-                                                  <summary className="cursor-pointer text-green-600">View Raw Data</summary>
-                                                  <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-32">
+                                                  <summary className="cursor-pointer text-success-600">View Raw Data</summary>
+                                                  <pre className="mt-2 text-p2 bg-pneutral-100 p-2 rounded overflow-auto max-h-32">
                                                     {test.referenceRanges}
                                                   </pre>
                                                 </details>
@@ -1006,39 +1008,39 @@ const TestReferancePoints = () => {
                                         })()}
                                       </div>
                                     ) : (
-                                      <div className="text-gray-400 text-sm">No reference ranges data available</div>
+                                      <div className="text-pneutral-400 text-p3">No reference ranges data available</div>
                                     )}
                                   </div>
                                 </div>
 
                                 {/* Additional Test Information */}
-                                <div className="mt-3 pt-3 border-t border-gray-200">
-                                  <h4 className="font-semibold text-blue-700 mb-2 text-sm">Additional Information</h4>
-                                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+                                <div className="mt-4 pt-4 border-t border-pneutral-200">
+                                  <h4 className="font-semibold text-secondary-700 mb-3 text-p3">Additional Information</h4>
+                                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-p2">
                                     <div>
-                                      <span className="font-medium text-gray-600">Reference Code:</span>
-                                      <p className="text-gray-800 font-semibold">{test.testReferenceCode || "N/A"}</p>
+                                      <span className="font-medium text-pneutral-600">Reference Code:</span>
+                                      <p className="text-pneutral-900 font-semibold">{test.testReferenceCode || "N/A"}</p>
                                     </div>
                                     <div>
-                                      <span className="font-medium text-gray-600">Created By:</span>
-                                      <p className="text-gray-800">{test.createdBy || "N/A"}</p>
+                                      <span className="font-medium text-pneutral-600">Created By:</span>
+                                      <p className="text-pneutral-900">{test.createdBy || "N/A"}</p>
                                     </div>
                                     <div>
-                                      <span className="font-medium text-gray-600">Updated By:</span>
-                                      <p className="text-gray-800">{test.updatedBy || "N/A"}</p>
+                                      <span className="font-medium text-pneutral-600">Updated By:</span>
+                                      <p className="text-pneutral-900">{test.updatedBy || "N/A"}</p>
                                     </div>
                                     <div>
-                                      <span className="font-medium text-gray-600">Created At:</span>
-                                      <p className="text-gray-800">{test.createdAt ? new Date(test.createdAt).toLocaleString() : "N/A"}</p>
+                                      <span className="font-medium text-pneutral-600">Created At:</span>
+                                      <p className="text-pneutral-900">{test.createdAt ? new Date(test.createdAt).toLocaleString() : "N/A"}</p>
                                     </div>
                                     <div>
-                                      <span className="font-medium text-gray-600">Updated At:</span>
-                                      <p className="text-gray-800">{test.updatedAt ? new Date(test.updatedAt).toLocaleString() : "N/A"}</p>
+                                      <span className="font-medium text-pneutral-600">Updated At:</span>
+                                      <p className="text-pneutral-900">{test.updatedAt ? new Date(test.updatedAt).toLocaleString() : "N/A"}</p>
                                     </div>
                                   </div>
                                 </div>
-                          </div>
-                        )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1049,30 +1051,42 @@ const TestReferancePoints = () => {
             </div>
           ))}
 
-          <div className="mt-3 flex justify-center">
-            <Pagination
-              currentPage={currentPage + 1} // Convert 0-based to 1-based for display
-              totalPages={totalPages}
-              onPageChange={(page) => setCurrentPage(page - 1)} // Convert back to 0-based
-            />
+          {/* Pagination */}
+          <div className="mt-6 flex justify-center">
+            <div className="flex items-center gap-2">
+              <button
+                disabled={currentPage === 0}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                className="px-4 py-2 text-p3 font-medium text-pneutral-700 bg-pneutral-100 rounded-lg disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-p3 text-pneutral-600">
+                Page {currentPage + 1} of {totalPages}
+              </span>
+              <button
+                disabled={currentPage >= totalPages - 1}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="px-4 py-2 text-p3 font-medium text-pneutral-700 bg-pneutral-100 rounded-lg disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </>
       ) : (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 text-center">
-          <FaSearch className="mx-auto text-3xl text-gray-400 mb-3" />
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+        <div className="bg-white rounded-xl border border-pneutral-200 p-12 text-center">
+          <FaSearch className="mx-auto text-4xl text-pneutral-300 mb-4" />
+          <h3 className="text-h6 font-semibold text-pneutral-900 mb-2">
             {searchTerm ? "No matching results found" : "No test reference data available"}
           </h3>
-          <p className="text-gray-600 text-sm">
+          <p className="text-p3 text-pneutral-500">
             {searchTerm ? "Try adjusting your search query" : "Add test references to get started"}
           </p>
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
-              className="mt-3 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
-              style={{
-                background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
-              }}
+              className="mt-4 px-4 py-2 text-p3 font-medium text-pneutral-50 bg-secondary-700 rounded-lg hover:bg-secondary-800 transition-colors"
             >
               Clear search
             </button>
@@ -1080,12 +1094,13 @@ const TestReferancePoints = () => {
         </div>
       )}
 
+      {/* Edit Modal */}
       {isEditModalOpen && (
-        <Modal
+        <NewModal
           isOpen={isEditModalOpen}
-          title="Edit Reference Range"
           onClose={() => setEditModalOpen(false)}
-          modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+          title="Edit Reference Range"
+          modalClassName="max-w-5xl max-h-[90vh] overflow-y-auto"
         >
           <TestEditReferance
             editRecord={editRecord}
@@ -1096,15 +1111,16 @@ const TestReferancePoints = () => {
             formData={formData}
             setFormData={setFormData}
           />
-        </Modal>
+        </NewModal>
       )}
 
+      {/* Add New Modal */}
       {addModalOpen && (
-        <Modal
+        <NewModal
           isOpen={addModalOpen}
-          title="Add New Reference Range"
           onClose={() => setAddModalOpen(false)}
-          modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+          title="Add New Reference Range"
+          modalClassName="max-w-5xl max-h-[90vh] overflow-y-auto"
         >
           <AddTestReferanceNew
             handleAddNewReferanceRecord={handleAddNewReferanceRecord}
@@ -1112,15 +1128,16 @@ const TestReferancePoints = () => {
             newReferanceRecord={newReferanceRecord}
             setNewReferanceRecord={setNewReferanceRecord}
           />
-        </Modal>
+        </NewModal>
       )}
 
+      {/* Add Existing Modal */}
       {existingModalOpen && (
-        <Modal
+        <NewModal
           isOpen={existingModalOpen}
-          title="Add Existing Test Reference"
           onClose={() => setExistingModalOpen(false)}
-          modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+          title="Add Existing Test Reference"
+          modalClassName="max-w-5xl max-h-[90vh] overflow-y-auto"
         >
           <AddExistingTestReferance
             handleAddExistingReferanceRecord={handleAddExistingReferanceRecord}
@@ -1128,10 +1145,1165 @@ const TestReferancePoints = () => {
             existingTestReferanceRecord={existingTestReferanceRecord}
             setExistingTestReferanceRecord={setExistingTestReferanceRecord}
           />
-        </Modal>
+        </NewModal>
       )}
     </div>
   );
 };
 
 export default TestReferancePoints;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// code written by Abhishek , ..................do not delete the code below ....................
+
+// import { useState, useEffect, useMemo, useCallback } from "react";
+// import {
+//   getTestReferences,
+//   updateTestReferanceRange,
+//   deleteTestReferanceRange,
+//   addTestReferanceRange,
+//   PaginatedResponse
+// } from "../../../../../services/testService";
+// import { TestReferancePoint } from "@/types/test/testlist";
+// import Loader from "../../component/common/Loader";
+// import { useLabs } from "@/context/LabContext";
+// import { FaEdit, FaTrash, FaPlus, FaSearch, FaDownload, FaFileExcel, FaFilter, FaChevronDown, FaChevronUp, FaChevronRight, FaVial, FaBook } from "react-icons/fa";
+// import { useRouter } from "next/navigation";
+// import Modal from "../common/Model";
+// import TestEditReferance from "./TestEditReferance";
+// import { toast } from "react-toastify";
+// import AddTestReferanceNew from "./AddTestReferanceNew";
+// // import Button from "../common/Button";
+// import AddExistingTestReferance from "./AddExistingTestReferance";
+// import Pagination from "../common/Pagination";
+// import * as XLSX from 'xlsx';
+// import { saveAs } from "file-saver";
+// import { fetchTestReferenceRangeCsv } from '@/../services/testService';
+// import Papa from 'papaparse';
+// import { z } from "zod";
+// const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+//   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// const renderValue = (value: unknown): string => {
+//   if (value === null || value === undefined) return 'N/A';
+//   if (typeof value === 'object') {
+//     if (Array.isArray(value)) {
+//       return value.map(item => renderValue(item)).join(', ');
+//     }
+//     return JSON.stringify(value, null, 2);
+//   }
+//   return String(value);
+// };
+
+// export const TestReferancePointSchema = z.object({
+//   id: z.number().optional(),
+//   category: z.string().min(1, "Category is required"),
+//   testName: z.string().min(1, "Test name is required"),
+//   testDescription: z.string().min(1, "Test description is required"),
+//   units: z.string().nullish(),
+//   gender: z.enum(["M", "F", "B", "MF"], {
+//     errorMap: () => ({ message: "Gender must be M (Male), F (Female), B (Both), or MF (Both)" })
+//   }),
+//   minReferenceRange: z.preprocess(
+//     (val) => (val === "" ? undefined : val),
+//     z.union([
+//     z.number().min(0, "Minimum reference range must be 0 or greater"),
+//       z.string()
+//       .transform(val => parseFloat(val))
+//       .refine(val => !isNaN(val), "Must be a valid number")
+//     ]).optional()
+//   ),
+//   maxReferenceRange: z.preprocess(
+//     (val) => (val === "" ? undefined : val),
+//     z.union([
+//     z.number().min(0, "Maximum reference range must be 0 or greater"),
+//       z.string()
+//       .transform(val => parseFloat(val))
+//       .refine(val => !isNaN(val), "Must be a valid number")
+//     ]).optional()
+//   ),
+//   ageMin: z.union([
+//     z.number().min(0, "Minimum age must be 0 or greater").max(100, "Minimum age must be 100 or less"),
+//     z.string().min(1, "Minimum age is required")
+//       .transform(val => parseFloat(val))
+//       .refine(val => !isNaN(val), "Must be a valid number")
+//       .refine(val => val >= 0, "Minimum age must be 0 or greater")
+//       .refine(val => val <= 100, "Minimum age must be 100 or less")
+//   ]),
+//   ageMax: z.union([
+//     z.number().min(0, "Maximum age must be 0 or greater").max(100, "Maximum age must be 100 or less"),
+//     z.string().min(1)
+//       .transform(val => parseFloat(val))
+//       .refine(val => !isNaN(val), "Must be a valid number")
+//       .refine(val => val >= 0, "Maximum age must be 0 or greater")
+//       .refine(val => val <= 100, "Maximum age must be 100 or less")
+//   ]).optional(),
+//   minAgeUnit: z.enum(["YEARS", "MONTHS", "WEEKS", "DAYS"], {
+//     errorMap: () => ({ message: "Must be YEARS, MONTHS, WEEKS, or DAYS" })
+//   }),
+//   maxAgeUnit: z.enum(["YEARS", "MONTHS", "WEEKS", "DAYS"], {
+//     errorMap: () => ({ message: "Must be YEARS, MONTHS, WEEKS, or DAYS" })
+//   }).optional(),
+//   createdBy: z.string().optional(),
+//   updatedBy: z.string().optional(),
+//   createdAt: z.string().datetime().optional(),
+//   updatedAt: z.string().datetime().optional(),
+// }).superRefine((data, ctx) => {
+//   const desc = (data.testDescription || "").toUpperCase();
+  
+//   // For DETAILED REPORT and DROPDOWN types, skip range and units validation
+//   if (desc === "DETAILED REPORT" || desc.startsWith("DROPDOWN")) {
+//     // Skip all range-related validation for these types
+//     return;
+//   }
+  
+//   // For other types, validate that units and ranges are provided
+//   if (!data.units || data.units.trim() === "") {
+//     ctx.addIssue({
+//       code: z.ZodIssueCode.custom,
+//       path: ["units"],
+//       message: "Units are required",
+//     });
+//   }
+  
+//   // Min/Max reference ranges are optional for all types
+// }).refine(data => {
+//   const desc = (data.testDescription || "").toUpperCase();
+//   // Skip age validation for DETAILED REPORT and DROPDOWN types
+//   if (desc === "DETAILED REPORT" || desc.startsWith("DROPDOWN")) {
+//     return true;
+//   }
+//   if (data.ageMax !== undefined && data.ageMin !== undefined) {
+//     return data.ageMax > data.ageMin;
+//   }
+//   return true;
+// }, {
+//   message: "Maximum age must be greater than minimum age",
+//   path: ["ageMax"]
+// }).refine(data => {
+//   const desc = (data.testDescription || "").toUpperCase();
+//   // Skip range validation for DETAILED REPORT and DROPDOWN types
+//   if (desc === "DETAILED REPORT" || desc.startsWith("DROPDOWN")) {
+//     return true;
+//   }
+//   if (data.maxReferenceRange !== undefined && data.maxReferenceRange !== null && 
+//       data.minReferenceRange !== undefined && data.minReferenceRange !== null) {
+//     return data.maxReferenceRange > data.minReferenceRange;
+//   }
+//   return true;
+// }, {
+//   message: "Maximum reference range must be greater than minimum reference range",
+//   path: ["maxReferenceRange"]
+// });
+
+// const ITEMS_PER_PAGE = 700; // Items per page for API pagination
+
+// type ReferenceRangeItem = {
+//   Gender?: string;
+//   AgeMin?: string | number;
+//   AgeMax?: string | number;
+//   AgeMinUnit?: string;
+//   AgeMaxUnit?: string;
+//   ReferenceRange?: string;
+// };
+
+// interface ParsedReportSection {
+//   title?: string;
+//   content?: string;
+//   order?: number;
+// }
+
+// interface ParsedReport {
+//   testName?: string;
+//   note?: string;
+//   impression?: string;
+//   interpretation?: string;
+//   limitations?: unknown[];
+//   organReview?: unknown[];
+//   observations?: unknown[];
+//   fetalParameters?: Record<string, Record<string, unknown>>;
+//   parameters?: Record<string, Record<string, unknown>>;
+//   sections?: ParsedReportSection[] | Record<string, unknown>;
+//   calculation?: string;
+//   significance?: string;
+// }
+
+// const TestReferancePoints = () => {
+//   const router = useRouter();
+//   const [referencePoints, setReferencePoints] = useState<TestReferancePoint[]>([]);
+//   const [loading, setLoading] = useState(true);
+//   const [isEditModalOpen, setEditModalOpen] = useState(false);
+//   const [editRecord, setEditRecord] = useState<TestReferancePoint | null>(null);
+//   const [formData, setFormData] = useState<TestReferancePoint>({} as TestReferancePoint);
+//   const [addModalOpen, setAddModalOpen] = useState(false);
+//   const [newReferanceRecord, setNewReferanceRecord] = useState<TestReferancePoint>({
+//     ageMin: 0,
+//   } as TestReferancePoint);
+//   const [existingModalOpen, setExistingModalOpen] = useState(false);
+//   const [existingTestReferanceRecord, setExistingTestReferanceRecord] = useState<TestReferancePoint>({} as TestReferancePoint);
+//   const [searchTerm, setSearchTerm] = useState("");
+//   const [currentPage, setCurrentPage] = useState(0); // API uses 0-based indexing
+//   const [totalPages, setTotalPages] = useState(0);
+//   const [totalElements, setTotalElements] = useState(0);
+//   const { currentLab } = useLabs();
+//   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+//   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
+//   const [activeFilter, setActiveFilter] = useState<"all" | "category" | "test" | "description">("all");
+//   const [activeTab, setActiveTab] = useState<"all" | "common" | "special">("all");
+
+//   const fetchReferencePoints = useCallback(async (page: number = 0, size: number = ITEMS_PER_PAGE) => {
+//     if (currentLab?.id) {
+//       setLoading(true);
+//       try {
+//         const response: PaginatedResponse = await getTestReferences(currentLab.id, page, size);
+        
+//         // Safety checks for response structure
+//         const content = Array.isArray(response?.content) ? response.content : [];
+//         const totalPages = response?.totalPages ?? 0;
+//         const totalElements = response?.totalElements ?? 0;
+        
+//         setReferencePoints(content);
+//         setTotalPages(totalPages);
+//         setTotalElements(totalElements);
+        
+//         if (content.length > 0 && content[0]?.category) {
+//           const firstCategory = content[0].category;
+//           setExpandedCategories({ [firstCategory]: true });
+//         }
+//       } catch (error) {
+//         const errorMessage = error instanceof Error ? error.message : 'An error occurred while fetching test references.';
+//         toast.error(errorMessage);
+//         // Reset to empty state on error
+//         setReferencePoints([]);
+//         setTotalPages(0);
+//         setTotalElements(0);
+//       } finally {
+//         setLoading(false);
+//       }
+//     }
+//   }, [currentLab?.id]);
+
+//   useEffect(() => {
+//     fetchReferencePoints(currentPage, ITEMS_PER_PAGE);
+//   }, [fetchReferencePoints, currentPage]);
+
+//   const toggleCategory = (category: string) => {
+//     setExpandedCategories(prev => ({
+//       ...prev,
+//       [category]: !prev[category]
+//     }));
+//   };
+
+//   const toggleRow = (id: number) => {
+//     setExpandedRows(prev => ({
+//       ...prev,
+//       [id]: !prev[id]
+//     }));
+//   };
+
+//   const toggleAllRows = (expand: boolean) => {
+//     const newExpandedRows: Record<number, boolean> = {};
+//     referencePoints.forEach(test => {
+//       if (test.id) {
+//         newExpandedRows[test.id] = expand;
+//       }
+//     });
+//     setExpandedRows(newExpandedRows);
+//   };
+
+  
+//   const { filteredGroupedData, stats } = useMemo(() => {
+//     // Ensure referencePoints is always an array
+//     const safeReferencePoints = Array.isArray(referencePoints) ? referencePoints : [];
+    
+//     let filtered = safeReferencePoints;
+//     if (activeTab === "common") {
+//       filtered = filtered.filter(test => test?.category?.toLowerCase().includes("common"));
+//     } else if (activeTab === "special") {
+//       filtered = filtered.filter(test => !test?.category?.toLowerCase().includes("common"));
+//     }
+
+//     filtered = filtered.filter(test => {
+//       if (!test) return false;
+//       const lowerSearchTerm = searchTerm.toLowerCase();
+//       if (activeFilter === "category") {
+//         return test.category?.toLowerCase().includes(lowerSearchTerm);
+//       } else if (activeFilter === "test") {
+//         return test.testName?.toLowerCase().includes(lowerSearchTerm);
+//       } else if (activeFilter === "description") {
+//         return test.testDescription?.toLowerCase().includes(lowerSearchTerm);
+//       }
+//       return (
+//         test?.category?.toLowerCase().includes(lowerSearchTerm) ||
+//         test?.testName?.toLowerCase().includes(lowerSearchTerm) ||
+//         test?.testDescription?.toLowerCase().includes(lowerSearchTerm)
+//       );
+//     });
+
+//     const stats = {
+//       totalTests: totalElements, // Use total from API
+//       totalCategories: new Set(safeReferencePoints.map(t => t?.category).filter(Boolean)).size,
+//       filteredTests: filtered.length,
+//       filteredCategories: new Set(filtered.map(t => t?.category).filter(Boolean)).size
+//     };
+
+//     const grouped = filtered.reduce<Record<string, Record<string, TestReferancePoint[]>>>((acc, test) => {
+//       if (!test) return acc;
+//       const category = test?.category ?? "Uncategorized";
+//       if (!acc[category]) acc[category] = {};
+//       if (!acc[category][test.testName]) acc[category][test.testName] = [];
+//       acc[category][test.testName].push(test);
+//       return acc;
+//     }, {});
+
+//     // No need for client-side category pagination since API handles pagination
+//     // Just return all filtered and grouped data for current page
+//     return {
+//       filteredGroupedData: grouped,
+//       stats
+//     };
+//   }, [referencePoints, searchTerm, activeFilter, activeTab, totalElements]);
+
+
+//   const handleDownloadCsv = async () => {
+//     try {
+//       if (!currentLab?.id) {
+//         toast.error('Current lab is not selected.');
+//         return;
+//       }
+//       const csvText = await fetchTestReferenceRangeCsv(currentLab.id.toString());
+//       const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+//       saveAs(blob, 'test_reference_range.csv');
+//       toast.success('CSV file downloaded successfully!');
+//     } catch (error) {
+//       toast.error(error instanceof Error ? error.message : 'Failed to download CSV.');
+//     }
+//   };
+
+//   const handleDownloadExcel = async () => {
+//     try {
+//       if (!currentLab?.id) {
+//         toast.error('Current lab is not selected.');
+//         return;
+//       }
+//       const csvText = await fetchTestReferenceRangeCsv(currentLab.id.toString());
+//       const { data } = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+//       if (!data.length) {
+//         toast.error('No data found to export.');
+//         return;
+//       }
+//       const worksheet = XLSX.utils.json_to_sheet(data);
+//       const workbook = XLSX.utils.book_new();
+//       XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Reference Range');
+//       XLSX.writeFile(workbook, 'test_reference_range.xlsx');
+//       toast.success('Excel file downloaded successfully!');
+//     } catch (error) {
+//       toast.error(error instanceof Error ? error.message : 'Failed to download Excel.');
+//     }
+//   };
+
+//   const handleUpdate = async (e: React.FormEvent) => {
+//     e.preventDefault();
+    
+//     if (!currentLab?.id) {
+//       toast.error("No lab selected.");
+//       return;
+//     }
+
+//     if (!editRecord?.testReferenceCode) {
+//       toast.error("No test reference code found for editing.");
+//       return;
+//     }
+
+//     if (!formData || !Object.keys(formData).length) {
+//       toast.error("Please fill in all required fields.");
+//       return;
+//     }
+
+//     try {
+//       setLoading(true);
+      
+//       const dataToUpdate = {
+//         ...formData,
+//         gender: formData.gender === "B" ? "MF" : formData.gender,
+//         minReferenceRange: typeof formData.minReferenceRange === 'string' 
+//           ? parseFloat(formData.minReferenceRange) 
+//           : formData.minReferenceRange,
+//         maxReferenceRange: typeof formData.maxReferenceRange === 'string' 
+//           ? parseFloat(formData.maxReferenceRange) 
+//           : formData.maxReferenceRange,
+//         ageMin: typeof formData.ageMin === 'string' 
+//           ? parseFloat(formData.ageMin) 
+//           : formData.ageMin,
+//         ageMax: typeof formData.ageMax === 'string' 
+//           ? parseFloat(formData.ageMax) 
+//           : formData.ageMax,
+//       };
+
+//       await updateTestReferanceRange(
+//         currentLab.id, 
+//         editRecord.testReferenceCode, 
+//         dataToUpdate
+//       );
+      
+//       await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after update
+      
+//       toast.success("Test reference range updated successfully.");
+//       setEditModalOpen(false);
+//     } catch (error) {
+//       // Handle update error
+//       toast.error((error as Error).message || "Failed to update test reference range");
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const handleEditRecord = (test: TestReferancePoint) => {
+//     if (!test?.testReferenceCode) {
+//       toast.error("Invalid test record: missing test reference code");
+//       return;
+//     }
+//     setEditRecord(test);
+//     setFormData(test);
+//     setEditModalOpen(true);
+//   };
+
+//   const handleDelete = async (testReferenceCode: string | undefined) => {
+//     if (!testReferenceCode) {
+//       toast.error("Invalid test reference code.", { autoClose: 2000 });
+//       return;
+//     }
+
+//     if (!window.confirm("Are you sure you want to delete this test reference range?")) return;
+
+//     if (!currentLab?.id) {
+//       toast.error("No lab selected.", { autoClose: 2000 });
+//       return;
+//     }
+
+//     try {
+//       setLoading(true);
+//       await deleteTestReferanceRange(currentLab.id, testReferenceCode);
+//       await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after delete
+//       toast.success("Test reference range deleted successfully.", { autoClose: 2000 });
+//     } catch (error: unknown) {
+//       const message = error instanceof Error ? error.message : "An unexpected error occurred while deleting the test reference range.";
+//       toast.error(message, { autoClose: 2000 });
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const handleAddNewReferanceRecord = async (e: React.FormEvent) => {
+//     e.preventDefault();
+//     if (!currentLab?.id) {
+//       toast.error("No lab selected.");
+//       return;
+//     }
+
+//     try {
+//       setLoading(true);
+//       try {
+//         TestReferancePointSchema.parse(newReferanceRecord);
+//       } catch (validationError) {
+//         toast.error("Validation error: " + (validationError as Error).message);
+//         return;
+//       }
+
+//       const dataToAdd = {
+//         ...newReferanceRecord,
+//         gender: newReferanceRecord.gender === "B" ? "MF" : newReferanceRecord.gender,
+//       };
+//       await addTestReferanceRange(currentLab.id.toString(), dataToAdd);
+//       await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after adding
+      
+//       toast.success("Test reference range added successfully.", { autoClose: 2000 });
+//       setAddModalOpen(false);
+//       setNewReferanceRecord({ ageMin: 0 } as TestReferancePoint);
+//     } catch (error) {
+//       toast.error((error as Error).message, { autoClose: 2000 });
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const handleAddExistingReferanceRecord = async (e: React.FormEvent) => {
+//     e.preventDefault();
+//     if (!currentLab?.id) {
+//       toast.error("No lab selected.");
+//       return;
+//     }
+
+//     try {
+//       setLoading(true);
+//       try {
+//         TestReferancePointSchema.parse(existingTestReferanceRecord);
+//       } catch (validationError) {
+//         toast.error("Validation error: " + (validationError as Error).message);
+//         return;
+//       }
+
+//       const dataToAdd = {
+//         ...existingTestReferanceRecord,
+//         gender: existingTestReferanceRecord.gender === "B" ? "MF" : existingTestReferanceRecord.gender,
+//       };
+//       await addTestReferanceRange(currentLab.id.toString(), dataToAdd);
+//       await fetchReferencePoints(currentPage, ITEMS_PER_PAGE); // Refresh data after adding
+      
+//       toast.success("Test reference range added successfully.", { autoClose: 2000 });
+//       setExistingModalOpen(false);
+//       setExistingTestReferanceRecord({ gender: "F" } as TestReferancePoint);
+//     } catch (error) {
+//       toast.error((error as Error).message, { autoClose: 2000 });
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   if (loading) {
+//     return (
+//       <div className="flex flex-col items-center justify-center p-6">
+//         <Loader type="progress" fullScreen={false} text="Loading test reference ranges..." />
+//         <p className="mt-4 text-sm text-gray-600">Please wait while we fetch the data.</p>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="w-full bg-gray-50 p-6 rounded-xl shadow-lg">
+//       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+//         <div className="flex items-center gap-3">
+//           <div>
+//             <h2 className="text-xl font-semibold text-gray-900">Test Reference Ranges</h2>
+//             <p className="text-gray-600 text-sm">Manage laboratory test reference values</p>
+//           </div>
+//           <button
+//             onClick={() => router.push('/dashboard/test-reference-docs')}
+//             className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all duration-200 flex items-center gap-2 group"
+//             title="View Documentation"
+//           >
+//             <FaBook className="h-5 w-5 group-hover:scale-110 transition-transform" />
+//             <span className="text-sm font-medium hidden sm:inline">Help</span>
+//           </button>
+//         </div>
+
+//         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+//           <div className="relative flex-1">
+//             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+//               <FaSearch className="text-gray-400" />
+//             </div>
+//             <div className="absolute inset-y-0 right-0 flex items-center">
+//               <div className="relative">
+//                 <button
+//                   className="h-full px-2 flex items-center text-gray-500 hover:text-blue-600"
+//                   onClick={() => setActiveFilter(prev => prev === "all" ? "category" : prev === "category" ? "test" : prev === "test" ? "description" : "all")}
+//                 >
+//                   <FaFilter className="mr-1" />
+//                   <span className="text-xs capitalize">{activeFilter}</span>
+//                 </button>
+//               </div>
+//             </div>
+//             <input
+//               type="text"
+//               placeholder={`Search by ${activeFilter}...`}
+//               className="pl-10 pr-20 py-2 w-full bg-white border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+//               value={searchTerm}
+//               onChange={(e) => {
+//                 setSearchTerm(e.target.value);
+//                 setCurrentPage(0); // Reset to first page when searching
+//               }}
+//             />
+//           </div>
+
+//           <div className="flex gap-2">
+//             <button
+//               onClick={() => setAddModalOpen(true)}
+//               className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center gap-2"
+//               style={{
+//                 background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+//               }}
+//             >
+//               <FaPlus className="h-4 w-4" />
+//               Add New
+//             </button>
+//             <button
+//               onClick={handleDownloadExcel}
+//               className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all duration-200 flex items-center gap-2"
+//             >
+//               <FaFileExcel className="h-4 w-4" />
+//               Excel
+//             </button>
+//             <button
+//               onClick={handleDownloadCsv}
+//               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all duration-200 flex items-center gap-2"
+//             >
+//               <FaDownload className="h-4 w-4" />
+//               CSV
+//             </button>
+//           </div>
+//         </div>
+//       </div>
+
+//       {/* Stats Cards */}
+//       <div className="bg-green-50 p-3 rounded-lg border border-green-100 mb-4">
+//         <h4 className="font-semibold text-green-800 mb-2 flex items-center">
+//           <FaVial className="mr-2 text-green-600" /> Test Statistics
+//         </h4>
+//         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+//           <div className="bg-white p-3 rounded-lg border border-green-200">
+//             <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Total Tests Reference</h3>
+//             <p className="text-xl font-bold text-gray-900">{stats.totalTests}</p>
+//           </div>
+//           <div className="bg-white p-3 rounded-lg border border-green-200">
+//             <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Categories</h3>
+//             <p className="text-xl font-bold text-gray-900">{stats.totalCategories}</p>
+//           </div>
+//           <div className="bg-white p-3 rounded-lg border border-green-200">
+//             <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide mb-1">Showing Tests Reference</h3>
+//             <p className="text-xl font-bold text-gray-900">
+//               {stats.filteredTests} {searchTerm ? "results" : "tests"}
+//             </p>
+//           </div>
+//         </div>
+//       </div>
+
+//       <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-4">
+//         <div className="flex border-b border-blue-200">
+//           <button
+//             className={`py-2 px-4 font-medium text-sm ${activeTab === "all" ? "text-blue-800 border-b-2 border-blue-700" : "text-gray-600 hover:text-gray-800"}`}
+//             onClick={() => setActiveTab("all")}
+//           >
+//             All Tests
+//           </button>
+//         </div>
+//       </div>
+
+//       {Object.keys(filteredGroupedData).length > 0 ? (
+//         <>
+//           {Object.entries(filteredGroupedData).map(([category, tests]) => (
+//             <div key={category} className="bg-white rounded-xl shadow-lg border border-gray-200 mb-4 overflow-hidden">
+//               <button
+//                 onClick={() => toggleCategory(category)}
+//                 className="w-full flex justify-between items-center p-3 hover:bg-gray-50 transition-colors"
+//               >
+//                 <div className="flex items-center">
+//                   <h3 className="text-lg font-semibold text-blue-700">{category}</h3>
+//                   <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+//                     {Object.keys(tests).length} tests
+//                   </span>
+//                 </div>
+//                 {expandedCategories[category] ? (
+//                   <FaChevronUp className="text-gray-500" />
+//                 ) : (
+//                   <FaChevronDown className="text-gray-500" />
+//                 )}
+//               </button>
+
+//               {expandedCategories[category] && (
+//                 <div className="p-3">
+//                   {Object.entries(tests).map(([testName, records]) => (
+//                     <div key={testName} className="mb-4 last:mb-0">
+//                       <div className="flex justify-between items-center bg-gray-50 p-2 rounded-lg mb-2">
+//                         <h4 className="font-medium text-blue-700 text-sm">{testName}</h4>
+//                         <div className="flex gap-1">
+//                           <button
+//                             onClick={() => toggleAllRows(true)}
+//                             className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-lg text-xs transition-all duration-200 flex items-center gap-1"
+//                           >
+//                             <FaChevronDown className="h-3 w-3" />
+//                             Expand All
+//                           </button>
+//                           <button
+//                             onClick={() => toggleAllRows(false)}
+//                             className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded-lg text-xs transition-all duration-200 flex items-center gap-1"
+//                           >
+//                             <FaChevronUp className="h-3 w-3" />
+//                             Collapse All
+//                           </button>
+//                           <button
+//                             onClick={() => {
+//                               setExistingModalOpen(true);
+//                               setExistingTestReferanceRecord(prev => ({ ...prev, testName, category }));
+//                             }}
+//                             className="px-2 py-1 text-xs font-medium text-white rounded-lg transition-all duration-200 flex items-center gap-1"
+//                             style={{
+//                               background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+//                             }}
+//                           >
+//                             <FaPlus className="h-3 w-3" />
+//                             Add Reference
+//                           </button>
+//                         </div>
+//                       </div>
+
+//                       {/* Table Header */}
+//                       <div className="bg-gray-100 p-3 rounded-lg mb-2">
+//                         <div className="grid grid-cols-12 gap-3 items-center font-medium text-gray-700 text-sm">
+//                           <div className="col-span-1">Code</div>
+//                           <div className="col-span-2">Test Name</div>
+//                           <div className="col-span-2">Description</div>
+//                           <div className="col-span-1 text-center">Gender</div>
+//                           <div className="col-span-2 text-center">Age Range</div>
+//                           <div className="col-span-2">Reference Range</div>
+//                           <div className="col-span-1">Report JSON</div>
+//                           <div className="col-span-1 text-center">Actions</div>
+//                         </div>
+//                       </div>
+
+//                       <div className="space-y-1">
+//                         {records.map((test) => (
+//                           <div key={test.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+//                             {/* Main Row */}
+//                             <div className="p-3">
+//                               <div className="grid grid-cols-12 gap-3 items-center">
+//                                 <div className="col-span-1">
+//                                   <span className="text-xs font-semibold text-blue-600">{test.testReferenceCode || "N/A"}</span>
+//                                 </div>
+//                                 <div className="col-span-2">
+//                                   <div className="flex items-center gap-2">
+//                                     <button
+//                                       onClick={() => test.id && toggleRow(test.id)}
+//                                       className="p-1 hover:bg-gray-100 rounded"
+//                                     >
+//                                       {expandedRows[test.id || 0] ? (
+//                                         <FaChevronDown className="text-gray-500" size={12} />
+//                                       ) : (
+//                                         <FaChevronRight className="text-gray-500" size={12} />
+//                                       )}
+//                                     </button>
+//                                     <span className="font-medium text-gray-800 text-sm">{test.testName}</span>
+//                                   </div>
+//                                 </div>
+//                                 <div className="col-span-2">
+//                                   <span className="text-xs text-gray-600">{test.testDescription || "N/A"}</span>
+//                                 </div>
+//                                 <div className="col-span-1 text-center">
+//                                   <span className="text-xs font-medium">{test.gender}</span>
+//                                 </div>
+//                                 <div className="col-span-2 text-center">
+//                                   <span className="text-xs text-gray-600">
+//                                     {test.ageMin || "0"} {test.minAgeUnit || "Years"} - {test.ageMax || "∞"} {test.maxAgeUnit || "Years"}
+//                                   </span>
+//                                 </div>
+//                                 <div className="col-span-2">
+//                                   <span className="text-xs font-medium">
+//                                     {test.minReferenceRange} - {test.maxReferenceRange} {test.units && <span className="text-gray-500">{test.units}</span>}
+//                                   </span>
+//                                 </div>
+//                                 <div className="col-span-1">
+//                                   {test.reportJson ? (
+//                                     <div className="text-xs text-gray-500 truncate" title="Report Available">
+//                                       {(() => {
+//                                         try {
+//                                           const parsed = JSON.parse(test.reportJson);
+//                                           return parsed.testName || parsed.note || "Report";
+//                                         } catch {
+//                                           return "Report";
+//                                         }
+//                                       })()}
+//                                     </div>
+//                                   ) : (
+//                                     <span className="text-gray-400 text-xs">N/A</span>
+//                                   )}
+//                                 </div>
+//                                 <div className="col-span-1">
+//                                   <div className="flex gap-1 justify-end">
+//                             <FaEdit
+//                               onClick={() => test?.id && handleEditRecord(test)}
+//                               className="text-blue-500 cursor-pointer hover:text-blue-700"
+//                               title="Edit"
+//                                       size={14}
+//                             />
+//                             <FaTrash
+//                               onClick={() => test?.testReferenceCode && handleDelete(test.testReferenceCode)}
+//                               className="text-red-500 cursor-pointer hover:text-red-700"
+//                               title="Delete"
+//                                       size={14}
+//                                     />
+//                                   </div>
+//                                 </div>
+//                               </div>
+//                             </div>
+
+//                             {/* Expanded Row - Full Data View */}
+//                             {expandedRows[test.id || 0] && (
+//                               <div className="border-t border-gray-100 bg-gray-50 p-3">
+//                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+//                                   {/* Report JSON Details */}
+//                                   <div>
+//                                     <h4 className="font-semibold text-blue-700 mb-2 flex items-center gap-2 text-sm">
+//                                       <FaChevronDown className="text-blue-500" size={12} />
+//                                       Medical Report Details
+//                                     </h4>
+//                                     {test.reportJson ? (
+//                                       <div className="bg-white p-3 rounded-lg border border-gray-200">
+//                                     {(() => {
+//                                         try {
+//                                           const parsed = JSON.parse(test.reportJson) as ParsedReport;
+//                                           return (
+//                                             <div className="space-y-3">
+//                                               {parsed.testName ? (
+//                                                 <div>
+//                                                   <h5 className="font-semibold text-blue-700 text-xs mb-1">Test Name</h5>
+//                                                   <p className="text-gray-700 bg-blue-50 p-2 rounded text-sm">{String(parsed.testName)}</p>
+//                                                 </div>
+//                                               ) : null}
+//                                               {parsed.note ? (
+//                                                 <div>
+//                                                   <h5 className="font-semibold text-gray-800 text-sm mb-2">Note</h5>
+//                                                   <p className="text-gray-700 bg-yellow-50 p-2 rounded italic">{String(parsed.note)}</p>
+//                                                 </div>
+//                                               ) : null}
+//                                               {parsed.impression ? (
+//                                                 <div>
+//                                                   <h5 className="font-semibold text-gray-800 text-sm mb-2">Impression</h5>
+//                                                   <p className="text-gray-700 bg-green-50 p-2 rounded">{String(parsed.impression)}</p>
+//                                                 </div>
+//                                               ) : null}
+//                                               {parsed.interpretation ? (
+//                                                 <div>
+//                                                   <h5 className="font-semibold text-gray-800 text-sm mb-2">Interpretation</h5>
+//                                                   <p className="text-gray-700 bg-green-50 p-2 rounded">{String(parsed.interpretation)}</p>
+//                                                 </div>
+//                                               ) : null}
+//                                               {Array.isArray(parsed.limitations) && parsed.limitations.length > 0 ? (
+//                                                 <div>
+//                                                   <h5 className="font-semibold text-gray-800 text-sm mb-2">Limitations</h5>
+//                                                   <ul className="list-disc list-inside space-y-1">
+//                                                     {parsed.limitations.map((limitation: unknown, idx: number) => (
+//                                                       <li key={idx} className="text-gray-700 text-sm bg-orange-50 p-2 rounded">
+//                                                         {renderValue(limitation)}
+//                                                       </li>
+//                                                     ))}
+//                                                   </ul>
+//                                                 </div>
+//                                               ) : null}
+//                                               {Array.isArray(parsed.organReview) && parsed.organReview.length > 0 ? (
+//                                                 <div>
+//                                                   <h5 className="font-semibold text-gray-800 text-sm mb-2">Organ Review</h5>
+//                                                   <ul className="list-disc list-inside space-y-1">
+//                                                     {parsed.organReview.map((organ: unknown, idx: number) => (
+//                                                       <li key={idx} className="text-gray-700 text-sm bg-blue-50 p-2 rounded">
+//                                                         {renderValue(organ)}
+//                                                       </li>
+//                                                     ))}
+//                                                   </ul>
+//                                                 </div>
+//                                               ) : null}
+//                                               {Array.isArray(parsed.observations) && parsed.observations.length > 0 ? (
+//                                                 <div>
+//                                                   <h5 className="font-semibold text-gray-800 text-sm mb-2">Observations</h5>
+//                                                   <ul className="list-disc list-inside space-y-1">
+//                                                     {parsed.observations.map((observation: unknown, idx: number) => (
+//                                                       <li key={idx} className="text-gray-700 text-sm bg-purple-50 p-2 rounded">
+//                                                         {renderValue(observation)}
+//                                                       </li>
+//                                                     ))}
+//                                                   </ul>
+//                                                 </div>
+//                                               ) : null}
+//                                               {parsed.fetalParameters && isPlainObject(parsed.fetalParameters) ? (
+//                                                 <div>
+//                                                   <h5 className="font-semibold text-gray-800 text-sm mb-2">Fetal Parameters</h5>
+//                                                   <div className="space-y-3">
+//                                                     {Object.entries(parsed.fetalParameters).map(([fetus, params]) =>
+//                                                       isPlainObject(params) ? (
+//                                                         <div key={fetus} className="bg-gray-50 p-3 rounded">
+//                                                           <h6 className="font-medium text-gray-800 mb-2">{fetus}</h6>
+//                                                           <div className="grid grid-cols-2 gap-2">
+//                                                             {Object.entries(params).map(([key, value]) => (
+//                                                               <div key={key} className="text-sm">
+//                                                                 <span className="font-medium text-gray-600">{key}:</span>
+//                                                                 <span className="ml-2 text-gray-800">{renderValue(value)}</span>
+//                                                               </div>
+//                                                             ))}
+//                                                           </div>
+//                                                         </div>
+//                                                       ) : null
+//                                                     )}
+//                                                   </div>
+//                                                 </div>
+//                                               ) : null}
+//                                               {parsed.parameters && isPlainObject(parsed.parameters) ? (
+//                                                 <div>
+//                                                   <h5 className="font-semibold text-gray-800 text-sm mb-2">Test Parameters</h5>
+//                                                   <div className="space-y-2">
+//                                                     {Object.entries(parsed.parameters).map(([param, data]) =>
+//                                                       isPlainObject(data) ? (
+//                                                         <div key={param} className="bg-gray-50 p-3 rounded">
+//                                                           <h6 className="font-medium text-gray-800 mb-1 capitalize">{param.replace(/_/g, ' ')}</h6>
+//                                                           <div className="grid grid-cols-2 gap-2 text-sm">
+//                                                             {Object.entries(data).map(([key, value]) => (
+//                                                               <div key={key}>
+//                                                                 <span className="font-medium text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</span>
+//                                                                 <span className="ml-2 text-gray-800">{renderValue(value)}</span>
+//                                                               </div>
+//                                                             ))}
+//                                                           </div>
+//                                                         </div>
+//                                                       ) : null
+//                                                     )}
+//                                                   </div>
+//                                                 </div>
+//                                               ) : null}
+//                                               {parsed.sections ? (
+//                                                 <div>
+//                                                   <h5 className="font-semibold text-gray-800 text-sm mb-2">Report Sections</h5>
+//                                                   <div className="space-y-2">
+//                                                     {Array.isArray(parsed.sections)
+//                                                       ? parsed.sections.map((section, idx) => (
+//                                                           <div key={section.title ?? idx} className="bg-gray-50 p-3 rounded">
+//                                                             <h6 className="text-gray-800 mb-1">{section.title || `Section ${idx + 1}`}</h6>
+//                                                             <p className="text-gray-700 text-sm">{renderValue(section.content)}</p>
+//                                                           </div>
+//                                                         ))
+//                                                       : isPlainObject(parsed.sections)
+//                                                         ? Object.entries(parsed.sections as Record<string, unknown>).map(([sectionTitle, description]) => (
+//                                                             <div key={sectionTitle} className="bg-gray-50 p-3 rounded">
+//                                                               <h6 className="font-medium text-gray-800 mb-1">{sectionTitle}</h6>
+//                                                               <p className="text-gray-700 text-sm">{renderValue(description)}</p>
+//                                                             </div>
+//                                                           ))
+//                                                         : null}
+//                                                   </div>
+//                                                 </div>
+//                                               ) : null}
+//                                               {parsed.calculation ? (
+//                                                 <div>
+//                                                   <h5 className="font-semibold text-gray-800 text-sm mb-2">Calculation</h5>
+//                                                   <p className="text-gray-700 bg-blue-50 p-2 rounded font-mono">{String(parsed.calculation)}</p>
+//                                                 </div>
+//                                               ) : null}
+//                                               {parsed.significance ? (
+//                                                 <div>
+//                                                   <h5 className="font-semibold text-gray-800 text-sm mb-2">Significance</h5>
+//                                                   <p className="text-gray-700 bg-green-50 p-2 rounded">{String(parsed.significance)}</p>
+//                                                 </div>
+//                                               ) : null}
+//                                             </div>
+//                                           );
+//                                         } catch {
+//                                           return (
+//                                             <div className="text-gray-400 text-sm">
+//                                               <p>Unable to parse report data</p>
+//                                               <details className="mt-2">
+//                                                 <summary className="cursor-pointer text-blue-600">View Raw Data</summary>
+//                                                 <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-32">
+//                                                   {test.reportJson}
+//                                                 </pre>
+//                                               </details>
+//                                             </div>
+//                                           );
+//                                         }
+//                                       })()}
+//                                       </div>
+//                                     ) : (
+//                                       <div className="text-gray-400 text-sm">No report data available</div>
+//                                     )}
+//                                   </div>
+
+//                                   {/* Reference Ranges Details */}
+//                                   <div>
+//                                     <h4 className="font-semibold text-blue-700 mb-2 flex items-center gap-2 text-sm">
+//                                       <FaChevronDown className="text-green-500" size={12} />
+//                                       Reference Ranges
+//                                     </h4>
+//                                     {test.referenceRanges ? (
+//                                       <div className="bg-white p-3 rounded-lg border border-gray-200">
+//                                         {(() => {
+//                                           try {
+//                                             const parsed = JSON.parse(test.referenceRanges);
+//                                             return (
+//                                               <div className="space-y-2">
+//                                                 {Array.isArray(parsed) ? (
+//                                                   (parsed as ReferenceRangeItem[]).map((range, idx) => (
+//                                                     <div key={idx} className="bg-green-50 p-3 rounded-lg border border-green-200">
+//                                                       <div className="flex justify-between items-start mb-2">
+//                                                         <div className="flex items-center gap-2">
+//                                                           <span className="font-semibold text-green-800">
+//                                                             {range.Gender === 'M' ? 'Male' : range.Gender === 'F' ? 'Female' : range.Gender}
+//                                                           </span>
+//                                                           <span className="text-green-600 text-sm">
+//                                                             {range.AgeMin} - {range.AgeMax} {range.AgeMinUnit}
+//                                                           </span>
+//                                                         </div>
+//                                                         <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium">
+//                                                           {range.ReferenceRange}
+//                                                         </span>
+//                                                       </div>
+//                                                       <div className="text-sm text-gray-600">
+//                                                         Age Range: {range.AgeMin} - {range.AgeMax} {range.AgeMinUnit}
+//                                                         {range.AgeMaxUnit && range.AgeMaxUnit !== range.AgeMinUnit && ` - ${range.AgeMaxUnit}`}
+//                                                       </div>
+//                                                     </div>
+//                                                   ))
+//                                                 ) : (
+//                                                   <div className="text-gray-600 text-sm">
+//                                                     <p>Reference Range: {parsed.ReferenceRange || 'N/A'}</p>
+//                                                     {parsed.Gender && <p>Gender: {parsed.Gender}</p>}
+//                                                     {parsed.AgeMin && parsed.AgeMax && (
+//                                                       <p>Age: {parsed.AgeMin} - {parsed.AgeMax} {parsed.AgeMinUnit || 'Years'}</p>
+//                                                     )}
+//                                                   </div>
+//                                                 )}
+//                                               </div>
+//                                             );
+//                                           } catch {
+//                                             return (
+//                                               <div className="text-gray-400 text-sm">
+//                                                 <p>Unable to parse reference ranges data</p>
+//                                                 <details className="mt-2">
+//                                                   <summary className="cursor-pointer text-green-600">View Raw Data</summary>
+//                                                   <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-32">
+//                                                     {test.referenceRanges}
+//                                                   </pre>
+//                                                 </details>
+//                                               </div>
+//                                             );
+//                                           }
+//                                         })()}
+//                                       </div>
+//                                     ) : (
+//                                       <div className="text-gray-400 text-sm">No reference ranges data available</div>
+//                                     )}
+//                                   </div>
+//                                 </div>
+
+//                                 {/* Additional Test Information */}
+//                                 <div className="mt-3 pt-3 border-t border-gray-200">
+//                                   <h4 className="font-semibold text-blue-700 mb-2 text-sm">Additional Information</h4>
+//                                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+//                                     <div>
+//                                       <span className="font-medium text-gray-600">Reference Code:</span>
+//                                       <p className="text-gray-800 font-semibold">{test.testReferenceCode || "N/A"}</p>
+//                                     </div>
+//                                     <div>
+//                                       <span className="font-medium text-gray-600">Created By:</span>
+//                                       <p className="text-gray-800">{test.createdBy || "N/A"}</p>
+//                                     </div>
+//                                     <div>
+//                                       <span className="font-medium text-gray-600">Updated By:</span>
+//                                       <p className="text-gray-800">{test.updatedBy || "N/A"}</p>
+//                                     </div>
+//                                     <div>
+//                                       <span className="font-medium text-gray-600">Created At:</span>
+//                                       <p className="text-gray-800">{test.createdAt ? new Date(test.createdAt).toLocaleString() : "N/A"}</p>
+//                                     </div>
+//                                     <div>
+//                                       <span className="font-medium text-gray-600">Updated At:</span>
+//                                       <p className="text-gray-800">{test.updatedAt ? new Date(test.updatedAt).toLocaleString() : "N/A"}</p>
+//                                     </div>
+//                                   </div>
+//                                 </div>
+//                           </div>
+//                         )}
+//                           </div>
+//                         ))}
+//                       </div>
+//                     </div>
+//                   ))}
+//                 </div>
+//               )}
+//             </div>
+//           ))}
+
+//           <div className="mt-3 flex justify-center">
+//             <Pagination
+//               currentPage={currentPage + 1} // Convert 0-based to 1-based for display
+//               totalPages={totalPages}
+//               onPageChange={(page) => setCurrentPage(page - 1)} // Convert back to 0-based
+//             />
+//           </div>
+//         </>
+//       ) : (
+//         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 text-center">
+//           <FaSearch className="mx-auto text-3xl text-gray-400 mb-3" />
+//           <h3 className="text-lg font-semibold text-gray-800 mb-2">
+//             {searchTerm ? "No matching results found" : "No test reference data available"}
+//           </h3>
+//           <p className="text-gray-600 text-sm">
+//             {searchTerm ? "Try adjusting your search query" : "Add test references to get started"}
+//           </p>
+//           {searchTerm && (
+//             <button
+//               onClick={() => setSearchTerm("")}
+//               className="mt-3 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
+//               style={{
+//                 background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
+//               }}
+//             >
+//               Clear search
+//             </button>
+//           )}
+//         </div>
+//       )}
+
+//       {isEditModalOpen && (
+//         <Modal
+//           isOpen={isEditModalOpen}
+//           title="Edit Reference Range"
+//           onClose={() => setEditModalOpen(false)}
+//           modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+//         >
+//           <TestEditReferance
+//             editRecord={editRecord}
+//             setEditRecord={setEditRecord}
+//             setEditModalOpen={setEditModalOpen}
+//             handleUpdate={handleUpdate}
+//             handleChange={(e) => setFormData({ ...formData, [e.target.name]: e.target.value })}
+//             formData={formData}
+//             setFormData={setFormData}
+//           />
+//         </Modal>
+//       )}
+
+//       {addModalOpen && (
+//         <Modal
+//           isOpen={addModalOpen}
+//           title="Add New Reference Range"
+//           onClose={() => setAddModalOpen(false)}
+//           modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+//         >
+//           <AddTestReferanceNew
+//             handleAddNewReferanceRecord={handleAddNewReferanceRecord}
+//             handleChangeRef={(e) => setNewReferanceRecord({ ...newReferanceRecord, [e.target.name]: e.target.value })}
+//             newReferanceRecord={newReferanceRecord}
+//             setNewReferanceRecord={setNewReferanceRecord}
+//           />
+//         </Modal>
+//       )}
+
+//       {existingModalOpen && (
+//         <Modal
+//           isOpen={existingModalOpen}
+//           title="Add Existing Test Reference"
+//           onClose={() => setExistingModalOpen(false)}
+//           modalClassName="max-w-5xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
+//         >
+//           <AddExistingTestReferance
+//             handleAddExistingReferanceRecord={handleAddExistingReferanceRecord}
+//             handleChangeRef={(e) => setExistingTestReferanceRecord({ ...existingTestReferanceRecord, [e.target.name]: e.target.value })}
+//             existingTestReferanceRecord={existingTestReferanceRecord}
+//             setExistingTestReferanceRecord={setExistingTestReferanceRecord}
+//           />
+//         </Modal>
+//       )}
+//     </div>
+//   );
+// };
+
+// export default TestReferancePoints;
