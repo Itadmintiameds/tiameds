@@ -10,7 +10,7 @@ import { formatAgeForDisplay } from "@/utils/ageUtils";
 import type { PatientData } from "@/types/sample/sample";
 import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
 import { getPatientHealthSnapshot } from "../../../../../../services/patientServices";
-import type { HealthSnapshot, HealthSnapshotTest } from "@/types/patient/healthSnapshot";
+import type { HealthSnapshot, HealthSnapshotTest, HealthSnapshotTestResult } from "@/types/patient/healthSnapshot";
 import type { AiReportInsights } from "@/types/aiInsights";
 import type { AiHistoryPoint, AiTestFinding } from "@/lib/ai/labReportPrompt";
 import { buildAiReportCacheKey, readAiReportCache, writeAiReportCache } from "@/lib/ai/aiReportCache";
@@ -177,6 +177,29 @@ const buildOrderedCBCRows = (rows: TestRow[]): RenderRowEntry[] => {
 
     return orderedEntries;
 };
+
+// The snapshot API can return more than one result for the same visit (e.g. a report
+// saved/regenerated twice), which made a first-visit patient show a 2-point trend line
+// on the deployed site. Collapse results to one (the most recent) per visitId before
+// any trend logic runs, oldest visit first.
+const dedupeSnapshotResults = (results: HealthSnapshotTestResult[]) => {
+    const byVisit = new Map<number, HealthSnapshotTestResult>();
+    (results || []).forEach((result) => {
+        const existing = byVisit.get(result.visitId);
+        const resultStamp = new Date(result.createdAt || result.visitDate).getTime();
+        const existingStamp = existing ? new Date(existing.createdAt || existing.visitDate).getTime() : -Infinity;
+        if (!existing || resultStamp >= existingStamp) {
+            byVisit.set(result.visitId, result);
+        }
+    });
+    return Array.from(byVisit.values()).sort(
+        (a, b) =>
+            new Date(a.visitDate || a.createdAt).getTime() - new Date(b.visitDate || b.createdAt).getTime()
+    );
+};
+
+// Health Snapshot trend lines always lay dots on a fixed grid of the last N visits.
+const SPARKLINE_MAX_VISITS = 4;
 
 interface TestRow {
     testParameter: string;
@@ -539,7 +562,7 @@ const CommonReportView2 = ({
     // normal/borderline/critical scoring as Detailed Lab Results), shape reflects the
     // last few visits' relative movement.
     const buildTestSparkline = (test: HealthSnapshotTest) => {
-        const parsedPoints = test.results
+        const parsedPoints = dedupeSnapshotResults(test.results)
             .map((r) => ({
                 value: parseFloat(r.enteredValue),
                 score: scoreValue(r.enteredValue, r.referenceRange),
@@ -548,7 +571,7 @@ const CommonReportView2 = ({
 
         if (parsedPoints.length < 2) return null;
 
-        const usable = parsedPoints.slice(-5);
+        const usable = parsedPoints.slice(-SPARKLINE_MAX_VISITS);
         const values = usable.map((p) => p.value);
         const min = Math.min(...values);
         const max = Math.max(...values);
@@ -558,7 +581,9 @@ const CommonReportView2 = ({
         const height = 28;
         const padX = 6;
         const padY = 5;
-        const stepX = (width - padX * 2) / (usable.length - 1);
+        // Fixed 4-visit slot grid: with fewer visits the dots occupy only the first
+        // slots from the left instead of stretching across the full width.
+        const stepX = (width - padX * 2) / (SPARKLINE_MAX_VISITS - 1);
 
         const points = usable.map((p, i) => ({
             x: padX + stepX * i,
@@ -794,6 +819,71 @@ const CommonReportView2 = ({
         };
     };
 
+    // Health Snapshot card renders in different rows depending on whether Key Findings
+    // exists: with findings it sits beside AI Clinical Observations; without findings it
+    // moves up beside the Clinical Alert Summary so neither card stretches full-width.
+    const renderHealthSnapshotCard = (flexClassName: string) => (
+        <div
+            className={`${flexClassName} rounded-xl p-2.5 flex flex-col gap-2`}
+            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+        >
+            <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
+                    <img src="/report/chart-bar/solid.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
+                </span>
+                <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>Health Snapshot</h3>
+            </div>
+            {healthSnapshotLoading ? (
+                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Loading history...</p>
+            ) : (() => {
+                // Count distinct visits ourselves (dedupeSnapshotResults) instead of trusting
+                // the backend's totalVisits, which double-counts re-saved reports on the same
+                // visit and made first-time patients show a trend line.
+                const trendTests = (healthSnapshot?.tests || []).filter(
+                    (t) => dedupeSnapshotResults(t.results).length > 1
+                );
+                if (trendTests.length === 0) {
+                    return (
+                        <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>
+                            {healthSnapshot ? "No prior visit history for these tests yet." : "Trend data will appear here once available."}
+                        </p>
+                    );
+                }
+                return (
+                    <div className="flex flex-col gap-2 px-1">
+                        {trendTests.map((test: HealthSnapshotTest) => {
+                            const sparkline = buildTestSparkline(test);
+                            return (
+                                <div key={test.testName} className="flex items-center gap-2">
+                                    <p className="text-[10px] font-medium uppercase leading-snug flex-[0_0_42%] min-w-0" style={{ color: REPORT_COLORS.neutral800 }}>{test.testName}</p>
+                                    {sparkline ? (
+                                        <svg className="flex-1 min-w-0" height="24" viewBox={`0 0 ${sparkline.width} ${sparkline.height}`} preserveAspectRatio="none">
+                                            <polyline
+                                                points={sparkline.pointsAttr}
+                                                fill="none"
+                                                stroke={sparkline.color}
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                            {sparkline.points.map((p, i) => (
+                                                <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={sparkline.color} />
+                                            ))}
+                                        </svg>
+                                    ) : (
+                                        <span className="flex-1 flex justify-center">
+                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: REPORT_COLORS.neutral600 }} />
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            })()}
+        </div>
+    );
+
     const totalReports = reportsData.length;
     const selectedCount = selectedReportIds.length;
     const isAllSelected = totalReports > 0 && selectedCount === totalReports;
@@ -823,6 +913,39 @@ const CommonReportView2 = ({
             windowWidth: node.scrollWidth,
             windowHeight: node.scrollHeight,
             logging: false,
+            // html2canvas doesn't "blockify" flex/grid children the way browsers do: it keeps
+            // <img> elements inline and sits them on the text baseline, so every icon/logo in
+            // the PDF paints shifted upward relative to the on-screen layout. Forcing
+            // display:block on the capture clone matches what the browser already computes
+            // for flex children and removes the baseline offset. Icons that are the sole
+            // child of a table cell relied on text-align:center, so re-center those with
+            // auto margins once they become blocks.
+            onclone: (clonedDoc, clonedElement) => {
+                const scope: ParentNode = clonedElement ?? clonedDoc;
+                scope.querySelectorAll("img").forEach((img) => {
+                    const el = img as HTMLImageElement;
+                    el.style.display = "block";
+                    const parentTag = el.parentElement?.tagName;
+                    if (parentTag === "TD" || parentTag === "TH") {
+                        el.style.marginLeft = "auto";
+                        el.style.marginRight = "auto";
+                    }
+                });
+                // html2canvas clips glyph descenders when the line box is tighter than the
+                // glyphs themselves (leading-none and sub-1.2 line-heights). Floor those in
+                // the capture clone only; the on-screen layout is untouched.
+                const win = clonedDoc.defaultView;
+                if (win) {
+                    scope.querySelectorAll<HTMLElement>("h1, h2, h3, h4, p, span, li, td, th").forEach((el) => {
+                        const cs = win.getComputedStyle(el);
+                        const fontSize = parseFloat(cs.fontSize);
+                        const lineHeight = parseFloat(cs.lineHeight);
+                        if (Number.isFinite(fontSize) && Number.isFinite(lineHeight) && lineHeight < fontSize * 1.2) {
+                            el.style.lineHeight = "1.25";
+                        }
+                    });
+                }
+            },
         };
         const canvas = await html2canvas(node, canvasOptions);
         const context = canvas.getContext("2d");
@@ -839,6 +962,10 @@ const CommonReportView2 = ({
     const stripBlockMargins = (el: HTMLElement) => {
         el.style.marginTop = "0";
         el.style.marginBottom = "0";
+        // html2canvas rounds the block's height down, which can shave the descenders
+        // ("g", "y", "p") off the last text line of a block. A tiny padding buffer keeps
+        // the bottom row of pixels clear of any text.
+        el.style.paddingBottom = "3px";
     };
 
     const canvasToMm = (canvas: HTMLCanvasElement, widthMm: number) => {
@@ -874,7 +1001,9 @@ const CommonReportView2 = ({
         return slices;
     };
 
-    const chunkTableElementByRows = (tableWrapper: HTMLElement, maxChunkHeightPx: number) => {
+    // firstChunkMaxHeightPx lets the first chunk be sized to whatever space is left on the
+    // current PDF page (so a table can start mid-page) while later chunks get a full page.
+    const chunkTableElementByRows = (tableWrapper: HTMLElement, maxChunkHeightPx: number, firstChunkMaxHeightPx?: number) => {
         const sourceTable = tableWrapper.querySelector("table");
         if (!sourceTable) {
             return [tableWrapper.cloneNode(true) as HTMLElement];
@@ -919,13 +1048,29 @@ const CommonReportView2 = ({
             currentChunk.tbody.appendChild(candidateRow);
 
             const hasMultipleRows = currentChunk.tbody.children.length > 1;
-            if (currentChunk.wrapperClone.offsetHeight > maxChunkHeightPx && hasMultipleRows) {
+            const chunkLimitPx = chunks.length === 0 && firstChunkMaxHeightPx !== undefined ? firstChunkMaxHeightPx : maxChunkHeightPx;
+            if (currentChunk.wrapperClone.offsetHeight > chunkLimitPx && hasMultipleRows) {
                 currentChunk.tbody.removeChild(candidateRow);
+
+                // A section-title band ("2. COMPLETE HAEMOGRAM", "DIFFERENTIAL COUNT", ...)
+                // must not be stranded as the last row of a page -- carry it into the next
+                // chunk so it starts the new page right above its data rows.
+                const carryRows: Element[] = [];
+                while (
+                    currentChunk.tbody.children.length > 1 &&
+                    currentChunk.tbody.lastElementChild?.getAttribute("data-section-title-row") === "true"
+                ) {
+                    const titleRow = currentChunk.tbody.lastElementChild;
+                    currentChunk.tbody.removeChild(titleRow);
+                    carryRows.unshift(titleRow);
+                }
+
                 chunks.push(currentChunk.wrapperClone.cloneNode(true) as HTMLElement);
                 measurementHost.removeChild(currentChunk.wrapperClone);
 
                 currentChunk = createChunk();
                 measurementHost.appendChild(currentChunk.wrapperClone);
+                carryRows.forEach((carried) => currentChunk.tbody.appendChild(carried));
                 currentChunk.tbody.appendChild(row.cloneNode(true));
             }
         });
@@ -1158,20 +1303,30 @@ const CommonReportView2 = ({
                         continue;
                     }
 
-                    if (fullDims.heightMm <= usableContentHeightMm) {
+                    // The table doesn't fit in what's left of the page. Don't move it wholesale
+                    // to a fresh page (that stranded a huge blank gap under the results heading)
+                    // -- split it by rows so the first chunk fills the remaining space and the
+                    // rest flows onto the following pages.
+                    // The chunker measures offsetHeight in CSS pixels, so convert the print-mm
+                    // budgets via the node's CSS width; the previous canvas-based ratio was
+                    // inflated by renderScale, producing page-overflowing chunks that fell back
+                    // to slicing the canvas mid-row.
+                    const cssPxPerMm = node.offsetWidth > 0 ? node.offsetWidth / PAGE_WIDTH_MM : 96 / 25.4;
+                    const maxChunkHeightPx = Math.max(1, Math.floor(usableContentHeightMm * cssPxPerMm));
+                    // Too little room left even for the header row plus a few results: start the
+                    // table on the next page instead of stranding a sliver.
+                    const MIN_TABLE_START_MM = 30;
+                    let firstChunkMm = remainingMm;
+                    if (remainingMm < MIN_TABLE_START_MM) {
                         if (hasContentOnPage) {
                             startNewPage();
                         }
-                        addCanvasAtCursor(pdf, fullCanvas, MARGIN_X_MM, currentY, fullDims.widthMm, fullDims.heightMm);
-                        currentY += fullDims.heightMm + BLOCK_GAP_MM;
-                        hasContentOnPage = true;
-                        contentPages.add(currentPageNumber);
-                        continue;
+                        firstChunkMm = usableContentHeightMm;
                     }
-
-                    const pxPerMm = fullCanvas.height / fullDims.heightMm;
-                    const maxChunkHeightPx = Math.max(1, Math.floor(usableContentHeightMm * pxPerMm));
-                    const chunkNodes = chunkTableElementByRows(node, maxChunkHeightPx);
+                    // Shave 1mm off the first chunk budget so rounding can't push it past the
+                    // measured remaining space and onto a new page anyway.
+                    const firstChunkHeightPx = Math.max(1, Math.floor((firstChunkMm - 1) * cssPxPerMm));
+                    const chunkNodes = chunkTableElementByRows(node, maxChunkHeightPx, firstChunkHeightPx);
 
                     for (const chunkNode of chunkNodes) {
                         tempContainer.appendChild(chunkNode);
@@ -1257,11 +1412,13 @@ const CommonReportView2 = ({
 
     const displayDoctorName = doctorName || "N/A";
     const primaryReport = sortedReports[0];
-    const latestReportDateTime = sortedReports.reduce<string | undefined>((latest, r) => {
-        if (!r.createdDateTime) return latest;
-        if (!latest) return r.createdDateTime;
-        return new Date(r.createdDateTime) > new Date(latest) ? r.createdDateTime : latest;
-    }, undefined);
+    // Fed the footer's "Generated on" block, which is currently commented out.
+    // Restore this together with that block.
+    // const latestReportDateTime = sortedReports.reduce<string | undefined>((latest, r) => {
+    //     if (!r.createdDateTime) return latest;
+    //     if (!latest) return r.createdDateTime;
+    //     return new Date(r.createdDateTime) > new Date(latest) ? r.createdDateTime : latest;
+    // }, undefined);
 
     const formatReportDateTime = (
         dateTimeString?: string
@@ -1305,12 +1462,6 @@ const CommonReportView2 = ({
         return rows.some((row) => (row.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
     };
 
-    const estimateReportWeight = (report: ConsolidatedReport) => {
-        const rowCount = report.testRows && report.testRows.length > 0 ? report.testRows.length : 1;
-        const isCBC = (report.testName || '').toUpperCase().includes('CBC');
-        return 1 + rowCount + (isCBC ? 1 : 0);
-    };
-
     // Status icon uses the pre-colored assets in public/report: green tick for
     // in-range results, amber triangle for borderline, red/yellow directional arrow
     // for critical values (elevated vs. reduced).
@@ -1344,7 +1495,9 @@ const CommonReportView2 = ({
     );
 
     const renderSectionTitleRow = (key: string | number, label: string) => (
-        <tr key={`section-${key}`}>
+        // data-section-title-row lets the PDF row-chunker keep a title band attached to
+        // the rows below it instead of stranding it as the last line of a page.
+        <tr key={`section-${key}`} data-section-title-row="true">
             <td
                 colSpan={5}
                 className="px-3 py-1.5 text-[10px] font-bold uppercase"
@@ -1607,11 +1760,12 @@ const CommonReportView2 = ({
         );
     };
 
-    const highPriorityFindings = clinicalSummary.findings.filter((f) => f.kind === "critical");
-    const moderatePriorityFindings = clinicalSummary.findings.filter((f) => f.kind === "borderline");
-    const moderatePriorityNames = Array.from(
-        new Set(moderatePriorityFindings.map((f) => f.row.testParameter || f.report.testName))
-    );
+    // Clinical Attention Required section is currently disabled -- kept for reference.
+    // const highPriorityFindings = clinicalSummary.findings.filter((f) => f.kind === "critical");
+    // const moderatePriorityFindings = clinicalSummary.findings.filter((f) => f.kind === "borderline");
+    // const moderatePriorityNames = Array.from(
+    //     new Set(moderatePriorityFindings.map((f) => f.row.testParameter || f.report.testName))
+    // );
 
     // Block the whole report (including the print/PDF button) behind a loader until AI
     // insights have either arrived, failed, or aren't applicable -- otherwise a PDF could be
@@ -1702,11 +1856,14 @@ const CommonReportView2 = ({
                 </div>
             )}
 
+            {/* Fluid on screen (shrinks with the viewport); the PDF pipeline clones the
+                shell into an off-screen 210mm container, so print output is unaffected. */}
             <div
                 ref={reportRef}
-                className="bg-white p-8"
+                className="bg-white p-3 sm:p-6"
                 style={{
-                    width: "210mm",
+                    width: "100%",
+                    maxWidth: "210mm",
                     margin: "0 auto",
                     boxSizing: "border-box",
                 }}
@@ -1714,32 +1871,32 @@ const CommonReportView2 = ({
                 <section data-report-shell className="flex flex-col">
                     {/* ================= HEADER ================= */}
                     <div className="bg-white" data-print-block data-print-role="header">
-                        <div className="flex flex-row items-center justify-between gap-4 mb-4">
-                            <div className="flex flex-row items-center gap-3">
+                        <div className="flex flex-row items-center justify-between mb-4">
+                            <div className="flex flex-row items-center">
                                 <img
                                     src="/report/image%201.png"
                                     alt="Lab Logo"
-                                    className="w-28 h-16 object-contain"
+                                    className="w-28 h-16 object-contain mr-3 flex-shrink-0"
                                     crossOrigin="anonymous"
                                     data-print-logo="true"
                                 />
                                 <div
-                                    className="flex flex-col justify-center gap-0.5 pl-4"
+                                    className="flex flex-col justify-center pl-4"
                                     style={{ borderLeft: `1px solid ${REPORT_COLORS.neutral100}` }}
                                 >
-                                    <h1 className="text-base font-bold leading-tight" style={{ color: REPORT_COLORS.neutral900 }}>{currentLab?.name}</h1>
-                                    <p className="text-[9px] leading-tight w-44" style={{ color: REPORT_COLORS.neutral600 }}>
+                                    <h1 className="text-base font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>{currentLab?.name}</h1>
+                                    <p className="text-[9px] leading-tight w-44 mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>
                                         {[currentLab?.address, currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
                                         {currentLab?.labPhone && ` PHONE: ${currentLab.labPhone}`}
                                     </p>
                                 </div>
                             </div>
-                            <img
+                            {/* <img
                                 src="/report/Logo.png"
                                 alt="Tiamed Logo"
                                 className="w-28 h-9 object-contain flex-shrink-0"
                                 crossOrigin="anonymous"
-                            />
+                            /> */}
                         </div>
 
                         {/* Patient Details Card */}
@@ -1774,12 +1931,12 @@ const CommonReportView2 = ({
                                     { icon: "/report/map-pin.png", label: "Visit No.", value: primaryReport?.visitCode || "N/A", noWrap: true },
                                 ],
                             ].map((row, rowIdx) => (
-                                <div key={rowIdx} className="flex items-start" style={{ marginTop: rowIdx > 0 ? "0.4rem" : 0 }}>
+                                <div key={rowIdx} className="flex flex-wrap items-start" style={{ marginTop: rowIdx > 0 ? "0.4rem" : 0 }}>
                                     {row.map((field, fieldIdx) => (
                                         <div
                                             key={field.label}
                                             className="flex-1 flex items-center"
-                                            style={{ marginLeft: fieldIdx > 0 ? "0.75rem" : 0, minWidth: 0 }}
+                                            style={{ marginLeft: fieldIdx > 0 ? "0.75rem" : 0, minWidth: "150px" }}
                                         >
                                             <div
                                                 className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
@@ -1816,9 +1973,9 @@ const CommonReportView2 = ({
                     </div>
 
                     {/* ================= CLINICAL ALERT SUMMARY + KEY FINDINGS ================= */}
-                    <div className="mt-3 flex items-stretch gap-4" data-print-block>
+                    <div className="mt-2 flex flex-wrap items-stretch gap-3" data-print-block>
                         <div
-                            className="w-[46%] rounded-xl p-2.5 flex flex-col gap-2"
+                            className="flex-[1_1_300px] min-w-[260px] rounded-xl p-2.5 flex flex-col gap-2"
                             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
                         >
                             <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Clinical Alert Summary</h3>
@@ -1849,15 +2006,14 @@ const CommonReportView2 = ({
                                 </div>
                             </div>
                         </div>
+                        {/* Key Findings card only renders when there is at least one abnormal finding. */}
+                        {clinicalSummary.findings.length > 0 && (
                         <div
-                            className="flex-1 rounded-xl p-2.5 flex flex-col gap-1.5"
+                            className="flex-[1_1_280px] min-w-[260px] rounded-xl p-2.5 flex flex-col gap-1.5"
                             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
                         >
                             <h3 className="text-xs font-bold uppercase px-1" style={{ color: REPORT_COLORS.secondary800 }}>Key Findings for Doctor</h3>
                             <div className="p-1.5 flex flex-col gap-1.5">
-                                {clinicalSummary.findings.length === 0 ? (
-                                    <p className="text-[10px] italic" style={{ color: REPORT_COLORS.neutral600 }}>No abnormal findings to flag.</p>
-                                ) : (
                                     <>
                                         {clinicalSummary.findings.slice(0, 6).map((finding, idx) => {
                                             const badge = getFindingBadge(finding);
@@ -1890,12 +2046,15 @@ const CommonReportView2 = ({
                                             </p>
                                         )}
                                     </>
-                                )}
                             </div>
                         </div>
+                        )}
+                        {/* No abnormal findings: Health Snapshot takes Key Findings' slot so the
+                            Clinical Alert Summary doesn't stretch across the full width. */}
+                        {clinicalSummary.findings.length === 0 && renderHealthSnapshotCard("flex-[1_1_280px] min-w-[260px]")}
                     </div>
 
-                    <div className="mt-3 flex flex-wrap items-start gap-3" data-print-block>
+                    <div className="mt-2 flex flex-wrap items-start gap-3" data-print-block>
                         <div className="flex-1 min-w-[260px] flex flex-col gap-3">
                             <div
                                 className="rounded-xl p-2.5 flex flex-col gap-1.5"
@@ -1921,14 +2080,23 @@ const CommonReportView2 = ({
                                         ].filter((field) => field.value && field.value.length > 0).map((field) => (
                                             <div key={field.label}>
                                                 <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>{field.label}</p>
-                                                <ul className="flex flex-col gap-0.5">
-                                                    {field.value!.map((line, idx) => (
-                                                        <li key={idx} className="text-[11px] leading-tight flex gap-1" style={{ color: REPORT_COLORS.neutral800 }}>
-                                                            <span aria-hidden="true">&bull;</span>
-                                                            <span>{line}</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
+                                                {clinicalSummary.findings.length === 0 ? (
+                                                    // Full-width card (no Key Findings): run the points together
+                                                    // as one sentence instead of stacking bullets, keeping the
+                                                    // card short.
+                                                    <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
+                                                        {field.value!.map((line) => line.trim().replace(/[.;,]+$/, "")).join(". ")}.
+                                                    </p>
+                                                ) : (
+                                                    <ul className="flex flex-col gap-0.5">
+                                                        {field.value!.map((line, idx) => (
+                                                            <li key={idx} className="text-[11px] leading-tight flex gap-1" style={{ color: REPORT_COLORS.neutral800 }}>
+                                                                <span aria-hidden="true">&bull;</span>
+                                                                <span>{line}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
                                             </div>
                                         ))}
                                         {aiInsights.doctorToVisit && (
@@ -1946,6 +2114,7 @@ const CommonReportView2 = ({
                                     <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>No AI observations available yet.</p>
                                 )}
                             </div>
+                            {/* ================= CLINICAL ATTENTION REQUIRED (disabled) =================
                             <div
                                 className="rounded-xl p-2.5 flex flex-col gap-1.5"
                                 style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
@@ -2001,69 +2170,20 @@ const CommonReportView2 = ({
                                     </div>
                                 </div>
                             </div>
+                            */}
                         </div>
-                        <div
-                            className="flex-[0_1_340px] min-w-[220px] w-full sm:w-auto rounded-xl p-2.5 flex flex-col gap-2"
-                            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                        >
-                            <div className="flex items-center gap-2">
-                                <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
-                                    <img src="/report/chart-bar/solid.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
-                                </span>
-                                <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>Health Snapshot</h3>
-                            </div>
-                            {healthSnapshotLoading ? (
-                                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Loading history...</p>
-                            ) : (() => {
-                                const trendTests = (healthSnapshot?.tests || []).filter((t) => t.totalVisits > 1);
-                                if (trendTests.length === 0) {
-                                    return (
-                                        <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>
-                                            {healthSnapshot ? "No prior visit history for these tests yet." : "Trend data will appear here once available."}
-                                        </p>
-                                    );
-                                }
-                                return (
-                                    <div className="flex flex-col gap-2 px-1">
-                                        {trendTests.map((test: HealthSnapshotTest) => {
-                                            const sparkline = buildTestSparkline(test);
-                                            return (
-                                                <div key={test.testName} className="flex items-center gap-2">
-                                                    <p className="text-[10px] font-extrabold leading-tight flex-[0_0_42%] min-w-0" style={{ color: REPORT_COLORS.neutral800 }}>{test.testName}</p>
-                                                    {sparkline ? (
-                                                        <svg className="flex-1 min-w-0" height="24" viewBox={`0 0 ${sparkline.width} ${sparkline.height}`} preserveAspectRatio="none">
-                                                            <polyline
-                                                                points={sparkline.pointsAttr}
-                                                                fill="none"
-                                                                stroke={sparkline.color}
-                                                                strokeWidth="2"
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                            />
-                                                            {sparkline.points.map((p, i) => (
-                                                                <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={sparkline.color} />
-                                                            ))}
-                                                        </svg>
-                                                    ) : (
-                                                        <span className="flex-1 flex justify-center">
-                                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: REPORT_COLORS.neutral600 }} />
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                );
-                            })()}
-                        </div>
+                        {/* With findings, Health Snapshot keeps its usual slot beside the AI card;
+                            without findings it already rendered beside the Clinical Alert Summary
+                            above, letting AI Clinical Observations stretch across the full row. */}
+                        {clinicalSummary.findings.length > 0 && renderHealthSnapshotCard("flex-[0_1_340px] min-w-[220px] w-full sm:w-auto")}
                     </div>
 
                     {/* ================= DETAILED LAB RESULTS ================= */}
-                    <div className="mt-4">
-                        <div className="flex items-center justify-between mb-3" data-print-block>
-                            <div className="flex items-center gap-2">
-                                <img src="/report/microscope.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
-                                <h2 className="text-sm font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>Detailed Lab Results</h2>
+                    <div className="mt-3">
+                        <div className="flex flex-wrap items-center justify-between gap-y-1 mb-2" data-print-block>
+                            <div className="flex items-center">
+                                <img src="/report/microscope.png" alt="" className="w-4 h-4 mr-2 flex-shrink-0" crossOrigin="anonymous" />
+                                <h2 className="text-sm font-extrabold uppercase leading-normal pb-0.5" style={{ color: REPORT_COLORS.secondary700 }}>Detailed Lab Results</h2>
                             </div>
                             <div className="flex items-center gap-3 text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>
                                 <span className="font-semibold" style={{ color: REPORT_COLORS.neutral800 }}>LEGEND:</span>
@@ -2086,23 +2206,10 @@ const CommonReportView2 = ({
                             const detailedReports = sortedReports.filter(isDetailedReportEntry);
                             const simpleReports = sortedReports.filter((r) => !isDetailedReportEntry(r));
 
-                            // Balance tests across two columns by estimated content weight (header + row
-                            // count), assigning each test to whichever column is currently shorter. This
-                            // keeps the layout looking like the Figma masonry regardless of how many tests
-                            // are selected -- including a single test, which simply fills one full-width column.
-                            const columns: ConsolidatedReport[][] = [[], []];
-                            const columnWeights = [0, 0];
-                            simpleReports.forEach((report) => {
-                                const col = columnWeights[0] <= columnWeights[1] ? 0 : 1;
-                                columns[col].push(report);
-                                columnWeights[col] += estimateReportWeight(report);
-                            });
-                            const nonEmptyColumns = columns.filter((col) => col.length > 0);
-
                             // Figma groups consecutive plain-numeric tests under one continuous table with
                             // a single shared header instead of repeating the header per test -- only
                             // reports with qualitative rows or a full JSON detailed report break the run.
-                            const renderColumnBlocks = (col: ConsolidatedReport[]) => {
+                            const renderReportBlocks = (col: ConsolidatedReport[]) => {
                                 const blocks: JSX.Element[] = [];
                                 let run: ConsolidatedReport[] = [];
 
@@ -2171,13 +2278,14 @@ const CommonReportView2 = ({
                                             ))}
                                         </div>
                                     )}
-                                    {nonEmptyColumns.length > 0 && (
-                                        <div className="flex items-start gap-6" data-results-grid data-print-block>
-                                            {nonEmptyColumns.map((col, colIdx) => (
-                                                <div key={colIdx} className="flex-1">
-                                                    {renderColumnBlocks(col)}
-                                                </div>
-                                            ))}
+                                    {simpleReports.length > 0 && (
+                                        // Single full-width flow (horizontal tables) instead of the old
+                                        // two-vertical-column masonry. Each table run is its own print block
+                                        // so pagination can chunk it row-by-row instead of slicing the canvas.
+                                        <div data-results-grid>
+                                            <div className="w-full">
+                                                {renderReportBlocks(simpleReports)}
+                                            </div>
                                         </div>
                                     )}
                                 </>
@@ -2187,12 +2295,12 @@ const CommonReportView2 = ({
 
                     {/* ================= DOCTOR REVIEW / NOTES / APPROVAL ================= */}
                     <div
-                        className="mt-6 pt-6 flex items-start gap-6"
+                        className="mt-4 pt-3 flex flex-wrap items-start gap-4"
                         style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }}
                         data-print-block
                         data-print-role="signature"
                     >
-                        <div className="w-96 flex-shrink-0">
+                        {/* <div className="w-96 max-w-full">
                             <div className="flex items-center gap-2 mb-2">
                                 <img src="/report/clipboard-check.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
                                 <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Doctor Review Checklist</h3>
@@ -2212,9 +2320,9 @@ const CommonReportView2 = ({
                                     </div>
                                 ))}
                             </div>
-                        </div>
+                        </div> */}
 
-                        <div className="flex-1 min-w-[160px]">
+                        {/* <div className="flex-1 min-w-[160px]">
                             <div className="flex items-center gap-2 mb-2 whitespace-nowrap">
                                 <img src="/report/edit.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
                                 <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Doctor Notes</h3>
@@ -2224,41 +2332,45 @@ const CommonReportView2 = ({
                                 <div className="h-0" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }} />
                                 <div className="h-0" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }} />
                             </div>
-                        </div>
+                        </div> */}
 
-                        <div className="w-48 flex-shrink-0 ml-auto flex flex-col items-center gap-3 text-center">
-                            <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Lab Approval</h3>
-                            <img
-                                src="/signature.png"
-                                alt="Authorized Pathologist Signature"
-                                className="h-10 w-auto object-contain"
-                                crossOrigin="anonymous"
-                            />
-                            <div className="flex flex-col items-center gap-1">
-                                <p className="text-xs font-bold" style={{ color: REPORT_COLORS.neutral900 }}>Dr. Sini Arjun</p>
-                                <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>MBBS, MD (Pathology)</p>
-                                <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>Consultant Pathologist</p>
+                        <div className="w-full flex items-end justify-around text-center pb-1">
+                            <div className="flex flex-col items-center pb-7">
+                                <div className="h-10" />
+                                <p className="text-[10px] font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>Lab Technician</p>
                             </div>
-                            <p className="text-[9px] font-bold" style={{ color: REPORT_COLORS.neutral600 }}>Lab Technician</p>
+
+                            <div className="flex flex-col items-center">
+                                {/* <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Lab Approval</h3> */}
+                                <img
+                                    src="/signature.png"
+                                    alt="Authorized Pathologist Signature"
+                                    className="h-10 w-auto object-contain mb-1"
+                                    crossOrigin="anonymous"
+                                />
+                                <p className="text-xs font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>Dr. Sini Arjun</p>
+                                <p className="text-[10px] leading-normal mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>MBBS, MD (Pathology)</p>
+                                <p className="text-[10px] leading-normal mt-0.5 pb-0.5" style={{ color: REPORT_COLORS.neutral600 }}>Consultant Pathologist</p>
+                            </div>
                         </div>
                     </div>
 
                     {/* ================= FOOTER ================= */}
                     <div data-print-block data-print-role="footer">
                         <div
-                            className="mt-3 rounded-xl p-3 flex items-center"
+                            className="mt-3 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0"
                             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
                         >
-                            <div className="flex-[1.4] pr-3">
+                            <div className="flex-[1.4] sm:pr-3">
                                 <h4 className="text-[10px] font-bold mb-0.5" style={{ color: REPORT_COLORS.danger600 }}>Disclaimer</h4>
                                 <p className="text-[9px] leading-tight" style={{ color: REPORT_COLORS.neutral600 }}>
                                     *This laboratory report is intended for clinical correlation only. Results should be interpreted by a qualified medical professional. Laboratory values may vary based on methodology and biological variance. The diagnostic center is not responsible for misinterpretation or misuse of results. This is an electronically generated report. No physical signature required.
                                 </p>
                             </div>
 
-                            <div className="self-stretch flex-shrink-0" style={{ borderLeft: `1px solid ${REPORT_COLORS.secondary200}` }} />
+                            <div className="self-stretch flex-shrink-0 hidden sm:block" style={{ borderLeft: `1px solid ${REPORT_COLORS.secondary200}` }} />
 
-                            <div className="flex-1 flex items-center gap-2 px-3">
+                            <div className="flex-1 flex items-center gap-2 sm:px-3">
                                 <img
                                     src="/report/Rectangle.png"
                                     alt="QR Code"
@@ -2273,17 +2385,17 @@ const CommonReportView2 = ({
                                         <img
                                             src="/tiamed1.svg"
                                             alt="Tiamed Logo"
-                                            className="max-h-3.5 w-auto mr-1 opacity-80 object-contain"
+                                            className="h-3.5 w-auto mr-1 opacity-80 object-contain flex-shrink-0"
                                             crossOrigin="anonymous"
                                         />
-                                        <span className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>
+                                        <span className="text-[9px] leading-normal" style={{ color: REPORT_COLORS.neutral600 }}>
                                             Powered by Tiameds Technologies Pvt.Ltd
                                         </span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="self-stretch flex-shrink-0" style={{ borderLeft: `1px solid ${REPORT_COLORS.secondary200}` }} />
+                            {/* <div className="self-stretch flex-shrink-0" style={{ borderLeft: `1px solid ${REPORT_COLORS.secondary200}` }} />
 
                             <div className="flex-shrink-0 pl-3 text-right">
                                 <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>Generated on:</p>
@@ -2291,7 +2403,7 @@ const CommonReportView2 = ({
                                     const { date, time } = formatReportDateTime(latestReportDateTime);
                                     return `${date} at ${time}`;
                                 })()}</p>
-                            </div>
+                            </div> */}
                         </div>
                     </div>
                 </section>
