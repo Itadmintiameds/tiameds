@@ -4,9 +4,12 @@ import { PatientData } from "@/types/sample/sample";
 interface ViewReportProps {
     viewPatient: PatientData | null;
     hidePrintButton?: boolean;
+    // Sample Management passes false so its report view has no AI observations;
+    // dashboard callers keep the default and show them.
+    showAiInsights?: boolean;
 }
 
-const ViewReport = ({ viewPatient, hidePrintButton = false }: ViewReportProps) => {
+const ViewReport = ({ viewPatient, hidePrintButton = false, showAiInsights = true }: ViewReportProps) => {
     if (!viewPatient) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -23,6 +26,7 @@ const ViewReport = ({ viewPatient, hidePrintButton = false }: ViewReportProps) =
             patientData={viewPatient}
             doctorName={viewPatient.doctorName}
             hidePrintButton={hidePrintButton}
+            showAiInsights={showAiInsights}
         />
     );
 };

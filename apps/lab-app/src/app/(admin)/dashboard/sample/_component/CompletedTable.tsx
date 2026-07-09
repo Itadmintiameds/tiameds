@@ -714,6 +714,7 @@ const CompletedTable: React.FC<CompletedTableProps> = ({
               visitStatus: viewPatient.visitStatus ?? ''
             }}
             hidePrintButton={false}
+            showAiInsights={false}
           />
         </NewModal>
       )}

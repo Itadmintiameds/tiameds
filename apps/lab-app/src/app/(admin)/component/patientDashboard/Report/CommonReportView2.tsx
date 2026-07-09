@@ -178,21 +178,43 @@ const buildOrderedCBCRows = (rows: TestRow[]): RenderRowEntry[] => {
     return orderedEntries;
 };
 
-// The snapshot API can return more than one result for the same visit (e.g. a report
-// saved/regenerated twice), which made a first-visit patient show a 2-point trend line
-// on the deployed site. Collapse results to one (the most recent) per visitId before
-// any trend logic runs, oldest visit first.
+// The snapshot API can return the same measurement more than once: a report
+// saved/regenerated twice inside one visit, or (seen on the deployed backend)
+// duplicate visit rows for a single booking where each copy carries its own
+// visitId/reportId -- both made a first-visit patient show a 2-point trend line.
+// Collapse to one result per real measurement before any trend logic runs,
+// oldest visit first: most-recent save wins within a visit, then identical
+// same-day values collapse even when their visit ids differ.
 const dedupeSnapshotResults = (results: HealthSnapshotTestResult[]) => {
-    const byVisit = new Map<number, HealthSnapshotTestResult>();
-    (results || []).forEach((result) => {
-        const existing = byVisit.get(result.visitId);
-        const resultStamp = new Date(result.createdAt || result.visitDate).getTime();
-        const existingStamp = existing ? new Date(existing.createdAt || existing.visitDate).getTime() : -Infinity;
-        if (!existing || resultStamp >= existingStamp) {
-            byVisit.set(result.visitId, result);
-        }
-    });
-    return Array.from(byVisit.values()).sort(
+    const stampOf = (r: HealthSnapshotTestResult) => new Date(r.createdAt || r.visitDate).getTime();
+    const dayOf = (r: HealthSnapshotTestResult) => {
+        const parsed = new Date(r.visitDate || r.createdAt);
+        return isNaN(parsed.getTime())
+            ? String(r.visitDate || r.createdAt || "")
+            : parsed.toISOString().slice(0, 10);
+    };
+    const collapse = (
+        list: HealthSnapshotTestResult[],
+        keyOf: (r: HealthSnapshotTestResult, idx: number) => string
+    ) => {
+        const byKey = new Map<string, HealthSnapshotTestResult>();
+        list.forEach((result, idx) => {
+            const key = keyOf(result, idx);
+            const existing = byKey.get(key);
+            if (!existing || !(stampOf(result) < stampOf(existing))) {
+                byKey.set(key, result);
+            }
+        });
+        return Array.from(byKey.values());
+    };
+    // Pass 1: one result per visit (re-saved reports). A missing visitId must not
+    // merge unrelated results, so fall back to reportId/index as a unique key.
+    let deduped = collapse(results || [], (r, idx) =>
+        r.visitId != null ? `visit:${r.visitId}` : `report:${r.reportId ?? `idx-${idx}`}`
+    );
+    // Pass 2: duplicate visit rows -- same calendar day, same value, different ids.
+    deduped = collapse(deduped, (r) => `day:${dayOf(r)}|value:${(r.enteredValue || "").trim()}`);
+    return deduped.sort(
         (a, b) =>
             new Date(a.visitDate || a.createdAt).getTime() - new Date(b.visitDate || b.createdAt).getTime()
     );
@@ -447,6 +469,9 @@ interface CommonReportView2Props {
     doctorName?: string;
     hidePrintButton?: boolean;
     reportsData: ConsolidatedReport[];
+    // Sample Management passes false: its report view skips the AI Clinical
+    // Observations card (and the OpenAI call behind it). Dashboard views keep it.
+    showAiInsights?: boolean;
 }
 
 const CommonReportView2 = ({
@@ -454,6 +479,7 @@ const CommonReportView2 = ({
     doctorName,
     hidePrintButton = false,
     reportsData,
+    showAiInsights = true,
 }: CommonReportView2Props) => {
     const { currentLab } = useLabs();
     const reportRef = useRef<HTMLDivElement>(null);
@@ -707,7 +733,9 @@ const CommonReportView2 = ({
         if (!healthSnapshot) return [];
         const points: AiHistoryPoint[] = [];
         healthSnapshot.tests.forEach((test) => {
-            test.results.forEach((result) => {
+            // Same dedupe as the sparklines, so the AI never reasons about duplicate
+            // rows the deployed backend returns for a single visit.
+            dedupeSnapshotResults(test.results).forEach((result) => {
                 points.push({
                     testName: test.testName,
                     visitDate: result.visitDate,
@@ -753,7 +781,7 @@ const CommonReportView2 = ({
     // Health Snapshot history) are ready. Result is cached in localStorage keyed by the
     // report set + its content, so reopening the same report skips the OpenAI call entirely.
     useEffect(() => {
-        if (!healthSnapshotFetched || aiTestFindings.length === 0) {
+        if (!showAiInsights || !healthSnapshotFetched || aiTestFindings.length === 0) {
             return;
         }
 
@@ -809,7 +837,7 @@ const CommonReportView2 = ({
         return () => {
             cancelled = true;
         };
-    }, [healthSnapshotFetched, aiTestFindings, aiHistoryPoints, sortedReports, patientData?.patientname, patientData?.dateOfBirth, patientData?.gender]);
+    }, [showAiInsights, healthSnapshotFetched, aiTestFindings, aiHistoryPoints, sortedReports, patientData?.patientname, patientData?.dateOfBirth, patientData?.gender]);
 
     const getFindingBadge = (finding: ClinicalFinding) => {
         const directionLabel = finding.direction === "high" ? "HIGH" : "LOW";
@@ -818,6 +846,14 @@ const CommonReportView2 = ({
             color: finding.kind === "critical" ? REPORT_COLORS.warning500 : REPORT_COLORS.danger500,
         };
     };
+
+    // Health Snapshot only appears once the patient has genuine history: at least one
+    // test with results from 2+ distinct visits (after dedupe). First-time patients get
+    // no card at all -- not even a placeholder message.
+    const hasSnapshotTrends = useMemo(
+        () => (healthSnapshot?.tests || []).some((t) => dedupeSnapshotResults(t.results).length > 1),
+        [healthSnapshot]
+    );
 
     // Health Snapshot card renders in different rows depending on whether Key Findings
     // exists: with findings it sits beside AI Clinical Observations; without findings it
@@ -1480,7 +1516,7 @@ const CommonReportView2 = ({
 
     // Explicit pixel widths (not just Tailwind width classes) so the numeric columns
     // reserve real space and never get squeezed into the wrapped parameter text.
-    const RESULT_COL_WIDTHS = { parameter: undefined, result: 50, reference: 90, units: 70, status: 34 } as const;
+    const RESULT_COL_WIDTHS = { parameter: undefined, result: 62, reference: 102, units: 82, status: 46 } as const;
     const RESULT_TABLE_ROW_BORDER = `1px solid ${REPORT_COLORS.secondary100}`;
     const RESULT_CELL_VALIGN: CSSProperties = { verticalAlign: "top" };
 
@@ -1770,7 +1806,7 @@ const CommonReportView2 = ({
     // Block the whole report (including the print/PDF button) behind a loader until AI
     // insights have either arrived, failed, or aren't applicable -- otherwise a PDF could be
     // generated mid-generation with "Generating..." baked into it instead of real insights.
-    const aiReady = healthSnapshotFetched && (aiTestFindings.length === 0 || aiInsights !== null || aiInsightsError !== null);
+    const aiReady = healthSnapshotFetched && (!showAiInsights || aiTestFindings.length === 0 || aiInsights !== null || aiInsightsError !== null);
     if (!aiReady) {
         return (
             <div className="flex h-64 items-center justify-center">
@@ -2013,48 +2049,48 @@ const CommonReportView2 = ({
                             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
                         >
                             <h3 className="text-xs font-bold uppercase px-1" style={{ color: REPORT_COLORS.secondary800 }}>Key Findings for Doctor</h3>
-                            <div className="p-1.5 flex flex-col gap-1.5">
-                                    <>
-                                        {clinicalSummary.findings.slice(0, 6).map((finding, idx) => {
-                                            const badge = getFindingBadge(finding);
-                                            const paramLabel = finding.row.testParameter || finding.report.testName;
-                                            const valueLabel = `${finding.row.enteredValue || "N/A"}${finding.row.unit ? ` ${finding.row.unit}` : ""}`;
-                                            return (
-                                                <div key={`${finding.report.reportId}-${idx}`} className="flex items-start justify-between gap-2">
-                                                    <div className="flex items-start gap-2">
-                                                        <span className="mt-1 w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: badge.color }} />
-                                                        <div>
-                                                            <p className="text-xs" style={{ color: REPORT_COLORS.neutral900 }}>
-                                                                <span className="font-bold">{paramLabel} : </span>
-                                                                <span className="font-extrabold">{valueLabel}</span>
-                                                            </p>
-                                                            <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>Reference : {finding.row.normalRange || "N/A"}</p>
-                                                        </div>
-                                                    </div>
-                                                    <span
-                                                        className="px-2 py-1 rounded text-[9px] font-extrabold flex-shrink-0"
-                                                        style={{ backgroundColor: badge.color, color: REPORT_COLORS.white }}
-                                                    >
-                                                        {badge.label}
-                                                    </span>
+                            {/* Every abnormal finding is listed (no "+N more" cutoff). Compact
+                                type (11px/9px, same as the other summary cards) and a wrapping
+                                two-column flow keep the card short so the PDF needs fewer pages. */}
+                            <div className="p-1 flex flex-wrap gap-x-3 gap-y-1">
+                                {clinicalSummary.findings.map((finding, idx) => {
+                                    const badge = getFindingBadge(finding);
+                                    const paramLabel = finding.row.testParameter || finding.report.testName;
+                                    const valueLabel = `${finding.row.enteredValue || "N/A"}${finding.row.unit ? ` ${finding.row.unit}` : ""}`;
+                                    return (
+                                        <div key={`${finding.report.reportId}-${idx}`} className="flex-[1_1_200px] min-w-[190px] flex items-start justify-between gap-2">
+                                            <div className="flex items-start gap-1.5">
+                                                <span className="mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: badge.color }} />
+                                                <div>
+                                                    <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral900 }}>
+                                                        <span className="font-bold">{paramLabel} : </span>
+                                                        <span className="font-extrabold">{valueLabel}</span>
+                                                    </p>
+                                                    <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>Reference : {finding.row.normalRange || "N/A"}</p>
                                                 </div>
-                                            );
-                                        })}
-                                        {clinicalSummary.findings.length > 6 && (
-                                            <p className="text-[10px] italic" style={{ color: REPORT_COLORS.neutral600 }}>
-                                                +{clinicalSummary.findings.length - 6} more abnormal result{clinicalSummary.findings.length - 6 === 1 ? "" : "s"} in Detailed Lab Results below.
-                                            </p>
-                                        )}
-                                    </>
+                                            </div>
+                                            <span
+                                                className="px-1.5 py-0.5 rounded text-[8px] font-extrabold flex-shrink-0"
+                                                style={{ backgroundColor: badge.color, color: REPORT_COLORS.white }}
+                                            >
+                                                {badge.label}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                         )}
                         {/* No abnormal findings: Health Snapshot takes Key Findings' slot so the
                             Clinical Alert Summary doesn't stretch across the full width. */}
-                        {clinicalSummary.findings.length === 0 && renderHealthSnapshotCard("flex-[1_1_280px] min-w-[260px]")}
+                        {clinicalSummary.findings.length === 0 && hasSnapshotTrends && renderHealthSnapshotCard("flex-[1_1_280px] min-w-[260px]")}
                     </div>
 
+                    {/* Row skipped entirely when the AI card is disabled and Health Snapshot
+                        has nothing to show here. */}
+                    {(showAiInsights || (clinicalSummary.findings.length > 0 && hasSnapshotTrends)) && (
                     <div className="mt-2 flex flex-wrap items-start gap-3" data-print-block>
+                        {showAiInsights && (
                         <div className="flex-1 min-w-[260px] flex flex-col gap-3">
                             <div
                                 className="rounded-xl p-2.5 flex flex-col gap-1.5"
@@ -2080,23 +2116,11 @@ const CommonReportView2 = ({
                                         ].filter((field) => field.value && field.value.length > 0).map((field) => (
                                             <div key={field.label}>
                                                 <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>{field.label}</p>
-                                                {clinicalSummary.findings.length === 0 ? (
-                                                    // Full-width card (no Key Findings): run the points together
-                                                    // as one sentence instead of stacking bullets, keeping the
-                                                    // card short.
-                                                    <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
-                                                        {field.value!.map((line) => line.trim().replace(/[.;,]+$/, "")).join(". ")}.
-                                                    </p>
-                                                ) : (
-                                                    <ul className="flex flex-col gap-0.5">
-                                                        {field.value!.map((line, idx) => (
-                                                            <li key={idx} className="text-[11px] leading-tight flex gap-1" style={{ color: REPORT_COLORS.neutral800 }}>
-                                                                <span aria-hidden="true">&bull;</span>
-                                                                <span>{line}</span>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
+                                                {/* Run the points together as flowing sentences instead of
+                                                    stacking bullets. */}
+                                                <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
+                                                    {field.value!.map((line) => line.trim().replace(/[.;,]+$/, "")).join(". ")}.
+                                                </p>
                                             </div>
                                         ))}
                                         {aiInsights.doctorToVisit && (
@@ -2172,11 +2196,13 @@ const CommonReportView2 = ({
                             </div>
                             */}
                         </div>
+                        )}
                         {/* With findings, Health Snapshot keeps its usual slot beside the AI card;
                             without findings it already rendered beside the Clinical Alert Summary
                             above, letting AI Clinical Observations stretch across the full row. */}
-                        {clinicalSummary.findings.length > 0 && renderHealthSnapshotCard("flex-[0_1_340px] min-w-[220px] w-full sm:w-auto")}
+                        {clinicalSummary.findings.length > 0 && hasSnapshotTrends && renderHealthSnapshotCard("flex-[0_1_340px] min-w-[220px] w-full sm:w-auto")}
                     </div>
+                    )}
 
                     {/* ================= DETAILED LAB RESULTS ================= */}
                     <div className="mt-3">
@@ -2185,6 +2211,7 @@ const CommonReportView2 = ({
                                 <img src="/report/microscope.png" alt="" className="w-4 h-4 mr-2 flex-shrink-0" crossOrigin="anonymous" />
                                 <h2 className="text-sm font-extrabold uppercase leading-normal pb-0.5" style={{ color: REPORT_COLORS.secondary700 }}>Detailed Lab Results</h2>
                             </div>
+                            {/* ================= LEGEND (disabled) =================
                             <div className="flex items-center gap-3 text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>
                                 <span className="font-semibold" style={{ color: REPORT_COLORS.neutral800 }}>LEGEND:</span>
                                 <span className="inline-flex items-center gap-1">
@@ -2200,6 +2227,7 @@ const CommonReportView2 = ({
                                     <img src="/report/Ellipse-6.png" alt="" className="w-2 h-2" crossOrigin="anonymous" /> Critical
                                 </span>
                             </div>
+                            */}
                         </div>
                         {(() => {
                             const numberByReportId = new Map(sortedReports.map((r, i) => [r.reportId, i + 1]));

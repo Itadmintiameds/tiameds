@@ -872,6 +872,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({
               visitStatus: viewPatient.visitStatus ?? ''
             }}
             hidePrintButton={false}
+            showAiInsights={false}
           />
         </NewModal>
       )}

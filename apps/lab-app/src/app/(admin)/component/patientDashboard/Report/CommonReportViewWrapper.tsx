@@ -12,6 +12,9 @@ interface CommonReportViewWrapperProps {
     patientData: PatientData;
     doctorName?: string;
     hidePrintButton?: boolean;
+    // false hides the AI Clinical Observations card (used by Sample Management).
+    // Only the new-format report view supports it; the legacy view has no AI section.
+    showAiInsights?: boolean;
 }
 
 interface ApiReport {
@@ -23,7 +26,7 @@ interface ApiReport {
 }
 
 const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
-    const { visitId } = props;
+    const { visitId, showAiInsights, ...legacyProps } = props;
     const { currentLab } = useLabs();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>();
@@ -100,10 +103,10 @@ const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
     })();
 
     if (isNewFormat && Array.isArray(reports)) {
-        return <CommonReportView2 {...props} reportsData={reports} />;
+        return <CommonReportView2 showAiInsights={showAiInsights} {...legacyProps} reportsData={reports} />;
     }
 
-    return <CommonReportView {...props} />;
+    return <CommonReportView visitId={visitId} {...legacyProps} />;
 };
 
 export default CommonReportViewWrapper;
