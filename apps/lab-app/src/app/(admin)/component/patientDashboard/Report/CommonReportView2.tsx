@@ -727,12 +727,45 @@ const CommonReportView2 = ({
         return results;
     }, [sortedReports]);
 
+    // A report must render identically every time it is opened. The snapshot API
+    // always returns the patient's full history up to today, so re-opening an old
+    // report after newer visits exist would suddenly grow trend lines that were
+    // not on the report when it was issued. Clamp the snapshot to the visit being
+    // viewed: keep only results from that visit or earlier ones.
+    const visibleSnapshot = useMemo<HealthSnapshot | null>(() => {
+        if (!healthSnapshot) return null;
+        const visitIds = reportsData
+            .map((r) => r.visitId)
+            .filter((id): id is number => typeof id === "number" && Number.isFinite(id));
+        const maxVisitId = visitIds.length > 0 ? Math.max(...visitIds) : null;
+        // Fallback for snapshot rows missing a visitId: nothing belonging to this
+        // report can have been recorded after the report itself was created.
+        const reportTimes = reportsData
+            .map((r) => new Date(r.createdDateTime || "").getTime())
+            .filter((t) => Number.isFinite(t));
+        const cutoffTime = reportTimes.length > 0 ? Math.max(...reportTimes) : null;
+
+        const isVisible = (r: HealthSnapshotTestResult) => {
+            if (maxVisitId != null && r.visitId != null) return r.visitId <= maxVisitId;
+            if (cutoffTime == null) return true;
+            const t = new Date(r.visitDate || r.createdAt).getTime();
+            return !Number.isFinite(t) || t <= cutoffTime;
+        };
+
+        return {
+            ...healthSnapshot,
+            tests: healthSnapshot.tests
+                .map((test) => ({ ...test, results: (test.results || []).filter(isVisible) }))
+                .filter((test) => test.results.length > 0),
+        };
+    }, [healthSnapshot, reportsData]);
+
     // Flattens the patient's Health Snapshot (test-by-test visit history) into the
     // shape the AI prompt expects, so it can reason about trends vs. the current report.
     const aiHistoryPoints = useMemo<AiHistoryPoint[]>(() => {
-        if (!healthSnapshot) return [];
+        if (!visibleSnapshot) return [];
         const points: AiHistoryPoint[] = [];
-        healthSnapshot.tests.forEach((test) => {
+        visibleSnapshot.tests.forEach((test) => {
             // Same dedupe as the sparklines, so the AI never reasons about duplicate
             // rows the deployed backend returns for a single visit.
             dedupeSnapshotResults(test.results).forEach((result) => {
@@ -746,7 +779,7 @@ const CommonReportView2 = ({
             });
         });
         return points;
-    }, [healthSnapshot]);
+    }, [visibleSnapshot]);
 
     // Fetch the patient's Health Snapshot (test history across visits) whenever the report is viewed.
     useEffect(() => {
@@ -851,8 +884,8 @@ const CommonReportView2 = ({
     // test with results from 2+ distinct visits (after dedupe). First-time patients get
     // no card at all -- not even a placeholder message.
     const hasSnapshotTrends = useMemo(
-        () => (healthSnapshot?.tests || []).some((t) => dedupeSnapshotResults(t.results).length > 1),
-        [healthSnapshot]
+        () => (visibleSnapshot?.tests || []).some((t) => dedupeSnapshotResults(t.results).length > 1),
+        [visibleSnapshot]
     );
 
     // Health Snapshot card renders in different rows depending on whether Key Findings
@@ -875,13 +908,13 @@ const CommonReportView2 = ({
                 // Count distinct visits ourselves (dedupeSnapshotResults) instead of trusting
                 // the backend's totalVisits, which double-counts re-saved reports on the same
                 // visit and made first-time patients show a trend line.
-                const trendTests = (healthSnapshot?.tests || []).filter(
+                const trendTests = (visibleSnapshot?.tests || []).filter(
                     (t) => dedupeSnapshotResults(t.results).length > 1
                 );
                 if (trendTests.length === 0) {
                     return (
                         <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>
-                            {healthSnapshot ? "No prior visit history for these tests yet." : "Trend data will appear here once available."}
+                            {visibleSnapshot ? "No prior visit history for these tests yet." : "Trend data will appear here once available."}
                         </p>
                     );
                 }
@@ -2069,8 +2102,13 @@ const CommonReportView2 = ({
                                                     <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>Reference : {finding.row.normalRange || "N/A"}</p>
                                                 </div>
                                             </div>
+                                            {/* Explicit inline-block + px line-height: html2canvas doesn't
+                                                blockify flex children, so an inline span with py padding paints
+                                                its pill background offset from the text baseline in the PDF,
+                                                clipping the label. Sizing via line-height keeps text centered
+                                                in both the browser and the capture clone. */}
                                             <span
-                                                className="px-1.5 py-0.5 rounded text-[8px] font-extrabold flex-shrink-0"
+                                                className="inline-block px-1.5 rounded text-[8px] leading-[14px] font-extrabold flex-shrink-0 whitespace-nowrap"
                                                 style={{ backgroundColor: badge.color, color: REPORT_COLORS.white }}
                                             >
                                                 {badge.label}

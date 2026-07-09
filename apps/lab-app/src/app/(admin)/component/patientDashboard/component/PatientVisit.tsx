@@ -94,7 +94,7 @@ const PatientVisit = ({ newPatient, handleChange, doctors, mode = 'full' }: Pati
                                 return (
                                     <label
                                         key={type}
-                                        className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                        className={`flex items-center gap-3 p-3 rounded-full border-2 cursor-pointer transition-all ${
                                             isSelected
                                                 ? 'border-purple-500 bg-purple-50'
                                                 : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
@@ -145,7 +145,7 @@ const PatientVisit = ({ newPatient, handleChange, doctors, mode = 'full' }: Pati
                                 name="visit.doctorId"
                                 value={newPatient.visit?.doctorId || ""}
                                 onChange={handleChange}
-                                className="w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 bg-white appearance-none"
+                                className="w-full border rounded-full border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 bg-white appearance-none"
                             >
                                 <option value="">Select doctor</option>
                                 {doctors.map((doctor) => (

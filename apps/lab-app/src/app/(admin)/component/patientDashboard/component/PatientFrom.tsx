@@ -527,7 +527,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
                   value={searchTerm || newPatient.phone}
                   onChange={handlePhoneChange}
                   onBlur={() => handleBlur('phone')}
-                  className={`w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${touchedFields.phone && validationErrors.phone ? 'border-red-400' : ''}`}
+                  className={`w-full border rounded-full border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${touchedFields.phone && validationErrors.phone ? 'border-red-400' : ''}`}
                   placeholder="+91 XXXXX XXXXX"
                   maxLength={10}
                   inputMode="numeric"
@@ -561,7 +561,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
                 value={newPatient.email || ''}
                 onChange={handleChange}
                 placeholder="patient@email.com"
-                className="w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                className="w-full border rounded-full border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
               />
             </div>
           </div>
@@ -578,7 +578,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
               onChange={handleCityChange}
               onBlur={() => handleBlur('city')}
               onKeyPress={(e) => { if (!/[a-zA-Z\s]/.test(e.key)) e.preventDefault(); }}
-              className={`w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${touchedFields.city && validationErrors.city ? 'border-red-400' : ''}`}
+              className={`w-full border rounded-full border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${touchedFields.city && validationErrors.city ? 'border-red-400' : ''}`}
               placeholder="Enter city"
             />
             {touchedFields.city && validationErrors.city && (
@@ -595,7 +595,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
               value={newPatient.address || ''}
               onChange={handleChange}
               placeholder="Enter full address"
-              className="w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+              className="w-full border rounded-full border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
             />
           </div>
         </div>
@@ -632,7 +632,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
                 }}
                 onKeyPress={(e) => { if (!/[a-zA-Z]/.test(e.key)) e.preventDefault(); }}
                 placeholder="Enter first name"
-                className={`w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${touchedFields.firstName && validationErrors.firstName ? 'border-red-400' : ''}`}
+                className={`w-full border rounded-full border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${touchedFields.firstName && validationErrors.firstName ? 'border-red-400' : ''}`}
               />
               {touchedFields.firstName && validationErrors.firstName && (
                 <p className="text-xs text-red-500 mt-1">{validationErrors.firstName}</p>
@@ -650,7 +650,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
                 }}
                 onKeyPress={(e) => { if (!/[a-zA-Z\s]/.test(e.key)) e.preventDefault(); }}
                 placeholder="Enter last name"
-                className="w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                className="w-full border rounded-full border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
               />
             </div>
           </div>
@@ -668,7 +668,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
                 onChange={handleDobInputChange}
                 onBlur={() => handleBlur('dob')}
                 placeholder="DD/MM/YYYY"
-                className={`w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${touchedFields.dob && validationErrors.dob ? 'border-red-400' : ''}`}
+                className={`w-full border rounded-full border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${touchedFields.dob && validationErrors.dob ? 'border-red-400' : ''}`}
               />
               {touchedFields.dob && validationErrors.dob && (
                 <p className="text-xs text-red-500 mt-1">{validationErrors.dob}</p>
@@ -684,7 +684,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
                     onChange={handleAgeDetailChange('years')}
                     placeholder="YY"
                     maxLength={3}
-                    className="w-full border rounded-xl border-gray-300 px-2 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                    className="w-full border rounded-full border-gray-300 px-2 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
                   />
                   <p className="text-[10px] text-gray-400 mt-1 text-center">Yrs</p>
                 </div>
@@ -695,7 +695,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
                     onChange={handleAgeDetailChange('months')}
                     placeholder="MM"
                     maxLength={2}
-                    className="w-full border rounded-xl border-gray-300 px-2 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                    className="w-full border rounded-full border-gray-300 px-2 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
                   />
                   <p className="text-[10px] text-gray-400 mt-1 text-center">Mnths</p>
                 </div>
@@ -706,7 +706,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
                     onChange={handleAgeDetailChange('days')}
                     placeholder="DD"
                     maxLength={2}
-                    className="w-full border rounded-xl border-gray-300 px-2 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                    className="w-full border rounded-full border-gray-300 px-2 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
                   />
                   <p className="text-[10px] text-gray-400 mt-1 text-center">Days</p>
                 </div>
@@ -725,7 +725,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
                 required
                 value={newPatient.gender}
                 onChange={handleChange}
-                className="w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 bg-white appearance-none"
+                className="w-full border rounded-full border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 bg-white appearance-none"
               >
                 {Object.values(Gender).map((gender) => (
                   <option key={gender} value={gender}>

@@ -67,6 +67,7 @@ const DashboardContent = () => {
   const tabParam = searchParams.get('tab');
   const [selectedTab, setSelectedTab] = useState<string>('patient');
   const [hasMounted, setHasMounted] = useState(false);
+  const [isAddPatientFormOpen, setIsAddPatientFormOpen] = useState(false);
   const { isAdmin, isSuperAdmin, isTechnician, isDeskRole } = useAuth();
   const isInitialLoad = React.useRef(true);
 
@@ -109,24 +110,25 @@ const DashboardContent = () => {
 
   // Render only the component the role should see
   const renderContent = () => {
+    const patientDashboard = <PatientDashboard onAddPatientFormChange={setIsAddPatientFormOpen} />;
     if (isAdmin || isSuperAdmin) {
       switch (selectedTab) {
-        case 'patient': return <PatientDashboard />;
+        case 'patient': return patientDashboard;
         case 'dashboard': return <Statistics />;
         case 'technician': return <Technacian />;
-        default: return <PatientDashboard />;
+        default: return patientDashboard;
       }
     }
     // If user has both DESKROLE and TECHNICIAN roles, allow switching between tabs
     if (isDeskRole && isTechnician) {
       switch (selectedTab) {
-        case 'patient': return <PatientDashboard />;
+        case 'patient': return patientDashboard;
         case 'technician': return <Technacian />;
-        default: return <PatientDashboard />;
+        default: return patientDashboard;
       }
     }
     if (isTechnician) return <Technacian />;
-    if (isDeskRole) return <PatientDashboard />;
+    if (isDeskRole) return patientDashboard;
     return null;
   };
 
@@ -156,8 +158,9 @@ const DashboardContent = () => {
   return (
     <div className="min-h-screen">
       <div className="bg-info-50  shadow-sm border border-gray-100">
-        {/* Show tabs if user is ADMIN/SUPERADMIN or has both DESKROLE and TECHNICIAN roles */}
-        {(isAdmin || isSuperAdmin || (isDeskRole && isTechnician)) ? (
+        {/* Show tabs if user is ADMIN/SUPERADMIN or has both DESKROLE and TECHNICIAN roles.
+            Hidden while the Register New Patient form is open. */}
+        {!isAddPatientFormOpen && (isAdmin || isSuperAdmin || (isDeskRole && isTechnician)) ? (
           <div className="flex border-b border-gray-200 px-4">
             {filteredTabs.map((tab) => (
               <TabButton

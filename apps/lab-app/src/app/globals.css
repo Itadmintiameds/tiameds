@@ -3,6 +3,18 @@
 
 @import "tailwindcss";
 
+/* html2canvas (PDF/print capture) measures font baselines by appending a hidden
+   1x1 GIF <img> to <body> and reading its offset against a text sample. Tailwind
+   preflight's `img { display: block }` knocks that image out of the text line,
+   inflating every measured baseline by ~one line-height — text in generated PDFs
+   paints too low and gets clipped (e.g. report badge pills). Restore inline
+   display for that specific measurement image (matched by html2canvas's fixed
+   data-URI). Scoped to direct children of body so real content images keep the
+   preflight behaviour. */
+body > div > img[src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"] {
+  display: inline !important;
+}
+
 
 /* =========================
    ROOT VARIABLES

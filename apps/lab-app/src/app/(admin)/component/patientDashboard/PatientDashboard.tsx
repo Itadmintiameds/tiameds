@@ -1,9 +1,13 @@
 import React from 'react'
 import PatientVisitListTable from './PatientVisitListTable'
 
-const PatientDashboard = () => {
+interface PatientDashboardProps {
+  onAddPatientFormChange?: (isOpen: boolean) => void;
+}
+
+const PatientDashboard = ({ onAddPatientFormChange }: PatientDashboardProps) => {
   return (
-    <PatientVisitListTable />
+    <PatientVisitListTable onAddPatientFormChange={onAddPatientFormChange} />
   )
 }
 export default PatientDashboard

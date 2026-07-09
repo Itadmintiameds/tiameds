@@ -2,7 +2,7 @@ import { getAllPatientVisitsByDateRangeoflab } from '@/../services/patientServic
 import { useLabs } from '@/context/LabContext';
 import { Patient, VisitType } from '@/types/patient/patient';
 import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, getDateRange } from '@/utils/dateUtils';
-import { PlusIcon, SearchIcon, XIcon } from 'lucide-react';
+import { PlusIcon, SearchIcon } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
 import { FaFilterCircleXmark } from "react-icons/fa6";
@@ -31,7 +31,11 @@ enum VisitStatus {
 }
 
 
-const PatientVisitListTable: React.FC = () => {
+interface PatientVisitListTableProps {
+  onAddPatientFormChange?: (isOpen: boolean) => void;
+}
+
+const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPatientFormChange }) => {
   const { currentLab, setPatientDetails, patientDetails } = useLabs();
   const { user: loginedUser } = useAuthStore();
 
@@ -70,6 +74,15 @@ const PatientVisitListTable: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, visitTypeFilter, dateRangeFilter, customStartDate, customEndDate, searchQuery]);
+
+  // Notify parent when the add patient form opens/closes so it can hide surrounding navigation
+  useEffect(() => {
+    onAddPatientFormChange?.(showAddPatientForm);
+    return () => {
+      onAddPatientFormChange?.(false);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAddPatientForm]);
 
   const fetchVisits = async () => {
     try {
@@ -202,10 +215,6 @@ const PatientVisitListTable: React.FC = () => {
 
   const handleAddPatient = () => {
     setShowAddPatientForm(true);
-  };
-
-  const handleCancelAddPatient = () => {
-    setShowAddPatientForm(false);
   };
 
   const handleClearFilters = () => {
@@ -540,21 +549,10 @@ const PatientVisitListTable: React.FC = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      {/* Compact Header */}
-      <div className="p-3 border-b border-gray-200 flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-800">{
-          showAddPatientForm ? 'Register New Patient' : 'Patient Visits'
-        }</h2>
-        {showAddPatientForm ? (
-          <Button
-            text=""
-            onClick={handleCancelAddPatient}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors duration-200 rounded-md"
-          >
-            <XIcon size={16} />
-            <span>Close</span>
-          </Button>
-        ) : (
+      {/* Compact Header - hidden while registering a new patient */}
+      {!showAddPatientForm && (
+        <div className="p-3 border-b border-gray-200 flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-800">Patient Visits</h2>
           <Button
             text=""
             onClick={handleAddPatient}
@@ -563,8 +561,8 @@ const PatientVisitListTable: React.FC = () => {
             <PlusIcon size={16} />
             <span>New Patient</span>
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Filters Section - Only shown when not in add patient mode */}
       {!showAddPatientForm && (
