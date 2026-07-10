@@ -292,14 +292,14 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
                 placeholder="Search tests..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 border border-gray-200 rounded-full text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none bg-gray-50"
+                className="pl-9 pr-4 py-2 border border-gray-200 rounded-full text-sm bg-gray-50 hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors"
               />
             </div>
 
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-full text-sm bg-gray-50 focus:ring-2 focus:ring-indigo-400 focus:outline-none uppercase"
+              className="px-3 py-2 border border-gray-200 rounded-full text-sm bg-gray-50 hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors uppercase"
             >
               {categories.map((category) => (
                 <option key={category} value={category} className="normal-case">
@@ -310,7 +310,7 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
 
             <button
               onClick={() => setSortOrder(prev => (prev === 'new' ? 'old' : 'new'))}
-              className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-full text-sm bg-gray-50 hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-full text-sm bg-gray-50 hover:bg-purple-50 hover:border-purple-300 transition-colors"
             >
               {sortOrder === 'new' ? <FaSortAmountDown className="text-gray-500" /> : <FaSortAmountUp className="text-gray-500" />}
               {sortOrder === 'new' ? 'New to Old' : 'Old to New'}
@@ -340,7 +340,7 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.2 }}
-                      className="border-b border-gray-50 last:border-none hover:bg-gray-50 transition-colors"
+                      className="border-b border-gray-50 last:border-none hover:bg-purple-50 transition-colors"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -361,7 +361,7 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleEditPackage(pkg.id)}
-                            className="w-8 h-8 flex items-center justify-center rounded-full border border-blue-300 text-blue-500 hover:bg-blue-50 transition-colors"
+                            className="w-8 h-8 flex items-center justify-center rounded-full border border-purple-300 text-purple-600 hover:bg-purple-50 transition-colors"
                             title="Edit package"
                           >
                             <FaEdit className="text-sm" />

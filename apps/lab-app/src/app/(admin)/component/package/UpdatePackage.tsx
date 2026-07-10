@@ -231,7 +231,7 @@ const UpdatePackage = ({
             name="packageName"
             value={packageDetails.packageName}
             onChange={handleFieldChange}
-            className="w-full px-4 py-3 border border-gray-200 rounded-full bg-gray-50 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+            className="w-full px-4 py-3 border border-gray-200 rounded-full bg-gray-50 text-sm text-gray-700 hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors"
             placeholder="Health Master Package"
           />
         </div>
@@ -246,7 +246,7 @@ const UpdatePackage = ({
               name="discount"
               value={packageDetails.discount || ''}
               onChange={handleDiscountChange}
-              className="w-full px-4 py-3 pr-8 border border-gray-200 rounded-full bg-gray-50 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-400 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="w-full px-4 py-3 pr-8 border border-gray-200 rounded-full bg-gray-50 text-sm text-gray-700 hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               placeholder="0.00"
               min="0"
               max="100"
@@ -258,7 +258,7 @@ const UpdatePackage = ({
       </div>
 
       {/* Included Tests */}
-      <div className="bg-indigo-50 rounded-2xl p-5 mb-5">
+      <div className="bg-purple-50 rounded-2xl p-5 mb-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold text-gray-900">
             Included Tests ({packageDetails.tests.length})
@@ -283,7 +283,7 @@ const UpdatePackage = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search test by name..."
-                className="w-full pl-10 pr-10 py-3 rounded-full border border-gray-200 bg-white text-sm text-gray-700 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+                className="w-full pl-10 pr-10 py-3 rounded-full border border-gray-200 bg-white text-sm text-gray-700 hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors"
               />
               <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
                 <FaChevronDown className="text-gray-400 text-sm" />
@@ -298,7 +298,7 @@ const UpdatePackage = ({
                   <button
                     key={test.id}
                     onClick={() => addTestToPackage(test)}
-                    className="w-full flex justify-between items-center px-4 py-2.5 text-left hover:bg-indigo-50 transition-colors"
+                    className="w-full flex justify-between items-center px-4 py-2.5 text-left hover:bg-purple-50 transition-colors"
                   >
                     <span className="text-sm font-medium text-gray-800">{test.name}</span>
                     <span className="text-sm text-gray-600">₹{Number(test.price).toFixed(2)}</span>
@@ -311,14 +311,14 @@ const UpdatePackage = ({
           </div>
         )}
 
-        <div className="divide-y divide-indigo-100">
+        <div className="divide-y divide-purple-100">
           {packageDetails.tests.length > 0 ? (
             packageDetails.tests.map(test => (
               <div
                 key={test.id}
                 className="flex justify-between items-center py-3"
               >
-                <span className="text-base font-medium text-indigo-600">{test.name}</span>
+                <span className="text-base font-medium text-purple-700">{test.name}</span>
                 <div className="flex items-center gap-4">
                   <span className="text-base text-gray-900">₹{Number(test.price).toFixed(2)}</span>
                   <button

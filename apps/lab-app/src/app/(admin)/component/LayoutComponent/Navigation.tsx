@@ -57,11 +57,18 @@ const baseNavigation: BaseNavigationItem[] = [
     icon: FlaskConical,
     children: [
       { name: "Tests", href: "/dashboard/test", icon: ClipboardListIcon },
-      { name: "Packages", href: "/dashboard/package", icon: PiPackageFill },
       { name: "Doctors", href: "/dashboard/doctor", icon: FaUserDoctor },
       { name: "Sample List", href: "/dashboard/sample/add", icon: FaPeriscope },
       // { name: "Sample Collection", href: "/dashboard/sample", icon: ClipboardListIcon },
       // {name : "Patient Details",href : "/dashboard/patientdetails", icon: MdMan}, // Hidden for this release
+    ],
+  },
+  {
+    name: "Package Management",
+    icon: PiPackageFill,
+    children: [
+      { name: "Package List", href: "/dashboard/package?tab=packageList", icon: ClipboardListIcon },
+      { name: "Add Package", href: "/dashboard/package?tab=package", icon: PiPackageFill },
     ],
   },
   {
@@ -103,8 +110,8 @@ export const getNavigation = (pathname: string): NavigationItem[] => {
     // Check if current item is active
     const isCurrentItem = item.href === pathname;
     
-    // Check if any child is active
-    const hasActiveChild = item.children?.some(child => child.href === pathname) || false;
+    // Check if any child is active (ignore query params so ?tab= links match)
+    const hasActiveChild = item.children?.some(child => child.href?.split('?')[0] === pathname) || false;
     
     return {
       ...item,

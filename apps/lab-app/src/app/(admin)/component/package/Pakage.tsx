@@ -8,7 +8,7 @@ import { useLabs } from '@/context/LabContext';
 import { packageDataSchema } from '@/schema/packageDataSchema';
 import { TestList } from '@/types/test/testlist';
 import { useEffect, useState } from 'react';
-import { FiCheck, FiSearch, FiAlertTriangle } from 'react-icons/fi';
+import { FiCheck, FiChevronDown, FiSearch, FiAlertTriangle } from 'react-icons/fi';
 import { FaTimes, FaPlus, FaMinus } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
@@ -240,7 +240,7 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
                   setPackageData({ ...packageData, packageName: filteredValue });
                 }}
                 placeholder="Enter the package name"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none bg-gray-50"
+                className="w-full border border-gray-300 rounded-full px-5 py-3 text-sm bg-white hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors"
               />
             </div>
 
@@ -291,9 +291,9 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
                   min="0"
                   max="100"
                   step="0.01"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-8 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none bg-gray-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-full border border-gray-300 rounded-full px-5 py-3 pr-10 text-sm bg-white hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</div>
+                <div className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</div>
               </div>
             </div>
           </div>
@@ -303,7 +303,7 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
               Available Tests
             </label>
             <div className="relative mb-3">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                 <FiSearch className="text-gray-400" />
               </div>
               <input
@@ -311,8 +311,11 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Search test by name or category..."
-                className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none bg-gray-50"
+                className="w-full pl-12 pr-10 py-3 border border-gray-300 rounded-full text-sm bg-white hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors"
               />
+              <div className="absolute inset-y-0 right-0 pr-5 flex items-center pointer-events-none">
+                <FiChevronDown className="text-gray-400" />
+              </div>
             </div>
 
             <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -324,7 +327,7 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
               ) : (
                 <div className="max-h-[420px] overflow-y-auto">
                   <table className="w-full text-left">
-                    <thead className="sticky top-0 bg-indigo-50">
+                    <thead className="sticky top-0 bg-purple-100">
                       <tr className="text-sm text-gray-600">
                         <th className="px-4 py-3 font-semibold">Code</th>
                         <th className="px-4 py-3 font-semibold">Test Name</th>
@@ -342,11 +345,11 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
                         </tr>
                       ) : (
                         filteredTests.map((test) => (
-                          <tr key={test.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                          <tr key={test.id} className="border-t border-gray-100 hover:bg-purple-50 transition-colors">
                             <td className="px-4 py-3 text-sm font-medium text-gray-700">{test.testCode || '—'}</td>
                             <td className="px-4 py-3 text-sm text-gray-800">{test.name}</td>
                             <td className="px-4 py-3">
-                              <span className="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full">
+                              <span className="text-xs bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full">
                                 {test.category}
                               </span>
                             </td>

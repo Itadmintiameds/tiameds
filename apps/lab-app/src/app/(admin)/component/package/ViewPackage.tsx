@@ -38,16 +38,16 @@ const ViewPackage = ({ packageData, onClose }: ViewPackageProps) => {
       </div>
 
       {/* Included Tests */}
-      <div className="bg-indigo-50 rounded-2xl p-5 mb-5">
+      <div className="bg-purple-50 rounded-2xl p-5 mb-5">
         <h3 className="text-lg font-bold text-gray-900 mb-3">
           Included Tests ({packageData.tests.length})
         </h3>
 
-        <div className="divide-y divide-indigo-100">
+        <div className="divide-y divide-purple-100">
           {packageData.tests.length > 0 ? (
             packageData.tests.map(test => (
               <div key={test.id} className="flex justify-between items-center py-3">
-                <span className="text-base font-medium text-indigo-600">{test.name}</span>
+                <span className="text-base font-medium text-purple-700">{test.name}</span>
                 <span className="text-base text-gray-900">₹{Number(test.price).toFixed(2)}</span>
               </div>
             ))
