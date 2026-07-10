@@ -1619,6 +1619,8 @@ const CommonReportView2 = ({
             const row = entry.row;
             const parameterLabel = isCBCTest ? (row.testParameter || "").toUpperCase() : row.testParameter;
             const status = getStatusIndicator(row.enteredValue, row.normalRange);
+            const rowScore = scoreValue(row.enteredValue, row.normalRange);
+            const isOutOfRange = rowScore.kind === "borderline" || rowScore.kind === "critical";
 
             elements.push(
                 <tr key={`${reportId}-${idx}`}>
@@ -1634,7 +1636,7 @@ const CommonReportView2 = ({
                         {parameterLabel}
                     </td>
                     <td
-                        className="px-1 py-2 text-center text-xs font-semibold"
+                        className={`px-1 py-2 text-center text-xs ${isOutOfRange ? "font-bold" : "font-normal"}`}
                         style={{ color: REPORT_COLORS.neutral900, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.result, whiteSpace: "nowrap", ...RESULT_CELL_VALIGN }}
                     >
                         {row.enteredValue || "N/A"}
