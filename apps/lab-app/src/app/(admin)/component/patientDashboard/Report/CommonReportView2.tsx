@@ -223,6 +223,142 @@ const dedupeSnapshotResults = (results: HealthSnapshotTestResult[]) => {
 // Health Snapshot trend lines always lay dots on a fixed grid of the last N visits.
 const SPARKLINE_MAX_VISITS = 4;
 
+// ---------------------------------------------------------------------------
+// Summary region layout planner
+// ---------------------------------------------------------------------------
+// The four summary cards (Clinical Alert Summary, Key Findings, AI Clinical
+// Observations, Health Snapshot) have wildly different intrinsic heights from one
+// patient to the next: one finding or twenty, a two-line AI note or fifteen lines of
+// it. A hard-coded "alerts | findings" then "ai | snapshot" grid can therefore only
+// ever be balanced for one particular patient, and the row's `items-stretch` inflated
+// the short card's border box to match the tall one -- that stretched, mostly empty
+// box is what printed as the dead white area under Clinical Alert Summary.
+//
+// So: estimate each card's height from its own content, then pick the arrangement
+// that wastes the least space. The estimates only have to *rank* candidate
+// arrangements against each other, so they are deliberately coarse -- a mis-estimate
+// costs a slightly uneven layout, never a broken one. Nothing here writes a height to
+// the DOM; every card stays intrinsically sized.
+//
+// The `imbalance` term in the cost function is load-bearing, not cosmetic: whatever
+// column imbalance survives is absorbed as bottom padding by the short column's last
+// card (see the SUMMARY REGION comment), so keeping it minimal is what keeps that card
+// from looking hollow.
+
+type SummaryCardId = "alerts" | "findings" | "ai" | "snapshot";
+type SummaryCard = { id: SummaryCardId; columnHeight: number; bandHeight: number };
+interface SummaryLayout {
+    /** Cards spanning the full content width, stacked in order, above the columns. */
+    bands: SummaryCardId[];
+    left: SummaryCardId[];
+    right: SummaryCardId[];
+}
+
+// Reading order. The alert tiles are the report's headline and always come first.
+const SUMMARY_CARD_ORDER: SummaryCardId[] = ["alerts", "findings", "ai", "snapshot"];
+
+// Coarse content metrics in CSS px, at the report's 210mm print width. These track the
+// cards' actual typography (11px/1.25 body, 9px/1.25 sub-text, p-2.5 card padding); they
+// only need to be close enough to rank arrangements, so keep them roughly in step with
+// the card CSS rather than exact.
+const SUMMARY_CARD_CHROME_PX = 52; // card padding + title row
+const ALERT_TILES_PX = 92; // the four stat tiles: one row at any width
+const FINDING_ROW_PX = 30; // one two-line finding entry + its row gap
+const SNAPSHOT_ROW_PX = 30; // one test name + sparkline
+const AI_FIELD_LABEL_PX = 13;
+const AI_LINE_PX = 14;
+const AI_FOOTNOTE_PX = 16;
+// ~11px text: characters that fit on one line in a half-width column vs a full-width band.
+const AI_CHARS_PER_COLUMN_LINE = 52;
+const AI_CHARS_PER_BAND_LINE = 110;
+
+// Greedy longest-first 2-partition: drop the tallest remaining card into whichever
+// column is currently shorter. This keeps the two columns within roughly one card's
+// height of each other for any content mix, so neither column trails a long blank
+// tail. Cards are then restored to reading order within their column.
+const packSummaryColumns = (cards: SummaryCard[]) => {
+    const left: SummaryCard[] = [];
+    const right: SummaryCard[] = [];
+    let leftHeight = 0;
+    let rightHeight = 0;
+
+    [...cards]
+        .sort((a, b) => b.columnHeight - a.columnHeight)
+        .forEach((card) => {
+            if (leftHeight <= rightHeight) {
+                left.push(card);
+                leftHeight += card.columnHeight;
+            } else {
+                right.push(card);
+                rightHeight += card.columnHeight;
+            }
+        });
+
+    const byReadingOrder = (a: SummaryCard, b: SummaryCard) =>
+        SUMMARY_CARD_ORDER.indexOf(a.id) - SUMMARY_CARD_ORDER.indexOf(b.id);
+    left.sort(byReadingOrder);
+    right.sort(byReadingOrder);
+
+    // Whichever column the packer happened to give the alert tiles becomes the left
+    // column, so the report always reads Clinical Alert Summary first.
+    const alertsOnRight = right.some((card) => card.id === "alerts");
+    return {
+        left: (alertsOnRight ? right : left).map((card) => card.id),
+        right: (alertsOnRight ? left : right).map((card) => card.id),
+        height: Math.max(leftHeight, rightHeight),
+        imbalance: Math.abs(leftHeight - rightHeight),
+    };
+};
+
+// Promoting a card to a full-width band lets its content flow *wider* instead of
+// taller: the findings list goes two-up, the alert tiles spread out. That is what
+// rescues the lopsided cases -- 20 findings with nothing tall enough to sit opposite
+// them would otherwise strand half a column of white space.
+const SUMMARY_BAND_CANDIDATES: SummaryCardId[][] = [
+    [], // everything in two balanced columns
+    ["alerts"], // alert tiles across the top, the rest in columns
+    ["alerts", "findings"], // + findings flowing two-up across the full width
+    ["alerts", "findings", "ai", "snapshot"], // fully stacked (very few / very lopsided cards)
+];
+
+const planSummaryLayout = (cards: SummaryCard[]): SummaryLayout | null => {
+    if (cards.length === 0) return null;
+
+    const byId = new Map(cards.map((card) => [card.id, card]));
+    let best: SummaryLayout | null = null;
+    let bestCost = Number.POSITIVE_INFINITY;
+
+    SUMMARY_BAND_CANDIDATES.forEach((candidate) => {
+        const bandCards = candidate
+            .map((id) => byId.get(id))
+            .filter((card): card is SummaryCard => Boolean(card));
+        let columnCards = cards.filter((card) => !candidate.includes(card.id));
+
+        // One leftover card would sit half-width beside a blank half. Band it instead.
+        if (columnCards.length === 1) {
+            bandCards.push(columnCards[0]);
+            columnCards = [];
+        }
+
+        const bands = [...bandCards].sort(
+            (a, b) => SUMMARY_CARD_ORDER.indexOf(a.id) - SUMMARY_CARD_ORDER.indexOf(b.id)
+        );
+        const bandsHeight = bands.reduce((sum, card) => sum + card.bandHeight, 0);
+        const columns = packSummaryColumns(columnCards);
+
+        // Wasted space is what makes a report look unprofessional, so imbalance is
+        // scored as heavily as height itself: a taller-but-flush arrangement beats a
+        // shorter one that strands a half-empty column.
+        const cost = bandsHeight + columns.height + columns.imbalance;
+        if (cost < bestCost) {
+            bestCost = cost;
+            best = { bands: bands.map((card) => card.id), left: columns.left, right: columns.right };
+        }
+    });
+
+    return best;
+};
+
 interface TestRow {
     testParameter: string;
     normalRange?: string;
@@ -888,12 +1024,208 @@ const CommonReportView2 = ({
         [visibleSnapshot]
     );
 
-    // Health Snapshot card renders in different rows depending on whether Key Findings
-    // exists: with findings it sits beside AI Clinical Observations; without findings it
-    // moves up beside the Clinical Alert Summary so neither card stretches full-width.
-    const renderHealthSnapshotCard = (flexClassName: string) => (
+    // Which summary cards exist, and how they get arranged, is decided entirely by this
+    // patient's content volume -- see planSummaryLayout. The cards themselves never know
+    // where they land: each renders at w-full and the column/band container sizes it.
+    const summaryLayout = useMemo(() => {
+        const findingsCount = clinicalSummary.findings.length;
+        const snapshotRows = (visibleSnapshot?.tests || []).filter(
+            (test) => dedupeSnapshotResults(test.results).length > 1
+        ).length;
+
+        const aiFieldChars = aiInsights
+            ? [
+                aiInsights.provisionalDiagnosis,
+                aiInsights.patientInterpretation,
+                aiInsights.clinicalInterpretation,
+                aiInsights.tips,
+            ]
+                .filter((lines): lines is string[] => Array.isArray(lines) && lines.length > 0)
+                .map((lines) => lines.join(". ").length)
+            : [];
+
+        const aiHeightAt = (charsPerLine: number) => {
+            // Loading / error / empty all render a single placeholder line.
+            if (!aiInsights) return SUMMARY_CARD_CHROME_PX + AI_LINE_PX;
+            const body = aiFieldChars.reduce(
+                (sum, chars) =>
+                    sum + AI_FIELD_LABEL_PX + Math.max(1, Math.ceil(chars / charsPerLine)) * AI_LINE_PX,
+                0
+            );
+            const doctorToVisit = aiInsights.doctorToVisit ? AI_FIELD_LABEL_PX + AI_LINE_PX : 0;
+            return SUMMARY_CARD_CHROME_PX + body + doctorToVisit + AI_FOOTNOTE_PX;
+        };
+
+        const cards: SummaryCard[] = [
+            {
+                id: "alerts",
+                // The four stat tiles sit on one row whatever the width, so the alert card
+                // is the one card whose height never varies.
+                columnHeight: SUMMARY_CARD_CHROME_PX + ALERT_TILES_PX,
+                bandHeight: SUMMARY_CARD_CHROME_PX + ALERT_TILES_PX,
+            },
+        ];
+        if (findingsCount > 0) {
+            cards.push({
+                id: "findings",
+                // Findings flow one-up in a half-width column, two-up across a full-width band.
+                columnHeight: SUMMARY_CARD_CHROME_PX + findingsCount * FINDING_ROW_PX,
+                bandHeight: SUMMARY_CARD_CHROME_PX + Math.ceil(findingsCount / 2) * FINDING_ROW_PX,
+            });
+        }
+        if (showAiInsights) {
+            cards.push({
+                id: "ai",
+                columnHeight: aiHeightAt(AI_CHARS_PER_COLUMN_LINE),
+                bandHeight: aiHeightAt(AI_CHARS_PER_BAND_LINE),
+            });
+        }
+        if (hasSnapshotTrends) {
+            // Sparklines stretch horizontally, so a wider snapshot card is no shorter.
+            const height = SUMMARY_CARD_CHROME_PX + Math.max(1, snapshotRows) * SNAPSHOT_ROW_PX;
+            cards.push({ id: "snapshot", columnHeight: height, bandHeight: height });
+        }
+
+        return planSummaryLayout(cards);
+    }, [clinicalSummary.findings.length, visibleSnapshot, aiInsights, showAiInsights, hasSnapshotTrends]);
+
+    const renderClinicalAlertCard = () => (
         <div
-            className={`${flexClassName} rounded-xl p-2.5 flex flex-col gap-2`}
+            className="w-full rounded-xl p-2.5 flex flex-col gap-2"
+            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+        >
+            <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>
+                Clinical Alert Summary
+            </h3>
+            {/* Tiles wrap rather than squeeze: flex-basis with a floor, no hardcoded widths. */}
+            <div className="flex flex-wrap items-stretch gap-2">
+                {[
+                    { label: "Critical", sub: "Abnormality", icon: "/report/exclamation-triangle/red.jpg", color: REPORT_COLORS.danger600, value: clinicalSummary.critical },
+                    { label: "Borderline", sub: "Abnormalities", icon: "/report/exclamation-triangle/outline.png", color: REPORT_COLORS.warning500, value: clinicalSummary.borderline },
+                    { label: "Normal", sub: "Parameters", icon: "/report/check-circle/solid.png", color: REPORT_COLORS.success600, value: clinicalSummary.normal },
+                ].map((item) => (
+                    <div
+                        key={item.label}
+                        className="flex-[1_1_70px] p-2 rounded-lg flex flex-col items-center gap-0.5 text-center"
+                        style={{ border: `1px solid ${item.color}` }}
+                    >
+                        <img src={item.icon} alt="" className="w-5 h-5" crossOrigin="anonymous" />
+                        <p className="text-xl font-extrabold" style={{ color: REPORT_COLORS.neutral900 }}>{item.value}</p>
+                        <p className="text-[9px] font-bold uppercase" style={{ color: item.color }}>{item.label}</p>
+                        <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>{item.sub}</p>
+                    </div>
+                ))}
+                <div
+                    className="flex-[1_1_70px] p-2 rounded-lg flex flex-col items-center gap-0.5 text-center"
+                    style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+                >
+                    <img src="/report/Purpose.png" alt="" className="w-5 h-5" crossOrigin="anonymous" />
+                    <p className="text-sm font-extrabold text-center" style={{ color: REPORT_COLORS.secondary800 }}>{clinicalSummary.overallRisk || "—"}</p>
+                    <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>Overall Risk Score</p>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderKeyFindingsCard = () => (
+        <div
+            className="w-full rounded-xl p-2.5 flex flex-col gap-1.5"
+            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+        >
+            <h3 className="text-xs font-bold uppercase px-1" style={{ color: REPORT_COLORS.secondary800 }}>
+                Key Findings for Doctor
+            </h3>
+            {/* Every abnormal finding is listed (no "+N more" cutoff). The 300px basis with a
+                280px floor is what makes the card self-adapting: one finding per row inside a
+                half-width column, two per row when the planner promotes this card to a
+                full-width band -- which halves its height without touching a media query. */}
+            <div className="px-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                {clinicalSummary.findings.map((finding, idx) => {
+                    const badge = getFindingBadge(finding);
+                    const paramLabel = finding.row.testParameter || finding.report.testName;
+                    const valueLabel = `${finding.row.enteredValue || "N/A"}${finding.row.unit ? ` ${finding.row.unit}` : ""}`;
+                    return (
+                        <div key={`${finding.report.reportId}-${idx}`} className="flex-[1_1_300px] min-w-[280px] flex items-start justify-between gap-2 py-0.5">
+                            <div className="flex items-start gap-1.5">
+                                <span className="mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: badge.color }} />
+                                <div>
+                                    <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral900 }}>
+                                        <span className="font-bold">{paramLabel} : </span>
+                                        <span className="font-extrabold">{valueLabel}</span>
+                                    </p>
+                                    <p className="text-[9px] leading-tight" style={{ color: REPORT_COLORS.neutral600 }}>Reference : {finding.row.normalRange || "N/A"}</p>
+                                </div>
+                            </div>
+                            {/* Explicit inline-block + px line-height: html2canvas doesn't
+                                blockify flex children, so an inline span with py padding paints
+                                its pill background offset from the text baseline in the PDF,
+                                clipping the label. Sizing via line-height keeps text centered
+                                in both the browser and the capture clone. */}
+                            <span
+                                className="inline-block px-1.5 rounded text-[8px] leading-[14px] font-extrabold flex-shrink-0 whitespace-nowrap"
+                                style={{ backgroundColor: badge.color, color: REPORT_COLORS.white }}
+                            >
+                                {badge.label}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+
+    const renderAiObservationsCard = () => (
+        <div
+            className="w-full rounded-xl p-2.5 flex flex-col gap-1.5"
+            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+        >
+            <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
+                    <img src="/report/reddit.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
+                </span>
+                <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>AI Clinical Observations</h3>
+            </div>
+            {aiInsightsLoading ? (
+                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Generating AI observations...</p>
+            ) : aiInsightsError ? (
+                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>AI observations unavailable for this report.</p>
+            ) : aiInsights ? (
+                <div className="flex flex-col gap-1.5 px-1">
+                    {[
+                        { label: "Provisional Diagnosis", value: aiInsights.provisionalDiagnosis },
+                        { label: "Patient Interpretation", value: aiInsights.patientInterpretation },
+                        { label: "Clinical Interpretation", value: aiInsights.clinicalInterpretation },
+                        { label: "Tips", value: aiInsights.tips },
+                    ].filter((field) => field.value && field.value.length > 0).map((field) => (
+                        <div key={field.label}>
+                            <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>{field.label}</p>
+                            {/* Run the points together as flowing sentences instead of
+                                stacking bullets. */}
+                            <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
+                                {field.value!.map((line) => line.trim().replace(/[.;,]+$/, "")).join(". ")}.
+                            </p>
+                        </div>
+                    ))}
+                    {aiInsights.doctorToVisit && (
+                        <div>
+                            <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>Doctor to Visit</p>
+                            <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>{aiInsights.doctorToVisit}</p>
+                        </div>
+                    )}
+                    <p className="text-[9px] mt-0.5" style={{ color: REPORT_COLORS.secondary800 }}>
+                        <span className="font-semibold">Note: </span>
+                        <span className="font-normal">This is an AI generated observation based on lab values only. Not a diagnosis.</span>
+                    </p>
+                </div>
+            ) : (
+                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>No AI observations available yet.</p>
+            )}
+        </div>
+    );
+
+    const renderHealthSnapshotCard = () => (
+        <div
+            className="w-full rounded-xl p-2.5 flex flex-col gap-2"
             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
         >
             <div className="flex items-center gap-2">
@@ -952,6 +1284,19 @@ const CommonReportView2 = ({
             })()}
         </div>
     );
+
+    const renderSummaryCard = (id: SummaryCardId) => {
+        switch (id) {
+            case "alerts":
+                return renderClinicalAlertCard();
+            case "findings":
+                return renderKeyFindingsCard();
+            case "ai":
+                return renderAiObservationsCard();
+            case "snapshot":
+                return renderHealthSnapshotCard();
+        }
+    };
 
     const totalReports = reportsData.length;
     const selectedCount = selectedReportIds.length;
@@ -1070,9 +1415,25 @@ const CommonReportView2 = ({
         return slices;
     };
 
-    // firstChunkMaxHeightPx lets the first chunk be sized to whatever space is left on the
-    // current PDF page (so a table can start mid-page) while later chunks get a full page.
-    const chunkTableElementByRows = (tableWrapper: HTMLElement, maxChunkHeightPx: number, firstChunkMaxHeightPx?: number) => {
+    // The three chunk positions get different budgets, because the space available to them
+    // genuinely differs:
+    //   first  -- whatever is left of the current page, so a table can start mid-page
+    //             (firstChunkMaxHeightPx)
+    //   middle -- a whole page (maxChunkHeightPx)
+    //   final  -- a whole page MINUS whatever has to be drawn under the table, i.e. the
+    //             closing block (finalChunkLimitPx)
+    // Only the final chunk owes the closing block any room. Charging that reserve to the
+    // first chunk instead leaves a footer-sized band of white on the page where the table
+    // starts, for a footer that is only drawn pages later.
+    // finalChunkLimitPx is a callback rather than a number because the last chunk's budget
+    // depends on how many chunks there turn out to be: a table that packs into one chunk is
+    // still sitting on the current page, while any later chunk starts a page of its own.
+    const chunkTableElementByRows = (
+        tableWrapper: HTMLElement,
+        maxChunkHeightPx: number,
+        firstChunkMaxHeightPx?: number,
+        finalChunkLimitPx?: (chunkCount: number) => number
+    ) => {
         const sourceTable = tableWrapper.querySelector("table");
         if (!sourceTable) {
             return [tableWrapper.cloneNode(true) as HTMLElement];
@@ -1093,8 +1454,6 @@ const CommonReportView2 = ({
         measurementHost.style.pointerEvents = "none";
         document.body.appendChild(measurementHost);
 
-        const chunks: HTMLElement[] = [];
-
         const createChunk = () => {
             const wrapperClone = tableWrapper.cloneNode(false) as HTMLElement;
             const tableClone = sourceTable.cloneNode(false) as HTMLTableElement;
@@ -1109,47 +1468,92 @@ const CommonReportView2 = ({
             return { wrapperClone, tbody };
         };
 
-        let currentChunk = createChunk();
-        measurementHost.appendChild(currentChunk.wrapperClone);
+        // Greedy row packing under a per-chunk budget. Reports the height each chunk settled
+        // at, so the caller can re-pack if the chunk that ended up last is too tall for what
+        // has to be drawn beneath it.
+        const packRows = (limitAt: (chunkIndex: number) => number) => {
+            const nodes: HTMLElement[] = [];
+            const heights: number[] = [];
+            let currentChunk = createChunk();
+            measurementHost.appendChild(currentChunk.wrapperClone);
 
-        sourceRows.forEach((row) => {
-            const candidateRow = row.cloneNode(true) as HTMLTableRowElement;
-            currentChunk.tbody.appendChild(candidateRow);
+            const sealChunk = () => {
+                nodes.push(currentChunk.wrapperClone.cloneNode(true) as HTMLElement);
+                heights.push(currentChunk.wrapperClone.offsetHeight);
+            };
 
-            const hasMultipleRows = currentChunk.tbody.children.length > 1;
-            const chunkLimitPx = chunks.length === 0 && firstChunkMaxHeightPx !== undefined ? firstChunkMaxHeightPx : maxChunkHeightPx;
-            if (currentChunk.wrapperClone.offsetHeight > chunkLimitPx && hasMultipleRows) {
-                currentChunk.tbody.removeChild(candidateRow);
+            sourceRows.forEach((row) => {
+                const candidateRow = row.cloneNode(true) as HTMLTableRowElement;
+                currentChunk.tbody.appendChild(candidateRow);
 
-                // A section-title band ("2. COMPLETE HAEMOGRAM", "DIFFERENTIAL COUNT", ...)
-                // must not be stranded as the last row of a page -- carry it into the next
-                // chunk so it starts the new page right above its data rows.
-                const carryRows: Element[] = [];
-                while (
-                    currentChunk.tbody.children.length > 1 &&
-                    currentChunk.tbody.lastElementChild?.getAttribute("data-section-title-row") === "true"
-                ) {
-                    const titleRow = currentChunk.tbody.lastElementChild;
-                    currentChunk.tbody.removeChild(titleRow);
-                    carryRows.unshift(titleRow);
+                const hasMultipleRows = currentChunk.tbody.children.length > 1;
+                if (currentChunk.wrapperClone.offsetHeight > limitAt(nodes.length) && hasMultipleRows) {
+                    currentChunk.tbody.removeChild(candidateRow);
+
+                    // A section-title band ("2. COMPLETE HAEMOGRAM", "DIFFERENTIAL COUNT", ...)
+                    // must not be stranded as the last row of a page -- carry it into the next
+                    // chunk so it starts the new page right above its data rows.
+                    const carryRows: Element[] = [];
+                    while (
+                        currentChunk.tbody.children.length > 1 &&
+                        currentChunk.tbody.lastElementChild?.getAttribute("data-section-title-row") === "true"
+                    ) {
+                        const titleRow = currentChunk.tbody.lastElementChild;
+                        currentChunk.tbody.removeChild(titleRow);
+                        carryRows.unshift(titleRow);
+                    }
+
+                    sealChunk();
+                    measurementHost.removeChild(currentChunk.wrapperClone);
+
+                    currentChunk = createChunk();
+                    measurementHost.appendChild(currentChunk.wrapperClone);
+                    carryRows.forEach((carried) => currentChunk.tbody.appendChild(carried));
+                    currentChunk.tbody.appendChild(row.cloneNode(true));
                 }
+            });
 
-                chunks.push(currentChunk.wrapperClone.cloneNode(true) as HTMLElement);
-                measurementHost.removeChild(currentChunk.wrapperClone);
-
-                currentChunk = createChunk();
-                measurementHost.appendChild(currentChunk.wrapperClone);
-                carryRows.forEach((carried) => currentChunk.tbody.appendChild(carried));
-                currentChunk.tbody.appendChild(row.cloneNode(true));
+            if (currentChunk.tbody.children.length > 0) {
+                sealChunk();
             }
-        });
+            measurementHost.removeChild(currentChunk.wrapperClone);
+            return { nodes, heights };
+        };
 
-        if (currentChunk.tbody.children.length > 0) {
-            chunks.push(currentChunk.wrapperClone.cloneNode(true) as HTMLElement);
+        // A budget is only ever tightened, never relaxed, so re-packing always pushes rows
+        // forward and the chunk count can only grow -- which is what makes the loop below settle.
+        const tightenedLimits = new Map<number, number>();
+        const limitAt = (chunkIndex: number) => {
+            const budget =
+                chunkIndex === 0 && firstChunkMaxHeightPx !== undefined ? firstChunkMaxHeightPx : maxChunkHeightPx;
+            const tightened = tightenedLimits.get(chunkIndex);
+            return tightened === undefined ? budget : Math.max(1, Math.min(budget, tightened));
+        };
+
+        let packed = packRows(limitAt);
+
+        // Now that the chunk count is known, check the chunk that actually ends the table: if
+        // the closing block cannot fit under it, cap it and re-pack. Its tail rows spill into
+        // one more chunk, which begins a fresh page with room to spare for the footer. In the
+        // common case the final chunk is a short remainder that already fits, and this costs
+        // one comparison and no re-pack.
+        if (finalChunkLimitPx) {
+            for (let pass = 0; pass < 3; pass += 1) {
+                const finalIndex = packed.nodes.length - 1;
+                if (finalIndex < 0) {
+                    break;
+                }
+                const finalLimit = Math.max(1, finalChunkLimitPx(packed.nodes.length));
+                if (packed.heights[finalIndex] <= finalLimit) {
+                    break;
+                }
+                tightenedLimits.set(finalIndex, finalLimit);
+                packed = packRows(limitAt);
+            }
         }
 
         document.body.removeChild(measurementHost);
-        return chunks.length > 0 ? chunks : [tableWrapper.cloneNode(true) as HTMLElement];
+        return packed.nodes.length > 0 ? packed.nodes : [tableWrapper.cloneNode(true) as HTMLElement];
     };
 
     const printReports = async () => {
@@ -1190,11 +1594,9 @@ const CommonReportView2 = ({
             document.body.appendChild(tempContainer);
 
             let headerCanvas: HTMLCanvasElement | null = null;
-            let signatureCanvas: HTMLCanvasElement | null = null;
-            let footerCanvas: HTMLCanvasElement | null = null;
+            let closingCanvas: HTMLCanvasElement | null = null;
             let headerHeightMm = 0;
-            let signatureHeightMm = 0;
-            let footerHeightMm = 0;
+            let closingHeightMm = 0;
             const pageTemplateSection = sections[0].cloneNode(true) as HTMLElement;
             pageTemplateSection.style.width = "210mm";
             pageTemplateSection.style.maxWidth = "210mm";
@@ -1206,33 +1608,39 @@ const CommonReportView2 = ({
             tempContainer.appendChild(pageTemplateSection);
 
             const headerTemplate = pageTemplateSection.querySelector('[data-print-role="header"]') as HTMLElement | null;
-            const signatureTemplate = pageTemplateSection.querySelector('[data-print-role="signature"]') as HTMLElement | null;
-            const footerTemplate = pageTemplateSection.querySelector('[data-print-role="footer"]') as HTMLElement | null;
+            const closingTemplate = pageTemplateSection.querySelector('[data-print-role="closing"]') as HTMLElement | null;
 
             if (headerTemplate) {
                 stripBlockMargins(headerTemplate);
                 headerCanvas = await renderNodeToCanvas(headerTemplate, renderScale);
                 headerHeightMm = canvasToMm(headerCanvas, PAGE_WIDTH_MM).heightMm;
             }
-            if (signatureTemplate) {
-                stripBlockMargins(signatureTemplate);
-                signatureCanvas = await renderNodeToCanvas(signatureTemplate, renderScale);
-                signatureHeightMm = canvasToMm(signatureCanvas, PAGE_WIDTH_MM).heightMm;
-            }
-            if (footerTemplate) {
-                stripBlockMargins(footerTemplate);
-                footerCanvas = await renderNodeToCanvas(footerTemplate, renderScale);
-                footerHeightMm = canvasToMm(footerCanvas, PAGE_WIDTH_MM).heightMm;
+            if (closingTemplate) {
+                stripBlockMargins(closingTemplate);
+                closingCanvas = await renderNodeToCanvas(closingTemplate, renderScale);
+                closingHeightMm = canvasToMm(closingCanvas, PAGE_WIDTH_MM).heightMm;
             }
             tempContainer.removeChild(pageTemplateSection);
 
             const contentTopMm = TOP_MARGIN_MM + (headerHeightMm > 0 ? headerHeightMm + BLOCK_GAP_MM : 0);
-            // Signature/footer are no longer reserved on every page -- they're appended to the
-            // normal content flow after the last block, so a report that fits on one page (the
-            // Figma target) actually stays on one page instead of leaving a permanent blank gap
-            // sized for a footer that only ever gets drawn on the final page.
+            // The closing block isn't reserved on every page -- it's appended to the normal
+            // content flow after the last block, so a report that fits on one page actually
+            // stays on one page instead of leaving a permanent blank gap sized for a footer
+            // that only ever gets drawn on the final page.
             const contentBottomMm = PAGE_HEIGHT_MM - BOTTOM_MARGIN_MM - CONTENT_SAFETY_MM;
             const usableContentHeightMm = contentBottomMm - contentTopMm > 0 ? contentBottomMm - contentTopMm : USABLE_HEIGHT_MM;
+
+            // Bottom limit that applies only to the *final* piece of content, so signature +
+            // footer land on the same page as the content they close. Without this the last
+            // table row could sit 5mm above the bottom margin and shunt the whole closing block
+            // onto a page of its own. If the closing block is somehow taller than a whole page,
+            // reserving for it is hopeless -- fall back to the normal limit.
+            const closingReserveMm = closingHeightMm > 0 ? closingHeightMm + BLOCK_GAP_MM : 0;
+            const closingFitsOnAPage = closingReserveMm > 0 && closingReserveMm < usableContentHeightMm;
+            const finalContentBottomMm = closingFitsOnAPage ? contentBottomMm - closingReserveMm : contentBottomMm;
+            // A heading (or any keep-with-next block) must be followed by at least this much of
+            // the next block on the same page, otherwise it is an orphan and we break before it.
+            const KEEP_WITH_NEXT_MIN_FOLLOW_MM = 24;
 
             let currentPageNumber = 1;
             const contentPages = new Set<number>();
@@ -1246,11 +1654,18 @@ const CommonReportView2 = ({
                 hasContentOnPage = false;
             };
 
-            const placeCanvasWithPagination = (canvas: HTMLCanvasElement) => {
+            // bottomLimitMm lets a caller shrink the page for one particular block -- used to
+            // reserve room for the closing block under the last piece of content. reserveAfterMm
+            // additionally demands that some of the *next* block fits too (keep-with-next).
+            const placeCanvasWithPagination = (
+                canvas: HTMLCanvasElement,
+                bottomLimitMm: number = contentBottomMm,
+                reserveAfterMm = 0
+            ) => {
                 const { widthMm, heightMm } = canvasToMm(canvas, PAGE_WIDTH_MM);
-                const remainingMm = contentBottomMm - currentY;
+                const remainingMm = bottomLimitMm - currentY;
 
-                if (heightMm <= remainingMm) {
+                if (heightMm + reserveAfterMm <= remainingMm) {
                     addCanvasAtCursor(pdf, canvas, MARGIN_X_MM, currentY, widthMm, heightMm);
                     currentY += heightMm + BLOCK_GAP_MM;
                     hasContentOnPage = true;
@@ -1258,6 +1673,9 @@ const CommonReportView2 = ({
                     return;
                 }
 
+                // Doesn't fit here but fits on a page of its own: move the whole block rather
+                // than splitting it. This is what "never split a card down the middle" means in
+                // a canvas pipeline -- CSS break-inside has no effect on an html2canvas capture.
                 if (heightMm <= usableContentHeightMm) {
                     if (hasContentOnPage) {
                         startNewPage();
@@ -1269,6 +1687,8 @@ const CommonReportView2 = ({
                     return;
                 }
 
+                // Last resort: a single block taller than a whole page (a very long AI note, a
+                // huge findings list). Nothing can keep it intact, so slice the bitmap.
                 const pxPerMm = canvas.height / heightMm;
                 const maxSliceHeightPx = Math.max(1, Math.floor(usableContentHeightMm * pxPerMm));
                 const slices = sliceCanvasByHeight(canvas, maxSliceHeightPx);
@@ -1346,23 +1766,33 @@ const CommonReportView2 = ({
                 const topLevelBlocks = blocks.filter((block) => !block.parentElement?.closest("[data-print-block]"));
                 const contentBlocks = topLevelBlocks.filter((block) => {
                     const role = block.getAttribute("data-print-role");
-                    return role !== "header" && role !== "signature" && role !== "footer";
+                    return role !== "header" && role !== "closing";
                 });
                 const nodesToRender = contentBlocks.length > 0 ? contentBlocks : [sectionClone];
                 nodesToRender.forEach(stripBlockMargins);
 
-                for (const node of nodesToRender) {
+                for (let nodeIndex = 0; nodeIndex < nodesToRender.length; nodeIndex += 1) {
+                    const node = nodesToRender[nodeIndex];
                     const isTableBlock = node.getAttribute("data-print-table") === "true";
+                    const isLastContentNode = nodeIndex === nodesToRender.length - 1;
+                    // Only the final piece of content has to leave room for the closing block.
+                    const nodeBottomMm = isLastContentNode ? finalContentBottomMm : contentBottomMm;
+                    const keepWithNext =
+                        node.getAttribute("data-print-keep-with-next") === "true" && !isLastContentNode;
 
                     if (!isTableBlock) {
                         const canvas = await renderNodeToCanvas(node, renderScale);
-                        placeCanvasWithPagination(canvas);
+                        placeCanvasWithPagination(
+                            canvas,
+                            nodeBottomMm,
+                            keepWithNext ? KEEP_WITH_NEXT_MIN_FOLLOW_MM : 0
+                        );
                         continue;
                     }
 
                     const fullCanvas = await renderNodeToCanvas(node, renderScale);
                     const fullDims = canvasToMm(fullCanvas, PAGE_WIDTH_MM);
-                    const remainingMm = contentBottomMm - currentY;
+                    const remainingMm = nodeBottomMm - currentY;
 
                     if (fullDims.heightMm <= remainingMm) {
                         addCanvasAtCursor(pdf, fullCanvas, MARGIN_X_MM, currentY, fullDims.widthMm, fullDims.heightMm);
@@ -1382,28 +1812,70 @@ const CommonReportView2 = ({
                     // to slicing the canvas mid-row.
                     const cssPxPerMm = node.offsetWidth > 0 ? node.offsetWidth / PAGE_WIDTH_MM : 96 / 25.4;
                     const maxChunkHeightPx = Math.max(1, Math.floor(usableContentHeightMm * cssPxPerMm));
+
+                    // Chunks are budgeted against the real page bottom, NOT nodeBottomMm. The
+                    // results table is the last content block, so nodeBottomMm carries the
+                    // closing-block reserve -- and charging that reserve to the chunk the table
+                    // STARTS on left a footer-sized band of white above the page break, on a page
+                    // the footer is never drawn on. Only the chunk that ends the table owes the
+                    // footer room, which is what finalChunkLimitPx settles below.
+                    const pageRemainingMm = contentBottomMm - currentY;
+
                     // Too little room left even for the header row plus a few results: start the
                     // table on the next page instead of stranding a sliver.
                     const MIN_TABLE_START_MM = 30;
-                    let firstChunkMm = remainingMm;
-                    if (remainingMm < MIN_TABLE_START_MM) {
+                    let firstChunkMm = pageRemainingMm;
+                    if (pageRemainingMm < MIN_TABLE_START_MM) {
                         if (hasContentOnPage) {
                             startNewPage();
                         }
                         firstChunkMm = usableContentHeightMm;
                     }
-                    // Shave 1mm off the first chunk budget so rounding can't push it past the
-                    // measured remaining space and onto a new page anyway.
+                    // Shave 1mm off the budgets so rounding can't push a chunk past the measured
+                    // space and onto a new page anyway.
                     const firstChunkHeightPx = Math.max(1, Math.floor((firstChunkMm - 1) * cssPxPerMm));
-                    const chunkNodes = chunkTableElementByRows(node, maxChunkHeightPx, firstChunkHeightPx);
 
-                    for (const chunkNode of chunkNodes) {
+                    // Height the final chunk may take for the closing block to still land beneath
+                    // it. A table that packs into a single chunk has not left the current page, so
+                    // it measures down from currentY; any later chunk starts a fresh page at
+                    // contentTopMm. Never squeeze that chunk below the minimum worth printing --
+                    // a page whose leftovers are thinner than that keeps its rows and lets the
+                    // footer take the next page rather than emitting a one-row chunk.
+                    const finalChunkLimitPx =
+                        isLastContentNode && closingFitsOnAPage
+                            ? (chunkCount: number) => {
+                                  const availableMm =
+                                      chunkCount === 1
+                                          ? finalContentBottomMm - currentY
+                                          : usableContentHeightMm - closingReserveMm;
+                                  return Math.floor((Math.max(availableMm, MIN_TABLE_START_MM) - 1) * cssPxPerMm);
+                              }
+                            : undefined;
+
+                    const chunkNodes = chunkTableElementByRows(
+                        node,
+                        maxChunkHeightPx,
+                        firstChunkHeightPx,
+                        finalChunkLimitPx
+                    );
+
+                    for (let chunkIndex = 0; chunkIndex < chunkNodes.length; chunkIndex += 1) {
+                        const chunkNode = chunkNodes[chunkIndex];
                         tempContainer.appendChild(chunkNode);
                         const chunkCanvas = await renderNodeToCanvas(chunkNode, renderScale);
                         tempContainer.removeChild(chunkNode);
 
                         const chunkDims = canvasToMm(chunkCanvas, PAGE_WIDTH_MM);
-                        const chunkRemainingMm = contentBottomMm - currentY;
+                        // The final chunk of the final block is the one the closing block has to
+                        // follow, so it -- and only it -- honours the reserved bottom limit.
+                        // Reserving on the intermediate chunks too would cost ~1 closing block of
+                        // blank space on every page the table spans.
+                        const isFinalChunk = isLastContentNode && chunkIndex === chunkNodes.length - 1;
+                        const chunkBottomMm =
+                            isFinalChunk && chunkDims.heightMm + closingReserveMm <= usableContentHeightMm
+                                ? finalContentBottomMm
+                                : contentBottomMm;
+                        const chunkRemainingMm = chunkBottomMm - currentY;
                         if (chunkDims.heightMm > chunkRemainingMm && hasContentOnPage) {
                             startNewPage();
                         }
@@ -1435,14 +1907,11 @@ const CommonReportView2 = ({
                 tempContainer.removeChild(sectionClone);
             }
 
-            // Signature and footer are just the last two blocks in the flow: they land right after
-            // the content on the same page when there's room (the Figma single-page case), and only
-            // push to a new page if they genuinely don't fit.
-            if (signatureCanvas && signatureHeightMm > 0) {
-                placeCanvasWithPagination(signatureCanvas);
-            }
-            if (footerCanvas && footerHeightMm > 0) {
-                placeCanvasWithPagination(footerCanvas);
+            // Signature + footer are one atomic block at the end of the flow. The last content
+            // block already reserved room for it (finalContentBottomMm), so in practice it lands
+            // directly under the content rather than on a page of its own.
+            if (closingCanvas && closingHeightMm > 0) {
+                placeCanvasWithPagination(closingCanvas);
             }
 
             const pagesToStamp = Array.from(contentPages).sort((a, b) => a - b);
@@ -2043,210 +2512,63 @@ const CommonReportView2 = ({
                         </div>
                     </div>
 
-                    {/* ================= CLINICAL ALERT SUMMARY + KEY FINDINGS ================= */}
-                    <div className="mt-2 flex flex-wrap items-stretch gap-3" data-print-block>
-                        <div
-                            className="flex-[1_1_300px] min-w-[260px] rounded-xl p-2.5 flex flex-col gap-2"
-                            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                        >
-                            <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Clinical Alert Summary</h3>
-                            <div className="flex items-stretch gap-2">
-                                {[
-                                    { label: "Critical", sub: "Abnormality", icon: "/report/exclamation-triangle/red.jpg", color: REPORT_COLORS.danger600, value: clinicalSummary.critical },
-                                    { label: "Borderline", sub: "Abnormalities", icon: "/report/exclamation-triangle/outline.png", color: REPORT_COLORS.warning500, value: clinicalSummary.borderline },
-                                    { label: "Normal", sub: "Parameters", icon: "/report/check-circle/solid.png", color: REPORT_COLORS.success600, value: clinicalSummary.normal },
-                                ].map((item) => (
-                                    <div
-                                        key={item.label}
-                                        className="flex-1 p-2 rounded-lg flex flex-col items-center gap-0.5 text-center"
-                                        style={{ border: `1px solid ${item.color}` }}
-                                    >
-                                        <img src={item.icon} alt="" className="w-5 h-5" crossOrigin="anonymous" />
-                                        <p className="text-xl font-extrabold" style={{ color: REPORT_COLORS.neutral900 }}>{item.value}</p>
-                                        <p className="text-[9px] font-bold uppercase" style={{ color: item.color }}>{item.label}</p>
-                                        <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>{item.sub}</p>
-                                    </div>
-                                ))}
-                                <div
-                                    className="flex-1 p-2 rounded-lg flex flex-col items-center gap-0.5 text-center"
-                                    style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                                >
-                                    <img src="/report/Purpose.png" alt="" className="w-5 h-5" crossOrigin="anonymous" />
-                                    <p className="text-sm font-extrabold text-center" style={{ color: REPORT_COLORS.secondary800 }}>{clinicalSummary.overallRisk || "—"}</p>
-                                    <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>Overall Risk Score</p>
-                                </div>
-                            </div>
-                        </div>
-                        {/* Key Findings card only renders when there is at least one abnormal finding. */}
-                        {clinicalSummary.findings.length > 0 && (
-                        <div
-                            className="flex-[1_1_280px] min-w-[260px] rounded-xl p-2.5 flex flex-col gap-1.5"
-                            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                        >
-                            <h3 className="text-xs font-bold uppercase px-1" style={{ color: REPORT_COLORS.secondary800 }}>Key Findings for Doctor</h3>
-                            {/* Every abnormal finding is listed (no "+N more" cutoff). Compact
-                                type (11px/9px, same as the other summary cards) and a wrapping
-                                two-column flow keep the card short so the PDF needs fewer pages. */}
-                            <div className="p-1 flex flex-wrap gap-x-3 gap-y-1">
-                                {clinicalSummary.findings.map((finding, idx) => {
-                                    const badge = getFindingBadge(finding);
-                                    const paramLabel = finding.row.testParameter || finding.report.testName;
-                                    const valueLabel = `${finding.row.enteredValue || "N/A"}${finding.row.unit ? ` ${finding.row.unit}` : ""}`;
-                                    return (
-                                        <div key={`${finding.report.reportId}-${idx}`} className="flex-[1_1_200px] min-w-[190px] flex items-start justify-between gap-2">
-                                            <div className="flex items-start gap-1.5">
-                                                <span className="mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: badge.color }} />
-                                                <div>
-                                                    <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral900 }}>
-                                                        <span className="font-bold">{paramLabel} : </span>
-                                                        <span className="font-extrabold">{valueLabel}</span>
-                                                    </p>
-                                                    <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>Reference : {finding.row.normalRange || "N/A"}</p>
-                                                </div>
-                                            </div>
-                                            {/* Explicit inline-block + px line-height: html2canvas doesn't
-                                                blockify flex children, so an inline span with py padding paints
-                                                its pill background offset from the text baseline in the PDF,
-                                                clipping the label. Sizing via line-height keeps text centered
-                                                in both the browser and the capture clone. */}
-                                            <span
-                                                className="inline-block px-1.5 rounded text-[8px] leading-[14px] font-extrabold flex-shrink-0 whitespace-nowrap"
-                                                style={{ backgroundColor: badge.color, color: REPORT_COLORS.white }}
-                                            >
-                                                {badge.label}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                        )}
-                        {/* No abnormal findings: Health Snapshot takes Key Findings' slot so the
-                            Clinical Alert Summary doesn't stretch across the full width. */}
-                        {clinicalSummary.findings.length === 0 && hasSnapshotTrends && renderHealthSnapshotCard("flex-[1_1_280px] min-w-[260px]")}
-                    </div>
+                    {/* ================= SUMMARY REGION =================
+                        Which cards exist, which are promoted to full-width bands, and which
+                        column each one lands in is decided per patient by planSummaryLayout
+                        from the actual content volume -- not hardcoded.
 
-                    {/* Row skipped entirely when the AI card is disabled and Health Snapshot
-                        has nothing to show here. */}
-                    {(showAiInsights || (clinicalSummary.findings.length > 0 && hasSnapshotTrends)) && (
-                    <div className="mt-2 flex flex-wrap items-start gap-3" data-print-block>
-                        {showAiInsights && (
-                        <div className="flex-1 min-w-[260px] flex flex-col gap-3">
-                            <div
-                                className="rounded-xl p-2.5 flex flex-col gap-1.5"
-                                style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
-                                        <img src="/report/reddit.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
-                                    </span>
-                                    <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>AI Clinical Observations</h3>
+                        The row is exactly as tall as its taller column. Cards are atomic, so the
+                        two columns can never total the same height, and the shorter one's
+                        leftover used to surface as a naked white notch between the last card and
+                        the results table -- resized by every patient's content, which is why the
+                        gap looked arbitrary. It cannot be deleted, only relocated: the columns
+                        stretch to the row, and the trailing card of the short column takes the
+                        slack as its own bottom padding (flex-1, content still top-aligned). The
+                        region therefore always ends flush and the table follows at one BLOCK_GAP.
+                        planSummaryLayout keeps that slack at its minimum by scoring imbalance,
+                        so no card is ever inflated the way items-stretch used to inflate them.
+
+                        Each band and the column row is its own print block, so pagination can
+                        break between them instead of shunting the whole region to a new page. */}
+                    {summaryLayout && (
+                        <div className="mt-2 flex flex-col gap-3">
+                            {summaryLayout.bands.map((id) => (
+                                <div key={id} data-print-block>
+                                    {renderSummaryCard(id)}
                                 </div>
-                                {aiInsightsLoading ? (
-                                    <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Generating AI observations...</p>
-                                ) : aiInsightsError ? (
-                                    <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>AI observations unavailable for this report.</p>
-                                ) : aiInsights ? (
-                                    <div className="flex flex-col gap-1.5 px-1">
-                                        {[
-                                            { label: "Provisional Diagnosis", value: aiInsights.provisionalDiagnosis },
-                                            { label: "Patient Interpretation", value: aiInsights.patientInterpretation },
-                                            { label: "Clinical Interpretation", value: aiInsights.clinicalInterpretation },
-                                            { label: "Tips", value: aiInsights.tips },
-                                        ].filter((field) => field.value && field.value.length > 0).map((field) => (
-                                            <div key={field.label}>
-                                                <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>{field.label}</p>
-                                                {/* Run the points together as flowing sentences instead of
-                                                    stacking bullets. */}
-                                                <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
-                                                    {field.value!.map((line) => line.trim().replace(/[.;,]+$/, "")).join(". ")}.
-                                                </p>
+                            ))}
+                            {(summaryLayout.left.length > 0 || summaryLayout.right.length > 0) && (
+                                <div className="flex flex-wrap items-stretch gap-3" data-print-block>
+                                    {[summaryLayout.left, summaryLayout.right]
+                                        .filter((column) => column.length > 0)
+                                        .map((column) => (
+                                            <div key={column.join("-")} className="flex-1 min-w-[260px] flex flex-col gap-3">
+                                                {column.map((id, index) => (
+                                                    <div
+                                                        key={id}
+                                                        className={index === column.length - 1 ? "flex-1 flex" : undefined}
+                                                    >
+                                                        {renderSummaryCard(id)}
+                                                    </div>
+                                                ))}
                                             </div>
                                         ))}
-                                        {aiInsights.doctorToVisit && (
-                                            <div>
-                                                <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>Doctor to Visit</p>
-                                                <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>{aiInsights.doctorToVisit}</p>
-                                            </div>
-                                        )}
-                                        <p className="text-[9px] mt-0.5" style={{ color: REPORT_COLORS.secondary800 }}>
-                                            <span className="font-semibold">Note: </span>
-                                            <span className="font-normal">This is an AI generated observation based on lab values only. Not a diagnosis.</span>
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>No AI observations available yet.</p>
-                                )}
-                            </div>
-                            {/* ================= CLINICAL ATTENTION REQUIRED (disabled) =================
-                            <div
-                                className="rounded-xl p-2.5 flex flex-col gap-1.5"
-                                style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
-                                        <img src="/report/Purpose.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
-                                    </span>
-                                    <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>Clinical Attention Required</h3>
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                    <div className="flex flex-col gap-0.5">
-                                        <p className="text-[11px] font-extrabold" style={{ color: REPORT_COLORS.warning500 }}>HIGH PRIORITY</p>
-                                        {highPriorityFindings.length === 0 ? (
-                                            <p className="text-[11px] italic" style={{ color: REPORT_COLORS.neutral600 }}>No critical abnormalities detected.</p>
-                                        ) : (
-                                            <div className="flex flex-col gap-0.5">
-                                                {highPriorityFindings.slice(0, 2).map((finding, idx) => (
-                                                    <p key={idx} className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
-                                                        {(finding.row.testParameter || finding.report.testName)} {finding.direction === "high" ? "elevated" : "reduced"} ({finding.row.enteredValue}). Requires clinical correlation.
-                                                    </p>
-                                                ))}
-                                                {highPriorityFindings.length > 2 && (
-                                                    <p className="text-[10px] italic" style={{ color: REPORT_COLORS.neutral600 }}>
-                                                        +{highPriorityFindings.length - 2} more critical result{highPriorityFindings.length - 2 === 1 ? "" : "s"}.
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col gap-0.5" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}`, paddingTop: "0.25rem" }}>
-                                        <p className="text-[11px] font-extrabold" style={{ color: REPORT_COLORS.danger500 }}>MODERATE PRIORITY</p>
-                                        {moderatePriorityNames.length === 0 ? (
-                                            <p className="text-[11px] italic" style={{ color: REPORT_COLORS.neutral600 }}>No borderline deviations noted.</p>
-                                        ) : (
-                                            <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
-                                                {moderatePriorityNames.slice(0, 3).join(", ")}
-                                                {moderatePriorityNames.length > 3 ? ` +${moderatePriorityNames.length - 3} more` : ""} show borderline deviations. Review if clinically indicated.
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col gap-0.5" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}`, paddingTop: "0.25rem" }}>
-                                        <p className="text-[11px] font-extrabold" style={{ color: REPORT_COLORS.success700 }}>LOW PRIORITY</p>
-                                        {clinicalSummary.normalReportNames.length === 0 ? (
-                                            <p className="text-[11px] italic" style={{ color: REPORT_COLORS.neutral600 }}>No data available.</p>
-                                        ) : (
-                                            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                                                {clinicalSummary.normalReportNames.map((name) => (
-                                                    <p key={name} className="text-[11px]" style={{ color: REPORT_COLORS.neutral800 }}>{name} normal.</p>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                            */}
+                            )}
                         </div>
-                        )}
-                        {/* With findings, Health Snapshot keeps its usual slot beside the AI card;
-                            without findings it already rendered beside the Clinical Alert Summary
-                            above, letting AI Clinical Observations stretch across the full row. */}
-                        {clinicalSummary.findings.length > 0 && hasSnapshotTrends && renderHealthSnapshotCard("flex-[0_1_340px] min-w-[220px] w-full sm:w-auto")}
-                    </div>
                     )}
 
                     {/* ================= DETAILED LAB RESULTS ================= */}
                     <div className="mt-3">
-                        <div className="flex flex-wrap items-center justify-between gap-y-1 mb-2" data-print-block>
+                        {/* keep-with-next: a heading stranded at the foot of a page with its
+                            table overleaf is the classic orphan. The paginator will break
+                            before this block unless a meaningful slice of the table follows it
+                            on the same page. */}
+                        <div
+                            className="flex flex-wrap items-center justify-between gap-y-1 mb-2"
+                            data-print-block
+                            data-print-keep-with-next="true"
+                        >
                             <div className="flex items-center">
                                 <img src="/report/microscope.png" alt="" className="w-4 h-4 mr-2 flex-shrink-0" crossOrigin="anonymous" />
                                 <h2 className="text-sm font-extrabold uppercase leading-normal pb-0.5" style={{ color: REPORT_COLORS.secondary700 }}>Detailed Lab Results</h2>
@@ -2361,12 +2683,17 @@ const CommonReportView2 = ({
                         })()}
                     </div>
 
-                    {/* ================= DOCTOR REVIEW / NOTES / APPROVAL ================= */}
+                    {/* ================= CLOSING (SIGNATURE + FOOTER) =================
+                        One atomic print block on purpose. As two separate blocks the paginator
+                        could fit the signature at the foot of a page and spill the footer onto
+                        a page of its own -- which is exactly how reports ended up with a final
+                        page that was 90% white. Together they are placed or moved as a unit,
+                        and the paginator reserves room for them so they land under the last
+                        content instead of alone. */}
+                    <div data-print-block data-print-role="closing">
                     <div
                         className="mt-4 pt-3 flex flex-wrap items-start gap-4"
                         style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }}
-                        data-print-block
-                        data-print-role="signature"
                     >
                         {/* <div className="w-96 max-w-full">
                             <div className="flex items-center gap-2 mb-2">
@@ -2424,7 +2751,7 @@ const CommonReportView2 = ({
                     </div>
 
                     {/* ================= FOOTER ================= */}
-                    <div data-print-block data-print-role="footer">
+                    <div>
                         <div
                             className="mt-3 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0"
                             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
@@ -2473,6 +2800,7 @@ const CommonReportView2 = ({
                                 })()}</p>
                             </div> */}
                         </div>
+                    </div>
                     </div>
                 </section>
             </div>
