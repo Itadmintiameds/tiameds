@@ -3,8 +3,10 @@ import { FaChartBar } from "react-icons/fa";
 import React, { useCallback, useState } from 'react';
 import Loader from '../../common/Loader';
 import SubTabComponent from '../../common/SubTabComponent';
-import StatisticsMain from './StatisticsMain';
+import AdminStats from './AdminStats';
+import SuperAdminStats from './SuperAdminStats';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 // Component for Detailed Analytics tab that redirects to detailed reports
 const DetailedAnalytics = () => {
@@ -25,16 +27,23 @@ const DetailedAnalytics = () => {
     );
 };
 
-const tabs = [
-    { id: 'Status', icon: <IoIosStats size={16} />, label: 'Stats', content: <StatisticsMain /> },
-    { id: 'DetailedAnalytics', icon: <FaChartBar size={16} />, label: 'Detailed Analytics', content: <DetailedAnalytics /> },
-];
 const Statistics = () => {
     const [activeTab, setActiveTab] = useState<string>('Status'); // Default tab set directly
+    const { isSuperAdmin } = useAuth();
 
     const handleTabChange = useCallback((tabId: string) => {
         setActiveTab(tabId);
     }, []);
+
+    // Super admins get a single real-time statistics screen, no sub-tabs.
+    if (isSuperAdmin) {
+        return <SuperAdminStats />;
+    }
+
+    const tabs = [
+        { id: 'Status', icon: <IoIosStats size={16} />, label: 'Stats', content: <AdminStats /> },
+        { id: 'DetailedAnalytics', icon: <FaChartBar size={16} />, label: 'Detailed Analytics', content: <DetailedAnalytics /> },
+    ];
 
     if (!activeTab) {
         return <Loader />;

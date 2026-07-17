@@ -14,20 +14,20 @@ import React from 'react';
 
 const tabs = [
   {
-    id: 'patient',
-    label: 'Patient Management',
-    icon: <FaPerson className="text-lg" />,
-    activeColor: 'text-purple-600',
-    borderColor: 'bg-purple-600',
-    bgColor: 'bg-purple-100'
-  },
-  {
     id: 'dashboard',
     label: 'Analytics Dashboard',
     icon: <MdOutlineDashboard className="text-lg" />,
     activeColor: 'text-teal-600',
     borderColor: 'bg-teal-600',
     bgColor: 'bg-teal-100'
+  },
+  {
+    id: 'patient',
+    label: 'Patient Management',
+    icon: <FaPerson className="text-lg" />,
+    activeColor: 'text-purple-600',
+    borderColor: 'bg-purple-600',
+    bgColor: 'bg-purple-100'
   },
   {
     id: 'technician',
@@ -65,7 +65,7 @@ const DashboardContent = () => {
   const router = useRouter();
   const pathname = usePathname();
   const tabParam = searchParams.get('tab');
-  const [selectedTab, setSelectedTab] = useState<string>('patient');
+  const [selectedTab, setSelectedTab] = useState<string>('dashboard');
   const [hasMounted, setHasMounted] = useState(false);
   const [isAddPatientFormOpen, setIsAddPatientFormOpen] = useState(false);
   const { isAdmin, isSuperAdmin, isTechnician, isDeskRole } = useAuth();
@@ -116,7 +116,7 @@ const DashboardContent = () => {
         case 'patient': return patientDashboard;
         case 'dashboard': return <Statistics />;
         case 'technician': return <Technacian />;
-        default: return patientDashboard;
+        default: return <Statistics />;
       }
     }
     // If user has both DESKROLE and TECHNICIAN roles, allow switching between tabs
@@ -135,7 +135,7 @@ const DashboardContent = () => {
   if (!hasMounted) {
     return (
       <div className="p-4 min-h-screen">
-        <div className="bg-info-50 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-secondary-50 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex border-b border-gray-200 px-4">
             {tabs.map((tab) => (
               <div
@@ -157,7 +157,7 @@ const DashboardContent = () => {
 
   return (
     <div className="min-h-screen">
-      <div className="bg-info-50  shadow-sm border border-gray-100">
+      <div className="bg-secondary-50  shadow-sm border border-gray-100">
         {/* Show tabs if user is ADMIN/SUPERADMIN or has both DESKROLE and TECHNICIAN roles.
             Hidden while the Register New Patient form is open. */}
         {!isAddPatientFormOpen && (isAdmin || isSuperAdmin || (isDeskRole && isTechnician)) ? (
@@ -219,13 +219,8 @@ export default Page;
 
 
 
+// code dated 13.07.2026 without new dashobard....................
 
-
-
-
-
-
-// working code with bug of sample management navigation  dated 01.07.2026................
 
 // 'use client';
 
@@ -295,6 +290,7 @@ export default Page;
 //   const tabParam = searchParams.get('tab');
 //   const [selectedTab, setSelectedTab] = useState<string>('patient');
 //   const [hasMounted, setHasMounted] = useState(false);
+//   const [isAddPatientFormOpen, setIsAddPatientFormOpen] = useState(false);
 //   const { isAdmin, isSuperAdmin, isTechnician, isDeskRole } = useAuth();
 //   const isInitialLoad = React.useRef(true);
 
@@ -337,24 +333,25 @@ export default Page;
 
 //   // Render only the component the role should see
 //   const renderContent = () => {
+//     const patientDashboard = <PatientDashboard onAddPatientFormChange={setIsAddPatientFormOpen} />;
 //     if (isAdmin || isSuperAdmin) {
 //       switch (selectedTab) {
-//         case 'patient': return <PatientDashboard />;
+//         case 'patient': return patientDashboard;
 //         case 'dashboard': return <Statistics />;
 //         case 'technician': return <Technacian />;
-//         default: return <PatientDashboard />;
+//         default: return patientDashboard;
 //       }
 //     }
 //     // If user has both DESKROLE and TECHNICIAN roles, allow switching between tabs
 //     if (isDeskRole && isTechnician) {
 //       switch (selectedTab) {
-//         case 'patient': return <PatientDashboard />;
+//         case 'patient': return patientDashboard;
 //         case 'technician': return <Technacian />;
-//         default: return <PatientDashboard />;
+//         default: return patientDashboard;
 //       }
 //     }
 //     if (isTechnician) return <Technacian />;
-//     if (isDeskRole) return <PatientDashboard />;
+//     if (isDeskRole) return patientDashboard;
 //     return null;
 //   };
 
@@ -382,10 +379,11 @@ export default Page;
 //   }
 
 //   return (
-//     <div className="p-4 min-h-screen">
-//       <div className="bg-info-50 rounded-xl shadow-sm border border-gray-100">
-//         {/* Show tabs if user is ADMIN/SUPERADMIN or has both DESKROLE and TECHNICIAN roles */}
-//         {(isAdmin || isSuperAdmin || (isDeskRole && isTechnician)) ? (
+//     <div className="min-h-screen">
+//       <div className="bg-info-50  shadow-sm border border-gray-100">
+//         {/* Show tabs if user is ADMIN/SUPERADMIN or has both DESKROLE and TECHNICIAN roles.
+//             Hidden while the Register New Patient form is open. */}
+//         {!isAddPatientFormOpen && (isAdmin || isSuperAdmin || (isDeskRole && isTechnician)) ? (
 //           <div className="flex border-b border-gray-200 px-4">
 //             {filteredTabs.map((tab) => (
 //               <TabButton
@@ -435,6 +433,16 @@ export default Page;
 
 
 // export default Page;
+
+
+
+
+
+
+
+
+
+
 
 
 
