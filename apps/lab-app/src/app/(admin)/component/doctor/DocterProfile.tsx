@@ -1,119 +1,82 @@
 import React from 'react';
-import { FaEnvelope, FaStethoscope,  FaMapMarkerAlt } from 'react-icons/fa';
 import { Doctor } from '@/types/doctor/doctor';
 
 const DoctorProfile = ({ selectedDoctor }: { selectedDoctor: Doctor }) => {
   // Get the first letter of the doctor's name for the avatar
   const avatarLetter = selectedDoctor.name.charAt(0).toUpperCase();
 
+  const fullAddress = selectedDoctor.address
+    ? `${selectedDoctor.address}, ${selectedDoctor.city || ''}, ${selectedDoctor.state || ''}, ${selectedDoctor.country || ''}`
+        .replace(/,\s*,/g, ',')
+        .replace(/^,\s*|,\s*$/g, '')
+    : 'N/A';
+
   return (
-    <div className="space-y-4 text-sm">
+    <div className="space-y-3 text-sm">
       {/* Header Section */}
-      <div className="flex items-center space-x-4 pb-4 border-b border-gray-200">
-        {/* Avatar with the first letter */}
-        <div className="w-16 h-16 rounded-full bg-blue-500 text-white flex items-center justify-center text-2xl font-semibold">
+      <div className="flex items-center gap-4 pb-4 border-b border-gray-200">
+        <div className="w-16 h-16 rounded-full bg-purple-600 text-white flex items-center justify-center text-2xl font-semibold shrink-0">
           {avatarLetter}
         </div>
-        <h2 className="text-2xl font-bold text-gray-900">{selectedDoctor.name}</h2>
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">{selectedDoctor.name}</h2>
+          {selectedDoctor.speciality && (
+            <p className="text-sm text-purple-600 font-medium">{selectedDoctor.speciality}</p>
+          )}
+        </div>
       </div>
 
       {/* Personal Information Section */}
-      <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-        <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
-          <FaEnvelope className="mr-2 text-blue-500" size={16} />
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
           Personal Information
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <span className="font-medium text-gray-600">Email:</span>
-            <span className="ml-2 text-gray-900">{selectedDoctor.email || 'N/A'}</span>
+            <p className="text-xs text-gray-500 mb-1">Email</p>
+            <p className="text-sm font-medium text-gray-800">{selectedDoctor.email || 'N/A'}</p>
           </div>
           <div>
-            <span className="font-medium text-gray-600">Phone:</span>
-            <span className="ml-2 text-gray-900">{selectedDoctor.phone || 'N/A'}</span>
+            <p className="text-xs text-gray-500 mb-1">Phone</p>
+            <p className="text-sm font-medium text-gray-800">{selectedDoctor.phone || 'N/A'}</p>
           </div>
         </div>
       </div>
 
       {/* Professional Information Section */}
-      <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
-        <h4 className="font-semibold text-purple-800 mb-2 flex items-center">
-          <FaStethoscope className="mr-2 text-purple-500" size={16} />
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
           Professional Information
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <span className="font-medium text-gray-600">Speciality:</span>
-            <span className="ml-2 text-gray-900">{selectedDoctor.speciality || 'N/A'}</span>
+            <p className="text-xs text-gray-500 mb-1">Speciality</p>
+            <p className="text-sm font-medium text-gray-800">{selectedDoctor.speciality || 'N/A'}</p>
           </div>
           <div>
-            <span className="font-medium text-gray-600">Qualification:</span>
-            <span className="ml-2 text-gray-900">{selectedDoctor.qualification || 'N/A'}</span>
+            <p className="text-xs text-gray-500 mb-1">Qualification</p>
+            <p className="text-sm font-medium text-gray-800">{selectedDoctor.qualification || 'N/A'}</p>
           </div>
           <div>
-            <span className="font-medium text-gray-600">Hospital Affiliation:</span>
-            <span className="ml-2 text-gray-900">{selectedDoctor.hospitalAffiliation || 'N/A'}</span>
+            <p className="text-xs text-gray-500 mb-1">Hospital Affiliation</p>
+            <p className="text-sm font-medium text-gray-800">{selectedDoctor.hospitalAffiliation || 'N/A'}</p>
           </div>
           <div>
-            <span className="font-medium text-gray-600">License Number:</span>
-            <span className="ml-2 text-gray-900">{selectedDoctor.licenseNumber || 'N/A'}</span>
+            <p className="text-xs text-gray-500 mb-1">License Number</p>
+            <p className="text-sm font-medium text-gray-800">{selectedDoctor.licenseNumber || 'N/A'}</p>
           </div>
         </div>
       </div>
 
       {/* Address Information Section */}
-      <div className="bg-green-50 p-3 rounded-lg border border-green-100">
-        <h4 className="font-semibold text-green-800 mb-2 flex items-center">
-          <FaMapMarkerAlt className="mr-2 text-green-500" size={16} />
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
           Address Information
-        </h4>
-        <div className="grid grid-cols-1 gap-2 text-xs">
-          <div>
-            <span className="font-medium text-gray-600">Address:</span>
-            <span className="ml-2 text-gray-900">
-              {selectedDoctor.address ? 
-                `${selectedDoctor.address}, ${selectedDoctor.city || ''}, ${selectedDoctor.state || ''}, ${selectedDoctor.country || ''}`.replace(/,\s*,/g, ',').replace(/^,\s*|,\s*$/g, '') 
-                : 'N/A'}
-            </span>
-          </div>
-        </div>
+        </p>
+        <p className="text-sm font-medium text-gray-800">{fullAddress}</p>
       </div>
     </div>
   );
 };
 
 export default DoctorProfile;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import React from 'react';
-// import { Doctor } from '@/types/doctor/doctor';
-
-// interface DoctorProfileProps {
-//   selectedDoctor: Doctor;
-// }
-
-// const DoctorProfile: React.FC<DoctorProfileProps> = ({ selectedDoctor }) => {
-//   return (
-//     <div>
-//       <h2 className="text-xl font-bold mb-4">{selectedDoctor.name}</h2>
-//       <p><strong>Specialty:</strong> {selectedDoctor.speciality}</p>
-//       <p><strong>Email:</strong> {selectedDoctor.email}</p>
-//       <p><strong>Phone:</strong> {selectedDoctor.phone}</p>
-//       {/* Add more details as required */}
-//     </div>
-//   );
-// };
-
-// export default DoctorProfile;
