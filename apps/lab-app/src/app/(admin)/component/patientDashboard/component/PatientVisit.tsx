@@ -3,7 +3,7 @@ import { Patient, VisitType } from '@/types/patient/patient';
 import { Doctor } from '@/types/doctor/doctor';
 import { FaCalendarAlt, FaUserPlus } from 'react-icons/fa';
 import Modal from '../../common/Model';
-import AddDoctor from './AddDoctor';
+import AddDoctor from '../../doctor/AddDoctor';
 import { createDoctor } from '../../../../../../services/doctorServices';
 import { useLabs } from '@/context/LabContext';
 import { useState } from 'react';
@@ -20,61 +20,24 @@ interface PatientVisitProps {
 const PatientVisit = ({ newPatient, handleChange, doctors, mode = 'full' }: PatientVisitProps) => {
     const { currentLab, refreshDocterList, setRefreshDocterList } = useLabs();
     const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
-    const [isDoctorAddedLoading, setIsDoctorAddedLoading] = useState(false);
-    const [doctor, setDoctor] = useState<Doctor>({
-        id: undefined,
-        name: '',
-        email: '',
-        speciality: '',
-        qualification: '',
-        hospitalAffiliation: '',
-        licenseNumber: '',
-        phone: 0,
-        address: '',
-        city: '',
-        state: '',
-        country: '',
-    });
-    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const handleAddDoctor = async (doctor: Doctor) => {
-        setIsDoctorAddedLoading(true);
-        try {
-            if (currentLab?.id) {
-                const res = await createDoctor(currentLab.id, doctor);
+        if (!currentLab?.id) {
+            toast.error('No lab selected!');
+            return;
+        }
 
-                if (res?.status === 'success') {
-                    setRefreshDocterList(!refreshDocterList);
-                    toast.success('Doctor added successfully!');
-                } else {
-                    toast.error('Failed to add doctor!');
-                }
+        try {
+            const res = await createDoctor(currentLab.id, doctor);
+            if (res?.status === 'success') {
+                setRefreshDocterList(!refreshDocterList);
+                toast.success('Doctor added successfully!');
+                setIsDoctorModalOpen(false);
             } else {
-                toast.error('No lab selected!');
+                throw new Error('Failed to add doctor!');
             }
         } catch (error) {
-            // Handle doctor add error
-            toast.error('Doctor already exists!', { autoClose: 1000 });
-
-        } finally {
-            setIsDoctorModalOpen(false);
-            setErrors({});
-            setIsDoctorAddedLoading(false);
-            setRefreshDocterList(!refreshDocterList);
-            setDoctor({
-                id: undefined,
-                name: '',
-                email: '',
-                speciality: '',
-                qualification: '',
-                hospitalAffiliation: '',
-                licenseNumber: '',
-                phone: 0,
-                address: '',
-                city: '',
-                state: '',
-                country: '',
-            });
+            toast.error(error instanceof Error ? error.message : 'Doctor already exists!', { autoClose: 1500 });
         }
     };
 
@@ -162,33 +125,10 @@ const PatientVisit = ({ newPatient, handleChange, doctors, mode = 'full' }: Pati
             {isDoctorModalOpen && (
                 <Modal
                     isOpen={isDoctorModalOpen}
-                    onClose={() => {
-                        setIsDoctorModalOpen(false);
-                        setDoctor({
-                            id: undefined,
-                            name: '',
-                            email: '',
-                            speciality: '',
-                            qualification: '',
-                            hospitalAffiliation: '',
-                            licenseNumber: '',
-                            phone: 0,
-                            address: '',
-                            city: '',
-                            state: '',
-                            country: '',
-                        });
-                    }}
-                    modalClassName='max-w-xs'
-                    title="Add Doctor">
-                    <AddDoctor
-                        handleAddDoctor={handleAddDoctor}
-                        errors={errors}
-                        doctor={doctor}
-                        setDoctor={setDoctor}
-                        isDoctorAddedLoading={isDoctorAddedLoading}
-                    />
-
+                    onClose={() => setIsDoctorModalOpen(false)}
+                    modalClassName='max-w-2xl'
+                    title="Register New Doctor">
+                    <AddDoctor handleAddDoctor={handleAddDoctor} />
                 </Modal>
             )}
         </section>
