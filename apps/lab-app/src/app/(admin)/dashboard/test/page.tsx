@@ -82,7 +82,7 @@ const Page = () => {
   }
 
   return (
-    <div className="w-full p-4 bg-info-50">
+    <div className="w-full p-4 bg-secondary-50">
       {/* Custom Tabs - Inline Implementation */}
       <div className="w-full">
         {/* Tab Navigation */}

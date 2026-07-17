@@ -85,7 +85,7 @@ const Layout = ({ children }: LayoutProps) => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-info-50"> {/* Added overflow-hidden to prevent scrolling */}
+    <div className="flex h-screen overflow-hidden bg-secondary-50"> {/* Added overflow-hidden to prevent scrolling */}
       <SideBar isOpen={isOpen} setIsOpen={setIsOpen} />
 
       <main className={`flex-1 ml-20 transition-all duration-400 ${isOpen ? "ml-64" : "ml-20"} overflow-hidden`}> {/* Added overflow-hidden */}
