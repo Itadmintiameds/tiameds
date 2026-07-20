@@ -36,7 +36,6 @@ import {
   getPendingSamples,
   getReportsGenerated,
   getRevenueByLab,
-  getRevenueTrend,
   getTestsByCategory,
   getTopReferringDoctors,
   getTotalAdmins,
@@ -124,6 +123,114 @@ const getDateRange = (filter: DateFilterType, customRange?: DateRange): { startD
     default:
       return { startDate: undefined, endDate: undefined };
   }
+};
+
+// Helper: ordinal suffix (1st, 2nd, 3rd, 4th...)
+const getOrdinalSuffix = (num: number): string => {
+  if (num === 1) return "st";
+  if (num === 2) return "nd";
+  if (num === 3) return "rd";
+  return "th";
+};
+
+// Helper: date-labeled buckets (label + start/end as YYYY-MM-DD) for the revenue chart's
+// x-axis, one per filter type. Each bucket's start/end is fed straight into
+// getEarningsByCategory (the same API backing the "Total Revenue" KPI/header) so the
+// chart bars and the header total are always computed the same way.
+const getRevenueBuckets = (
+  filter: DateFilterType,
+  customRange: DateRange
+): { label: string; start: string; end: string }[] => {
+  const buckets: { label: string; start: dayjs.Dayjs; end: dayjs.Dayjs }[] = [];
+
+  switch (filter) {
+    case "currentFY": {
+      const fyStart = dayjs(getFinancialYear(dayjs()).start);
+      const today = dayjs();
+      let current = fyStart.startOf('month');
+      while (current.isBefore(today) || current.isSame(today, 'month')) {
+        buckets.push({ label: current.format("MMM"), start: current.startOf('month'), end: current.endOf('month') });
+        current = current.add(1, 'month');
+      }
+      break;
+    }
+    case "week": {
+      const today = dayjs();
+      const startOfWeek = today.startOf('week');
+      let current = startOfWeek.clone();
+      while (current.isBefore(today) || current.isSame(today, 'day')) {
+        buckets.push({ label: current.format("ddd"), start: current.startOf('day'), end: current.endOf('day') });
+        current = current.add(1, 'day');
+      }
+      break;
+    }
+    case "month": {
+      const today = dayjs();
+      const startOfMonthWeek = today.startOf('month').startOf('week');
+      const startOfCurrentWeek = today.startOf('week');
+      const totalWeeks = startOfCurrentWeek.diff(startOfMonthWeek, 'week') + 1;
+      for (let i = 0; i < totalWeeks; i++) {
+        const weekStart = startOfMonthWeek.add(i * 7, 'day');
+        buckets.push({
+          label: `${i + 1}${getOrdinalSuffix(i + 1)} Week`,
+          start: weekStart.startOf('day'),
+          end: weekStart.add(6, 'day').endOf('day'),
+        });
+      }
+      break;
+    }
+    case "year": {
+      const today = dayjs();
+      let current = dayjs().startOf('year');
+      while (current.isBefore(today) || current.isSame(today, 'month')) {
+        buckets.push({ label: current.format("MMM"), start: current.startOf('month'), end: current.endOf('month') });
+        current = current.add(1, 'month');
+      }
+      break;
+    }
+    case "custom": {
+      if (customRange.startDate && customRange.endDate) {
+        const start = dayjs(customRange.startDate);
+        const end = dayjs(customRange.endDate);
+        const diffDays = end.diff(start, 'days');
+
+        if (diffDays <= 7) {
+          for (let i = 0; i <= diffDays; i++) {
+            const day = start.add(i, 'days');
+            buckets.push({ label: day.format("DD MMM"), start: day.startOf('day'), end: day.endOf('day') });
+          }
+        } else if (diffDays <= 31) {
+          for (let i = 0; i <= diffDays; i += 3) {
+            const segStart = start.add(i, 'days');
+            const segEndCandidate = segStart.add(2, 'days');
+            const segEnd = segEndCandidate.isAfter(end) ? end : segEndCandidate;
+            buckets.push({ label: segStart.format("DD MMM"), start: segStart.startOf('day'), end: segEnd.endOf('day') });
+          }
+          if (buckets.length > 0) {
+            buckets[buckets.length - 1].end = end.endOf('day');
+          }
+        } else {
+          let current = start.startOf('month');
+          while (current.isBefore(end) || current.isSame(end, 'month')) {
+            const bucketStart = current.isBefore(start) ? start : current;
+            const monthEnd = current.endOf('month');
+            const bucketEnd = monthEnd.isAfter(end) ? end : monthEnd;
+            buckets.push({ label: current.format("MMM YY"), start: bucketStart.startOf('day'), end: bucketEnd.endOf('day') });
+            current = current.add(1, 'month');
+          }
+        }
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  return buckets.map((b) => ({
+    label: b.label,
+    start: b.start.format("YYYY-MM-DD"),
+    end: b.end.format("YYYY-MM-DD"),
+  }));
 };
 
 // Format currency
@@ -293,7 +400,13 @@ const SuperAdminStats = () => {
   const [pendingSamples, setPendingSamples] = useState<number>(0);
   const [testsByCategory, setTestsByCategory] = useState<Array<any>>([]);
   const [categorySummary, setCategorySummary] = useState<any>({});
-  const [revenueTrend, setRevenueTrend] = useState<Array<{ date: string; revenue: number }>>([]);
+  // Total shown in the "Revenue Trend (All Labs)" card header — same paid-revenue
+  // calculation as the "Total Revenue" KPI tile (getEarningsByCategory summary.totalPaid),
+  // but scoped to this card's own filter instead of the global/category filter.
+  const [revenueSectionTotalPaid, setRevenueSectionTotalPaid] = useState<number>(0);
+  // Chart bars — each bucket's revenue comes from the same getEarningsByCategory API as
+  // revenueSectionTotalPaid above, so the bars always sum to match the header total.
+  const [revenueChartData, setRevenueChartData] = useState<Array<{ label: string; revenue: number }>>([]);
   const [revenueByLab, setRevenueByLab] = useState<Array<{ labId: number; labName: string; revenue: number }>>([]);
   const [labPerformance, setLabPerformance] = useState<any[]>([]);
   const [topDoctors, setTopDoctors] = useState<any[]>([]);
@@ -360,18 +473,40 @@ const fetchAllData = useCallback(async (silent = false) => {
     if (reportsResult.status === "fulfilled") setReportsGenerated(reportsResult.value.reportsGenerated);
     if (pendingResult.status === "fulfilled") setPendingSamples(pendingResult.value.pendingSamples);
 
-    // 3. Fetch revenue trend with its OWN filter
+    // 3. Fetch revenue trend with its OWN filter — both the header total and each
+    // chart bucket come from getEarningsByCategory (same API as the "Total Revenue"
+    // KPI tile) so the bars always sum to match the header total.
     const revenueRange = getDateRange(revenueFilter, revenueCustomRange);
     if (revenueRange.startDate && revenueRange.endDate) {
       try {
-        const trendResult = await getRevenueTrend(revenueRange.startDate, revenueRange.endDate);
-        setRevenueTrend(trendResult.trend || []);
+        const revenueEarningsResult = await getEarningsByCategory(revenueRange.startDate, revenueRange.endDate);
+        setRevenueSectionTotalPaid(revenueEarningsResult?.summary?.totalPaid || 0);
       } catch (error) {
-        console.error("Error fetching revenue trend:", error);
-        setRevenueTrend([]);
+        console.error("Error fetching revenue section total:", error);
+        setRevenueSectionTotalPaid(0);
+      }
+
+      const buckets = getRevenueBuckets(revenueFilter, revenueCustomRange);
+      try {
+        const bucketResults = await Promise.all(
+          buckets.map(async (bucket) => {
+            try {
+              const bucketResult = await getEarningsByCategory(bucket.start, bucket.end);
+              return { label: bucket.label, revenue: bucketResult?.summary?.totalPaid || 0 };
+            } catch (error) {
+              console.error(`Error fetching revenue bucket ${bucket.label}:`, error);
+              return { label: bucket.label, revenue: 0 };
+            }
+          })
+        );
+        setRevenueChartData(bucketResults);
+      } catch (error) {
+        console.error("Error fetching revenue chart data:", error);
+        setRevenueChartData([]);
       }
     } else {
-      setRevenueTrend([]);
+      setRevenueSectionTotalPaid(0);
+      setRevenueChartData([]);
     }
 
     // 4. Fetch revenue by lab (top 5) with its OWN filter
@@ -385,14 +520,27 @@ const fetchAllData = useCallback(async (silent = false) => {
     }
 
     // 5. Fetch packages with its OWN filter
-    const packagesRange = getDateRange(packagesFilter, packagesCustomRange);
-    try {
-      const packagesResult = await getPackagesSummary(packagesRange.startDate, packagesRange.endDate);
-      setPackagesData(packagesResult || { summary: {}, packages: [] });
-    } catch (error) {
-      console.error("Error fetching packages:", error);
-      setPackagesData({ summary: {}, packages: [] });
-    }
+    // In the fetchAllData function, update the packages section:
+
+// 5. Fetch packages with its OWN filter
+const packagesRange = getDateRange(packagesFilter, packagesCustomRange);
+try {
+  // Only call API if we have valid dates
+  if (packagesRange.startDate && packagesRange.endDate) {
+    const packagesResult = await getPackagesSummary(
+      packagesRange.startDate,
+      packagesRange.endDate
+    );
+    setPackagesData(packagesResult || { summary: {}, packages: [] });
+  } else {
+    // If no dates, fetch all-time data
+    const packagesResult = await getPackagesSummary();
+    setPackagesData(packagesResult || { summary: {}, packages: [] });
+  }
+} catch (error) {
+  console.error("Error fetching packages:", error);
+  setPackagesData({ summary: {}, packages: [] });
+}
 
     // 6. Fetch tests-by-category and earnings-by-category with the section's OWN filter
     const earningsRange = getDateRange(categoryFilter, categoryCustomRange);
@@ -482,145 +630,6 @@ const fetchAllData = useCallback(async (silent = false) => {
     }, 30000);
     return () => clearInterval(interval);
   }, [fetchAllData]);
-
-  // Format data for revenue chart with dynamic X-axis labels
-  const formatRevenueData = () => {
-    if (revenueTrend.length === 0) {
-      return [
-        { label: "Jun", revenue: 5000 },
-        { label: "Jul", revenue: 15000 },
-        { label: "Aug", revenue: 14500 },
-        { label: "Sep", revenue: 9000 },
-        { label: "Oct", revenue: 6000 },
-        { label: "Nov", revenue: 12000 },
-        { label: "Dec", revenue: 5000 },
-        { label: "Jan", revenue: 10000 },
-      ];
-    }
-
-    const currentFilter = revenueFilter;
-    const sortedData = [...revenueTrend].sort((a, b) =>
-      dayjs(a.date).valueOf() - dayjs(b.date).valueOf()
-    );
-
-    const sumRevenueInRange = (start: dayjs.Dayjs, end: dayjs.Dayjs) => {
-      const rangeStart = start.startOf('day');
-      const rangeEnd = end.endOf('day');
-      return sortedData
-        .filter((item) => {
-          const d = dayjs(item.date);
-          return !d.isBefore(rangeStart) && !d.isAfter(rangeEnd);
-        })
-        .reduce((sum, item) => sum + (item.revenue || 0), 0);
-    };
-
-    let buckets: { label: string; start: dayjs.Dayjs; end: dayjs.Dayjs }[] = [];
-
-    switch (currentFilter) {
-      case "currentFY": {
-        const fyStart = dayjs(getFinancialYear(dayjs()).start);
-        const today = dayjs();
-        let current = fyStart.startOf('month');
-        while (current.isBefore(today) || current.isSame(today, 'month')) {
-          buckets.push({ label: current.format("MMM"), start: current.startOf('month'), end: current.endOf('month') });
-          current = current.add(1, 'month');
-        }
-        break;
-      }
-      case "week": {
-        const today = dayjs();
-        const startOfWeek = today.startOf('week');
-        let current = startOfWeek.clone();
-        while (current.isBefore(today) || current.isSame(today, 'day')) {
-          buckets.push({ label: current.format("ddd"), start: current.startOf('day'), end: current.endOf('day') });
-          current = current.add(1, 'day');
-        }
-        break;
-      }
-      case "month": {
-        const today = dayjs();
-        const startOfMonthWeek = today.startOf('month').startOf('week');
-        const startOfCurrentWeek = today.startOf('week');
-        const totalWeeks = startOfCurrentWeek.diff(startOfMonthWeek, 'week') + 1;
-        for (let i = 0; i < totalWeeks; i++) {
-          const weekStart = startOfMonthWeek.add(i * 7, 'day');
-          buckets.push({
-            label: `${i + 1}${getOrdinalSuffix(i + 1)} Week`,
-            start: weekStart.startOf('day'),
-            end: weekStart.add(6, 'day').endOf('day'),
-          });
-        }
-        break;
-      }
-      case "year": {
-        const today = dayjs();
-        let current = dayjs().startOf('year');
-        while (current.isBefore(today) || current.isSame(today, 'month')) {
-          buckets.push({ label: current.format("MMM"), start: current.startOf('month'), end: current.endOf('month') });
-          current = current.add(1, 'month');
-        }
-        break;
-      }
-      case "custom": {
-        if (revenueCustomRange.startDate && revenueCustomRange.endDate) {
-          const start = dayjs(revenueCustomRange.startDate);
-          const end = dayjs(revenueCustomRange.endDate);
-          const diffDays = end.diff(start, 'days');
-
-          if (diffDays <= 7) {
-            for (let i = 0; i <= diffDays; i++) {
-              const day = start.add(i, 'days');
-              buckets.push({ label: day.format("DD MMM"), start: day.startOf('day'), end: day.endOf('day') });
-            }
-          } else if (diffDays <= 31) {
-            for (let i = 0; i <= diffDays; i += 3) {
-              const segStart = start.add(i, 'days');
-              const segEndCandidate = segStart.add(2, 'days');
-              const segEnd = segEndCandidate.isAfter(end) ? end : segEndCandidate;
-              buckets.push({ label: segStart.format("DD MMM"), start: segStart.startOf('day'), end: segEnd.endOf('day') });
-            }
-            if (buckets.length > 0) {
-              buckets[buckets.length - 1].end = end.endOf('day');
-            }
-          } else {
-            let current = start.startOf('month');
-            while (current.isBefore(end) || current.isSame(end, 'month')) {
-              const bucketStart = current.isBefore(start) ? start : current;
-              const monthEnd = current.endOf('month');
-              const bucketEnd = monthEnd.isAfter(end) ? end : monthEnd;
-              buckets.push({ label: current.format("MMM YY"), start: bucketStart.startOf('day'), end: bucketEnd.endOf('day') });
-              current = current.add(1, 'month');
-            }
-          }
-        } else {
-          buckets = sortedData.map((item) => {
-            const d = dayjs(item.date);
-            return { label: d.format("DD MMM"), start: d.startOf('day'), end: d.endOf('day') };
-          });
-        }
-        break;
-      }
-      default: {
-        buckets = sortedData.map((item) => {
-          const d = dayjs(item.date);
-          return { label: d.format("DD MMM"), start: d.startOf('day'), end: d.endOf('day') };
-        });
-      }
-    }
-
-    return buckets.map((bucket) => ({
-      label: bucket.label,
-      revenue: sumRevenueInRange(bucket.start, bucket.end),
-    }));
-  };
-
-  // Helper function for ordinal suffixes
-  const getOrdinalSuffix = (num: number): string => {
-    if (num === 1) return "st";
-    if (num === 2) return "nd";
-    if (num === 3) return "rd";
-    return "th";
-  };
 
   // Format data for category pie chart
   const getCategoryChartData = () => {
@@ -853,7 +862,6 @@ const fetchAllData = useCallback(async (silent = false) => {
     }
   ];
 
-  const revenueChartData = formatRevenueData();
   const categoryChartData = getCategoryChartData();
   const packagesChartData = getPackagesChartData();
   const alertsData = getAlertsData();
@@ -1096,7 +1104,7 @@ const fetchAllData = useCallback(async (silent = false) => {
               <p className="mt-1 text-p3 font-semibold text-pneutral-900">
                 Total Revenue
                 <span className="ml-1 font-semibold text-pneutral-900">
-                  {formatCurrency(totalRevenue)}
+                  {formatCurrency(revenueSectionTotalPaid)}
                 </span>
               </p>
             </div>
@@ -1111,49 +1119,55 @@ const fetchAllData = useCallback(async (silent = false) => {
             </div>
           </div>
           <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueChartData}>
-                <defs>
-                  <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#B550FA" stopOpacity={0.45} />
-                    <stop offset="95%" stopColor="#B550FA" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={true} stroke="#EAEAE9" />
-                <XAxis
-                  dataKey="label"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 14, fill: "#969793" }}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 14, fill: "#969793" }}
-                  domain={[0, revenueAxisConfig.domainMax]}
-                  ticks={revenueAxisConfig.ticks}
-                  tickFormatter={revenueAxisConfig.formatTick}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: 12,
-                    border: "none",
-                    boxShadow: "0 6px 20px rgba(0,0,0,0.1)",
-                  }}
-                  formatter={(value: any) => [`₹${value.toLocaleString()}`, "Revenue"]}
-                  labelFormatter={(label) => `Date: ${label}`}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#B550FA"
-                  strokeWidth={3}
-                  fill="url(#purpleGradient)"
-                  dot={{ r: 4, fill: "#fff", stroke: "#B550FA", strokeWidth: 2 }}
-                  activeDot={{ r: 6 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {revenueChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueChartData}>
+                  <defs>
+                    <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#B550FA" stopOpacity={0.45} />
+                      <stop offset="95%" stopColor="#B550FA" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={true} stroke="#EAEAE9" />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 14, fill: "#969793" }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 14, fill: "#969793" }}
+                    domain={[0, revenueAxisConfig.domainMax]}
+                    ticks={revenueAxisConfig.ticks}
+                    tickFormatter={revenueAxisConfig.formatTick}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: 12,
+                      border: "none",
+                      boxShadow: "0 6px 20px rgba(0,0,0,0.1)",
+                    }}
+                    formatter={(value: any) => [`₹${value.toLocaleString()}`, "Revenue"]}
+                    labelFormatter={(label) => `Date: ${label}`}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#B550FA"
+                    strokeWidth={3}
+                    fill="url(#purpleGradient)"
+                    dot={{ r: 4, fill: "#fff", stroke: "#B550FA", strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-p3 text-pneutral-500">
+                No data available
+              </div>
+            )}
           </div>
         </div>
 
@@ -1620,22 +1634,13 @@ export default SuperAdminStats;
 
 
 
-
-
-
-
-
-
-
-// code dated 17.07.2026........................
-
+// /* eslint-disable @typescript-eslint/no-explicit-any */
 // "use client";
 
 // import { useState, useEffect, useCallback } from "react";
 // import dayjs from "dayjs";
 
 // import {
-//   Filter,
 //   Building2,
 //   ClipboardCheck,
 //   ArrowUp,
@@ -1673,7 +1678,6 @@ export default SuperAdminStats;
 //   getTotalAdmins,
 //   getTotalDeskRoles,
 //   getTotalLabsCount,
-//   getTotalRevenue,
 //   getTotalTechnicians,
 //   getTotalTests,
 //   getPackagesSummary,
@@ -1801,10 +1805,70 @@ export default SuperAdminStats;
 // // Color constants for charts
 // const CATEGORY_COLORS = ["#4F6BED", "#55D400", "#8B5CF6", "#FDBA12", "#F75A5A", "#4C0FAE", "#6D28D9", "#38B000"];
 // const PACKAGE_COLORS = ["#4F6BED", "#55D400", "#8B5CF6", "#FDBA12", "#F75A5A", "#4C0FAE"];
-// const ALERT_COLORS = ["#FDBA12", "#38B000", "#F75A5A"];
+
+// // Shapes mirror getEarningsByCategory's return type in statisticsService.ts;
+// // fields are optional since state starts out as an empty/partial object before the fetch resolves.
+// interface EarningsTestRow {
+//   testId?: number;
+//   testName?: string;
+//   testCode?: string;
+//   price?: number;
+//   orderedCount?: number;
+//   totalEarnings?: number;
+//   paidAmount?: number;
+//   dueAmount?: number;
+// }
+
+// interface EarningsCategoryRow {
+//   category: string;
+//   totalTests?: number;
+//   totalEarnings?: number;
+//   paidAmount?: number;
+//   dueAmount?: number;
+//   tests?: EarningsTestRow[];
+// }
+
+// interface EarningsData {
+//   summary: {
+//     totalCategories?: number;
+//     totalTests?: number;
+//     totalEarnings?: number;
+//     totalPaid?: number;
+//     totalDue?: number;
+//   };
+//   categories: EarningsCategoryRow[];
+// }
+
+// // Shape mirrors getPackagesSummary's return type in statisticsService.ts.
+// interface PackagesData {
+//   summary: {
+//     totalPackages?: number;
+//     totalVisits?: number;
+//     totalRevenue?: number;
+//     totalDiscount?: number;
+//     totalPaid?: number;
+//     totalDue?: number;
+//     totalCash?: number;
+//     totalUpi?: number;
+//     totalCard?: number;
+//   };
+//   packages: Array<{
+//     packageId?: number;
+//     packageName?: string;
+//     packageCode?: string;
+//     revenue?: number;
+//     discount?: number;
+//     visitCount?: number;
+//     paidRevenue?: number;
+//     dueRevenue?: number;
+//     cashRevenue?: number;
+//     upiRevenue?: number;
+//     cardRevenue?: number;
+//   }>;
+// }
 
 // const SuperAdminStats = () => {
-//   const { labs } = useLabs();
+//   useLabs();
 
 //   // Loading states
 //   const [loading, setLoading] = useState(true);
@@ -1869,8 +1933,8 @@ export default SuperAdminStats;
 //   const [revenueByLab, setRevenueByLab] = useState<Array<{ labId: number; labName: string; revenue: number }>>([]);
 //   const [labPerformance, setLabPerformance] = useState<any[]>([]);
 //   const [topDoctors, setTopDoctors] = useState<any[]>([]);
-//   const [packagesData, setPackagesData] = useState<any>({ summary: {}, packages: [] });
-//   const [earningsData, setEarningsData] = useState<any>({ summary: {}, categories: [] });
+//   const [packagesData, setPackagesData] = useState<PackagesData>({ summary: {}, packages: [] });
+//   const [earningsData, setEarningsData] = useState<EarningsData>({ summary: {}, categories: [] });
 //   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 //   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 //   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -2351,7 +2415,7 @@ export default SuperAdminStats;
 //       }
 //       // Sort tests by totalEarnings (descending)
 //       const sortedTests = [...(categoryData.tests || [])].sort(
-//         (a, b) => b.totalEarnings - a.totalEarnings
+//         (a, b) => (b.totalEarnings || 0) - (a.totalEarnings || 0)
 //       );
 //       return { tests: sortedTests, categoryName: categoryData.category };
 //     }
@@ -2470,7 +2534,7 @@ export default SuperAdminStats;
 //         <select
 //           value={currentFilter}
 //           onChange={(e) => onFilterChange(e.target.value as DateFilterType)}
-//           className={`rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 text-p3 font-medium text-pneutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-500 ${
+//           className={`rounded-lg border border-pneutral-100 bg-pneutral-100 px-4 py-2 text-p3 font-medium text-pneutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-500 ${
 //             isGlobal ? "min-w-[180px]" : ""
 //           }`}
 //         >
@@ -2624,10 +2688,10 @@ export default SuperAdminStats;
 //               true
 //             )}
 //           </div>
-//           <button className="flex items-center gap-2 rounded-lg border border-pneutral-100 bg-base-white px-6 py-3 shadow-xsm">
+//           {/* <button className="flex items-center gap-2 rounded-lg border border-pneutral-100 bg-base-white px-6 py-3 shadow-xsm">
 //             <Filter size={18} className="text-pneutral-900" />
 //             <span className="text-p3 text-pneutral-900">Filters</span>
-//           </button>
+//           </button> */}
 //         </div>
 //       </div>
 
@@ -2870,7 +2934,7 @@ export default SuperAdminStats;
 //               <select
 //                 value={selectedCategory}
 //                 onChange={(e) => setSelectedCategory(e.target.value)}
-//                 className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 text-p3 font-medium text-pneutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-500"
+//                 className="rounded-lg border border-pneutral-100 bg-pneutral-100 px-4 py-2 text-p3 font-medium text-pneutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-500"
 //               >
 //                 <option value="all">All Categories</option>
 //                 {categoryOptions.map((cat) => (
@@ -3181,3 +3245,11 @@ export default SuperAdminStats;
 // };
 
 // export default SuperAdminStats;
+
+
+
+
+
+
+
+

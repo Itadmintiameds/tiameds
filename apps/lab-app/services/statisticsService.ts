@@ -506,8 +506,26 @@ export const getPackagesSummary = async (
     cardRevenue: number;
   }>;
 }> => {
-  const baseUrl = `/packages-summary`;
-  const url = buildUrlWithDates(baseUrl, startDate, endDate);
+  // Ensure dates are properly formatted and validated
+  const params = new URLSearchParams();
+  
+  if (startDate) {
+    // Validate date format and ensure it's a valid date
+    const parsedStart = new Date(startDate);
+    if (!isNaN(parsedStart.getTime())) {
+      params.append('startDate', startDate);
+    }
+  }
+  
+  if (endDate) {
+    const parsedEnd = new Date(endDate);
+    if (!isNaN(parsedEnd.getTime())) {
+      params.append('endDate', endDate);
+    }
+  }
+
+  const queryString = params.toString();
+  const url = `/packages-summary${queryString ? `?${queryString}` : ''}`;
 
   try {
     const response = await statsApi.get<{
@@ -540,6 +558,7 @@ export const getPackagesSummary = async (
       message: string;
       status: string;
     }>(url);
+    
     return response.data.data;
   } catch (error: unknown) {
     throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching packages summary.'));
