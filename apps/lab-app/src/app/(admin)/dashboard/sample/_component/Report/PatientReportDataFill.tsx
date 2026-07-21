@@ -12,6 +12,7 @@ import { createReportWithTestResult } from '@/../services/reportServices';
 import { calculateAgeObject } from '@/utils/ageUtils';
 import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
 import AutoCalculation from './AutoCalculation';
+import DetailedReportEditor from './DetailedReportEditor';
 // import { TbSquareRoundedCheck, TbX } from "react-icons/tb";
 import NewModal from "../../../newcommoncomponent/NewModal";
 import { FaChevronDown } from "react-icons/fa";
@@ -770,6 +771,8 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
 
   // Get the reference data for the current test
   const currentTestRefs = referencePoints[selectedTest?.name] || [];
+  const detailedReportPoint = currentTestRefs.find(point => point.testDescription === "DETAILED REPORT");
+  const hasNonDetailedReportParams = currentTestRefs.some(point => point.testDescription !== "DETAILED REPORT");
 
   // If no reference data is available, show a message
   if (!loading && currentTestRefs.length === 0 && selectedTest) {
@@ -790,46 +793,7 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
   }
 
   return (
-    <div className="min-h-screen bg-info-50">
-      {/* Differential Count Validation Alert - Only for CBC */}
-      {/* {differentialValidation && (
-        <div className={`mb-4 rounded-2xl border p-4 ${
-          differentialValidation.type === 'error' 
-            ? 'bg-red-50 border-red-300' 
-            : 'bg-green-50 border-green-300'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              {differentialValidation.type === 'error' ? (
-                <TbX className="text-red-500 mr-3" size={24} />
-              ) : (
-                <TbSquareRoundedCheck className="text-green-500 mr-3" size={24} />
-              )}
-              <div>
-                <span className={`text-base font-semibold ${
-                  differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'
-                }`}>
-                  {differentialValidation.message}
-                </span>
-                <p className={`text-sm mt-1 ${
-                  differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {differentialValidation.type === 'error' ? 
-                    'Please check your differential count values' :
-                    'Differential count is correctly balanced'
-                  }
-                </p>
-              </div>
-            </div>
-            <div className={`text-lg font-bold ${
-              differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
-            }`}>
-              Total: {differentialValidation.total}
-            </div>
-          </div>
-        </div>
-      )} */}
-
+    <div className="min-h-screen bg-secondary-50">
       {/* Differential Count Validation Modal */}
       {differentialResult && (
         <NewModal
@@ -939,6 +903,7 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
           </div>
 
           {/* Test Table Card */}
+          {hasNonDetailedReportParams && (
           <div className="overflow-hidden rounded-xl border border-pneutral-200 bg-white">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[750px]">
@@ -1149,6 +1114,24 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
               </table>
             </div>
           </div>
+          )}
+
+          {/* Detailed Report Editor (table-based report sections, e.g. Complete Urine Analysis) */}
+          {detailedReportPoint && (
+            <div className="rounded-xl border border-pneutral-200 bg-white p-4">
+              <DetailedReportEditor
+                point={detailedReportPoint}
+                onReportJsonChange={(reportJson) => {
+                  setReferencePoints(prev => ({
+                    ...prev,
+                    [selectedTest.name]: (prev[selectedTest.name] || []).map(p =>
+                      p.testDescription === "DETAILED REPORT" ? { ...p, reportJson } : p
+                    )
+                  }));
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Right Sidebar - Patient Details */}
@@ -1223,11 +1206,7 @@ export default PatientReportDataFill;
 
 
 
-
-
-
-
-// code with the random urine sugar test ............
+// code dated 21.07.2026..............
 
 // "use client";
 
@@ -1243,7 +1222,7 @@ export default PatientReportDataFill;
 // import { calculateAgeObject } from '@/utils/ageUtils';
 // import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
 // import AutoCalculation from './AutoCalculation';
-// import { TbSquareRoundedCheck, TbX } from "react-icons/tb";
+// // import { TbSquareRoundedCheck, TbX } from "react-icons/tb";
 // import NewModal from "../../../newcommoncomponent/NewModal";
 // import { FaChevronDown } from "react-icons/fa";
 // import { createPortal } from "react-dom";
@@ -1261,6 +1240,8 @@ export default PatientReportDataFill;
 //   testIds: number[];
 //   packageIds: number[];
 //   dateOfBirth?: string;
+//   doctorName?: string; 
+//   visitType?: string;
 // }
 
 // interface ReportData {
@@ -1304,6 +1285,16 @@ export default PatientReportDataFill;
 //       </span>
 //     </div>
 //   );
+// };
+
+// const getDynamicStep = (value: string) => {
+//   if (!value || !value.includes(".")) {
+//     return 1;
+//   }
+
+//   const decimalPart = value.split(".")[1];
+
+//   return Math.pow(10, -decimalPart.length);
 // };
 
 // // Dropdown Component with NEW UI styling
@@ -1437,7 +1428,8 @@ export default PatientReportDataFill;
 //           onFocus={handleInputFocus}
 //           disabled={disabled}
 //           className={`h-9 w-32 rounded-full border border-info-500 bg-white pl-3 pr-3 text-p3 outline-none transition focus:border-secondary-700 disabled:opacity-60 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${className}`}
-//           step="1"
+//           // step="1"
+//           step={getDynamicStep(inputValue)}
 //           min="0"
 //           max="100"
 //         />
@@ -2010,7 +2002,7 @@ export default PatientReportDataFill;
 //   return (
 //     <div className="min-h-screen bg-info-50">
 //       {/* Differential Count Validation Alert - Only for CBC */}
-//       {differentialValidation && (
+//       {/* {differentialValidation && (
 //         <div className={`mb-4 rounded-2xl border p-4 ${
 //           differentialValidation.type === 'error' 
 //             ? 'bg-red-50 border-red-300' 
@@ -2046,7 +2038,7 @@ export default PatientReportDataFill;
 //             </div>
 //           </div>
 //         </div>
-//       )}
+//       )} */}
 
 //       {/* Differential Count Validation Modal */}
 //       {differentialResult && (
@@ -2328,7 +2320,9 @@ export default PatientReportDataFill;
 //                                 }
 //                                 className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(status)}`}
 //                                 disabled={isAutoCalculated}
-//                                 step="any"
+//                                 step={getDynamicStep(currentValue)}
+//                                 // min={0}
+//                                 min={isAutoCalculated ? undefined : 0}
 //                               />
 //                             </div>
 //                           )}
@@ -2385,9 +2379,11 @@ export default PatientReportDataFill;
 //               />
 //               <InfoRow
 //                 label="Doctor"
-//                 value="Dr. R. Mehta"
+//                 value={selectedPatient.doctorName || 'N/A'}
 //               />
-//               <InfoRow label="Visit Type" value="OPD" />
+//               <InfoRow label="Visit Type" 
+//               value={selectedPatient.visitType || 'N/A'}
+//                />
 //               <InfoRow
 //                 label="Contact"
 //                 value={selectedPatient.contactNumber || 'N/A'}
@@ -2422,1056 +2418,6 @@ export default PatientReportDataFill;
 // };
 
 // export default PatientReportDataFill;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// code dated 03.07.2026 & working ...............
-
-// "use client";
-
-// import React, { useState, useCallback, useEffect } from "react";
-// import { CiCircleCheck } from "react-icons/ci";
-// import { IoArrowBack } from "react-icons/io5";
-// import { toast } from 'react-toastify';
-// import Loader from '@/app/(admin)/component/common/Loader';
-// import { useLabs } from '@/context/LabContext';
-// import { TestList, TestReferancePoint } from '@/types/test/testlist';
-// import { getTestReferanceRangeByTestName } from '@/../services/testService';
-// import { createReportWithTestResult } from '@/../services/reportServices';
-// import { calculateAgeObject } from '@/utils/ageUtils';
-// import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
-// import AutoCalculation from './AutoCalculation';
-// import { TbSquareRoundedCheck, TbX } from "react-icons/tb";
-// import NewModal from "../../../newcommoncomponent/NewModal";
-
-// // Interfaces
-// export interface Patient {
-//   visitId: number;
-//   patientname: string;
-//   gender: string;
-//   contactNumber: string;
-//   email: string;
-//   visitDate: string;
-//   visitStatus: string;
-//   sampleNames: string[];
-//   testIds: number[];
-//   packageIds: number[];
-//   dateOfBirth?: string;
-// }
-
-// interface ReportData {
-//   visit_id: string;
-//   testName: string;
-//   testCategory: string;
-//   patientName: string;
-//   referenceDescription: string;
-//   referenceRange: string;
-//   referenceAgeRange: string;
-//   enteredValue: string;
-//   unit: string;
-//   description: string;
-//   referenceRanges?: string;
-//   reportJson?: string;
-// }
-
-// interface ReportPayload {
-//   testData: ReportData[];
-//   testResult: {
-//     testId: number;
-//     isFilled: boolean;
-//   };
-// }
-
-// interface PatientReportDataFillProps {
-//   selectedPatient: Patient;
-//   selectedTest: TestList;
-//   updateCollectionTable: boolean;
-//   setUpdateCollectionTable: (value: React.SetStateAction<boolean>) => void;
-//   setShowModal: (value: React.SetStateAction<boolean>) => void;
-// }
-
-// // InfoRow Component for Sidebar
-// const InfoRow = ({ label, value }: { label: string; value: string }) => {
-//   return (
-//     <div className="flex items-start justify-between text-p3 gap-4">
-//       <span className="text-pneutral-500">{label}</span>
-//       <span className="text-right font-medium text-pneutral-900">
-//         {value}
-//       </span>
-//     </div>
-//   );
-// };
-
-// // Dropdown Component with NEW UI styling
-// const DropdownInput = ({ 
-//   value, 
-//   onChange, 
-//   options,
-//   placeholder = "Select value",
-//   disabled = false
-// }: { 
-//   value: string; 
-//   onChange: (value: string) => void; 
-//   options: DropdownItem[];
-//   placeholder?: string;
-//   disabled?: boolean;
-// }) => {
-//   return (
-//     <select
-//       value={value}
-//       onChange={(e) => onChange(e.target.value)}
-//       disabled={disabled}
-//       className="h-9 w-32 rounded-full border border-info-500 bg-white px-3 text-p3 outline-none transition focus:border-secondary-700 disabled:opacity-60 disabled:cursor-not-allowed"
-//     >
-//       <option value="">{placeholder}</option>
-//       {options.map((option) => (
-//         <option key={option.value} value={option.value}>
-//           {option.label}
-//         </option>
-//       ))}
-//     </select>
-//   );
-// };
-
-// // Status helper functions
-// const getValueStatus = (value: string, minRef: number | null, maxRef: number | null) => {
-//   if (!value || isNaN(Number(value))) return 'no-reference';
-//   const numValue = parseFloat(value);
-
-//   if (minRef === null || maxRef === null) return 'no-reference';
-//   if (numValue < minRef) return 'below';
-//   if (numValue > maxRef) return 'above';
-//   return 'normal';
-// };
-
-// const getStatusTextColor = (status: string) => {
-//   switch (status) {
-//     case 'above':
-//       return 'text-warning-500';
-//     case 'below':
-//       return 'text-danger-600';
-//     case 'normal':
-//       return 'text-success-900';
-//     default:
-//       return 'text-pneutral-400';
-//   }
-// };
-
-// const getInputBorderColor = (status: string) => {
-//   switch (status) {
-//     case 'above':
-//       return 'border-warning-500';
-//     case 'below':
-//       return 'border-danger-600';
-//     case 'normal':
-//       return 'border-info-500';
-//     default:
-//       return 'border-info-500';
-//   }
-// };
-
-// const getRowBackground = (status: string) => {
-//   switch (status) {
-//     case 'above':
-//       return 'bg-warning-50';
-//     case 'below':
-//       return 'bg-danger-50';
-//     default:
-//       return '';
-//   }
-// };
-
-// const getStatusLabel = (status: string) => {
-//   switch (status) {
-//     case 'above': return 'High';
-//     case 'below': return 'Low';
-//     case 'normal': return 'Normal';
-//     default: return '';
-//   }
-// };
-
-// const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
-//   selectedPatient,
-//   selectedTest,
-//   setUpdateCollectionTable,
-//   setShowModal
-// }) => {
-//   const { currentLab } = useLabs();
-  
-//   // State management
-//   const [loading, setLoading] = useState(false);
-//   const [referencePoints, setReferencePoints] = useState<Record<string, TestReferancePoint[]>>({});
-//   const [inputValues, setInputValues] = useState<Record<string, Record<string | number, string>>>({});
-//   const [allTests, setAllTests] = useState<TestList[]>([]);
-//   const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
-//   const [isSubmitting, setIsSubmitting] = useState(false);
-//   const [differentialValidation, setDifferentialValidation] = useState<{
-//     total: number;
-//     type: string;
-//     message: string;
-//     calculation: string;
-//   } | null>(null);
-
-//   // Modal states for differential count validation
-//   const [showDifferentialModal, setShowDifferentialModal] = useState(false);
-//   const [differentialResult, setDifferentialResult] = useState<{
-//     total: number;
-//     type: string;
-//     message: string;
-//     calculation: string;
-//   } | null>(null);
-//   const [lastDifferentialValues, setLastDifferentialValues] = useState<string>('');
-//   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
-//   const isModalManuallyClosed = React.useRef(false);
-
-//   const filterReferenceData = useCallback((referenceData: Record<string, TestReferancePoint[]>) => {
-//     const filteredData: Record<string, TestReferancePoint[]> = {};
-
-//     Object.keys(referenceData).forEach((testName) => {
-//       const testPoints = referenceData[testName];
-
-//       const genderFilteredPoints = testPoints.filter((point) => {
-//         const pointGender = point.gender?.toUpperCase() || '';
-//         const patientGender = selectedPatient.gender?.toUpperCase() || '';
-
-//         let mappedPatientGender = '';
-//         if (patientGender === 'MALE') {
-//           mappedPatientGender = 'M';
-//         } else if (patientGender === 'FEMALE') {
-//           mappedPatientGender = 'F';
-//         }
-
-//         return pointGender === 'MF' ||
-//           pointGender === mappedPatientGender ||
-//           !pointGender ||
-//           pointGender === '';
-//       });
-
-//       const ageObj = selectedPatient.dateOfBirth ? calculateAgeObject(selectedPatient.dateOfBirth) : { years: 0, months: 0, days: 0 };
-//       const patientAgeMonths = (ageObj.years || 0) * 12 + (ageObj.months || 0);
-
-//       const toMonths = (value: number | null | undefined, unit: string | null | undefined): number => {
-//         if (value === null || value === undefined) return 0;
-//         const u = (unit || 'YEARS').toUpperCase();
-
-//         if (u === 'MONTHS' && value === 1) {
-//           return 12;
-//         }
-
-//         return u === 'MONTHS' ? value : value * 12;
-//       };
-
-//       const ageFilteredPoints = genderFilteredPoints.filter((point) => {
-//         const minMonths = toMonths(point.ageMin, point.minAgeUnit);
-//         const maxMonths = point.ageMax === null || point.ageMax === undefined
-//           ? Number.MAX_SAFE_INTEGER
-//           : toMonths(point.ageMax, point.maxAgeUnit);
-
-//         const isLastRange = maxMonths === Number.MAX_SAFE_INTEGER || maxMonths >= 1200;
-
-//         if (isLastRange) {
-//           return patientAgeMonths >= minMonths && patientAgeMonths <= maxMonths;
-//         } else {
-//           return patientAgeMonths >= minMonths && patientAgeMonths < maxMonths;
-//         }
-//       });
-
-//       filteredData[testName] = ageFilteredPoints.length > 0 ? ageFilteredPoints : genderFilteredPoints;
-//     });
-
-//     return filteredData;
-//   }, [selectedPatient.dateOfBirth, selectedPatient.gender]);
-
-//   const fetchReferenceData = useCallback(async () => {
-//     if (!selectedTest || !currentLab) {
-//       return;
-//     }
-
-//     setLoading(true);
-//     try {
-//       const response = await getTestReferanceRangeByTestName(currentLab.id.toString(), selectedTest.name);
-
-//       if (response) {
-//         const responseArray = Array.isArray(response) ? response : [response];
-        
-//         const filteredData = filterReferenceData({ [selectedTest.name]: responseArray });
-//         setReferencePoints(filteredData);
-
-//         const testInputs: Record<string | number, string> = {};
-//         responseArray.forEach((_, index) => {
-//           testInputs[index] = '';
-//           const descriptionKey = `${index}_description`;
-//           testInputs[descriptionKey] = '';
-//         });
-
-//         setInputValues(prev => ({
-//           ...prev,
-//           [selectedTest.name]: testInputs
-//         }));
-//       }
-//     } catch (error) {
-//       let errorMessage = 'Failed to fetch test reference data';
-//       if (error instanceof Error) {
-//         errorMessage = error.message;
-//       }
-//       toast.error(errorMessage);
-//     } finally {
-//       setLoading(false);
-//     }
-//   }, [selectedTest, currentLab, filterReferenceData]);
-
-//   useEffect(() => {
-//     if (selectedTest) {
-//       setAllTests([selectedTest]);
-//       fetchReferenceData();
-//     }
-//   }, [selectedTest, fetchReferenceData]);
-
-//   // Reset modal state when test changes
-//   useEffect(() => {
-//     setShowDifferentialModal(false);
-//     setDifferentialResult(null);
-//     setLastDifferentialValues('');
-//     isModalManuallyClosed.current = false;
-//   }, [selectedTest]);
-
-//   // Monitor differential validation changes and show modal
-//   useEffect(() => {
-//     // Clear any existing timer
-//     if (debounceTimer) {
-//       clearTimeout(debounceTimer);
-//     }
-
-//     // Set a new debounced timer
-//     const timer = setTimeout(() => {
-//       // Check if we have differential validation from AutoCalculation
-//       if (differentialValidation) {
-//         const currentValues = JSON.stringify(differentialValidation);
-//         // Only show modal if values have changed, modal is not already showing, 
-//         // and not manually closed recently
-//         if (currentValues !== lastDifferentialValues && 
-//             !showDifferentialModal && 
-//             !isModalManuallyClosed.current) {
-//           setDifferentialResult(differentialValidation);
-//           setShowDifferentialModal(true);
-//           setLastDifferentialValues(currentValues);
-//         }
-//       }
-//     }, 1000);
-
-//     setDebounceTimer(timer);
-
-//     // Cleanup function
-//     return () => {
-//       if (timer) {
-//         clearTimeout(timer);
-//       }
-//     };
-//     // IMPORTANT: Remove showDifferentialModal from dependencies to prevent re-trigger on modal close
-//   }, [differentialValidation, lastDifferentialValues]);
-
-//   const handleInputChange = (testName: string, index: number | string, value: string) => {
-//     const numericValue = parseFloat(value);
-
-//     // Prevent negative values for non-auto-calculated fields
-//     if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
-//         const referenceData = referencePoints[testName] || [];
-//         const point = referenceData[typeof index === 'number' ? index : 0];
-        
-//         // Pass testName to isAutoCalculatedField
-//         if (point && !AutoCalculation.isAutoCalculatedField(point.testDescription || '', testName)) {
-//             toast.error('Negative values are not allowed');
-//             return;
-//         }
-//     }
-
-//     setInputValues(prev => {
-//         const currentTestInputs = prev[testName] || {};
-//         const updated = {
-//             ...prev,
-//             [testName]: {
-//                 ...currentTestInputs,
-//                 [index]: value
-//             }
-//         };
-
-//         const updatedInputs = updated[testName];
-//         const refData = referencePoints[testName] || [];
-
-//         if (refData.length > 0) {
-//             const point = refData[typeof index === 'number' ? index : 0];
-//             const isDropdownField = point?.testDescription?.toUpperCase().includes('DROPDOWN') || 
-//                                     point?.testDescription?.toUpperCase().includes('DROPDOWN WITH DESCRIPTION');
-            
-//             if (!isDropdownField) {
-//                 const result = AutoCalculation.calculate(testName, updatedInputs, refData);
-//                 updated[testName] = result.updatedInputs;
-                
-//                 if (result.differentialValidation) {
-//                     setDifferentialValidation(result.differentialValidation);
-//                 }
-//             }
-//         }
-
-//         return updated;
-//     });
-
-//     if (validationErrors[`${testName}-${index}`]) {
-//         setValidationErrors(prev => ({
-//             ...prev,
-//             [`${testName}-${index}`]: false
-//         }));
-//     }
-// };
-
-//   const validateForm = () => {
-//     const errors: Record<string, boolean> = {};
-//     let isValid = true;
-
-//     allTests.forEach(test => {
-//         if (test.category === 'RADIOLOGY') {
-//             return;
-//         }
-
-//         const testInputs = inputValues[test.name] || {};
-//         const referenceData = referencePoints[test.name] || [];
-
-//         referenceData.forEach((point, index) => {
-//             const descriptionUpper = (point.testDescription || '').toUpperCase();
-//             if (descriptionUpper === 'DETAILED REPORT') {
-//                 return;
-//             }
-
-//             // Pass test name to isAutoCalculatedField
-//             if (AutoCalculation.isAutoCalculatedField(point.testDescription || '', test.name)) {
-//                 return;
-//             }
-
-//             if (!testInputs[index] || testInputs[index].trim() === '') {
-//                 errors[`${test.name}-${index}`] = true;
-//                 isValid = false;
-//             }
-//         });
-//     });
-
-//     setValidationErrors(errors);
-//     return isValid;
-// };
-
-//   const handleSaveAndGenerate = async () => {
-//     if (!validateForm()) {
-//       toast.error('Please fill in all required fields');
-//       return;
-//     }
-
-//     setIsSubmitting(true);
-
-//     try {
-//       const generatedReportData: ReportData[] = [];
-
-//       allTests.forEach((test) => {
-//         if (test.category === 'RADIOLOGY') {
-//           const formattedTestName = test.name
-//             .split(' ')
-//             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-//             .join(' ');
-
-//           const formattedCategory = test.category
-//             .split(' ')
-//             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-//             .join(' ');
-
-//           const detailedReportPoint = referencePoints[test.name]?.find(point => point.testDescription === "DETAILED REPORT");
-//           generatedReportData.push({
-//             visit_id: selectedPatient.visitId.toString(),
-//             testName: formattedTestName,
-//             testCategory: formattedCategory,
-//             patientName: selectedPatient.patientname,
-//             referenceDescription: detailedReportPoint?.testDescription || "RADIOLOGY_TEST",
-//             referenceRange: "N/A",
-//             enteredValue: "Hard copy will be provided",
-//             referenceAgeRange: "N/A",
-//             unit: "N/A",
-//             description: "Imaging test - Results provided separately",
-//             referenceRanges: detailedReportPoint?.referenceRanges || undefined,
-//             reportJson: detailedReportPoint?.reportJson || undefined
-//           });
-
-//           return;
-//         }
-
-//         const testInputs = inputValues[test.name] || {};
-//         const referenceData = referencePoints[test.name] || [];
-
-//         referenceData.forEach((point, index) => {
-//           if (testInputs[index] || (point.testDescription && point.testDescription !== "No reference available for this test")) {
-//             const formattedTestName = test.name
-//               .split(' ')
-//               .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-//               .join(' ');
-
-//             const formattedCategory = test.category
-//               .split(' ')
-//               .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-//               .join(' ');
-
-//             let finalValue = testInputs[index] || "N/A";
-//             let description = "N/A";
-//             let unit = "N/A";
-//             let referenceRange = "N/A";
-//             const hasReferenceRange =
-//               point.minReferenceRange !== null &&
-//               point.minReferenceRange !== undefined ||
-//               point.maxReferenceRange !== null &&
-//               point.maxReferenceRange !== undefined;
-//             const resolvedReferenceRange = hasReferenceRange
-//               ? `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`
-//               : "N/A";
-
-//             const descriptionKey = `${index}_description`;
-//             const hasDescription = testInputs[descriptionKey] && testInputs[descriptionKey].trim();
-
-//             const hasApiDropdown = hasValidDropdown(point.dropdown);
-
-//             if (point.testDescription === "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE" ||
-//               point.testDescription === "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT") {
-//               unit = point.units || "N/A";
-//               description = hasDescription ? testInputs[descriptionKey] : "N/A";
-//               finalValue = testInputs[index] || "N/A";
-//               referenceRange = resolvedReferenceRange;
-//             } else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
-//               "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DROPDOWN-COMPATIBLE/INCOMPATIBLE"].includes(point.testDescription)) {
-//               unit = point.units || "N/A";
-//               description = "N/A";
-//               finalValue = testInputs[index] || "N/A";
-//               referenceRange = resolvedReferenceRange;
-//             } else if (point.testDescription === "DESCRIPTION") {
-//               unit = "N/A";
-//               description = testInputs[index] || "N/A";
-//               finalValue = testInputs[index] || "N/A";
-//               referenceRange = "N/A";
-//             }
-//             else if (point.testDescription === "DETAILED REPORT") {
-//               unit = "N/A";
-//               description = "Imaging test - Results provided separately";
-//               finalValue = "Hard copy will be provided";
-//               referenceRange = "N/A";
-//             }
-//             else {
-//               unit = point.units || "N/A";
-//               description = "N/A";
-//               finalValue = testInputs[index] || "N/A";
-//               referenceRange = `${point.minReferenceRange ?? "N/A"} - ${point.maxReferenceRange ?? "N/A"}`;
-//             }
-
-//             generatedReportData.push({
-//               visit_id: selectedPatient.visitId.toString(),
-//               testName: formattedTestName,
-//               testCategory: formattedCategory,
-//               patientName: selectedPatient.patientname,
-//               referenceDescription: point.testDescription || "No reference description available",
-//               referenceRange: referenceRange,
-//               enteredValue: finalValue,
-//               referenceAgeRange: `${point.ageMin ?? "N/A"} ${point.minAgeUnit ?? "YEARS"} - ${point.ageMax ?? "N/A"} ${point.maxAgeUnit ?? "YEARS"}`,
-//               unit: unit,
-//               description: description,
-//               referenceRanges: point.referenceRanges || undefined,
-//               reportJson: point.reportJson || undefined
-//             });
-//           }
-//         });
-//       });
-
-//       const completePayload: ReportPayload = {
-//         testData: generatedReportData,
-//         testResult: {
-//           testId: selectedTest.id,
-//           isFilled: true
-//         }
-//       };
-
-//       const response = await createReportWithTestResult(currentLab?.id.toString() || '', completePayload);
-
-//       if (response !== undefined && response !== null) {
-//         toast.success('Report submitted successfully!');
-//         setUpdateCollectionTable(prev => !prev);
-//         setShowModal(false);
-//       } else {
-//         toast.error('Failed to submit report');
-//       }
-//     } catch (error) {
-//       toast.error('Failed to submit report');
-//     } finally {
-//       setIsSubmitting(false);
-//     }
-//   };
-
-//   if (loading) {
-//     return (
-//       <div className="flex flex-col items-center justify-center p-6">
-//         <Loader type="progress" fullScreen={false} text="Loading report data..." />
-//         <p className="mt-4 text-sm text-gray-600">Fetching test and reference data...</p>
-//       </div>
-//     );
-//   }
-
-//   // Get the reference data for the current test
-//   const currentTestRefs = referencePoints[selectedTest?.name] || [];
-
-//   // If no reference data is available, show a message
-//   if (!loading && currentTestRefs.length === 0 && selectedTest) {
-//     return (
-//       <div className="min-h-screen bg-info-50 p-6">
-//         <div className="bg-white rounded-xl p-6 text-center">
-//           <h3 className="text-lg font-semibold text-gray-800 mb-2">No Reference Data Available</h3>
-//           <p className="text-gray-600">No reference ranges found for {selectedTest.name}</p>
-//           <button
-//             onClick={() => setShowModal(false)}
-//             className="mt-4 px-4 py-2 bg-secondary-700 text-white rounded-full"
-//           >
-//             Back to Queue
-//           </button>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="min-h-screen bg-info-50">
-//       {/* Differential Count Validation Alert - Only for CBC */}
-//       {differentialValidation && (
-//         <div className={`mb-4 rounded-2xl border p-4 ${
-//           differentialValidation.type === 'error' 
-//             ? 'bg-red-50 border-red-300' 
-//             : 'bg-green-50 border-green-300'
-//         }`}>
-//           <div className="flex items-center justify-between">
-//             <div className="flex items-center">
-//               {differentialValidation.type === 'error' ? (
-//                 <TbX className="text-red-500 mr-3" size={24} />
-//               ) : (
-//                 <TbSquareRoundedCheck className="text-green-500 mr-3" size={24} />
-//               )}
-//               <div>
-//                 <span className={`text-base font-semibold ${
-//                   differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'
-//                 }`}>
-//                   {differentialValidation.message}
-//                 </span>
-//                 <p className={`text-sm mt-1 ${
-//                   differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
-//                 }`}>
-//                   {differentialValidation.type === 'error' ? 
-//                     'Please check your differential count values' :
-//                     'Differential count is correctly balanced'
-//                   }
-//                 </p>
-//               </div>
-//             </div>
-//             <div className={`text-lg font-bold ${
-//               differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
-//             }`}>
-//               Total: {differentialValidation.total}
-//             </div>
-//           </div>
-//         </div>
-//       )}
-
-//       {/* Differential Count Validation Modal */}
-//       {differentialResult && (
-//         <NewModal
-//           isOpen={showDifferentialModal}
-//           onClose={() => {
-//             setShowDifferentialModal(false);
-//             isModalManuallyClosed.current = true;
-//             setTimeout(() => {
-//               isModalManuallyClosed.current = false;
-//             }, 2000);
-//           }}
-//           title="Differential Count Validation"
-//           modalClassName="max-w-xl"
-//         >
-//           <div className={`text-center p-6 rounded-lg border-2 ${
-//             differentialResult.type === 'success'
-//               ? 'bg-green-50 border-green-300'
-//               : 'bg-red-50 border-red-300'
-//           }`}>
-//             <div className={`text-4xl font-bold mb-2 ${
-//               differentialResult.type === 'success'
-//                 ? 'text-green-600'
-//                 : 'text-red-600'
-//             }`}>
-//               {differentialResult.total}
-//             </div>
-//             <div className={`text-lg font-semibold ${
-//               differentialResult.type === 'success'
-//                 ? 'text-green-800'
-//                 : 'text-red-800'
-//             }`}>
-//               Differential Count
-//             </div>
-//             <div className={`text-sm mt-2 ${
-//               differentialResult.type === 'success'
-//                 ? 'text-green-700'
-//                 : 'text-red-700'
-//             }`}>
-//               {differentialResult.type === 'success'
-//                 ? 'Perfect! All values are balanced.'
-//                 : 'Please review your differential count values.'}
-//             </div>
-//             <div className={`text-p3 mt-3 text-pneutral-900`}>
-//               Calculation: {differentialResult.calculation} = {differentialResult.total}
-//             </div>
-//           </div>
-
-//           <div className="mt-4 text-center">
-//             <button
-//               onClick={() => {
-//                 setShowDifferentialModal(false);
-//                 isModalManuallyClosed.current = true;
-//                 setTimeout(() => {
-//                   isModalManuallyClosed.current = false;
-//                 }, 2000);
-//               }}
-//               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-//             >
-//               Close
-//             </button>
-//           </div>
-//         </NewModal>
-//       )}
-
-//       {/* Header */}
-//       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-//         <div>
-//           <h1 className="text-h6 font-semibold text-[#101828]">
-//             Enter Test Result Data
-//           </h1>
-
-//           <p className="mt-1 text-p3 font-medium text-[#99A1AF]">
-//             {selectedPatient.visitDate ? new Date(selectedPatient.visitDate).toLocaleDateString() : 'N/A'} • {selectedTest?.name || 'Test'}
-//           </p>
-//         </div>
-
-//         <div className="flex gap-3">
-//           <button 
-//             onClick={() => setShowModal(false)}
-//             className="flex items-center gap-2 rounded-full border border-pneutral-600 px-3 py-2 text-label-l3 font-medium text-pneutral-600"
-//           >
-//             <IoArrowBack className="h-4 w-4 text-pneutral-600" />
-//             Back to Queue
-//           </button>
-
-//           <button
-//             onClick={handleSaveAndGenerate}
-//             disabled={isSubmitting}
-//             className={`flex items-center gap-2 rounded-full px-3 py-2 text-label-l3 font-medium text-pneutral-50 ${
-//               isSubmitting ? 'bg-pneutral-400 cursor-not-allowed' : 'bg-secondary-700'
-//             }`}
-//           >
-//             <CiCircleCheck className="h-5 w-5" />
-//             {isSubmitting ? 'Saving...' : 'Save & Generate Report'}
-//           </button>
-//         </div>
-//       </div>
-
-//       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-//         {/* Left Side - Test Table */}
-//         <div className="space-y-6">
-//           {/* Test Header Card */}
-//           <div className="rounded-xl border border-pneutral-200 bg-white px-4 py-3">
-//             <h3 className="text-label-l4 font-medium text-pneutral-900">
-//               {selectedTest?.name} — {selectedTest?.category || 'Test'}
-//             </h3>
-//           </div>
-
-//           {/* Test Table Card */}
-//           <div className="overflow-hidden rounded-xl border border-pneutral-200 bg-white">
-//             <div className="overflow-x-auto">
-//               <table className="w-full min-w-[750px]">
-//                 <thead>
-//                   <tr className="border-b border-pneutral-200 bg-white text-left text-label-l3 text-pneutral-900">
-//                     <th className="px-4 py-3">Parameter</th>
-//                     <th className="px-4 py-3">Result</th>
-//                     <th className="px-4 py-3">Unit</th>
-//                     <th className="px-4 py-3">Ref. Range</th>
-//                     <th className="px-4 py-3">Status</th>
-//                   </tr>
-//                 </thead>
-
-//                 <tbody>
-//                   {currentTestRefs.map((point, index) => {
-//                     const currentValue = inputValues[selectedTest?.name]?.[index] || "";
-//                     const descriptionValue = inputValues[selectedTest?.name]?.[`${index}_description`] || "";
-                    
-//                     const dropdownResult = parseDropdownField(point.dropdown);
-//                     const hasApiDropdown = dropdownResult.isValid;
-//                     const dropdownItems = dropdownResult.data;
-
-//                     // Check if this is RANDOM URINE SUGAR test
-//                     const isRandomUrineSugar = selectedTest?.name?.toUpperCase().includes('RANDOM URINE SUGAR') || 
-//                                               selectedTest?.name?.toUpperCase().includes('RUS');
-
-//                     // For RANDOM URINE SUGAR with DROPDOWN-PERCENTAGE, use numeric input instead of dropdown
-//                     const isPercentageTest = isRandomUrineSugar && 
-//                       (point.testDescription?.toUpperCase().includes('DROPDOWN-PERCENTAGE') || 
-//                        point.testDescription?.toUpperCase().includes('PERCENTAGE'));
-
-//                     // Override isDropdown for percentage tests
-//                     const isDropdown = !isPercentageTest && (hasApiDropdown || 
-//                       ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-PRESENT/ABSENT",
-//                        "DROPDOWN-REACTIVE/NONREACTIVE", "DROPDOWN-PERCENTAGE", "DROPDOWN-COMPATIBLE/INCOMPATIBLE"]
-//                       .includes(point.testDescription || ''));
-
-//                     const isDropdownWithDescription = 
-//                       point.testDescription === "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE" ||
-//                       point.testDescription === "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT";
-
-//                     const isDescription = point.testDescription === "DESCRIPTION";
-//                     const isDetailedReport = point.testDescription === "DETAILED REPORT";
-
-//                     let dropdownOptions: DropdownItem[] = [];
-                    
-//                     if (hasApiDropdown && dropdownItems && dropdownItems.length > 0) {
-//                       dropdownOptions = dropdownItems;
-//                     } else if (isDropdown) {
-//                       const desc = point.testDescription?.toUpperCase() || '';
-//                       const name = selectedTest?.name?.toUpperCase() || '';
-                      
-//                       if (name.includes('BLOOD GROUP') || name.includes('BLOOD TYPE') || desc.includes('BLOOD GROUP') || desc.includes('BLOOD TYPE')) {
-//                         dropdownOptions = [
-//                           { label: 'A+', value: 'A+' },
-//                           { label: 'A-', value: 'A-' },
-//                           { label: 'B+', value: 'B+' },
-//                           { label: 'B-', value: 'B-' },
-//                           { label: 'AB+', value: 'AB+' },
-//                           { label: 'AB-', value: 'AB-' },
-//                           { label: 'O+', value: 'O+' },
-//                           { label: 'O-', value: 'O-' }
-//                         ];
-//                       } else if (desc.includes('POSITIVE/NEGATIVE') || name.includes('POSITIVE/NEGATIVE')) {
-//                         dropdownOptions = [{ label: 'Positive', value: 'Positive' }, { label: 'Negative', value: 'Negative' }];
-//                       } else if (desc.includes('PRESENT/ABSENT') || name.includes('PRESENT/ABSENT')) {
-//                         dropdownOptions = [{ label: 'Present', value: 'Present' }, { label: 'Absent', value: 'Absent' }];
-//                       } else if (desc.includes('REACTIVE/NONREACTIVE') || name.includes('REACTIVE/NONREACTIVE')) {
-//                         dropdownOptions = [{ label: 'Reactive', value: 'Reactive' }, { label: 'Non-Reactive', value: 'Non-Reactive' }];
-//                       } else if (desc.includes('COMPATIBLE/INCOMPATIBLE') || name.includes('COMPATIBLE/INCOMPATIBLE')) {
-//                         dropdownOptions = [{ label: 'Compatible', value: 'Compatible' }, { label: 'Incompatible', value: 'Incompatible' }];
-//                       } else {
-//                         dropdownOptions = [{ label: 'Yes', value: 'Yes' }, { label: 'No', value: 'No' }];
-//                       }
-//                     }
-
-//                     let status = 'no-reference';
-//                     const minRef = point.minReferenceRange;
-//                     const maxRef = point.maxReferenceRange;
-                    
-//                     if (!isDropdown && !isDescription && !isDropdownWithDescription && currentValue && !isNaN(Number(currentValue))) {
-//                       status = getValueStatus(currentValue, minRef, maxRef);
-//                     }
-
-//                     if (isDetailedReport) {
-//                       return null;
-//                     }
-
-//                     const isAutoCalculated = AutoCalculation.isAutoCalculatedField(
-//                       point.testDescription || '', 
-//                       selectedTest?.name || ''
-//                     );
-
-//                     // Check if this is a DESCRIPTION field
-//                     const isDescriptionField = point.testDescription === "DESCRIPTION";
-
-//                     return (
-//                       <tr
-//                         key={index}
-//                         className={`border-b border-pneutral-200 last:border-0 ${getRowBackground(status)}`}
-//                       >
-//                         <td className="px-4 py-3 text-p3 text-pneutral-900">
-//                           {point.testDescription || `Parameter ${index + 1}`}
-//                           {isAutoCalculated && (
-//                             <span className="ml-2 text-xs text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
-//                               Auto-calc
-//                             </span>
-//                           )}
-//                         </td>
-
-//                         <td className="px-4 py-3 text-p3">
-//                           {isDropdownWithDescription ? (
-//                             <div className="flex flex-col gap-1">
-//                               <DropdownInput
-//                                 value={currentValue}
-//                                 onChange={(value) =>
-//                                   handleInputChange(selectedTest?.name, index, value)
-//                                 }
-//                                 options={dropdownOptions}
-//                                 placeholder="Select value"
-//                               />
-//                               <input
-//                                 type="text"
-//                                 value={descriptionValue}
-//                                 placeholder="Enter description"
-//                                 onChange={(e) =>
-//                                   handleInputChange(selectedTest?.name, `${index}_description`, e.target.value)
-//                                 }
-//                                 className="h-9 w-48 rounded-full border border-info-500 bg-white px-3 text-p3 outline-none transition focus:border-secondary-700 text-sm"
-//                               />
-//                             </div>
-//                           ) : isDescription ? (
-//                             <textarea
-//                               value={currentValue}
-//                               placeholder="Enter description"
-//                               onChange={(e) =>
-//                                 handleInputChange(selectedTest?.name, index, e.target.value)
-//                               }
-//                               className="w-full min-w-[200px] rounded-lg border border-info-500 bg-white px-3 py-2 text-p3 outline-none transition focus:border-secondary-700 resize-y"
-//                               rows={4}
-//                             />
-//                           ) : isDropdown ? (
-//                             <DropdownInput
-//                               value={currentValue}
-//                               onChange={(value) =>
-//                                 handleInputChange(selectedTest?.name, index, value)
-//                               }
-//                               options={dropdownOptions}
-//                               placeholder="Select value"
-//                             />
-//                           ) : (
-//                             <div className="flex items-center gap-2">
-//                               <input
-//                                 type="number"
-//                                 value={currentValue}
-//                                 placeholder="Enter value"
-//                                 onChange={(e) =>
-//                                   handleInputChange(selectedTest?.name, index, e.target.value)
-//                                 }
-//                                 className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(status)}`}
-//                                 disabled={isAutoCalculated}
-//                                 step="any"
-//                               />
-//                               {/* Show % symbol for RANDOM URINE SUGAR test with percentage unit */}
-//                               {isPercentageTest && point.units?.toUpperCase() === '%' && (
-//                                 <span className="text-p3 text-pneutral-600 font-medium">%</span>
-//                               )}
-//                             </div>
-//                           )}
-//                         </td>
-
-//                         {/* Hide Unit, Ref. Range, and Status columns for DESCRIPTION field */}
-//                         {isDescriptionField ? (
-//                           <>
-//                             <td className="px-4 py-3 text-p3 text-pneutral-900">-</td>
-//                             <td className="px-4 py-3 text-p3 text-sneutral-500">-</td>
-//                             <td className="px-4 py-3 text-p3 font-medium text-pneutral-400">-</td>
-//                           </>
-//                         ) : (
-//                           <>
-//                             <td className="px-4 py-3 text-p3 text-pneutral-900">
-//                               {isDescription || isDropdown || isDropdownWithDescription ? '-' : (point.units || 'N/A')}
-//                             </td>
-//                             <td className="px-4 py-3 text-p3 text-sneutral-500">
-//                               {isDescription || isDropdown || isDropdownWithDescription ? '-' : (
-//                                 point.minReferenceRange !== null && point.maxReferenceRange !== null
-//                                   ? `${point.minReferenceRange} - ${point.maxReferenceRange}`
-//                                   : 'N/A'
-//                               )}
-//                             </td>
-//                             <td className={`px-4 py-3 text-p3 font-medium ${getStatusTextColor(status)}`}>
-//                               {isDescription || isDropdown || isDropdownWithDescription ? '-' : (getStatusLabel(status) || '-')}
-//                             </td>
-//                           </>
-//                         )}
-//                       </tr>
-//                     );
-//                   })}
-//                 </tbody>
-//               </table>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Right Sidebar - Patient Details */}
-//         <aside>
-//           <div className="rounded-2xl border border-white bg-white p-4">
-//             <h3 className="mb-5 text-p3 font-semibold text-pneutral-900">
-//               {selectedPatient.patientname || 'Patient Name'}
-//             </h3>
-
-//             <div className="space-y-3">
-//               <InfoRow
-//                 label="Patient ID"
-//                 value={`PAT-${String(selectedPatient.visitId).padStart(5, '0')}`}
-//               />
-//               <InfoRow
-//                 label="Age / Gender"
-//                 value={`${selectedPatient.dateOfBirth ? `${calculateAgeObject(selectedPatient.dateOfBirth).years} Yrs, ` : ''}${selectedPatient.gender || 'N/A'}`}
-//               />
-//               <InfoRow
-//                 label="Doctor"
-//                 value="Dr. R. Mehta"
-//               />
-//               <InfoRow label="Visit Type" value="OPD" />
-//               <InfoRow
-//                 label="Contact"
-//                 value={selectedPatient.contactNumber || 'N/A'}
-//               />
-//               <InfoRow
-//                 label="Tests Ordered"
-//                 value={selectedTest?.name || 'N/A'}
-//               />
-//             </div>
-
-//             <div className="mt-6 rounded-xl border border-info-200 bg-info-50 p-4">
-//               <div className="mb-4 flex items-center justify-between">
-//                 <h4 className="text-p2 font-semibold text-pneutral-900">
-//                   Visit Information
-//                 </h4>
-
-//                 <span className="text-p2 text-pneutral-500">
-//                   {selectedPatient.visitDate ? new Date(selectedPatient.visitDate).toLocaleDateString() : 'N/A'}
-//                 </span>
-//               </div>
-
-//               <InfoRow
-//                 label="Status"
-//                 value={selectedPatient.visitStatus?.replace('_', ' ') || 'Completed'}
-//               />
-//             </div>
-//           </div>
-//         </aside>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default PatientReportDataFill;
-
 
 
 
