@@ -17,17 +17,13 @@ import {
     LabPerformance,
     TopReferringDoctor,
     DashboardKpis,
+    SampleWorkflowFunnel,
+    RevenueByCollectionMethod,
+    TopOrderedTest,
+    AgeGenderDistribution,
+    TechnicianPerformance,
 } from '@/types/adminStatsData';
 
-/**
- * AdminStatsController on the backend requires a Bearer Authorization
- * header rather than the httpOnly accessToken cookie every other endpoint
- * uses (same as SuperAdminStatsController). The browser can't read that
- * cookie to build the header itself, so these calls go through a same-origin
- * Next.js route handler (src/app/api/admin-stats/[...path]/route.ts) that
- * reads the cookie server-side and proxies to the backend with the header
- * attached. See services/statisticsService.ts for the superadmin equivalent.
- */
 const adminStatsApi = axios.create({
     baseURL: '/api/admin-stats',
 });
@@ -184,9 +180,8 @@ export const getAvgTat = async (
     );
 
 /**
- * Tests by category, scoped to this lab. Unlike the superadmin equivalent,
- * the backend projection here only carries category + testCount - no
- * revenue/discount/paid/due/cash/upi/card breakdown is available per category.
+ * Tests by category, scoped to this lab. 
+ * The backend projection here only carries category + testCount.
  */
 export const getTestsByCategory = async (
     labId: number | string,
@@ -209,8 +204,7 @@ export const getRevenueTrend = async (
     );
 
 /**
- * This lab's own revenue figure (singular), not a multi-lab ranking -
- * there is only one lab in scope for an admin dashboard.
+ * This lab's own revenue figure (singular), not a multi-lab ranking.
  */
 export const getRevenueByLab = async (
     labId: number | string,
@@ -263,8 +257,86 @@ export const getTopReferringDoctors = async (
 };
 
 /**
- * 7-day-vs-previous-7-day KPI snapshot with trend direction, not currently
- * wired into AdminStats.tsx but available for a future trend-arrow row.
+ * 7-day-vs-previous-7-day KPI snapshot with trend direction.
  */
 export const getDashboardKpis = async (labId: number | string): Promise<DashboardKpis> =>
     get<DashboardKpis>(`/${labId}/dashboard-kpis`, 'An error occurred while fetching dashboard KPIs.');
+
+/**
+ * Get sample workflow funnel data.
+ * This endpoint returns a structured funnel with counts and percentages.
+ */
+export const getSampleWorkflowFunnel = async (
+    labId: number | string,
+    startDate?: string,
+    endDate?: string
+): Promise<SampleWorkflowFunnel> =>
+    get<SampleWorkflowFunnel>(
+        buildUrlWithDates(`/${labId}/sample-workflow-funnel`, startDate, endDate),
+        'An error occurred while fetching sample workflow funnel.'
+    );
+
+
+/**
+ * Get technician performance data for a specific lab.
+ */
+export const getTechnicianPerformance = async (
+    labId: number | string,
+    startDate?: string,
+    endDate?: string,
+    limit: number = 10
+): Promise<TechnicianPerformance[]> => {
+    const baseUrl = `/${labId}/technician-performance`;
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    params.append('limit', limit.toString());
+    const url = `${baseUrl}?${params.toString()}`;
+
+    return get<TechnicianPerformance[]>(url, 'An error occurred while fetching technician performance.');
+};
+
+/**
+ * Get top ordered tests.
+ */
+export const getTopOrderedTests = async (
+    labId: number | string,
+    startDate?: string,
+    endDate?: string,
+    limit: number = 5
+): Promise<TopOrderedTest[]> => {
+    const baseUrl = `/${labId}/top-ordered-tests`;
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    params.append('limit', limit.toString());
+    const url = `${baseUrl}?${params.toString()}`;
+
+    return get<TopOrderedTest[]>(url, 'An error occurred while fetching top ordered tests.');
+};
+
+/**
+ * Get revenue breakdown by collection method (UPI, Cash, Card, Credit).
+ */
+export const getRevenueByCollectionMethod = async (
+    labId: number | string,
+    startDate?: string,
+    endDate?: string
+): Promise<RevenueByCollectionMethod> =>
+    get<RevenueByCollectionMethod>(
+        buildUrlWithDates(`/${labId}/revenue-by-collection-method`, startDate, endDate),
+        'An error occurred while fetching revenue by collection method.'
+    );
+
+/**
+ * Get age & gender distribution.
+ */
+export const getAgeGenderDistribution = async (
+    labId: number | string,
+    startDate?: string,
+    endDate?: string
+): Promise<AgeGenderDistribution> =>
+    get<AgeGenderDistribution>(
+        buildUrlWithDates(`/${labId}/age-gender-distribution`, startDate, endDate),
+        'An error occurred while fetching age & gender distribution.'
+    );
