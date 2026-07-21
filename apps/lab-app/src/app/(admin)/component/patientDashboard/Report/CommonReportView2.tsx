@@ -888,9 +888,17 @@ const CommonReportView2 = ({
             return !Number.isFinite(t) || t <= cutoffTime;
         };
 
+        // The snapshot API returns the patient's entire test history. A visit
+        // that only ordered 2 tests should only ever show trend lines for those
+        // 2 tests, not for unrelated tests from earlier visits.
+        const currentVisitTestNames = new Set(
+            reportsData.map((r) => (r.testName || "").trim().toLowerCase())
+        );
+
         return {
             ...healthSnapshot,
             tests: healthSnapshot.tests
+                .filter((test) => currentVisitTestNames.has((test.testName || "").trim().toLowerCase()))
                 .map((test) => ({ ...test, results: (test.results || []).filter(isVisible) }))
                 .filter((test) => test.results.length > 0),
         };
