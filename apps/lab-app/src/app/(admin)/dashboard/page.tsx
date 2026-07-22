@@ -78,7 +78,9 @@ const DashboardContent = () => {
 
   // Filter tabs based on user role
   const filteredTabs = tabs.filter(tab => {
-    if (isAdmin || isSuperAdmin) return true; // ADMIN and SUPERADMIN see all tabs
+    // ADMIN and SUPERADMIN now only get the Analytics Dashboard tab here —
+    // Patient Management and Sample Management moved to the sidebar nav.
+    if (isAdmin || isSuperAdmin) return tab.id === 'dashboard';
     // If user has both DESKROLE and TECHNICIAN roles, show both tabs
     if (isDeskRole && isTechnician) {
       return tab.id === 'patient' || tab.id === 'technician';
@@ -112,12 +114,7 @@ const DashboardContent = () => {
   const renderContent = () => {
     const patientDashboard = <PatientDashboard onAddPatientFormChange={setIsAddPatientFormOpen} />;
     if (isAdmin || isSuperAdmin) {
-      switch (selectedTab) {
-        case 'patient': return patientDashboard;
-        case 'dashboard': return <Statistics />;
-        case 'technician': return <Technacian />;
-        default: return <Statistics />;
-      }
+      return <Statistics />;
     }
     // If user has both DESKROLE and TECHNICIAN roles, allow switching between tabs
     if (isDeskRole && isTechnician) {
@@ -158,9 +155,11 @@ const DashboardContent = () => {
   return (
     <div className="min-h-screen">
       <div className="bg-secondary-50  shadow-sm border border-gray-100">
-        {/* Show tabs if user is ADMIN/SUPERADMIN or has both DESKROLE and TECHNICIAN roles.
+        {/* Only shown when there's more than one tab to switch between (currently just the
+            DESKROLE + TECHNICIAN combo role). ADMIN/SUPERADMIN now land directly on the
+            Analytics Dashboard — Patient/Sample Management live in the sidebar nav instead.
             Hidden while the Register New Patient form is open. */}
-        {!isAddPatientFormOpen && (isAdmin || isSuperAdmin || (isDeskRole && isTechnician)) ? (
+        {!isAddPatientFormOpen && filteredTabs.length > 1 ? (
           <div className="flex border-b border-gray-200 px-4">
             {filteredTabs.map((tab) => (
               <TabButton
@@ -210,6 +209,233 @@ const Page = () => {
 
 
 export default Page;
+
+
+
+
+
+
+
+
+
+
+
+
+
+// code dated 22.07.2026 ..........with tab naviagtion working............
+
+
+// 'use client';
+
+// import { useAuth } from '@/hooks/useAuth';
+// import { AnimatePresence, motion } from 'framer-motion';
+// import { useEffect, useState, Suspense } from 'react';
+// import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+// import { FaPerson } from "react-icons/fa6";
+// import { MdOutlineDashboard } from "react-icons/md";
+// import Statistics from '../component/dashboard/statistics/Statistics';
+// import PatientDashboard from '../component/patientDashboard/PatientDashboard';
+// import Technacian from './sample/_component/technican/Technacian';
+// import React from 'react';
+
+// const tabs = [
+//   {
+//     id: 'dashboard',
+//     label: 'Analytics Dashboard',
+//     icon: <MdOutlineDashboard className="text-lg" />,
+//     activeColor: 'text-teal-600',
+//     borderColor: 'bg-teal-600',
+//     bgColor: 'bg-teal-100'
+//   },
+//   {
+//     id: 'patient',
+//     label: 'Patient Management',
+//     icon: <FaPerson className="text-lg" />,
+//     activeColor: 'text-purple-600',
+//     borderColor: 'bg-purple-600',
+//     bgColor: 'bg-purple-100'
+//   },
+//   {
+//     id: 'technician',
+//     label: 'Sample Management',
+//     icon: <FaPerson className="text-lg" />,
+//     activeColor: 'text-blue-600',
+//     borderColor: 'bg-blue-600',
+//     bgColor: 'bg-blue-100'
+//   }
+// ];
+
+// const TabButton = ({ tab, isActive, onClick }: { tab: typeof tabs[0], isActive: boolean, onClick: () => void }) => (
+//   <button
+//     onClick={onClick}
+//     className={`relative px-4 py-3 flex items-center space-x-2 transition-all duration-300 ${isActive ? tab.activeColor : 'text-gray-500 hover:text-gray-700'
+//       }`}
+//   >
+//     <span className={`p-1.5 rounded-md ${isActive ? `${tab.bgColor} ${tab.activeColor}` : 'bg-gray-100 text-gray-500'} transition-colors`}>
+//       {tab.icon}
+//     </span>
+//     <span className="font-medium">{tab.label}</span>
+//     {isActive && (
+//       <motion.div
+//         layoutId="activeTab"
+//         className={`absolute bottom-0 left-0 right-0 h-1 ${tab.borderColor} rounded-t-full`}
+//         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+//       />
+//     )}
+//   </button>
+// );
+
+// // Component that uses useSearchParams - needs to be wrapped in Suspense
+// const DashboardContent = () => {
+//   const searchParams = useSearchParams();
+//   const router = useRouter();
+//   const pathname = usePathname();
+//   const tabParam = searchParams.get('tab');
+//   const [selectedTab, setSelectedTab] = useState<string>('dashboard');
+//   const [hasMounted, setHasMounted] = useState(false);
+//   const [isAddPatientFormOpen, setIsAddPatientFormOpen] = useState(false);
+//   const { isAdmin, isSuperAdmin, isTechnician, isDeskRole } = useAuth();
+//   const isInitialLoad = React.useRef(true);
+
+//   useEffect(() => {
+//     setHasMounted(true);
+//   }, []);
+
+
+//   // Filter tabs based on user role
+//   const filteredTabs = tabs.filter(tab => {
+//     if (isAdmin || isSuperAdmin) return true; // ADMIN and SUPERADMIN see all tabs
+//     // If user has both DESKROLE and TECHNICIAN roles, show both tabs
+//     if (isDeskRole && isTechnician) {
+//       return tab.id === 'patient' || tab.id === 'technician';
+//     }
+//     if (isTechnician) return tab.id === 'technician'; // TECHNICIAN only gets technician tab
+//     if (isDeskRole) return tab.id === 'patient'; // DESKROLE only gets patient tab
+//     return false;
+//   });
+
+//   // Handle tab change with URL update
+//   const handleTabChange = (tabId: string) => {
+//     setSelectedTab(tabId);
+//     // Update URL without page reload
+//     const params = new URLSearchParams(searchParams.toString());
+//     params.set('tab', tabId);
+//     router.replace(`${pathname}?${params.toString()}`);
+//   };
+
+//   useEffect(() => {
+//     // Handle URL parameter for tab selection
+//     if (!hasMounted || !isInitialLoad.current) return;
+//     if (tabParam && filteredTabs.some(tab => tab.id === tabParam)) {
+//       setSelectedTab(tabParam);
+//     } else if (filteredTabs.length > 0 && !filteredTabs.some(tab => tab.id === selectedTab)) {
+//       setSelectedTab(filteredTabs[0].id);
+//     }
+//     isInitialLoad.current = false;
+//   }, [filteredTabs, selectedTab, tabParam]);
+
+//   // Render only the component the role should see
+//   const renderContent = () => {
+//     const patientDashboard = <PatientDashboard onAddPatientFormChange={setIsAddPatientFormOpen} />;
+//     if (isAdmin || isSuperAdmin) {
+//       switch (selectedTab) {
+//         case 'patient': return patientDashboard;
+//         case 'dashboard': return <Statistics />;
+//         case 'technician': return <Technacian />;
+//         default: return <Statistics />;
+//       }
+//     }
+//     // If user has both DESKROLE and TECHNICIAN roles, allow switching between tabs
+//     if (isDeskRole && isTechnician) {
+//       switch (selectedTab) {
+//         case 'patient': return patientDashboard;
+//         case 'technician': return <Technacian />;
+//         default: return patientDashboard;
+//       }
+//     }
+//     if (isTechnician) return <Technacian />;
+//     if (isDeskRole) return patientDashboard;
+//     return null;
+//   };
+
+//   if (!hasMounted) {
+//     return (
+//       <div className="p-4 min-h-screen">
+//         <div className="bg-secondary-50 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+//           <div className="flex border-b border-gray-200 px-4">
+//             {tabs.map((tab) => (
+//               <div
+//                 key={tab.id}
+//                 className="relative px-4 py-3 flex items-center space-x-2 text-gray-300"
+//               >
+//                 <span className="p-1.5 rounded-md bg-gray-100 animate-pulse h-8 w-8" />
+//                 <span className="h-4 w-32 bg-gray-100 animate-pulse rounded" />
+//               </div>
+//             ))}
+//           </div>
+//           <div className="py-8 px-6">
+//             <div className="h-40 bg-gray-100 rounded-lg animate-pulse" />
+//           </div>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="min-h-screen">
+//       <div className="bg-secondary-50  shadow-sm border border-gray-100">
+//         {/* Show tabs if user is ADMIN/SUPERADMIN or has both DESKROLE and TECHNICIAN roles.
+//             Hidden while the Register New Patient form is open. */}
+//         {!isAddPatientFormOpen && (isAdmin || isSuperAdmin || (isDeskRole && isTechnician)) ? (
+//           <div className="flex border-b border-gray-200 px-4">
+//             {filteredTabs.map((tab) => (
+//               <TabButton
+//                 key={tab.id}
+//                 tab={tab}
+//                 isActive={selectedTab === tab.id}
+//                 onClick={() => handleTabChange(tab.id)}
+//               />
+//             ))}
+//           </div>
+//         ) : null}
+//         {/* Tab Content with Smooth Transition */}
+//         <div className="py-4 px-2">
+//           <AnimatePresence mode="wait"> 
+//             <motion.div
+//               key={selectedTab}
+//               initial={{ opacity: 0, y: 10 }}
+//               animate={{ opacity: 1, y: 0 }}
+//               exit={{ opacity: 0, y: -10 }}
+//               transition={{ duration: 0.25 }}
+//             >
+//               {renderContent()}
+//             </motion.div>
+//           </AnimatePresence>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// // Main Page component with Suspense boundary
+// const Page = () => {
+//   return (
+//     <Suspense fallback={
+//       <div className="min-h-screen flex items-center justify-center">
+//         <div className="text-center">
+//           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+//           <p className="mt-4 text-gray-600">Loading dashboard...</p>
+//         </div>
+//       </div>
+//     }>
+//       <DashboardContent />
+//     </Suspense>
+//   );
+// };
+
+
+
+// export default Page;
 
 
 

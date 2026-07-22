@@ -1,5 +1,5 @@
 import { NavigationItem } from "@/types/NavigationItem";
-import { CogIcon, DocumentTextIcon, HomeIcon, ShoppingCartIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { CogIcon, DocumentTextIcon, HomeIcon, ShoppingCartIcon, UserGroupIcon, UsersIcon } from "@heroicons/react/24/outline";
 import { ClipboardListIcon, FlaskConical } from "lucide-react";
 import { FaPeriscope } from "react-icons/fa";
 import { FaUserDoctor } from "react-icons/fa6";
@@ -15,9 +15,12 @@ interface BaseNavigationItem {
 
 const baseNavigation: BaseNavigationItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
-  
+
+  { name: "Patient Management", href: "/dashboard/patient-management", icon: UsersIcon },
+
   {
   name: "Sample Management",
+  href: "/dashboard/sample",
   icon: ClipboardListIcon,
   children: [
     {
@@ -133,15 +136,8 @@ export const navigation: NavigationItem[] = getNavigation('/dashboard');
 
 
 
+// code dated 22.07.2026 with working tab of patient & sample management ...............
 
-
-
-
-
-
-
-
-// working code dated .........01.7.2026...................
 // import { NavigationItem } from "@/types/NavigationItem";
 // import { CogIcon, DocumentTextIcon, HomeIcon, ShoppingCartIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 // import { ClipboardListIcon, FlaskConical } from "lucide-react";
@@ -184,11 +180,11 @@ export const navigation: NavigationItem[] = getNavigation('/dashboard');
 //       href: "/dashboard/pendingsamples?tab=completed",
 //       icon: ClipboardListIcon,
 //     },
-//     {
-//       name: "New Sample Configuration",
-//       href: "/dashboard/pendingsamples?tab=configuration",
-//       icon: ClipboardListIcon,
-//     },
+//     // {
+//     //   name: "New Sample Configuration",
+//     //   href: "/dashboard/pendingsamples?tab=configuration",
+//     //   icon: ClipboardListIcon,
+//     // },
 //   ],
 // },
 // //   {
@@ -201,11 +197,18 @@ export const navigation: NavigationItem[] = getNavigation('/dashboard');
 //     icon: FlaskConical,
 //     children: [
 //       { name: "Tests", href: "/dashboard/test", icon: ClipboardListIcon },
-//       { name: "Packages", href: "/dashboard/package", icon: PiPackageFill },
 //       { name: "Doctors", href: "/dashboard/doctor", icon: FaUserDoctor },
 //       { name: "Sample List", href: "/dashboard/sample/add", icon: FaPeriscope },
-//       { name: "Sample Collection", href: "/dashboard/sample", icon: ClipboardListIcon },
+//       // { name: "Sample Collection", href: "/dashboard/sample", icon: ClipboardListIcon },
 //       // {name : "Patient Details",href : "/dashboard/patientdetails", icon: MdMan}, // Hidden for this release
+//     ],
+//   },
+//   {
+//     name: "Package Management",
+//     icon: PiPackageFill,
+//     children: [
+//       { name: "Package List", href: "/dashboard/package?tab=packageList", icon: ClipboardListIcon },
+//       { name: "Add Package", href: "/dashboard/package?tab=package", icon: PiPackageFill },
 //     ],
 //   },
 //   {
@@ -247,8 +250,8 @@ export const navigation: NavigationItem[] = getNavigation('/dashboard');
 //     // Check if current item is active
 //     const isCurrentItem = item.href === pathname;
     
-//     // Check if any child is active
-//     const hasActiveChild = item.children?.some(child => child.href === pathname) || false;
+//     // Check if any child is active (ignore query params so ?tab= links match)
+//     const hasActiveChild = item.children?.some(child => child.href?.split('?')[0] === pathname) || false;
     
 //     return {
 //       ...item,
@@ -263,9 +266,6 @@ export const navigation: NavigationItem[] = getNavigation('/dashboard');
 
 // // Default export for backward compatibility
 // export const navigation: NavigationItem[] = getNavigation('/dashboard');
-
-
-
 
 
 
