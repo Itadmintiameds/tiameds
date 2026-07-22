@@ -59,8 +59,11 @@ const REPORT_COLORS = {
 const PAGE_WIDTH_MM = 190;
 const PAGE_HEIGHT_MM = 297;
 const MARGIN_X_MM = 10;
-const TOP_MARGIN_MM = 2;
-const BOTTOM_MARGIN_MM = 4;
+// Balanced, print-safe margins. The header repeats at TOP_MARGIN_MM on every content
+// page, so this doubles as the top-of-page gutter; 8mm reads as a professional margin
+// without stranding the near-edge whitespace a 2mm gutter used to leave.
+const TOP_MARGIN_MM = 8;
+const BOTTOM_MARGIN_MM = 8;
 // Extra buffer to avoid edge clipping when html2canvas output is placed into jsPDF.
 const CONTENT_SAFETY_MM = 1;
 const BLOCK_GAP_MM = 2;
@@ -485,30 +488,30 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
             const htmlParts: string[] = [];
 
             if (parsed.description) {
-                htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000000; padding-bottom: 1px;">${parsed.description}</p>`);
+                htmlParts.push(`<p style="margin: 2px 0; font-size: 10px; line-height: 1.35; color: #000000; padding-bottom: 1px;">${parsed.description}</p>`);
             }
 
             if (parsed.impression && Array.isArray(parsed.impression) && parsed.impression.length > 0) {
-                htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000000;"><strong style="color: #000000;">Impression:</strong> ${parsed.impression.join(', ')}</p>`);
+                htmlParts.push(`<p style="margin: 2px 0; font-size: 10px; line-height: 1.35; color: #000000;"><strong style="color: #000000;">Impression:</strong> ${parsed.impression.join(', ')}</p>`);
             }
 
             if (parsed.tables && Array.isArray(parsed.tables) && parsed.tables.length > 0) {
                 parsed.tables.forEach((table) => {
                     if (table.title) {
-                        htmlParts.push(`<h4 style="font-size: 11px; font-weight: 600; margin: 8px 0 4px 0; color: #000000;">${table.title}</h4>`);
+                        htmlParts.push(`<h4 style="font-size: 10px; font-weight: 600; margin: 4px 0 2px 0; color: #000000;">${table.title}</h4>`);
                     }
                     if (table.headers && Array.isArray(table.headers) && table.rows && Array.isArray(table.rows)) {
-                        let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 11px; border: 1px solid #000000;">';
+                        let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 3px 0; font-size: 10px; border: 1px solid #000000;">';
                         tableHtml += '<thead><tr style="vertical-align: middle;">';
                         table.headers.forEach((header: string) => {
-                            tableHtml += `<th style="border: 1px solid #000000; padding: 5px 8px; text-align: left; background-color: #ffffff; font-size: 11px; font-weight: bold; color: #000000; line-height: 1.4; vertical-align: middle;">${header}</th>`;
+                            tableHtml += `<th style="border: 1px solid #000000; padding: 3px 6px; text-align: left; background-color: #ffffff; font-size: 10px; font-weight: bold; color: #000000; line-height: 1.3; vertical-align: middle;">${header}</th>`;
                         });
                         tableHtml += '</tr></thead>';
                         tableHtml += '<tbody>';
                         table.rows.forEach((row: (string | number | boolean | null)[]) => {
                             tableHtml += '<tr style="vertical-align: middle;">';
                             row.forEach((cell: string | number | boolean | null) => {
-                                tableHtml += `<td style="border: 1px solid #000000; padding: 5px 8px; font-size: 11px; color: #000000; line-height: 1.4; vertical-align: middle;">${String(cell)}</td>`;
+                                tableHtml += `<td style="border: 1px solid #000000; padding: 3px 6px; font-size: 10px; color: #000000; line-height: 1.3; vertical-align: middle;">${String(cell)}</td>`;
                             });
                             tableHtml += '</tr>';
                         });
@@ -531,10 +534,10 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                             // ✅ STEP 3: Remove colgroup
                             .replace(/<colgroup>[\s\S]*?<\/colgroup>/gi, '')
                             // ✅ STEP 4: Now inject clean table styles
-                            .replace(/<table[^>]*>/gi, '<table style="border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 11px; border: 1px solid #000000;">')
+                            .replace(/<table[^>]*>/gi, '<table style="border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 10px; border: 1px solid #000000;">')
                             .replace(/<tr[^>]*>/gi, '<tr style="vertical-align: middle;">')
-                            .replace(/<th[^>]*>/gi, '<th style="border: 1px solid #000000; padding: 5px 8px; text-align: left; background-color: #ffffff; font-weight: bold; color: #000000; line-height: 1.4; vertical-align: middle;">')
-                            .replace(/<td[^>]*>/gi, '<td style="border: 1px solid #000000; padding: 5px 8px; color: #000000; line-height: 1.4; vertical-align: middle;">')
+                            .replace(/<th[^>]*>/gi, '<th style="border: 1px solid #000000; padding: 3px 6px; text-align: left; background-color: #ffffff; font-weight: bold; color: #000000; line-height: 1.3; vertical-align: middle;">')
+                            .replace(/<td[^>]*>/gi, '<td style="border: 1px solid #000000; padding: 3px 6px; color: #000000; line-height: 1.3; vertical-align: middle;">')
                             // ✅ STEP 5: Strip <p> and <br> tags inside table cells
                             .replace(/(<t[dh][^>]*>)\s*(<p[^>]*>)?\s*/gi, '$1')
                             .replace(/\s*(<\/p>)?\s*(<\/t[dh]>)/gi, '$2')
@@ -544,20 +547,20 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                             .replace(/<strong>/g, '<strong style="color: #000000; font-weight: 700;">')
                             .replace(/<strong style="(?!color)/g, '<strong style="color: #000000; font-weight: 700; ')
                             // ✅ STEP 7: Fix list and paragraph styles
-                            .replace(/<ul>/g, '<ul style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4; color: #000000;">')
-                            .replace(/<ol>/g, '<ol style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4; color: #000000;">')
-                            .replace(/<li>/g, '<li style="margin: 2px 0; color: #000000;">')
-                            .replace(/<p>/g, '<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000000; padding-bottom: 1px;">')
+                            .replace(/<ul>/g, '<ul style="margin: 1px 0; padding-left: 16px; font-size: 10px; line-height: 1.35; color: #000000;">')
+                            .replace(/<ol>/g, '<ol style="margin: 1px 0; padding-left: 16px; font-size: 10px; line-height: 1.35; color: #000000;">')
+                            .replace(/<li>/g, '<li style="margin: 1px 0; color: #000000;">')
+                            .replace(/<p>/g, '<p style="margin: 2px 0; font-size: 10px; line-height: 1.35; color: #000000; padding-bottom: 1px;">')
                             // ✅ STEP 8: Clean up empty style attributes
                             .replace(/style="\s*"/gi, '');
 
                         return `
-                            <div style="margin-bottom: 8px; color: #000000; padding-bottom: 4px;">
+                            <div style="margin-bottom: 4px; color: #000000; padding-bottom: 2px;">
                                 ${section.title && section.title !== 'Formatted Report'
-                                ? `<h4 style="font-size: 11px; font-weight: 700; margin: 6px 0 2px 0; color: #000000;">${section.title}</h4>`
+                                ? `<h4 style="font-size: 10px; font-weight: 700; margin: 4px 0 2px 0; color: #000000;">${section.title}</h4>`
                                 : ''
                             }
-                                <div style="font-size: 11px; line-height: 1.4; color: #000000; padding-bottom: 4px;">${cleanedContent}</div>
+                                <div style="font-size: 10px; line-height: 1.35; color: #000000; padding-bottom: 2px;">${cleanedContent}</div>
                             </div>
                         `;
                     })
@@ -565,13 +568,34 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                 htmlParts.push(sectionsHtml);
             }
 
-            return `<div style="color: #000000; font-size: 11px; padding-bottom: 4px;">${htmlParts.join('')}</div>`;
+            return `<div style="color: #000000; font-size: 10px; padding-bottom: 2px;">${htmlParts.join('')}</div>`;
         }
 
         return `<div style="color: #000000;">${formatMedicalReportToHTML(reportJson) || ''}</div>`;
     } catch {
         return `<div style="color: #000000;">${formatMedicalReportToHTML(reportJson) || ''}</div>`;
     }
+};
+
+// A `data-print-table` block is only safe to paginate row-by-row when it is literally a
+// single <table> -- the merged multi-test results table, whose several <tbody> groups the
+// row-chunker walks together into one rebuilt table. Detailed-report and qualitative
+// cards carry the same data-print-table flag but wrap SEVERAL tables (e.g. a urine
+// analysis' Physical Characters / Chemical Constitute / Microscopy) plus a section-title
+// band, an impression line and heading text around them. chunkTableElementByRows rebuilds
+// one table from the FIRST <table> it finds and drops everything else, so row-chunking
+// those cards makes every table after the first vanish from the PDF -- even though the
+// on-screen preview (which never runs the chunker) shows them all. Treat anything that
+// isn't a lone table as a whole block instead: it is moved intact to the next page when it
+// doesn't fit, and only bitmap-sliced if it is taller than a full page, so no content is
+// ever lost.
+const isRowChunkableTableBlock = (node: HTMLElement) => {
+    if (node.getAttribute("data-print-table") !== "true") return false;
+    return (
+        node.children.length === 1 &&
+        node.children[0].tagName === "TABLE" &&
+        node.querySelectorAll("table").length === 1
+    );
 };
 
 export interface ConsolidatedReport {
@@ -1099,14 +1123,14 @@ const CommonReportView2 = ({
 
     const renderClinicalAlertCard = () => (
         <div
-            className="w-full rounded-xl p-2.5 flex flex-col gap-2"
+            className="w-full rounded-xl p-2 flex flex-col gap-1.5"
             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
         >
             <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>
                 Clinical Alert Summary
             </h3>
             {/* Tiles wrap rather than squeeze: flex-basis with a floor, no hardcoded widths. */}
-            <div className="flex flex-wrap items-stretch gap-2">
+            <div className="flex flex-wrap items-stretch gap-1.5">
                 {[
                     { label: "Critical", sub: "Abnormality", icon: "/report/exclamation-triangle/red.jpg", color: REPORT_COLORS.danger600, value: clinicalSummary.critical },
                     { label: "Borderline", sub: "Abnormalities", icon: "/report/exclamation-triangle/outline.png", color: REPORT_COLORS.warning500, value: clinicalSummary.borderline },
@@ -1114,17 +1138,17 @@ const CommonReportView2 = ({
                 ].map((item) => (
                     <div
                         key={item.label}
-                        className="flex-[1_1_70px] p-2 rounded-lg flex flex-col items-center gap-0.5 text-center"
+                        className="flex-[1_1_70px] p-1.5 rounded-lg flex flex-col items-center gap-0.5 text-center"
                         style={{ border: `1px solid ${item.color}` }}
                     >
                         <img src={item.icon} alt="" className="w-5 h-5" crossOrigin="anonymous" />
-                        <p className="text-xl font-extrabold" style={{ color: REPORT_COLORS.neutral900 }}>{item.value}</p>
+                        <p className="text-lg font-extrabold" style={{ color: REPORT_COLORS.neutral900 }}>{item.value}</p>
                         <p className="text-[9px] font-bold uppercase" style={{ color: item.color }}>{item.label}</p>
                         <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>{item.sub}</p>
                     </div>
                 ))}
                 <div
-                    className="flex-[1_1_70px] p-2 rounded-lg flex flex-col items-center gap-0.5 text-center"
+                    className="flex-[1_1_70px] p-1.5 rounded-lg flex flex-col items-center gap-0.5 text-center"
                     style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
                 >
                     <img src="/report/Purpose.png" alt="" className="w-5 h-5" crossOrigin="anonymous" />
@@ -1137,7 +1161,7 @@ const CommonReportView2 = ({
 
     const renderKeyFindingsCard = () => (
         <div
-            className="w-full rounded-xl p-2.5 flex flex-col gap-1.5"
+            className="w-full rounded-xl p-2 flex flex-col gap-1"
             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
         >
             <h3 className="text-xs font-bold uppercase px-1" style={{ color: REPORT_COLORS.secondary800 }}>
@@ -1184,7 +1208,7 @@ const CommonReportView2 = ({
 
     const renderAiObservationsCard = () => (
         <div
-            className="w-full rounded-xl p-2.5 flex flex-col gap-1.5"
+            className="w-full rounded-xl p-2 flex flex-col gap-1"
             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
         >
             <div className="flex items-center gap-2">
@@ -1209,7 +1233,7 @@ const CommonReportView2 = ({
                             <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>{field.label}</p>
                             {/* Run the points together as flowing sentences instead of
                                 stacking bullets. */}
-                            <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
+                            <p className="text-[10px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
                                 {field.value!.map((line) => line.trim().replace(/[.;,]+$/, "")).join(". ")}.
                             </p>
                         </div>
@@ -1217,7 +1241,7 @@ const CommonReportView2 = ({
                     {aiInsights.doctorToVisit && (
                         <div>
                             <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>Doctor to Visit</p>
-                            <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>{aiInsights.doctorToVisit}</p>
+                            <p className="text-[10px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>{aiInsights.doctorToVisit}</p>
                         </div>
                     )}
                     <p className="text-[9px] mt-0.5" style={{ color: REPORT_COLORS.secondary800 }}>
@@ -1233,7 +1257,7 @@ const CommonReportView2 = ({
 
     const renderHealthSnapshotCard = () => (
         <div
-            className="w-full rounded-xl p-2.5 flex flex-col gap-2"
+            className="w-full rounded-xl p-2 flex flex-col gap-1.5"
             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
         >
             <div className="flex items-center gap-2">
@@ -1781,7 +1805,7 @@ const CommonReportView2 = ({
 
                 for (let nodeIndex = 0; nodeIndex < nodesToRender.length; nodeIndex += 1) {
                     const node = nodesToRender[nodeIndex];
-                    const isTableBlock = node.getAttribute("data-print-table") === "true";
+                    const isTableBlock = isRowChunkableTableBlock(node);
                     const isLastContentNode = nodeIndex === nodesToRender.length - 1;
                     // Only the final piece of content has to leave room for the closing block.
                     const nodeBottomMm = isLastContentNode ? finalContentBottomMm : contentBottomMm;
@@ -2032,11 +2056,11 @@ const CommonReportView2 = ({
 
     const renderResultTableHeaderRow = () => (
         <tr style={{ backgroundColor: REPORT_COLORS.secondary200 }}>
-            <th className="px-3 py-3 text-left text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, ...RESULT_CELL_VALIGN }}>Test Parameter</th>
-            <th className="px-1 py-3 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.result, ...RESULT_CELL_VALIGN }}>Result</th>
-            <th className="px-1 py-3 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.reference, ...RESULT_CELL_VALIGN }}>Reference Range</th>
-            <th className="px-1 py-3 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.units, ...RESULT_CELL_VALIGN }}>Units</th>
-            <th className="px-1 py-3 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.status, ...RESULT_CELL_VALIGN }}>Status</th>
+            <th className="px-2 py-1.5 text-left text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, ...RESULT_CELL_VALIGN }}>Test Parameter</th>
+            <th className="px-1 py-1.5 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.result, ...RESULT_CELL_VALIGN }}>Result</th>
+            <th className="px-1 py-1.5 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.reference, ...RESULT_CELL_VALIGN }}>Reference Range</th>
+            <th className="px-1 py-1.5 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.units, ...RESULT_CELL_VALIGN }}>Units</th>
+            <th className="px-1 py-1.5 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.status, ...RESULT_CELL_VALIGN }}>Status</th>
         </tr>
     );
 
@@ -2046,7 +2070,7 @@ const CommonReportView2 = ({
         <tr key={`section-${key}`} data-section-title-row="true">
             <td
                 colSpan={5}
-                className="px-3 py-1.5 text-[10px] font-bold uppercase"
+                className="px-2 py-1 text-[10px] font-bold uppercase"
                 style={{ backgroundColor: REPORT_COLORS.secondary50, color: REPORT_COLORS.neutral800 }}
             >
                 {label}
@@ -2077,7 +2101,7 @@ const CommonReportView2 = ({
         if (rows.length === 0) {
             return [
                 <tr key={`no-quant-${reportId}`}>
-                    <td colSpan={5} className="px-3 py-3 text-center text-xs" style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER }}>
+                    <td colSpan={5} className="px-2 py-2 text-center text-xs" style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER }}>
                         {emptyMessage}
                     </td>
                 </tr>,
@@ -2102,7 +2126,7 @@ const CommonReportView2 = ({
             elements.push(
                 <tr key={`${reportId}-${idx}`}>
                     <td
-                        className="px-3 py-2 text-xs font-normal"
+                        className="px-2 py-1 text-xs font-normal"
                         style={{
                             color: REPORT_COLORS.neutral900,
                             borderBottom: RESULT_TABLE_ROW_BORDER,
@@ -2113,25 +2137,25 @@ const CommonReportView2 = ({
                         {parameterLabel}
                     </td>
                     <td
-                        className={`px-1 py-2 text-center text-xs ${isOutOfRange ? "font-bold" : "font-normal"}`}
+                        className={`px-1 py-1 text-center text-xs ${isOutOfRange ? "font-bold" : "font-normal"}`}
                         style={{ color: REPORT_COLORS.neutral900, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.result, whiteSpace: "nowrap", ...RESULT_CELL_VALIGN }}
                     >
                         {row.enteredValue || "N/A"}
                     </td>
                     <td
-                        className="px-1 py-2 text-center text-xs font-normal"
+                        className="px-1 py-1 text-center text-xs font-normal"
                         style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.reference, whiteSpace: "nowrap", ...RESULT_CELL_VALIGN }}
                     >
                         {row.normalRange || "N/A"}
                     </td>
                     <td
-                        className="px-1 py-2 text-center text-xs font-normal"
+                        className="px-1 py-1 text-center text-xs font-normal"
                         style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.units, whiteSpace: "nowrap", ...RESULT_CELL_VALIGN }}
                     >
                         {row.unit || "N/A"}
                     </td>
                     <td
-                        className="px-1 py-2 text-center"
+                        className="px-1 py-1 text-center"
                         style={{ borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.status, ...RESULT_CELL_VALIGN }}
                     >
                         <img
@@ -2205,7 +2229,7 @@ const CommonReportView2 = ({
             : [];
 
         return (
-            <div key={report.reportId} data-report-id={report.reportId} data-print-block data-print-table="true" className="mb-3">
+            <div key={report.reportId} data-report-id={report.reportId} data-print-block data-print-table="true" className="mb-2">
                 {!detailedEntry && !shouldHideResultTable && (
                     <table className="w-full table-fixed text-[12px] border-collapse">
                         <thead>{renderResultTableHeaderRow()}</thead>
@@ -2419,12 +2443,12 @@ const CommonReportView2 = ({
                 <section data-report-shell className="flex flex-col">
                     {/* ================= HEADER ================= */}
                     <div className="bg-white" data-print-block data-print-role="header">
-                        <div className="flex flex-row items-center justify-between mb-4">
+                        <div className="flex flex-row items-center justify-between mb-2">
                             <div className="flex flex-row items-center">
                                 <img
                                     src="/report/image%201.png"
                                     alt="Lab Logo"
-                                    className="w-28 h-16 object-contain mr-3 flex-shrink-0"
+                                    className="w-20 h-12 object-contain mr-3 flex-shrink-0"
                                     crossOrigin="anonymous"
                                     data-print-logo="true"
                                 />
@@ -2457,7 +2481,7 @@ const CommonReportView2 = ({
                             values are allowed to wrap rather than being clipped.
                         */}
                         <div
-                            className="w-full rounded-xl p-3"
+                            className="w-full rounded-xl p-2"
                             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
                         >
                             {[
@@ -2479,7 +2503,7 @@ const CommonReportView2 = ({
                                     { icon: "/report/map-pin.png", label: "Visit No.", value: primaryReport?.visitCode || "N/A", noWrap: true },
                                 ],
                             ].map((row, rowIdx) => (
-                                <div key={rowIdx} className="flex flex-wrap items-start" style={{ marginTop: rowIdx > 0 ? "0.4rem" : 0 }}>
+                                <div key={rowIdx} className="flex flex-wrap items-start" style={{ marginTop: rowIdx > 0 ? "0.25rem" : 0 }}>
                                     {row.map((field, fieldIdx) => (
                                         <div
                                             key={field.label}
@@ -2539,18 +2563,18 @@ const CommonReportView2 = ({
                         Each band and the column row is its own print block, so pagination can
                         break between them instead of shunting the whole region to a new page. */}
                     {summaryLayout && (
-                        <div className="mt-2 flex flex-col gap-3">
+                        <div className="mt-2 flex flex-col gap-2">
                             {summaryLayout.bands.map((id) => (
                                 <div key={id} data-print-block>
                                     {renderSummaryCard(id)}
                                 </div>
                             ))}
                             {(summaryLayout.left.length > 0 || summaryLayout.right.length > 0) && (
-                                <div className="flex flex-wrap items-stretch gap-3" data-print-block>
+                                <div className="flex flex-wrap items-stretch gap-2" data-print-block>
                                     {[summaryLayout.left, summaryLayout.right]
                                         .filter((column) => column.length > 0)
                                         .map((column) => (
-                                            <div key={column.join("-")} className="flex-1 min-w-[260px] flex flex-col gap-3">
+                                            <div key={column.join("-")} className="flex-1 min-w-[260px] flex flex-col gap-2">
                                                 {column.map((id, index) => (
                                                     <div
                                                         key={id}
@@ -2567,7 +2591,7 @@ const CommonReportView2 = ({
                     )}
 
                     {/* ================= DETAILED LAB RESULTS ================= */}
-                    <div className="mt-3">
+                    <div className="mt-2">
                         {/* keep-with-next: a heading stranded at the foot of a page with its
                             table overleaf is the classic orphan. The paginator will break
                             before this block unless a meaningful slice of the table follows it
@@ -2617,7 +2641,7 @@ const CommonReportView2 = ({
                                     blocks.push(
                                         <div
                                             key={`table-${runItems[0].reportId}`}
-                                            className="mb-3"
+                                            className="mb-2"
                                             data-print-block
                                             data-print-table="true"
                                         >
@@ -2668,7 +2692,7 @@ const CommonReportView2 = ({
                             return (
                                 <>
                                     {detailedReports.length > 0 && (
-                                        <div className="flex flex-col gap-3 mb-3" data-detailed-results>
+                                        <div className="flex flex-col gap-2 mb-2" data-detailed-results>
                                             {detailedReports.map((report) => (
                                                 <div key={report.reportId}>
                                                     {renderTestCardBody(report, numberByReportId.get(report.reportId)!)}
@@ -2700,7 +2724,7 @@ const CommonReportView2 = ({
                         content instead of alone. */}
                     <div data-print-block data-print-role="closing">
                     <div
-                        className="mt-4 pt-3 flex flex-wrap items-start gap-4"
+                        className="mt-3 pt-2 flex flex-wrap items-start gap-3"
                         style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }}
                     >
                         {/* <div className="w-96 max-w-full">
@@ -2738,8 +2762,8 @@ const CommonReportView2 = ({
                         </div> */}
 
                         <div className="w-full flex items-end justify-around text-center pb-1">
-                            <div className="flex flex-col items-center pb-7">
-                                <div className="h-10" />
+                            <div className="flex flex-col items-center pb-4">
+                                <div className="h-8" />
                                 <p className="text-[10px] font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>Lab Technician</p>
                             </div>
 
@@ -2748,7 +2772,7 @@ const CommonReportView2 = ({
                                 <img
                                     src="/signature.png"
                                     alt="Authorized Pathologist Signature"
-                                    className="h-10 w-auto object-contain mb-1"
+                                    className="h-9 w-auto object-contain mb-0.5"
                                     crossOrigin="anonymous"
                                 />
                                 <p className="text-xs font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>Dr. Sini Arjun</p>
@@ -2761,12 +2785,12 @@ const CommonReportView2 = ({
                     {/* ================= FOOTER ================= */}
                     <div>
                         <div
-                            className="mt-3 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0"
+                            className="mt-2 rounded-xl p-2 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0"
                             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
                         >
                             <div className="flex-[1.4] sm:pr-3">
                                 <h4 className="text-[10px] font-bold mb-0.5" style={{ color: REPORT_COLORS.danger600 }}>Disclaimer</h4>
-                                <p className="text-[9px] leading-tight" style={{ color: REPORT_COLORS.neutral600 }}>
+                                <p className="text-[8px] leading-tight" style={{ color: REPORT_COLORS.neutral600 }}>
                                     *This laboratory report is intended for clinical correlation only. Results should be interpreted by a qualified medical professional. Laboratory values may vary based on methodology and biological variance. The diagnostic center is not responsible for misinterpretation or misuse of results. This is an electronically generated report. No physical signature required.
                                 </p>
                             </div>
@@ -2777,7 +2801,7 @@ const CommonReportView2 = ({
                                 <img
                                     src="/report/Rectangle.png"
                                     alt="QR Code"
-                                    className="h-10 w-10 object-contain flex-shrink-0"
+                                    className="h-9 w-9 object-contain flex-shrink-0"
                                     crossOrigin="anonymous"
                                 />
                                 <div>
