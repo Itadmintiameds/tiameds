@@ -1,5 +1,5 @@
 import {
-  CTASection,
+  // CTASection,
   FeaturesSection,
   Footer,
   Herosection,
@@ -36,9 +36,9 @@ const Page = () => {
       </div>
       <AboutSection />
 
-      <div id="support">
+      {/* <div id="support">
         <CTASection />
-      </div>
+      </div> */}
       <div id="testimonials">
         <TestimonialsSection />
       </div>

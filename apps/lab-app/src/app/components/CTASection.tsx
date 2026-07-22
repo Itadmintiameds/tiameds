@@ -3,140 +3,110 @@
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 
+const benefits = [
+  {
+    icon: '🧪',
+    title: 'Exclusive Early Access',
+    description: 'Get priority access before the official launch.',
+  },
+  {
+    icon: '✨',
+    title: 'AI-Powered Reports',
+    description: 'Every report ships with AI-generated interpretation built in.',
+  },
+  {
+    icon: '🤝',
+    title: 'Dedicated Support',
+    description: 'Work closely with our team while shaping the product.',
+  },
+]
+
 export default function CTASection() {
   return (
-    <section className="relative overflow-hidden bg-primary-100 py-24 lg:py-32">
-
-      {/* Decorative Background */}
-      <div className="absolute -top-24 -left-20 h-72 w-72 rounded-full bg-primary-300/30 blur-3xl" />
-      <div className="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-secondary-300/20 blur-3xl" />
-
-      <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
-
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: .7 }}
-          className="overflow-hidden rounded-xxlg bg-base-white shadow-lg"
-        >
-          <div className="grid lg:grid-cols-2">
-
-            {/* Left */}
-            <div className="bg-primary-800 p-10 lg:p-16 text-base-white flex flex-col justify-center">
-
-              <div className="inline-flex w-fit items-center gap-2 rounded-full bg-primary-700 px-4 py-2">
-
-                <span className="h-2 w-2 rounded-full bg-success-400 animate-pulse"></span>
-
-                <span className="text-label-l3 font-semibold">
-                  PILOT PROGRAM
-                </span>
-
-              </div>
-
-              <h2 className="mt-8 font-heading font-bold text-h2 lg:text-display-sm leading-tight">
-                Currently in
-                <br />
-                Testing Phase
-              </h2>
-
-              <p className="mt-6 text-p5 text-primary-100 leading-8 font-body">
-                Be among the first to experience our lab management
-                solution with exclusive early access benefits and
-                dedicated support.
-              </p>
-
-            </div>
-
-            {/* Right */}
-            <div className="bg-base-white p-10 lg:p-16 flex flex-col justify-center">
-
-              <div className="space-y-6">
-
-                <div className="flex items-start gap-4">
-
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-2xl">
-                    🧪
-                  </div>
-
-                  <div>
-                    <h3 className="text-label-l5 font-heading font-semibold text-pneutral-900">
-                      Exclusive Early Access
-                    </h3>
-
-                    <p className="mt-2 text-p4 text-pneutral-600">
-                      Get priority access before the official launch.
-                    </p>
-
-                  </div>
-
-                </div>
-
-                <div className="flex items-start gap-4">
-
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary-100 text-2xl">
-                    🤝
-                  </div>
-
-                  <div>
-                    <h3 className="text-label-l5 font-heading font-semibold text-pneutral-900">
-                      Dedicated Support
-                    </h3>
-
-                    <p className="mt-2 text-p4 text-pneutral-600">
-                      Work closely with our team while shaping the product.
-                    </p>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-              <motion.div
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: .98 }}
-                className="mt-10"
-              >
-
-                <Link
-                  href="/schedule-demo"
-                  className="inline-flex items-center gap-3 rounded-lg bg-primary-700 px-8 py-4 text-label-l4 font-semibold text-base-white shadow-md transition-all hover:bg-primary-800"
-                >
-                  Schedule Demo
-
-                  <motion.span
-                    animate={{ x: [0, 5, 0] }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 1.3,
-                    }}
-                  >
-                    →
-                  </motion.span>
-
-                </Link>
-
-              </motion.div>
-
-              <p className="mt-8 text-p4 text-pneutral-600">
-                Limited spots available for our testing program.
-
-                <span className="font-semibold text-primary-700">
-                  {" "}
-                  Early participants will receive special pricing.
-                </span>
-
-              </p>
-
-            </div>
-
-          </div>
-        </motion.div>
-
+    <section className="relative overflow-hidden bg-linear-to-br from-primary-900 via-primary-800 to-secondary-900 py-10 lg:py-10">
+      {/* Decorative background */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-20 h-96 w-96 rounded-full bg-primary-500/20 blur-[120px]" />
+        <div className="absolute bottom-0 right-0 h-112 w-md rounded-full bg-secondary-500/20 blur-[120px]" />
+        <div
+          className="absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }}
+        />
       </div>
 
+      <div className="relative z-10 mx-auto max-w-5xl px-6 lg:px-8 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="inline-flex items-center gap-2 rounded-full border border-base-white/20 bg-base-white/10 px-4 py-2 backdrop-blur-sm">
+            <span className="h-2 w-2 rounded-full bg-success-400 animate-pulse" />
+            <span className="text-label-l3 font-semibold text-base-white">PILOT PROGRAM</span>
+          </div>
+
+          <h2 className="mt-8 font-heading font-bold text-h1 lg:text-display-md leading-tight text-base-white">
+            Currently in Testing Phase
+          </h2>
+
+          <p className="mt-6 text-p5 text-primary-100 leading-8 max-w-2xl mx-auto">
+            Be among the first to experience our AI-assisted lab management platform,
+            with exclusive early access benefits and dedicated support.
+          </p>
+
+          <motion.div
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            className="mt-10 inline-block"
+          >
+            <Link
+              href="/schedule-demo"
+              className="inline-flex items-center gap-3 rounded-lg bg-base-white px-8 py-4 text-label-l4 font-semibold text-primary-800 shadow-lg transition-all hover:bg-primary-50"
+            >
+              Schedule Demo
+              <motion.span
+                animate={{ x: [0, 5, 0] }}
+                transition={{ repeat: Infinity, duration: 1.3 }}
+              >
+                →
+              </motion.span>
+            </Link>
+          </motion.div>
+        </motion.div>
+
+        {/* Benefit strip */}
+        <div className="mt-16 grid grid-cols-1 gap-5 sm:grid-cols-3 text-left">
+          {benefits.map((benefit, i) => (
+            <motion.div
+              key={benefit.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 + i * 0.1 }}
+              viewport={{ once: true }}
+              className="rounded-2xl border border-base-white/15 bg-base-white/10 p-6 backdrop-blur-sm transition-colors duration-300 hover:bg-base-white/15"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-base-white/15 text-xl">
+                {benefit.icon}
+              </div>
+              <h3 className="mt-4 text-label-l4 font-heading font-semibold text-base-white">
+                {benefit.title}
+              </h3>
+              <p className="mt-1.5 text-p3 text-primary-100">{benefit.description}</p>
+            </motion.div>
+          ))}
+        </div>
+
+        <p className="mt-10 text-p4 text-primary-100">
+          Limited spots available for our testing program.{' '}
+          <span className="font-semibold text-base-white">
+            Early participants will receive special pricing.
+          </span>
+        </p>
+      </div>
     </section>
   )
 }
