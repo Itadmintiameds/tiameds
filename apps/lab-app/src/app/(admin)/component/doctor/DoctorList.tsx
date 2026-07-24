@@ -1,11 +1,13 @@
 'use client';
 
 import { createDoctor, doctorDelete, getDoctor, updateDoctor } from '@/../../services/doctorServices';
+import { getAllVisits } from '@/../../services/patientServices';
 import Loader from '@/app/(admin)/component/common/Loader';
 import DocterProfile from '@/app/(admin)/component/doctor/DocterProfile';
 import UpdateDoctor from '@/app/(admin)/component/doctor/UpdateDoctor';
 import { useLabs } from '@/context/LabContext';
 import { Doctor } from '@/types/doctor/doctor';
+import { Patient } from '@/types/patient/patient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FaEdit, FaEye, FaSearch, FaSortAmountDown, FaSortAmountUp, FaTrash } from 'react-icons/fa';
 import { FaUserDoctor } from 'react-icons/fa6';
@@ -74,6 +76,9 @@ const DoctorList = () => {
     const [qualificationFilter, setQualificationFilter] = useState<string>('');
     const [sortOrder, setSortOrder] = useState<'new' | 'old'>('new');
     const [currentPage, setCurrentPage] = useState<number>(1);
+    // Referral counts keyed by doctorId, derived from all patient visits. Used to block
+    // deleting a doctor who is still referenced by a patient before the DELETE is sent.
+    const [referralCounts, setReferralCounts] = useState<Record<number, number>>({});
     const itemsPerPage = 5;
 
     const fetchDoctors = useCallback(async () => {
@@ -99,11 +104,53 @@ const DoctorList = () => {
         fetchDoctors();
     }, [fetchDoctors]);
 
+    // Best-effort load of how many patient visits reference each doctor. There is no
+    // dedicated "referral count" endpoint, so we derive it from the lab's visits (each
+    // visit carries a doctorId). If this lookup fails we simply fall back to the backend
+    // guard on delete, so the failure is swallowed silently.
+    const fetchReferralCounts = useCallback(async () => {
+        if (currentLab?.id === undefined) return;
+        try {
+            const response = await getAllVisits(currentLab.id);
+            const visits: Patient[] = response?.data || [];
+            const counts: Record<number, number> = {};
+            visits.forEach((patient) => {
+                const rawDoctorId = patient?.visit?.doctorId;
+                const doctorId = typeof rawDoctorId === 'string' ? Number(rawDoctorId) : rawDoctorId;
+                if (doctorId != null && !Number.isNaN(doctorId)) {
+                    counts[doctorId] = (counts[doctorId] || 0) + 1;
+                }
+            });
+            setReferralCounts(counts);
+        } catch {
+            // Non-fatal: deletion is still guarded server-side.
+        }
+    }, [currentLab]);
+
+    useEffect(() => {
+        fetchReferralCounts();
+    }, [fetchReferralCounts]);
+
+    const getReferralCount = (doctor: Doctor | null): number =>
+        doctor?.id != null ? referralCounts[doctor.id] ?? 0 : 0;
+
+    // Same wording used by the backend fallback (DOCTOR_REFERRAL_DELETE_MESSAGE), but with
+    // the concrete patient count the client-side pre-check knows about.
+    const buildReferralError = (count: number) =>
+        `Cannot delete doctor: this doctor is referred to ${count} patient${count === 1 ? '' : 's'}. Please reassign those patients first.`;
+
     const handleViewDoctor = (doctor: Doctor) => {
         setSelectedDoctor(doctor);
     };
 
     const handleDeleteClick = (doctor: Doctor) => {
+        // Client-side validation: never send the DELETE for a doctor that still has
+        // referrals -- show the actionable error up front instead of letting it fail.
+        const count = getReferralCount(doctor);
+        if (count > 0) {
+            toast.error(buildReferralError(count), { className: 'bg-red-50 text-red-800' });
+            return;
+        }
         setDoctorToDelete(doctor);
     };
 
@@ -114,6 +161,14 @@ const DoctorList = () => {
 
     const handleConfirmDelete = async () => {
         if (!currentLab?.id || !doctorToDelete?.id) return;
+
+        // Defensive re-check in case referral data changed while the dialog was open.
+        const count = getReferralCount(doctorToDelete);
+        if (count > 0) {
+            toast.error(buildReferralError(count), { className: 'bg-red-50 text-red-800' });
+            setDoctorToDelete(null);
+            return;
+        }
 
         setIsDeleting(true);
         try {
@@ -126,10 +181,14 @@ const DoctorList = () => {
                     className: 'bg-green-50 text-green-800'
                 });
                 setDoctorToDelete(null);
+                // Keep referral counts in sync so re-deletes reflect the current state.
+                fetchReferralCounts();
             } else {
                 throw new Error(response?.message || 'Failed to delete doctor');
             }
         } catch (error) {
+            // Backend referral rejections (DOCTOR_REFERRAL_DELETE_MESSAGE) and any other
+            // server error already carry a friendly message from the service layer.
             toast.error(error instanceof Error ? error.message : 'Deletion failed', {
                 className: 'bg-red-50 text-red-800'
             });
