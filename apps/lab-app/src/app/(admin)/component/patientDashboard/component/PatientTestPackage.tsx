@@ -21,6 +21,10 @@ interface PatientTestPackageProps {
   removeTest: (testId: string) => void;
   removePackage: (packageId: string) => void;
   handleTestDiscountChange: (testId: number, field: 'percent' | 'amount', value: number) => void;
+  // Add Patient already shows the picked tests in its right-hand Billing Summary, so it
+  // hides this in-component "Selected (N)" list to avoid duplicating it. Edit Patient has
+  // no such side panel, so it keeps the default (shown).
+  showSelectedSummary?: boolean;
 }
 
 const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
@@ -39,6 +43,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
   removeTest,
   removePackage,
   // handleTestDiscountChange,
+  showSelectedSummary = true,
 }) => {
   // State management
   const [, setShowTestList] = useState(true);
@@ -387,7 +392,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
       </div>
 
       {/* ── Selected Items Summary ── */}
-      {(selectedTests.length > 0 || selectedPackages.length > 0) && (
+      {showSelectedSummary && (selectedTests.length > 0 || selectedPackages.length > 0) && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">
             Selected ({selectedTests.length + selectedPackages.length})

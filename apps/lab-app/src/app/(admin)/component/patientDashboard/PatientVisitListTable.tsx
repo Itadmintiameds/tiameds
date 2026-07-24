@@ -734,7 +734,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
         isOpen={editPatientDetailsModal}
         onClose={() => setEditPatientDetailsModal(false)}
         title="Edit Patient Details"
-        modalClassName="w-full max-w-7xl rounded-lg"
+        modalClassName="w-full max-w-6xl rounded-lg"
       >
         <EditPatientDetails
           setEditPatientDetailsModal={setEditPatientDetailsModal}

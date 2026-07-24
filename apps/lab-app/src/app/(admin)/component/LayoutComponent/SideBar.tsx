@@ -69,11 +69,26 @@ const SideBar = ({ isOpen, setIsOpen }: SideBarProps) => {
       }))
     );
   }, []);
-  
+
+  // On phones/tablets the sidebar is an overlay drawer, so close it after navigating
+  // to a new route -- otherwise it would stay covering the page the user just opened.
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setIsOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-30 bg-[#E1C4F8] shadow-2xl transform transition-all duration-300 ease-in-out flex flex-col ${isOpen ? "w-64" : "w-24"
-        }`}
+      className={clsx(
+        "fixed inset-y-0 left-0 z-40 bg-[#E1C4F8] shadow-2xl transform transition-all duration-300 ease-in-out flex flex-col w-64",
+        // Mobile: slide the full-width drawer in (open) or off-screen (closed).
+        isOpen ? "translate-x-0" : "-translate-x-full",
+        // Desktop (lg+): always on screen, collapsing between a full panel and a slim rail.
+        "lg:translate-x-0",
+        isOpen ? "lg:w-64" : "lg:w-24"
+      )}
       style={{
         background: `linear-gradient(160deg, #E1C4F8 0%, #d1a8f5 100%)`
       }}

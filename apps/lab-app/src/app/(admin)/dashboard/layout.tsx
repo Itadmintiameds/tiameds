@@ -40,6 +40,11 @@ const Layout = ({ children }: LayoutProps) => {
 
   useEffect(() => {
     setIsHydrated(true);
+    // The sidebar is an overlay drawer on phones/tablets, so start it collapsed there
+    // and open on desktop. Runs once on mount (client only), after which the user drives it.
+    if (typeof window !== "undefined") {
+      setIsOpen(window.innerWidth >= 1024);
+    }
   }, []);
 
   useEffect(() => {
@@ -88,7 +93,17 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="flex h-screen overflow-hidden bg-secondary-50"> {/* Added overflow-hidden to prevent scrolling */}
       <SideBar isOpen={isOpen} setIsOpen={setIsOpen} />
 
-      <main className={`flex-1 ml-20 transition-all duration-400 ${isOpen ? "ml-64" : "ml-20"} overflow-hidden`}> {/* Added overflow-hidden */}
+      {/* Mobile backdrop: dims the page behind the drawer and closes it on tap. Desktop
+          keeps the sidebar in-flow, so this is hidden there. */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <main className={`flex-1 overflow-hidden transition-all duration-300 ml-0 ${isOpen ? "lg:ml-64" : "lg:ml-24"}`}> {/* Added overflow-hidden */}
         {/* Top Navigation Bar */}
         {isHydrated && user && (
           <TopNav
@@ -96,6 +111,7 @@ const Layout = ({ children }: LayoutProps) => {
             labs={labs}
             currentLab={currentLab}
             handleChange={handleChange}
+            onMenuToggle={() => setIsOpen(!isOpen)}
           />
         )}
 

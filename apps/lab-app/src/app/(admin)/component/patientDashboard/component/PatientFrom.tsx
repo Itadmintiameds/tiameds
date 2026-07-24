@@ -601,10 +601,10 @@ const PatientForm: React.FC<PatientFormProps> = ({
         </div>
       </div>
 
-      {/* ── TAX & BILLING ── */}
+      {/* ── PERSONAL INFORMATION ── */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
-          Tax &amp; Billing
+          Personal Information
         </p>
 
         {/* hidden prefix select — keeps gender-from-prefix logic alive */}
