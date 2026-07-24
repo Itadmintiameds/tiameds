@@ -2,7 +2,7 @@
 import { getUsersLab } from "@/../services/labServices";
 import { useLabs } from '@/context/LabContext';
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuth } from "@/hooks/useAuth";
 import SideBar from "../component/LayoutComponent/SideBar";
@@ -86,7 +86,9 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-secondary-50"> {/* Added overflow-hidden to prevent scrolling */}
-      <SideBar isOpen={isOpen} setIsOpen={setIsOpen} />
+      <Suspense fallback={null}>
+        <SideBar isOpen={isOpen} setIsOpen={setIsOpen} />
+      </Suspense>
 
       <main className={`flex-1 ml-20 transition-all duration-400 ${isOpen ? "ml-64" : "ml-20"} overflow-hidden`}> {/* Added overflow-hidden */}
         {/* Top Navigation Bar */}

@@ -33,7 +33,7 @@ interface TopNavProps {
 const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange }) => {
 
   return (
-    <nav className="flex items-center justify-between py-3 px-6 border-b border-gray-200 bg-white shadow-sm">
+    <nav className="flex items-center justify-between py-4 px-6 border-b border-gray-200 bg-white shadow-sm">
       {/* User Information */}
       <div className="flex items-center space-x-4 min-w-0">
         <div className="flex-shrink-0">

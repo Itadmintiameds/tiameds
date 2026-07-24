@@ -32,19 +32,25 @@ import { PiDna, PiFlaskLight, PiGraduationCapThin } from "react-icons/pi";
 import { useLabs } from "@/context/LabContext";
 import {
   getAllStats,
-  getTotalAdmins,
-  getTotalDeskRoles,
-  getTotalLabsCount,
-  getTotalTechnicians,
+  getGridReport,
 } from "../../../../../../services/statisticsService";
 import {
   DetailedBilling,
   EarningsByCategoryData,
+  GridReportResponse,
+  GridReportRow,
   LabPerformanceRow,
   RevenueByLabRow,
+  RoleLabWiseTotal,
   TestCategoryRow,
   TopReferringDoctor,
 } from "@/types/statisticsData";
+import {
+  downloadCSV,
+  formatAmount as formatCsvAmount,
+  formatDate as formatCsvDate,
+  generateCSVFilename,
+} from "@/utils/csvUtils";
 
 type DateFilterType = "currentFY" | "week" | "month" | "year" | "custom";
 
@@ -232,6 +238,80 @@ const getRevenueBuckets = (
   }));
 };
 
+// Role-count KPIs (totalAdmins/totalTechnicians/totalDeskRoles) come back as a plain
+// number when the request is scoped to one lab, or as { total, labWise } when
+// aggregating across every lab - see AllStatsKpis / RoleLabWiseTotal.
+const extractRoleCount = (value: number | RoleLabWiseTotal | undefined | null): number => {
+  if (value == null) return 0;
+  if (typeof value === "number") return value;
+  return value.total ?? 0;
+};
+
+// Visit Status color coding for the Billing Grid Report table: completed -> success,
+// cancelled -> warning, pending -> danger. Backend values are uppercase (e.g. "CANCELLED")
+// but this normalizes case defensively.
+const getVisitStatusColorClass = (status?: string): string => {
+  switch ((status || "").toUpperCase()) {
+    case "COMPLETED":
+      return "text-success-500";
+    case "CANCELLED":
+      return "text-warning-500";
+    case "PENDING":
+      return "text-danger-500";
+    default:
+      return "text-pneutral-900";
+  }
+};
+
+// Builds the CSV for the Billing Grid Report table/export - one row per visit/billing record.
+const buildGridReportCsv = (rows: GridReportRow[]): string => {
+  const headers = [
+    "SI No.",
+    "Visit Code",
+    "Patient Name",
+    "Patient Phone",
+    "Doctor Name",
+    "Visit Type",
+    "Visit Status",
+    "Billing Code",
+    "Billing Date",
+    "Payment Status",
+    "Payment Method",
+    "Total Amount",
+    "Discount",
+    "Net Amount",
+    "Paid Amount",
+    "Due Amount",
+    "Lab Name",
+  ];
+
+  const csvRows = rows.map((row, index) =>
+    [
+      index + 1,
+      row.visitCode,
+      row.patientName,
+      row.patientPhone,
+      row.doctorName || "N/A",
+      row.visitType,
+      row.visitStatus,
+      row.billingCode,
+      formatCsvDate(row.billingDate),
+      row.paymentStatus,
+      row.paymentMethod,
+      formatCsvAmount(row.totalAmount),
+      formatCsvAmount(row.discount),
+      formatCsvAmount(row.netAmount),
+      formatCsvAmount(row.paidAmount),
+      formatCsvAmount(row.dueAmount),
+      row.labName,
+    ]
+      .map((field) => `"${String(field ?? "").replace(/"/g, '""')}"`)
+      .join(",")
+  );
+
+  return [headers.join(","), ...csvRows].join("\n");
+};
+
 // Format currency
 const formatCurrency = (amount: number): string => {
   if (amount >= 100000) {
@@ -275,6 +355,11 @@ const getRevenueAxisConfig = (maxValue: number) => {
 // Color constants for charts
 const CATEGORY_COLORS = ["#4F6BED", "#55D400", "#8B5CF6", "#FDBA12", "#F75A5A", "#4C0FAE", "#6D28D9", "#38B000"];
 const PACKAGE_COLORS = ["#4F6BED", "#55D400", "#8B5CF6", "#FDBA12", "#F75A5A", "#4C0FAE"];
+
+// Billing Grid Report shows every row with no pagination in the UI, but the backend
+// endpoint itself is still paginated - this is the page size used internally to pull
+// every page and stitch them into one full row list.
+const GRID_FETCH_PAGE_SIZE = 200;
 
 // Defaults for the nested pieces of DetailedBilling before the first fetch resolves.
 const emptyPaymentMode = { cash: 0, upi: 0, card: 0 };
@@ -367,13 +452,24 @@ const SuperAdminStats = () => {
     endDate: dayjs().format("YYYY-MM-DD"),
   });
 
+  const [gridFilter, setGridFilter] = useState<DateFilterType>("currentFY");
+  const [gridCustomRange, setGridCustomRange] = useState<DateRange>({
+    startDate: dayjs().subtract(7, "days").format("YYYY-MM-DD"),
+    endDate: dayjs().format("YYYY-MM-DD"),
+  });
+
   // State for all metrics
-  // First 4 KPIs: org-wide counts owned by the current super admin, unaffected
-  // by the date or lab filters (the backend endpoints backing them take no such params).
+  // Total Labs: org-wide count owned by the current super admin, unaffected by
+  // the date or lab filters (the backend endpoint backing it takes no such params).
   const [totalLabs, setTotalLabs] = useState<number>(0);
+
+  // Admins/technicians/desk roles: scoped to the selected lab (or all labs), but
+  // deliberately NOT re-fetched when the date filter changes - see the dedicated
+  // effect below that calls getAllStats without startDate/endDate.
   const [totalAdmins, setTotalAdmins] = useState<number>(0);
   const [totalTechnicians, setTotalTechnicians] = useState<number>(0);
   const [totalDeskRoles, setTotalDeskRoles] = useState<number>(0);
+  const [roleKpisLoading, setRoleKpisLoading] = useState<boolean>(true);
 
   // Remaining KPIs come from getAllStats().kpis, scoped by the global filter + selected lab.
   const [totalTests, setTotalTests] = useState<number>(0);
@@ -410,6 +506,11 @@ const SuperAdminStats = () => {
   const [packageSummary, setPackageSummary] = useState<DetailedBilling["packageSummary"]>(emptyPackageSummary);
   const [packages, setPackages] = useState<DetailedBilling["packages"]>([]);
 
+  // Billing Grid Report table - shows every row (no pagination), own filter, CSV export
+  const emptyGridData: GridReportResponse = { page: 0, size: 0, totalRecords: 0, totalPages: 0, rows: [] };
+  const [gridData, setGridData] = useState<GridReportResponse>(emptyGridData);
+  const [gridLoading, setGridLoading] = useState<boolean>(true);
+
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -421,6 +522,7 @@ const SuperAdminStats = () => {
     setPackagesFilter(globalFilter);
     setPerformanceFilter(globalFilter);
     setDoctorsFilter(globalFilter);
+    setGridFilter(globalFilter);
   }, [globalFilter]);
 
   // Sync custom ranges when global custom range changes
@@ -432,6 +534,7 @@ const SuperAdminStats = () => {
       setPackagesCustomRange(globalCustomRange);
       setPerformanceCustomRange(globalCustomRange);
       setDoctorsCustomRange(globalCustomRange);
+      setGridCustomRange(globalCustomRange);
     }
   }, [globalCustomRange, globalFilter]);
 
@@ -443,6 +546,39 @@ const SuperAdminStats = () => {
     [selectedLabId]
   );
 
+  // Total Labs / Admins / Technicians / Desk Roles KPIs: re-fetched only when the
+  // selected lab changes, deliberately independent of every date filter (global or
+  // per-section) - always calls getAllStats with no startDate/endDate. totalLabs comes
+  // back as 1 when a specific lab is selected (backend scopes it), or the full count
+  // owned by the super admin when "All Labs" is selected.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setRoleKpisLoading(true);
+      try {
+        const stats = await fetchStats(undefined, undefined);
+        if (cancelled) return;
+        setTotalLabs(stats.kpis?.totalLabs || 0);
+        setTotalAdmins(extractRoleCount(stats.kpis?.totalAdmins));
+        setTotalTechnicians(extractRoleCount(stats.kpis?.totalTechnicians));
+        setTotalDeskRoles(extractRoleCount(stats.kpis?.totalDeskRoles));
+      } catch (error) {
+        console.error("Error fetching role KPIs:", error);
+        if (!cancelled) {
+          setTotalLabs(0);
+          setTotalAdmins(0);
+          setTotalTechnicians(0);
+          setTotalDeskRoles(0);
+        }
+      } finally {
+        if (!cancelled) setRoleKpisLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchStats]);
+
   // Fetch function
   const fetchAllData = useCallback(async (silent = false) => {
     if (!silent) {
@@ -452,20 +588,7 @@ const SuperAdminStats = () => {
     }
 
     try {
-      // 1. Org-wide KPIs, unaffected by date or lab filters
-      const [labsResult, adminsResult, techniciansResult, deskRolesResult] = await Promise.allSettled([
-        getTotalLabsCount(),
-        getTotalAdmins(),
-        getTotalTechnicians(),
-        getTotalDeskRoles(),
-      ]);
-
-      if (labsResult.status === "fulfilled") setTotalLabs(labsResult.value.totalLabs);
-      if (adminsResult.status === "fulfilled") setTotalAdmins(adminsResult.value.totalAdmins);
-      if (techniciansResult.status === "fulfilled") setTotalTechnicians(techniciansResult.value.totalTechnicians);
-      if (deskRolesResult.status === "fulfilled") setTotalDeskRoles(deskRolesResult.value.totalDeskRoles);
-
-      // 2. Remaining KPIs + Billing Summary card, scoped by the GLOBAL filter + selected lab
+      // 1. Remaining KPIs + Billing Summary card, scoped by the GLOBAL filter + selected lab
       const globalRange = getDateRange(globalFilter, globalCustomRange);
       try {
         const globalStats = await fetchStats(globalRange.startDate, globalRange.endDate);
@@ -615,13 +738,70 @@ const SuperAdminStats = () => {
     fetchAllData();
   }, [fetchAllData]);
 
-  // Auto-refresh every 30 seconds
+  // Billing Grid Report: the UI shows every matching row with no pagination, so this
+  // pulls every page from the (paginated) backend endpoint and stitches them into one
+  // full row list. `silent` mirrors fetchAllData's silent refresh - used by the 30s
+  // auto-refresh below so the table doesn't flash back to a "Loading..." state.
+  const fetchGridData = useCallback(
+    async (silent = false) => {
+      if (!silent) setGridLoading(true);
+      try {
+        const range = getDateRange(gridFilter, gridCustomRange);
+        const labIdParam = selectedLabId === "all" ? undefined : selectedLabId;
+
+        const firstPage = await getGridReport(labIdParam, range.startDate, range.endDate, 0, GRID_FETCH_PAGE_SIZE);
+        let allRows: GridReportRow[] = [...firstPage.rows];
+
+        if (firstPage.totalPages > 1) {
+          const remainingPages = await Promise.all(
+            Array.from({ length: firstPage.totalPages - 1 }, (_, i) =>
+              getGridReport(labIdParam, range.startDate, range.endDate, i + 1, GRID_FETCH_PAGE_SIZE)
+            )
+          );
+          remainingPages.forEach((p) => {
+            allRows = allRows.concat(p.rows);
+          });
+        }
+
+        setGridData({
+          page: 0,
+          size: allRows.length,
+          totalRecords: firstPage.totalRecords,
+          totalPages: 1,
+          rows: allRows,
+        });
+      } catch (error) {
+        console.error("Error fetching billing grid report:", error);
+        if (!silent) setGridData({ page: 0, size: 0, totalRecords: 0, totalPages: 0, rows: [] });
+      } finally {
+        if (!silent) setGridLoading(false);
+      }
+    },
+    [selectedLabId, gridFilter, gridCustomRange]
+  );
+
+  // Initial load + reload whenever the lab or the section's own date filter changes.
+  useEffect(() => {
+    fetchGridData();
+  }, [fetchGridData]);
+
+  // Auto-refresh every 30 seconds - keeps the Billing Grid Report in sync with every
+  // other stats section on this dashboard.
   useEffect(() => {
     const interval = setInterval(() => {
       fetchAllData(true);
+      fetchGridData(true);
     }, 30000);
     return () => clearInterval(interval);
-  }, [fetchAllData]);
+  }, [fetchAllData, fetchGridData]);
+
+  // The grid table already holds the full filtered result set (no pagination), so the
+  // CSV export just converts what's already loaded - no extra fetch needed.
+  const handleDownloadGridCsv = () => {
+    if (gridData.rows.length === 0) return;
+    const csv = buildGridReportCsv(gridData.rows);
+    downloadCSV(csv, generateCSVFilename("billing-grid-report"));
+  };
 
   // Format data for category pie chart
   const getCategoryChartData = () => {
@@ -796,21 +976,21 @@ const SuperAdminStats = () => {
     {
       id: 2,
       title: "Total Admins",
-      value: loading ? "..." : String(totalAdmins),
+      value: roleKpisLoading ? "..." : String(totalAdmins),
       color: "text-secondary-700",
       icon: HiOutlineUserGroup,
     },
     {
       id: 3,
       title: "Total Desk Users",
-      value: loading ? "..." : String(totalDeskRoles),
+      value: roleKpisLoading ? "..." : String(totalDeskRoles),
       color: "text-secondary-700",
       icon: HiOutlineUsers,
     },
     {
       id: 4,
       title: "Total Technicians",
-      value: loading ? "..." : String(totalTechnicians),
+      value: roleKpisLoading ? "..." : String(totalTechnicians),
       color: "text-secondary-700",
       icon: PiGraduationCapThin,
     },
@@ -1598,6 +1778,113 @@ const SuperAdminStats = () => {
           </table>
         </div>
       </div>
+
+      {/* Billing Grid Report */}
+      <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+          <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+            Billing Report
+          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadGridCsv}
+              disabled={gridLoading || gridData.rows.length === 0}
+              className="rounded-lg border border-success-500 bg-[#55D400] px-4 py-2 text-p3 font-medium text-pneutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Download as CSV
+            </button>
+            {renderFilterDropdown(
+              gridFilter,
+              setGridFilter,
+              gridCustomRange,
+              setGridCustomRange,
+              false
+            )}
+          </div>
+        </div>
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+          <table className="min-w-full border-separate border-spacing-y-0">
+            <thead className="sticky top-0 bg-white z-10">
+              <tr className="border-b border-pneutral-100 bg-pneutral-50">
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">SI No.</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Code</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Patient Name</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Phone</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Doctor</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Type</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Status</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Billing Code</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Billing Date</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Payment Status</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Payment Method</th>
+                <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Total Amount</th>
+                <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Discount</th>
+                <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Net Amount</th>
+                <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Paid</th>
+                <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Due</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Lab Name</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gridLoading ? (
+                <tr>
+                  <td colSpan={17} className="px-4 py-8 text-center text-pneutral-500">
+                    Loading...
+                  </td>
+                </tr>
+              ) : gridData.rows.length > 0 ? (
+                gridData.rows.map((row, index) => (
+                  <tr key={row.billingId ?? index} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">
+                      {index + 1}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.visitCode}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.patientName}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.patientPhone}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.doctorName || "N/A"}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.visitType}</td>
+                    <td className={`border-b border-pneutral-100 px-4 py-2 text-p3 font-medium ${getVisitStatusColorClass(row.visitStatus)}`}>
+                      {row.visitStatus}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.billingCode}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.billingDate}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.paymentStatus}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.paymentMethod}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-right text-p3 text-pneutral-900">
+                      ₹{(row.totalAmount || 0).toLocaleString()}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-right text-p3 text-pneutral-900">
+                      ₹{(row.discount || 0).toLocaleString()}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-right text-p3 text-pneutral-900">
+                      ₹{(row.netAmount || 0).toLocaleString()}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-right font-medium text-pneutral-900">
+                      ₹{(row.paidAmount || 0).toLocaleString()}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-right font-medium text-danger-600">
+                      ₹{(row.dueAmount || 0).toLocaleString()}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.labName}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={17} className="px-4 py-8 text-center text-pneutral-500">
+                    No billing records found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 px-1">
+          <p className="text-p3 text-pneutral-500">
+            {gridData.totalRecords > 0 ? `${gridData.totalRecords} records` : "0 records"}
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1629,17 +1916,12 @@ export default SuperAdminStats;
 
 
 
+// code dated 24.07.2026................
 
-
-
-// code dated 23.07.2026........................
-
-
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// /* eslint-disable @typescript-eslint/no-explicit-any */
 // "use client";
 
-// import { useState, useEffect, useCallback } from "react";
+// import { useState, useEffect, useCallback, useMemo } from "react";
 // import dayjs from "dayjs";
 
 // import {
@@ -1647,7 +1929,6 @@ export default SuperAdminStats;
 //   ClipboardCheck,
 //   ArrowUp,
 //   ArrowDown,
-//   Eye,
 //   ChevronUp,
 //   ChevronDown,
 // } from "lucide-react";
@@ -1670,20 +1951,20 @@ export default SuperAdminStats;
 // // Import services
 // import { useLabs } from "@/context/LabContext";
 // import {
-//   getLabPerformance,
-//   getPendingSamples,
-//   getReportsGenerated,
-//   getRevenueByLab,
-//   getTestsByCategory,
-//   getTopReferringDoctors,
+//   getAllStats,
 //   getTotalAdmins,
 //   getTotalDeskRoles,
 //   getTotalLabsCount,
 //   getTotalTechnicians,
-//   getTotalTests,
-//   getPackagesSummary,
-//   getEarningsByCategory,
 // } from "../../../../../../services/statisticsService";
+// import {
+//   DetailedBilling,
+//   EarningsByCategoryData,
+//   LabPerformanceRow,
+//   RevenueByLabRow,
+//   TestCategoryRow,
+//   TopReferringDoctor,
+// } from "@/types/statisticsData";
 
 // type DateFilterType = "currentFY" | "week" | "month" | "year" | "custom";
 
@@ -1719,7 +2000,7 @@ export default SuperAdminStats;
 // // Helper: Get date range based on filter
 // const getDateRange = (filter: DateFilterType, customRange?: DateRange): { startDate?: string; endDate?: string } => {
 //   const now = dayjs();
-  
+
 //   switch (filter) {
 //     case "currentFY": {
 //       const fy = getFinancialYear(now);
@@ -1772,9 +2053,9 @@ export default SuperAdminStats;
 // };
 
 // // Helper: date-labeled buckets (label + start/end as YYYY-MM-DD) for the revenue chart's
-// // x-axis, one per filter type. Each bucket's start/end is fed straight into
-// // getEarningsByCategory (the same API backing the "Total Revenue" KPI/header) so the
-// // chart bars and the header total are always computed the same way.
+// // x-axis, one per filter type. Each bucket's start/end is fed into getAllStats so the
+// // chart bars break the section's date range into per-day/week/month segments, the same
+// // way the global/section filter dropdowns have always driven this chart.
 // const getRevenueBuckets = (
 //   filter: DateFilterType,
 //   customRange: DateRange
@@ -1915,73 +2196,52 @@ export default SuperAdminStats;
 // const CATEGORY_COLORS = ["#4F6BED", "#55D400", "#8B5CF6", "#FDBA12", "#F75A5A", "#4C0FAE", "#6D28D9", "#38B000"];
 // const PACKAGE_COLORS = ["#4F6BED", "#55D400", "#8B5CF6", "#FDBA12", "#F75A5A", "#4C0FAE"];
 
-// // Shapes mirror getEarningsByCategory's return type in statisticsService.ts;
-// // fields are optional since state starts out as an empty/partial object before the fetch resolves.
-// interface EarningsTestRow {
-//   testId?: number;
-//   testName?: string;
-//   testCode?: string;
-//   price?: number;
-//   orderedCount?: number;
-//   totalEarnings?: number;
-//   paidAmount?: number;
-//   dueAmount?: number;
-// }
-
-// interface EarningsCategoryRow {
-//   category: string;
-//   totalTests?: number;
-//   totalEarnings?: number;
-//   paidAmount?: number;
-//   dueAmount?: number;
-//   tests?: EarningsTestRow[];
-// }
-
-// interface EarningsData {
-//   summary: {
-//     totalCategories?: number;
-//     totalTests?: number;
-//     totalEarnings?: number;
-//     totalPaid?: number;
-//     totalDue?: number;
-//   };
-//   categories: EarningsCategoryRow[];
-// }
-
-// // Shape mirrors getPackagesSummary's return type in statisticsService.ts.
-// interface PackagesData {
-//   summary: {
-//     totalPackages?: number;
-//     totalVisits?: number;
-//     totalRevenue?: number;
-//     totalDiscount?: number;
-//     totalPaid?: number;
-//     totalDue?: number;
-//     totalCash?: number;
-//     totalUpi?: number;
-//     totalCard?: number;
-//   };
-//   packages: Array<{
-//     packageId?: number;
-//     packageName?: string;
-//     packageCode?: string;
-//     revenue?: number;
-//     discount?: number;
-//     visitCount?: number;
-//     paidRevenue?: number;
-//     dueRevenue?: number;
-//     cashRevenue?: number;
-//     upiRevenue?: number;
-//     cardRevenue?: number;
-//   }>;
-// }
+// // Defaults for the nested pieces of DetailedBilling before the first fetch resolves.
+// const emptyPaymentMode = { cash: 0, upi: 0, card: 0 };
+// const emptyBillingSummary: DetailedBilling["summary"] = {
+//   totalBillings: 0,
+//   grossBilled: 0,
+//   totalDiscount: 0,
+//   totalGst: 0,
+//   netBilled: 0,
+//   totalPaid: 0,
+//   totalDue: 0,
+//   paymentMode: emptyPaymentMode,
+// };
+// const emptyTestsSummary: DetailedBilling["testsSummary"] = {
+//   totalCategories: 0,
+//   totalTests: 0,
+//   grossBilled: 0,
+//   discount: 0,
+//   paid: 0,
+//   due: 0,
+//   paymentMode: emptyPaymentMode,
+// };
+// const emptyPackageSummary: DetailedBilling["packageSummary"] = {
+//   totalPackages: 0,
+//   totalVisits: 0,
+//   grossBilled: 0,
+//   discount: 0,
+//   paid: 0,
+//   due: 0,
+//   paymentMode: emptyPaymentMode,
+// };
 
 // const SuperAdminStats = () => {
-//   useLabs();
+//   const { labs } = useLabs();
 
 //   // Loading states
 //   const [loading, setLoading] = useState(true);
 //   const [refreshing, setRefreshing] = useState(false);
+
+//   // ========== LAB FILTER ==========
+//   // "all" = cumulative view across every lab the super admin owns; otherwise
+//   // every section below is scoped to that single lab via the labId query param.
+//   const [selectedLabId, setSelectedLabId] = useState<number | "all">("all");
+//   const selectedLabName = useMemo(
+//     () => (selectedLabId === "all" ? null : labs.find((lab) => lab.id === selectedLabId)?.name ?? null),
+//     [selectedLabId, labs]
+//   );
 
 //   // ========== UNIVERSAL DATE FILTER (Global) ==========
 //   const [globalFilter, setGlobalFilter] = useState<DateFilterType>("currentFY");
@@ -2028,29 +2288,48 @@ export default SuperAdminStats;
 //   });
 
 //   // State for all metrics
+//   // First 4 KPIs: org-wide counts owned by the current super admin, unaffected
+//   // by the date or lab filters (the backend endpoints backing them take no such params).
 //   const [totalLabs, setTotalLabs] = useState<number>(0);
 //   const [totalAdmins, setTotalAdmins] = useState<number>(0);
 //   const [totalTechnicians, setTotalTechnicians] = useState<number>(0);
 //   const [totalDeskRoles, setTotalDeskRoles] = useState<number>(0);
+
+//   // Remaining KPIs come from getAllStats().kpis, scoped by the global filter + selected lab.
 //   const [totalTests, setTotalTests] = useState<number>(0);
 //   const [totalRevenue, setTotalRevenue] = useState<number>(0);
 //   const [reportsGenerated, setReportsGenerated] = useState<number>(0);
 //   const [pendingSamples, setPendingSamples] = useState<number>(0);
-//   const [testsByCategory, setTestsByCategory] = useState<Array<any>>([]);
-//   const [categorySummary, setCategorySummary] = useState<any>({});
-//   // Total shown in the "Revenue Trend (All Labs)" card header — same paid-revenue
-//   // calculation as the "Total Revenue" KPI tile (getEarningsByCategory summary.totalPaid),
-//   // but scoped to this card's own filter instead of the global/category filter.
-//   const [revenueSectionTotalPaid, setRevenueSectionTotalPaid] = useState<number>(0);
-//   // Chart bars — each bucket's revenue comes from the same getEarningsByCategory API as
-//   // revenueSectionTotalPaid above, so the bars always sum to match the header total.
-//   const [revenueChartData, setRevenueChartData] = useState<Array<{ label: string; revenue: number }>>([]);
-//   const [revenueByLab, setRevenueByLab] = useState<Array<{ labId: number; labName: string; revenue: number }>>([]);
-//   const [labPerformance, setLabPerformance] = useState<any[]>([]);
-//   const [topDoctors, setTopDoctors] = useState<any[]>([]);
-//   const [packagesData, setPackagesData] = useState<PackagesData>({ summary: {}, packages: [] });
-//   const [earningsData, setEarningsData] = useState<EarningsData>({ summary: {}, categories: [] });
+
+//   // Billing Summary card - independent of the test-category/package sections,
+//   // sourced from detailedBilling.summary on the global-filtered call.
+//   const [billingSummary, setBillingSummary] = useState<DetailedBilling["summary"]>(emptyBillingSummary);
+
+//   // Test by Category pie chart
+//   const [testCategories, setTestCategories] = useState<TestCategoryRow[]>([]);
+//   const [testCategoriesSummary, setTestCategoriesSummary] = useState<DetailedBilling["testsSummary"]>(emptyTestsSummary);
+
+//   // Revenue by Test - per-test drilldown table with a category filter dropdown
+//   const [earningsData, setEarningsData] = useState<EarningsByCategoryData>({
+//     summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 },
+//     categories: [],
+//   });
 //   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+//   // Revenue Trend (All Labs) card - trend is pre-bucketed by day from the backend.
+//   const [revenueTrendTotal, setRevenueTrendTotal] = useState<number>(0);
+//   const [revenueChartData, setRevenueChartData] = useState<Array<{ label: string; revenue: number }>>([]);
+
+//   // Revenue Trend (Top 5 Labs) card
+//   const [revenueByLab, setRevenueByLab] = useState<RevenueByLabRow[]>([]);
+
+//   const [labPerformance, setLabPerformance] = useState<LabPerformanceRow[]>([]);
+//   const [topDoctors, setTopDoctors] = useState<TopReferringDoctor[]>([]);
+
+//   // Packages Summary card
+//   const [packageSummary, setPackageSummary] = useState<DetailedBilling["packageSummary"]>(emptyPackageSummary);
+//   const [packages, setPackages] = useState<DetailedBilling["packages"]>([]);
+
 //   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 //   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -2076,187 +2355,182 @@ export default SuperAdminStats;
 //     }
 //   }, [globalCustomRange, globalFilter]);
 
+//   // Every section below hits the same consolidated endpoint, scoped to whichever
+//   // lab is currently selected ("all" omits labId so the backend aggregates every lab).
+//   const fetchStats = useCallback(
+//     (startDate?: string, endDate?: string) =>
+//       getAllStats(selectedLabId === "all" ? undefined : selectedLabId, startDate, endDate),
+//     [selectedLabId]
+//   );
+
 //   // Fetch function
-// // Fetch function
-// const fetchAllData = useCallback(async (silent = false) => {
-//   if (!silent) {
-//     setLoading(true);
-//   } else {
-//     setRefreshing(true);
-//   }
+//   const fetchAllData = useCallback(async (silent = false) => {
+//     if (!silent) {
+//       setLoading(true);
+//     } else {
+//       setRefreshing(true);
+//     }
 
-//   try {
-//     // 1. Fetch KPIs WITHOUT date filters (all-time)
-//     const [labsResult, adminsResult, techniciansResult, deskRolesResult] = await Promise.allSettled([
-//       getTotalLabsCount(),
-//       getTotalAdmins(),
-//       getTotalTechnicians(),
-//       getTotalDeskRoles(),
-//     ]);
+//     try {
+//       // 1. Org-wide KPIs, unaffected by date or lab filters
+//       const [labsResult, adminsResult, techniciansResult, deskRolesResult] = await Promise.allSettled([
+//         getTotalLabsCount(),
+//         getTotalAdmins(),
+//         getTotalTechnicians(),
+//         getTotalDeskRoles(),
+//       ]);
 
-//     if (labsResult.status === "fulfilled") setTotalLabs(labsResult.value.totalLabs);
-//     if (adminsResult.status === "fulfilled") setTotalAdmins(adminsResult.value.totalAdmins);
-//     if (techniciansResult.status === "fulfilled") setTotalTechnicians(techniciansResult.value.totalTechnicians);
-//     if (deskRolesResult.status === "fulfilled") setTotalDeskRoles(deskRolesResult.value.totalDeskRoles);
+//       if (labsResult.status === "fulfilled") setTotalLabs(labsResult.value.totalLabs);
+//       if (adminsResult.status === "fulfilled") setTotalAdmins(adminsResult.value.totalAdmins);
+//       if (techniciansResult.status === "fulfilled") setTotalTechnicians(techniciansResult.value.totalTechnicians);
+//       if (deskRolesResult.status === "fulfilled") setTotalDeskRoles(deskRolesResult.value.totalDeskRoles);
 
-//     // 2. Fetch data with GLOBAL date filter for main KPIs (excluding totalRevenue)
-//     const globalRange = getDateRange(globalFilter, globalCustomRange);
-//     const [testsResult, reportsResult, pendingResult] = await Promise.allSettled([
-//       getTotalTests(globalRange.startDate, globalRange.endDate),
-//       getReportsGenerated(globalRange.startDate, globalRange.endDate),
-//       getPendingSamples(globalRange.startDate, globalRange.endDate),
-//     ]);
-
-//     if (testsResult.status === "fulfilled") setTotalTests(testsResult.value.totalTests);
-//     if (reportsResult.status === "fulfilled") setReportsGenerated(reportsResult.value.reportsGenerated);
-//     if (pendingResult.status === "fulfilled") setPendingSamples(pendingResult.value.pendingSamples);
-
-//     // 3. Fetch revenue trend with its OWN filter — both the header total and each
-//     // chart bucket come from getEarningsByCategory (same API as the "Total Revenue"
-//     // KPI tile) so the bars always sum to match the header total.
-//     const revenueRange = getDateRange(revenueFilter, revenueCustomRange);
-//     if (revenueRange.startDate && revenueRange.endDate) {
+//       // 2. Remaining KPIs + Billing Summary card, scoped by the GLOBAL filter + selected lab
+//       const globalRange = getDateRange(globalFilter, globalCustomRange);
 //       try {
-//         const revenueEarningsResult = await getEarningsByCategory(revenueRange.startDate, revenueRange.endDate);
-//         setRevenueSectionTotalPaid(revenueEarningsResult?.summary?.totalPaid || 0);
+//         const globalStats = await fetchStats(globalRange.startDate, globalRange.endDate);
+//         setTotalTests(globalStats.kpis?.totalTests || 0);
+//         setTotalRevenue(globalStats.kpis?.totalRevenue || 0);
+//         setReportsGenerated(globalStats.kpis?.reportsGenerated || 0);
+//         setPendingSamples(globalStats.kpis?.pendingSamples || 0);
+//         setBillingSummary(globalStats.detailedBilling?.summary || emptyBillingSummary);
 //       } catch (error) {
-//         console.error("Error fetching revenue section total:", error);
-//         setRevenueSectionTotalPaid(0);
+//         console.error("Error fetching global stats:", error);
+//         setTotalTests(0);
+//         setTotalRevenue(0);
+//         setReportsGenerated(0);
+//         setPendingSamples(0);
+//         setBillingSummary(emptyBillingSummary);
 //       }
 
-//       const buckets = getRevenueBuckets(revenueFilter, revenueCustomRange);
-//       try {
-//         const bucketResults = await Promise.all(
-//           buckets.map(async (bucket) => {
-//             try {
-//               const bucketResult = await getEarningsByCategory(bucket.start, bucket.end);
-//               return { label: bucket.label, revenue: bucketResult?.summary?.totalPaid || 0 };
-//             } catch (error) {
-//               console.error(`Error fetching revenue bucket ${bucket.label}:`, error);
-//               return { label: bucket.label, revenue: 0 };
-//             }
-//           })
-//         );
-//         setRevenueChartData(bucketResults);
-//       } catch (error) {
-//         console.error("Error fetching revenue chart data:", error);
+//       // 3. Revenue trend with its OWN filter. The header total comes from the full-range
+//       // call; each chart bar comes from re-querying getAllStats for just that bucket's
+//       // range, same bucketing scheme (day/week/month, by filter type) as before.
+//       const revenueRange = getDateRange(revenueFilter, revenueCustomRange);
+//       if (revenueRange.startDate && revenueRange.endDate) {
+//         try {
+//           const revenueTotalStats = await fetchStats(revenueRange.startDate, revenueRange.endDate);
+//           setRevenueTrendTotal(revenueTotalStats.revenueTrend?.totalRevenue || 0);
+//         } catch (error) {
+//           console.error("Error fetching revenue section total:", error);
+//           setRevenueTrendTotal(0);
+//         }
+
+//         const buckets = getRevenueBuckets(revenueFilter, revenueCustomRange);
+//         try {
+//           const bucketResults = await Promise.all(
+//             buckets.map(async (bucket) => {
+//               try {
+//                 const bucketStats = await fetchStats(bucket.start, bucket.end);
+//                 return { label: bucket.label, revenue: bucketStats.revenueTrend?.totalRevenue || 0 };
+//               } catch (error) {
+//                 console.error(`Error fetching revenue bucket ${bucket.label}:`, error);
+//                 return { label: bucket.label, revenue: 0 };
+//               }
+//             })
+//           );
+//           setRevenueChartData(bucketResults);
+//         } catch (error) {
+//           console.error("Error fetching revenue chart data:", error);
+//           setRevenueChartData([]);
+//         }
+//       } else {
+//         setRevenueTrendTotal(0);
 //         setRevenueChartData([]);
 //       }
-//     } else {
-//       setRevenueSectionTotalPaid(0);
-//       setRevenueChartData([]);
-//     }
 
-//     // 4. Fetch revenue by lab (top 5) with its OWN filter
-//     const topLabsRange = getDateRange(topLabsFilter, topLabsCustomRange);
-//     try {
-//       const revenueByLabResult = await getRevenueByLab(topLabsRange.startDate, topLabsRange.endDate);
-//       setRevenueByLab((revenueByLabResult || []).slice(0, 5));
-//     } catch (error) {
-//       console.error("Error fetching revenue by lab:", error);
-//       setRevenueByLab([]);
-//     }
-
-//     // 5. Fetch packages with its OWN filter
-//     // In the fetchAllData function, update the packages section:
-
-// // 5. Fetch packages with its OWN filter
-// const packagesRange = getDateRange(packagesFilter, packagesCustomRange);
-// try {
-//   // Only call API if we have valid dates
-//   if (packagesRange.startDate && packagesRange.endDate) {
-//     const packagesResult = await getPackagesSummary(
-//       packagesRange.startDate,
-//       packagesRange.endDate
-//     );
-//     setPackagesData(packagesResult || { summary: {}, packages: [] });
-//   } else {
-//     // If no dates, fetch all-time data
-//     const packagesResult = await getPackagesSummary();
-//     setPackagesData(packagesResult || { summary: {}, packages: [] });
-//   }
-// } catch (error) {
-//   console.error("Error fetching packages:", error);
-//   setPackagesData({ summary: {}, packages: [] });
-// }
-
-//     // 6. Fetch tests-by-category and earnings-by-category with the section's OWN filter
-//     const earningsRange = getDateRange(categoryFilter, categoryCustomRange);
-    
-//     // Fetch tests by category
-//     try {
-//       const categoryResult = await getTestsByCategory(earningsRange.startDate, earningsRange.endDate);
-//       setTestsByCategory(categoryResult.categories || []);
-//       setCategorySummary(categoryResult.summary || {});
-//     } catch (error) {
-//       console.error("Error fetching tests by category:", error);
-//       setTestsByCategory([]);
-//       setCategorySummary({});
-//     }
-
-//     // Fetch earnings by category - THIS WILL ALSO PROVIDE totalRevenue
-//     try {
-//       const earningsResult = await getEarningsByCategory(earningsRange.startDate, earningsRange.endDate);
-//       setEarningsData(earningsResult || { summary: {}, categories: [] });
-      
-//       // Set totalRevenue from earnings summary totalPaid
-//       if (earningsResult.summary) {
-//         setTotalRevenue(earningsResult.summary.totalPaid || 0);
+//       // 4. Revenue by lab (top 5) with its OWN filter
+//       const topLabsRange = getDateRange(topLabsFilter, topLabsCustomRange);
+//       try {
+//         const topLabsStats = await fetchStats(topLabsRange.startDate, topLabsRange.endDate);
+//         setRevenueByLab((topLabsStats.revenueByLab || []).slice(0, 5));
+//       } catch (error) {
+//         console.error("Error fetching revenue by lab:", error);
+//         setRevenueByLab([]);
 //       }
-      
-//       // Set default selected category to the one with highest test count
-//       if (earningsResult.categories && earningsResult.categories.length > 0) {
-//         const sorted = [...earningsResult.categories].sort((a, b) => b.totalTests - a.totalTests);
-//         setSelectedCategory(sorted[0].category);
+
+//       // 5. Packages summary with its OWN filter
+//       const packagesRange = getDateRange(packagesFilter, packagesCustomRange);
+//       try {
+//         const packagesStats = await fetchStats(packagesRange.startDate, packagesRange.endDate);
+//         setPackageSummary(packagesStats.detailedBilling?.packageSummary || emptyPackageSummary);
+//         setPackages(packagesStats.detailedBilling?.packages || []);
+//       } catch (error) {
+//         console.error("Error fetching packages:", error);
+//         setPackageSummary(emptyPackageSummary);
+//         setPackages([]);
 //       }
-//     } catch (error) {
-//       console.error("Error fetching earnings by category:", error);
-//       setEarningsData({ summary: {}, categories: [] });
-//     }
 
-//     // 7. Fetch lab performance with its OWN filter
-//     const performanceRange = getDateRange(performanceFilter, performanceCustomRange);
-//     try {
-//       const performanceResult = await getLabPerformance(
-//         performanceRange.startDate,
-//         performanceRange.endDate,
-//         6
-//       );
-//       setLabPerformance(performanceResult || []);
-//     } catch (error) {
-//       console.error("Error fetching lab performance:", error);
-//       setLabPerformance([]);
-//     }
+//       // 6. Tests by category with the section's OWN filter
+//       const categoryRange = getDateRange(categoryFilter, categoryCustomRange);
+//       try {
+//         const categoryStats = await fetchStats(categoryRange.startDate, categoryRange.endDate);
+//         setTestCategories(categoryStats.detailedBilling?.testCategories || []);
+//         setTestCategoriesSummary(categoryStats.detailedBilling?.testsSummary || emptyTestsSummary);
+//       } catch (error) {
+//         console.error("Error fetching tests by category:", error);
+//         setTestCategories([]);
+//         setTestCategoriesSummary(emptyTestsSummary);
+//       }
 
-//     // 8. Fetch top doctors with its OWN filter
-//     const doctorsRange = getDateRange(doctorsFilter, doctorsCustomRange);
-//     try {
-//       const doctorsResult = await getTopReferringDoctors(
-//         doctorsRange.startDate,
-//         doctorsRange.endDate,
-//         5
-//       );
-//       setTopDoctors(doctorsResult || []);
-//     } catch (error) {
-//       console.error("Error fetching top doctors:", error);
-//       setTopDoctors([]);
-//     }
+//       // Earnings by category (same filter) - backs the "Revenue by Test" drilldown table
+//       try {
+//         const earningsResult = await fetchStats(categoryRange.startDate, categoryRange.endDate);
+//         const earnings = earningsResult.earningsByCategory || { summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] };
+//         setEarningsData(earnings);
 
-//     setLastUpdated(new Date());
-//   } catch (error) {
-//     console.error("Error fetching dashboard data:", error);
-//     if (!silent) {
-//       // toast.error("Failed to fetch dashboard data");
+//         // Default selected category to the one with the highest test count
+//         if (earnings.categories && earnings.categories.length > 0) {
+//           const sorted = [...earnings.categories].sort((a, b) => (b.totalTests || 0) - (a.totalTests || 0));
+//           setSelectedCategory(sorted[0].category);
+//         }
+//       } catch (error) {
+//         console.error("Error fetching earnings by category:", error);
+//         setEarningsData({ summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] });
+//       }
+
+//       // 7. Lab performance with its OWN filter
+//       const performanceRange = getDateRange(performanceFilter, performanceCustomRange);
+//       try {
+//         const performanceStats = await fetchStats(performanceRange.startDate, performanceRange.endDate);
+//         setLabPerformance((performanceStats.labPerformance || []).slice(0, 6));
+//       } catch (error) {
+//         console.error("Error fetching lab performance:", error);
+//         setLabPerformance([]);
+//       }
+
+//       // 8. Top doctors with its OWN filter
+//       const doctorsRange = getDateRange(doctorsFilter, doctorsCustomRange);
+//       try {
+//         const doctorsStats = await fetchStats(doctorsRange.startDate, doctorsRange.endDate);
+//         setTopDoctors((doctorsStats.topReferringDoctors || []).slice(0, 5));
+//       } catch (error) {
+//         console.error("Error fetching top doctors:", error);
+//         setTopDoctors([]);
+//       }
+
+//       setLastUpdated(new Date());
+//     } catch (error) {
+//       console.error("Error fetching dashboard data:", error);
+//     } finally {
+//       if (!silent) {
+//         setLoading(false);
+//       } else {
+//         setRefreshing(false);
+//       }
 //     }
-//   } finally {
-//     if (!silent) {
-//       setLoading(false);
-//     } else {
-//       setRefreshing(false);
-//     }
-//   }
-// }, [globalFilter, globalCustomRange, revenueFilter, revenueCustomRange, topLabsFilter, topLabsCustomRange, categoryFilter, categoryCustomRange, packagesFilter, packagesCustomRange, performanceFilter, performanceCustomRange, doctorsFilter, doctorsCustomRange]);
-//   // Initial load
+//   }, [
+//     fetchStats,
+//     globalFilter, globalCustomRange,
+//     revenueFilter, revenueCustomRange,
+//     topLabsFilter, topLabsCustomRange,
+//     categoryFilter, categoryCustomRange,
+//     packagesFilter, packagesCustomRange,
+//     performanceFilter, performanceCustomRange,
+//     doctorsFilter, doctorsCustomRange,
+//   ]);
+
+//   // Initial load + reload whenever the lab filter changes (fetchStats depends on selectedLabId)
 //   useEffect(() => {
 //     fetchAllData();
 //   }, [fetchAllData]);
@@ -2271,10 +2545,10 @@ export default SuperAdminStats;
 
 //   // Format data for category pie chart
 //   const getCategoryChartData = () => {
-//     if (!testsByCategory || testsByCategory.length === 0) {
+//     if (!testCategories || testCategories.length === 0) {
 //       return [];
 //     }
-//     return testsByCategory
+//     return testCategories
 //       .filter((item) => (item.testCount || 0) > 0)
 //       .map((item, index) => ({
 //         name: item.category || "Unknown",
@@ -2293,12 +2567,12 @@ export default SuperAdminStats;
 
 //   // Format packages data for pie chart
 //   const getPackagesChartData = () => {
-//     if (!packagesData.packages || packagesData.packages.length === 0) {
+//     if (!packages || packages.length === 0) {
 //       return [];
 //     }
-//     return packagesData.packages
-//       .filter((item: any) => (item.visitCount || 0) > 0)
-//       .map((item: any, index: number) => ({
+//     return packages
+//       .filter((item) => (item.visitCount || 0) > 0)
+//       .map((item, index) => ({
 //         name: item.packageName || "Unknown",
 //         value: item.visitCount || 0,
 //         visitCount: item.visitCount || 0,
@@ -2315,29 +2589,65 @@ export default SuperAdminStats;
 //       }));
 //   };
 
-//   // Format alerts data from the earnings-by-category summary (total bill/paid/due)
+//   // Billing Summary alerts pie - total billed amount is netBilled (gross minus discount/gst)
 //   const getAlertsData = () => {
-//     const summary = earningsData.summary || {};
 //     return [
 //       {
 //         name: "Total Billed Amount",
-//         value: summary.totalEarnings || 0,
+//         value: billingSummary.netBilled || 0,
 //         color: "#FDBA12",
-//         amount: summary.totalEarnings || 0,
+//         amount: billingSummary.netBilled || 0,
 //       },
 //       {
 //         name: "Paid Amount",
-//         value: summary.totalPaid || 0,
+//         value: billingSummary.totalPaid || 0,
 //         color: "#38B000",
-//         amount: summary.totalPaid || 0,
+//         amount: billingSummary.totalPaid || 0,
 //       },
 //       {
 //         name: "Due Amount",
-//         value: summary.totalDue || 0,
+//         value: billingSummary.totalDue || 0,
 //         color: "#F75A5A",
-//         amount: summary.totalDue || 0,
+//         amount: billingSummary.totalDue || 0,
 //       },
 //     ];
+//   };
+
+//   // Get earnings-by-category tests for the selected category (or all, flattened)
+//   const getEarningsForCategory = () => {
+//     if (!earningsData.categories || earningsData.categories.length === 0) {
+//       return { tests: [], categoryName: "" };
+//     }
+
+//     if (selectedCategory === "all") {
+//       const allTests: Array<EarningsByCategoryData["categories"][number]["tests"][number] & { category: string }> = [];
+//       earningsData.categories.forEach((cat) => {
+//         if (cat.tests && cat.tests.length > 0) {
+//           cat.tests.forEach((test) => {
+//             allTests.push({ ...test, category: cat.category });
+//           });
+//         }
+//       });
+//       allTests.sort((a, b) => (b.grossEarnings || 0) - (a.grossEarnings || 0));
+//       return { tests: allTests, categoryName: "All Categories" };
+//     }
+
+//     const categoryData = earningsData.categories.find((cat) => cat.category === selectedCategory);
+//     if (!categoryData) {
+//       return { tests: [], categoryName: "" };
+//     }
+//     const sortedTests = [...(categoryData.tests || [])].sort(
+//       (a, b) => (b.grossEarnings || 0) - (a.grossEarnings || 0)
+//     );
+//     return { tests: sortedTests, categoryName: categoryData.category };
+//   };
+
+//   // Get all unique categories for the dropdown
+//   const getCategoriesForDropdown = () => {
+//     if (!earningsData.categories || earningsData.categories.length === 0) {
+//       return [];
+//     }
+//     return earningsData.categories.map((cat) => cat.category);
 //   };
 
 //   // Format lab performance data
@@ -2346,14 +2656,14 @@ export default SuperAdminStats;
 //       return [
 //         {
 //           id: "01",
-//           lab: "Bangalore Central Lab",
-//           revenue: "₹42,30,000",
-//           tests: "18,360",
-//           patients: "6,246",
-//           pending: "621",
-//           tat: "4.5 hrs",
-//           reports: "15,111",
-//           growth: "12.6%",
+//           lab: "Lab Name",
+//           revenue: "₹0.00",
+//           tests: "00",
+//           patients: "00",
+//           pending: "00",
+//           tat: "0.0 hrs",
+//           reports: "00",
+//           growth: "00%",
 //           positive: true,
 //         },
 //       ];
@@ -2367,22 +2677,22 @@ export default SuperAdminStats;
 //       pending: (item.pendingSamples || 0).toLocaleString(),
 //       tat: `${item.avgTatHours?.toFixed(1) || 0} hrs`,
 //       reports: (item.reportsGenerated || 0).toLocaleString(),
-//       growth: item.growthPct !== null && item.growthPct !== undefined 
-//         ? `${item.growthPct > 0 ? "+" : ""}${item.growthPct.toFixed(1)}%` 
+//       growth: item.growthPct !== null && item.growthPct !== undefined
+//         ? `${item.growthPct > 0 ? "+" : ""}${item.growthPct.toFixed(1)}%`
 //         : "0%",
 //       positive: item.growthPct !== null && item.growthPct !== undefined ? item.growthPct >= 0 : true,
 //     }));
 //   };
 
-//   // Format doctors data - removed Labs and Patients columns
+//   // Format doctors data
 //   const getFormattedDoctors = () => {
 //     if (topDoctors.length === 0) {
 //       return [
 //         {
 //           id: 1,
 //           srNo: "01",
-//           doctorName: "Dr. Smith",
-//           revenue: "₹42,30,000",
+//           doctorName: "Dr.",
+//           revenue: "₹0.00",
 //         },
 //       ];
 //     }
@@ -2392,52 +2702,6 @@ export default SuperAdminStats;
 //       doctorName: item.doctorName || "Unknown Doctor",
 //       revenue: formatCurrency(item.revenue || 0),
 //     }));
-//   };
-
-//   // Get earnings data for selected category
-//   const getEarningsForCategory = () => {
-//     if (!earningsData.categories || earningsData.categories.length === 0) {
-//       return { tests: [], categoryName: "" };
-//     }
-    
-//     let categoryData;
-//     if (selectedCategory === "all") {
-//       // Show all tests across all categories, sorted by totalEarnings
-//       const allTests: any[] = [];
-//       earningsData.categories.forEach((cat: any) => {
-//         if (cat.tests && cat.tests.length > 0) {
-//           cat.tests.forEach((test: any) => {
-//             allTests.push({
-//               ...test,
-//               category: cat.category,
-//             });
-//           });
-//         }
-//       });
-//       // Sort by totalEarnings (descending)
-//       allTests.sort((a, b) => b.totalEarnings - a.totalEarnings);
-//       return { tests: allTests, categoryName: "All Categories" };
-//     } else {
-//       categoryData = earningsData.categories.find(
-//         (cat: any) => cat.category === selectedCategory
-//       );
-//       if (!categoryData) {
-//         return { tests: [], categoryName: "" };
-//       }
-//       // Sort tests by totalEarnings (descending)
-//       const sortedTests = [...(categoryData.tests || [])].sort(
-//         (a, b) => (b.totalEarnings || 0) - (a.totalEarnings || 0)
-//       );
-//       return { tests: sortedTests, categoryName: categoryData.category };
-//     }
-//   };
-
-//   // Get all unique categories for dropdown
-//   const getCategoriesForDropdown = () => {
-//     if (!earningsData.categories || earningsData.categories.length === 0) {
-//       return [];
-//     }
-//     return earningsData.categories.map((cat: any) => cat.category);
 //   };
 
 //   // Stats data (KPIs)
@@ -2507,6 +2771,9 @@ export default SuperAdminStats;
 //   const doctorsData = getFormattedDoctors();
 //   const earnings = getEarningsForCategory();
 //   const categoryOptions = getCategoriesForDropdown();
+//   const sortedTests = [...earnings.tests].sort((a, b) =>
+//     sortOrder === "desc" ? (b.grossEarnings || 0) - (a.grossEarnings || 0) : (a.grossEarnings || 0) - (b.grossEarnings || 0)
+//   );
 
 //   // Top labs data (revenue kept in raw currency units; formatted for display via getRevenueAxisConfig)
 //   const topLabs = revenueByLab.map((lab) => ({
@@ -2587,6 +2854,22 @@ export default SuperAdminStats;
 //     );
 //   };
 
+//   // Helper to render the lab filter dropdown (All Labs + every lab under this super admin)
+//   const renderLabFilterDropdown = () => (
+//     <select
+//       value={selectedLabId}
+//       onChange={(e) => setSelectedLabId(e.target.value === "all" ? "all" : Number(e.target.value))}
+//       className="min-w-40 rounded-lg border border-pneutral-100 bg-pneutral-100 px-4 py-2 text-p3 font-medium text-pneutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-500"
+//     >
+//       <option value="all">All Labs</option>
+//       {labs.map((lab) => (
+//         <option key={lab.id} value={lab.id}>
+//           {lab.name}
+//         </option>
+//       ))}
+//     </select>
+//   );
+
 //   // Custom tooltip for category pie chart
 //   const CategoryTooltip = ({ active, payload }: any) => {
 //     if (active && payload && payload.length) {
@@ -2653,19 +2936,6 @@ export default SuperAdminStats;
 //     setSortOrder(sortOrder === "desc" ? "asc" : "desc");
 //   };
 
-//   // Get sorted tests based on sort order
-//   const getSortedTests = () => {
-//     const tests = [...earnings.tests];
-//     if (sortOrder === "desc") {
-//       tests.sort((a, b) => b.totalEarnings - a.totalEarnings);
-//     } else {
-//       tests.sort((a, b) => a.totalEarnings - b.totalEarnings);
-//     }
-//     return tests;
-//   };
-
-//   const sortedTests = getSortedTests();
-
 //   return (
 //     <div className="space-y-4 bg-secondary-50 px-2">
 //       {/* Header */}
@@ -2690,6 +2960,9 @@ export default SuperAdminStats;
 //         </div>
 //         <div className="flex gap-2">
 //           <div className="flex items-center gap-2">
+//             {renderLabFilterDropdown()}
+//           </div>
+//           <div className="flex items-center gap-2">
 //             {renderFilterDropdown(
 //               globalFilter,
 //               setGlobalFilter,
@@ -2698,10 +2971,6 @@ export default SuperAdminStats;
 //               true
 //             )}
 //           </div>
-//           {/* <button className="flex items-center gap-2 rounded-lg border border-pneutral-100 bg-base-white px-6 py-3 shadow-xsm">
-//             <Filter size={18} className="text-pneutral-900" />
-//             <span className="text-p3 text-pneutral-900">Filters</span>
-//           </button> */}
 //         </div>
 //       </div>
 
@@ -2737,12 +3006,12 @@ export default SuperAdminStats;
 //           <div className="mb-6 flex items-center justify-between">
 //             <div>
 //               <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-//                 Revenue Trend (All Labs)
+//                 {selectedLabName ? `Revenue Trend "${selectedLabName}"` : "Revenue Trend (All Labs)"}
 //               </h2>
 //               <p className="mt-1 text-p3 font-semibold text-pneutral-900">
 //                 Total Revenue
 //                 <span className="ml-1 font-semibold text-pneutral-900">
-//                   {formatCurrency(revenueSectionTotalPaid)}
+//                   {formatCurrency(revenueTrendTotal)}
 //                 </span>
 //               </p>
 //             </div>
@@ -2813,7 +3082,7 @@ export default SuperAdminStats;
 //         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
 //           <div className="mb-8 flex items-center justify-between">
 //             <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-//               Revenue Trend (Top 5 Labs) 
+//               {selectedLabName ? `Revenue Trend "${selectedLabName}"` : "Revenue Trend (Top 5 Labs)"}
 //             </h2>
 //             <div className="flex items-center gap-3">
 //               {renderFilterDropdown(
@@ -2914,7 +3183,7 @@ export default SuperAdminStats;
 //                         textAnchor="middle"
 //                         className="fill-pneutral-900 text-h4 font-medium"
 //                       >
-//                         {(categorySummary.totalTests || 0).toLocaleString()}
+//                         {(testCategoriesSummary.totalTests || 0).toLocaleString()}
 //                       </text>
 //                       <Tooltip content={<CategoryTooltip />} />
 //                     </PieChart>
@@ -2966,11 +3235,11 @@ export default SuperAdminStats;
 //               <table className="min-w-full">
 //                 <thead className="sticky top-0 bg-white z-10">
 //                   <tr className="border-b border-pneutral-100 bg-pneutral-50">
-//                     <th className="px-4 py-2 text-left text-label-l3 font-semibold text-pneutral-900">#</th>
+//                     <th className="px-4 py-2 text-left text-label-l3 font-semibold text-pneutral-900">SI No.</th>
 //                     <th className="px-4 py-2 text-left text-label-l3 font-semibold text-pneutral-900">Test Name</th>
 //                     <th className="px-4 py-2 text-right text-label-l3 font-semibold text-pneutral-900">Paid</th>
 //                     <th className="px-4 py-2 text-right text-label-l3 font-semibold text-pneutral-900">Due</th>
-//                     <th 
+//                     <th
 //                       className="px-4 py-2 text-right text-label-l3 font-semibold text-pneutral-900 cursor-pointer hover:text-secondary-700 flex items-center justify-end gap-1"
 //                       onClick={toggleSort}
 //                     >
@@ -2991,14 +3260,13 @@ export default SuperAdminStats;
 //                         {test.testName || "Unknown"}
 //                       </td>
 //                       <td className="px-4 py-2 text-p3 text-right text-pneutral-900">
-//                         ₹{test.paidAmount?.toLocaleString() || "0"}
+//                         ₹{test.revenue?.toLocaleString() || "0"}
 //                       </td>
 //                       <td className="px-4 py-2 text-p3 text-right text-pneutral-900">
 //                         ₹{test.dueAmount?.toLocaleString() || "0"}
 //                       </td>
 //                       <td className="px-4 py-2 text-p3 text-right font-semibold text-pneutral-900">
-//                         ₹{test.totalEarnings?.toLocaleString() || "0"}
-//                       </td>
+//                         ₹{test.grossEarnings?.toLocaleString() || "0"}</td>
 //                     </tr>
 //                   ))}
 //                 </tbody>
@@ -3062,7 +3330,7 @@ export default SuperAdminStats;
 //                         dominantBaseline="middle"
 //                         className="fill-pneutral-900 text-sm font-semibold"
 //                       >
-//                         ₹{(packagesData.summary?.totalRevenue || 0).toLocaleString()}
+//                         ₹{(packageSummary.grossBilled || 0).toLocaleString()}
 //                       </text>
 //                       <Tooltip content={<PackageTooltip />} />
 //                     </PieChart>
@@ -3088,7 +3356,7 @@ export default SuperAdminStats;
 //           </div>
 //         </div>
 
-//         {/* Alerts & Insights - 33% */}
+//         {/* Billing Summary - 33% */}
 //         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
 //           <div className="px-2 pt-2">
 //             <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
@@ -3129,7 +3397,7 @@ export default SuperAdminStats;
 //                         dominantBaseline="middle"
 //                         className="fill-pneutral-900 text-sm font-semibold"
 //                       >
-//                         ₹{(earningsData.summary?.totalEarnings || 0).toLocaleString()}
+//                         ₹{(billingSummary.netBilled || 0).toLocaleString()}
 //                       </text>
 //                       <Tooltip content={<AlertTooltip />} />
 //                     </PieChart>
@@ -3175,7 +3443,7 @@ export default SuperAdminStats;
 //             <table className="min-w-full">
 //               <thead className="sticky top-0 bg-white z-10">
 //                 <tr className="border-y border-pneutral-100 bg-pneutral-50">
-//                   <th className="px-4 py-2 text-left text-label-l3 font-semibold text-pneutral-900">#</th>
+//                   <th className="px-4 py-2 text-left text-label-l3 font-semibold text-pneutral-900">SI No.</th>
 //                   <th className="px-4 py-2 text-left text-label-l3 font-semibold text-pneutral-900">Doctor Name</th>
 //                   <th className="px-4 py-2 text-right text-label-l3 font-semibold text-pneutral-900">Revenue(₹)</th>
 //                 </tr>
@@ -3212,7 +3480,7 @@ export default SuperAdminStats;
 //           <table className="min-w-full border-separate border-spacing-y-0">
 //             <thead>
 //               <tr className="border-b border-pneutral-100 bg-pneutral-50">
-//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">#</th>
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">SI No.</th>
 //                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Lab Name</th>
 //                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Revenue</th>
 //                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Tests</th>
@@ -3221,7 +3489,6 @@ export default SuperAdminStats;
 //                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Avg TAT</th>
 //                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Reports Generated</th>
 //                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Growth (Revenue)</th>
-//                 <th className="px-4 py-4 text-center text-label-l3 font-semibold text-pneutral-900">Actions</th>
 //               </tr>
 //             </thead>
 //             <tbody>
@@ -3244,11 +3511,6 @@ export default SuperAdminStats;
 //                       {item.positive ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
 //                       {item.growth}
 //                     </div>
-//                   </td>
-//                   <td className="border-b border-pneutral-100 px-4 py-2 text-center">
-//                     <button className="rounded-full p-2 transition hover:bg-primary-50">
-//                       <Eye size={20} className="text-pneutral-500 hover:text-primary-600" />
-//                     </button>
 //                   </td>
 //                 </tr>
 //               ))}
