@@ -6,6 +6,7 @@ import {
     TotalTechnicians,
     TotalDeskRoles,
     AllStatsResponse,
+    GridReportResponse,
 } from '@/types/statisticsData';
 
 const statsApi = axios.create({
@@ -198,6 +199,39 @@ export const getAllStats = async (
         return response.data.data;
     } catch (error: unknown) {
         throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching dashboard statistics.'));
+    }
+}
+
+/**
+ * Get the paginated billing grid report (one row per visit/billing record).
+ * @param labId - Optional lab ID to scope the response to a single lab (omit for all labs)
+ * @param startDate - Optional start date (YYYY-MM-DD)
+ * @param endDate - Optional end date (YYYY-MM-DD)
+ * @param page - Zero-based page number (default: 0)
+ * @param size - Page size (default: 20)
+ * @returns Promise with the paginated grid report payload
+ */
+export const getGridReport = async (
+    labId?: number | string,
+    startDate?: string,
+    endDate?: string,
+    page: number = 0,
+    size: number = 20
+): Promise<GridReportResponse> => {
+    const params = new URLSearchParams();
+    if (labId !== undefined && labId !== null && labId !== '') params.append('labId', String(labId));
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    params.append('page', String(page));
+    params.append('size', String(size));
+
+    const url = `/grid?${params.toString()}`;
+
+    try {
+        const response = await statsApi.get<{ data: GridReportResponse; message: string; status: string }>(url);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching the grid report.'));
     }
 }
 

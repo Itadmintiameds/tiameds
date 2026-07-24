@@ -24,11 +24,26 @@ export interface TotalDeskRoles {
 
 // ---- GET /lab-super-admin/stats/all ----
 
+// Role-count KPIs (totalAdmins/totalTechnicians/totalDeskRoles) are shaped differently
+// depending on whether `labId` was passed to the request: a plain number when scoped to
+// one lab, or this richer per-lab breakdown when aggregating across every lab (see
+// SuperAdminDashboardController#buildRoleLabWise on the backend).
+export interface RoleLabWiseRow {
+    labId: number;
+    labName: string;
+    count: number;
+}
+
+export interface RoleLabWiseTotal {
+    total: number;
+    labWise: RoleLabWiseRow[];
+}
+
 export interface AllStatsKpis {
     totalLabs: number;
-    totalAdmins: number;
-    totalTechnicians: number;
-    totalDeskRoles: number;
+    totalAdmins: number | RoleLabWiseTotal;
+    totalTechnicians: number | RoleLabWiseTotal;
+    totalDeskRoles: number | RoleLabWiseTotal;
     totalTests: number;
     totalRevenue: number;
     reportsGenerated: number;
@@ -198,6 +213,42 @@ export interface LabPerformanceRow {
     avgTatHours: number;
     reportsGenerated: number;
     growthPct: number | null;
+}
+
+// ---- GET /lab-super-admin/stats/grid ----
+
+export interface GridReportRow {
+    paymentStatus: string;
+    discount: number;
+    dueAmount: number;
+    netAmount: number;
+    paymentMethod: string;
+    totalAmount: number;
+    paidAmount: number;
+    labId: number;
+    labName: string;
+    createdAt: string;
+    visitCode: string;
+    visitDate: string;
+    visitId: number;
+    patientCode: string;
+    patientId: number;
+    visitType: string;
+    visitStatus: string;
+    patientName: string;
+    billingCode: string;
+    billingId: number;
+    billingDate: string;
+    patientPhone: string;
+    doctorName: string;
+}
+
+export interface GridReportResponse {
+    page: number;
+    size: number;
+    totalRecords: number;
+    totalPages: number;
+    rows: GridReportRow[];
 }
 
 export interface AllStatsResponse {

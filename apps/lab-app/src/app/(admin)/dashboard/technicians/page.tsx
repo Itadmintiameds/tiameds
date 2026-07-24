@@ -38,7 +38,7 @@ const Page = () => {
   }
 
   return (
-    <div className="w-full bg-gray-50 p-4 rounded-lg">
+    <div className="w-full bg-secondary-50 p-4 rounded-lg">
       {/* <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-lg shadow-sm mb-4 flex items-start gap-3">
         <div className="text-amber-600 text-lg mt-0.5">
           🔒
