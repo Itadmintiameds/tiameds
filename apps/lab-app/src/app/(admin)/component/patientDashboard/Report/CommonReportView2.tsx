@@ -242,71 +242,6 @@ const dedupeSnapshotResults = (results: HealthSnapshotTestResult[]) => {
 const SPARKLINE_MAX_VISITS = 4;
 
 // ---------------------------------------------------------------------------
-// Health Snapshot mini line-graph
-// ---------------------------------------------------------------------------
-// Styled to match the app's dashboard line charts (recharts): a light dashed grid,
-// muted axis tick labels with no axis rule, and white-filled dots with a colored ring.
-// Rebuilt as hand-rolled SVG (not recharts) because the report is rasterized to PDF via
-// html2canvas, which can't measure a recharts ResponsiveContainer inside its off-screen
-// clone. The line keeps the clinical status color (normal/borderline/high-low) rather
-// than a single brand hue, because that color is meaningful here.
-const SNAPSHOT_VB_W = 520;
-const SNAPSHOT_VB_H = 132;
-const SNAPSHOT_PAD_L = 44; // room for y-axis value labels
-const SNAPSHOT_PAD_R = 14;
-const SNAPSHOT_PAD_T = 18; // room for the value label sitting above the top point
-const SNAPSHOT_PAD_B = 24; // room for x-axis date labels
-const SNAPSHOT_GRID_COLOR = "#EAEAE9"; // recharts CartesianGrid stroke
-const SNAPSHOT_AXIS_TEXT = "#969793"; // recharts axis tick fill
-const SNAPSHOT_CAT_PAD_L = 88; // wider y-axis gutter so category words (e.g. "Non-reactive") fit
-
-// One shape for both numeric and qualitative charts so the renderer stays branch-free.
-// Numeric charts fill valueLabel/statusLabel/unit; qualitative (categorical) charts leave
-// them undefined and use category names as the y-axis gridline labels instead of numbers.
-interface SnapshotChart {
-    padL: number;
-    points: { x: number; y: number; dateLabel: string; valueLabel?: string }[];
-    pointsAttr: string;
-    gridlines: { y: number; label: string }[];
-    baselineY: number;
-    color: string;
-    statusLabel?: string;
-    unit?: string;
-    latestValueLabel: string;
-}
-
-const formatSnapshotDate = (raw?: string) => {
-    if (!raw) return "";
-    const parsed = new Date(raw);
-    if (isNaN(parsed.getTime())) return "";
-    return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-};
-
-// Trim trailing zeros so 13.50 -> 13.5 and 8.00 -> 8, keeping labels compact.
-const formatSnapshotValue = (value: number) => {
-    if (!Number.isFinite(value)) return "";
-    const rounded = Math.round(value * 100) / 100;
-    return Number.isInteger(rounded) ? String(rounded) : String(rounded);
-};
-
-const snapshotStatusColor = (score: RowScore) =>
-    score.kind === "critical"
-        ? REPORT_COLORS.danger500
-        : score.kind === "borderline"
-            ? REPORT_COLORS.warning500
-            : score.kind === "normal"
-                ? REPORT_COLORS.success600
-                : REPORT_COLORS.neutral600;
-
-// Status shown as a word (not color alone), e.g. "Normal", "Borderline High", "Low".
-const snapshotStatusLabel = (score: RowScore) => {
-    if (score.kind === "normal") return "Normal";
-    if (score.kind === "unscored") return "";
-    const direction = score.direction === "low" ? "Low" : "High";
-    return score.kind === "borderline" ? `Borderline ${direction}` : direction;
-};
-
-// ---------------------------------------------------------------------------
 // Summary region layout planner
 // ---------------------------------------------------------------------------
 // The four summary cards (Clinical Alert Summary, Key Findings, AI Clinical
@@ -347,8 +282,7 @@ const SUMMARY_CARD_ORDER: SummaryCardId[] = ["alerts", "findings", "ai", "snapsh
 const SUMMARY_CARD_CHROME_PX = 52; // card padding + title row
 const ALERT_TILES_PX = 92; // the four stat tiles: one row at any width
 const FINDING_ROW_PX = 30; // one two-line finding entry + its row gap
-const SNAPSHOT_ROW_PX = 120; // one test's mini line-graph in a half-width column
-const SNAPSHOT_ROW_BAND_PX = 210; // ...the same graph across a full-width band (it scales with width)
+const SNAPSHOT_ROW_PX = 30; // one test name + sparkline
 const AI_FIELD_LABEL_PX = 13;
 const AI_LINE_PX = 14;
 const AI_FOOTNOTE_PX = 16;
@@ -828,127 +762,117 @@ const CommonReportView2 = ({
     // numbers -- color reflects the latest reading's status (reuses the same
     // normal/borderline/critical scoring as Detailed Lab Results), shape reflects the
     // last few visits' relative movement.
-    const buildTestChart = (test: HealthSnapshotTest): SnapshotChart | null => {
+    const buildTestSparkline = (test: HealthSnapshotTest) => {
         const deduped = dedupeSnapshotResults(test.results);
-        const plotH = SNAPSHOT_VB_H - SNAPSHOT_PAD_T - SNAPSHOT_PAD_B;
-        const baselineY = SNAPSHOT_PAD_T + plotH;
 
-        // --- Numeric tests: value-over-time line graph (Haemoglobin, WBC count, ...) ---
+        const width = 200;
+        const height = 28;
+        const padX = 6;
+        const padY = 5;
+        // Fixed 4-visit slot grid: with fewer visits the dots occupy only the first
+        // slots from the left instead of stretching across the full width.
+        const stepX = (width - padX * 2) / (SPARKLINE_MAX_VISITS - 1);
+        const plotH = height - padY * 2;
+        const xAt = (i: number) => padX + stepX * i;
+
+        // --- Numeric tests: value over time (Haemoglobin, WBC count, ...) ---
         const numericPoints = deduped
             .map((r) => ({
                 value: parseFloat(r.enteredValue),
                 score: scoreValue(r.enteredValue, r.referenceRange),
-                date: r.visitDate || r.createdAt,
-                unit: r.unit,
             }))
             .filter((p) => Number.isFinite(p.value));
 
-        if (numericPoints.length > 0) {
-            const padL = SNAPSHOT_PAD_L;
-            const plotW = SNAPSHOT_VB_W - padL - SNAPSHOT_PAD_R;
+        if (numericPoints.length > 1) {
             const usable = numericPoints.slice(-SPARKLINE_MAX_VISITS);
             const values = usable.map((p) => p.value);
-            const dataMin = Math.min(...values);
-            const dataMax = Math.max(...values);
-
-            // Pad the value axis so points never sit on the frame; keep a sane band when every
-            // reading is identical (a flat line still needs a non-zero range to place dots).
-            let lo = dataMin;
-            let hi = dataMax;
-            if (lo === hi) {
-                const pad = Math.abs(lo) * 0.1 || 1;
-                lo -= pad;
-                hi += pad;
-            } else {
-                const pad = (hi - lo) * 0.2;
-                lo -= pad;
-                hi += pad;
-            }
-
-            const xAt = (i: number, n: number) =>
-                n <= 1 ? padL + plotW / 2 : padL + (plotW * i) / (n - 1);
-            const yAt = (value: number) => SNAPSHOT_PAD_T + plotH * (1 - (value - lo) / (hi - lo));
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const range = max - min;
 
             const points = usable.map((p, i) => ({
-                x: xAt(i, usable.length),
-                y: yAt(p.value),
-                valueLabel: formatSnapshotValue(p.value),
-                dateLabel: formatSnapshotDate(p.date),
+                x: xAt(i),
+                // Every reading identical: centre the flat line rather than pinning it to
+                // the floor of the track, where it reads as an axis instead of as data.
+                y: range === 0 ? height / 2 : height - padY - ((p.value - min) / range) * plotH,
             }));
 
-            // Three horizontal gridlines / y-axis ticks: data max, midpoint, data min.
-            const midValue = (dataMax + dataMin) / 2;
-            const tickValues = dataMax === dataMin ? [dataMax] : [dataMax, midValue, dataMin];
-            const gridlines = tickValues.map((value) => ({ y: yAt(value), label: formatSnapshotValue(value) }));
-
-            const latestScore = usable[usable.length - 1].score;
-            const unit = usable.find((p) => p.unit && p.unit !== "N/A")?.unit || "";
+            const latest = usable[usable.length - 1].score;
+            const color =
+                latest.kind === "critical"
+                    ? REPORT_COLORS.danger500
+                    : latest.kind === "borderline"
+                        ? REPORT_COLORS.warning500
+                        : latest.kind === "normal"
+                            ? REPORT_COLORS.success600
+                            : REPORT_COLORS.neutral600;
 
             return {
-                padL,
+                width,
+                height,
+                color,
                 points,
                 pointsAttr: points.map((p) => `${p.x},${p.y}`).join(" "),
-                gridlines,
-                baselineY,
-                color: snapshotStatusColor(latestScore),
-                statusLabel: snapshotStatusLabel(latestScore),
-                unit,
-                latestValueLabel: formatSnapshotValue(usable[usable.length - 1].value),
             };
         }
 
-        // --- Qualitative / boolean tests: category-over-time line (Positive/Negative,
-        // Reactive/Non-reactive, Present/Absent, ...). Same grid/line/dot look as the numeric
-        // graph, but each result maps to a y-level and the y-axis labels are the categories,
-        // so a pregnancy test that stays "Positive" reads as a flat line and one that flips
-        // reads as a step -- instead of the old lone bullet that showed no history at all. ---
+        // --- Qualitative tests: category over time (Positive/Negative, Reactive/
+        // Non-reactive, Present/Absent, ...). scoreValue can't grade these numerically, so
+        // they used to collapse to a lone bullet that showed no history at all. Mapping each
+        // distinct result to its own y-level keeps the same compact sparkline shape: a test
+        // that stays Negative reads as a flat line, one that flips reads as a step. ---
         const categoricalPoints = deduped
-            .map((r) => ({ value: (r.enteredValue || "").trim(), date: r.visitDate || r.createdAt }))
-            .filter((p) => p.value && p.value.toUpperCase() !== "N/A");
+            .map((r) => (r.enteredValue || "").trim())
+            .filter((value) => value && value.toUpperCase() !== "N/A");
 
-        if (categoricalPoints.length === 0) return null;
+        if (categoricalPoints.length < 2) return null;
 
         const usable = categoricalPoints.slice(-SPARKLINE_MAX_VISITS);
+
+        // Case and hyphen/spacing variants of one result ("Non-reactive" vs "Non-Reactive")
+        // must collapse into a single category, or a purely cosmetic difference in how a
+        // technician typed the value draws a step implying the result changed when it did not.
+        // Other punctuation is preserved so "<0.5" and ">0.5" stay genuinely distinct.
+        const categoryKey = (value: string) => value.toUpperCase().replace(/[\s_-]+/g, " ").trim();
 
         // Distinct categories, ordered so a "positive/present" reading sits above a
         // "negative/absent" one -- a rising line then reads as a move toward the flagged result.
         const distinct: string[] = [];
-        usable.forEach((p) => {
-            if (!distinct.includes(p.value)) distinct.push(p.value);
+        usable.forEach((value) => {
+            const key = categoryKey(value);
+            if (!distinct.includes(key)) distinct.push(key);
         });
+        // Lower rank sits higher on the chart. Graded urine-analysis results (Trace, 1+, 2+ ...)
+        // are ranked by severity between the two poles, so protein going Trace -> 3+ draws as a
+        // rising line rather than landing in arbitrary first-seen order.
         const categoryRank = (value: string) => {
-            const upper = value.toUpperCase();
-            if (/NOT DETECTED|\b(NEGATIVE|ABSENT|NIL|NORMAL)\b|NON.?REACTIVE/.test(upper)) return 2;
-            if (/\b(POSITIVE|PRESENT|REACTIVE|DETECTED|ABNORMAL)\b/.test(upper)) return 0;
-            return 1;
+            if (/NOT DETECTED|\b(NEGATIVE|ABSENT|NIL|NORMAL)\b|NON ?REACTIVE/.test(value)) return 40;
+            if (/\b(POSITIVE|PRESENT|REACTIVE|DETECTED|ABNORMAL)\b/.test(value)) return 0;
+            const graded = value.match(/^(\d+)\s*\+/);
+            if (graded) return Math.max(5, 30 - Number(graded[1]) * 5);
+            if (/^TRACE\b/.test(value)) return 30;
+            return 35;
         };
         const categories = [...distinct].sort(
             (a, b) => categoryRank(a) - categoryRank(b) || distinct.indexOf(a) - distinct.indexOf(b)
         );
-
-        const padL = SNAPSHOT_CAT_PAD_L;
-        const plotW = SNAPSHOT_VB_W - padL - SNAPSHOT_PAD_R;
         const count = categories.length;
-        const levelY = (idx: number) =>
-            count <= 1 ? SNAPSHOT_PAD_T + plotH / 2 : SNAPSHOT_PAD_T + (plotH * idx) / (count - 1);
-        const xAt = (i: number, n: number) =>
-            n <= 1 ? padL + plotW / 2 : padL + (plotW * i) / (n - 1);
 
-        const points = usable.map((p, i) => ({
-            x: xAt(i, usable.length),
-            y: levelY(categories.indexOf(p.value)),
-            dateLabel: formatSnapshotDate(p.date),
+        const points = usable.map((value, i) => ({
+            x: xAt(i),
+            // Single category across every visit: a centred flat line, same as flat numerics.
+            y: count <= 1 ? height / 2 : padY + (plotH * categories.indexOf(categoryKey(value))) / (count - 1),
         }));
-        const gridlines = categories.map((label, idx) => ({ y: levelY(idx), label }));
 
         return {
-            padL,
+            width,
+            height,
+            // Qualitative results carry no normal/borderline/critical grade, so they take the
+            // neutral brand hue instead of borrowing the clinical red/amber/green -- a
+            // "Positive" here is not automatically an abnormal finding (a pregnancy test, say).
+            color: REPORT_COLORS.secondary700,
             points,
             pointsAttr: points.map((p) => `${p.x},${p.y}`).join(" "),
-            gridlines,
-            baselineY,
-            color: REPORT_COLORS.secondary700,
-            latestValueLabel: usable[usable.length - 1].value,
         };
     };
 
@@ -1288,14 +1212,9 @@ const CommonReportView2 = ({
             });
         }
         if (hasSnapshotTrends) {
-            // Each test now renders a full mini line-graph whose height scales with width,
-            // so a banded (full-width) snapshot is taller than a columned (half-width) one.
-            const rows = Math.max(1, snapshotRows);
-            cards.push({
-                id: "snapshot",
-                columnHeight: SUMMARY_CARD_CHROME_PX + rows * SNAPSHOT_ROW_PX,
-                bandHeight: SUMMARY_CARD_CHROME_PX + rows * SNAPSHOT_ROW_BAND_PX,
-            });
+            // Sparklines stretch horizontally, so a wider snapshot card is no shorter.
+            const height = SUMMARY_CARD_CHROME_PX + Math.max(1, snapshotRows) * SNAPSHOT_ROW_PX;
+            cards.push({ id: "snapshot", columnHeight: height, bandHeight: height });
         }
 
         return planSummaryLayout(cards);
@@ -1465,77 +1384,29 @@ const CommonReportView2 = ({
                 return (
                     <div className="flex flex-col gap-2 px-1">
                         {trendTests.map((test: HealthSnapshotTest) => {
-                            const chart = buildTestChart(test);
-                            if (!chart) return null;
+                            const sparkline = buildTestSparkline(test);
                             return (
-                                <div
-                                    key={test.testName}
-                                    className="rounded-lg p-2"
-                                    style={{ border: `1px solid ${REPORT_COLORS.secondary100}`, backgroundColor: REPORT_COLORS.white }}
-                                >
-                                    {/* Title + latest reading (status shown as a word, not color alone) */}
-                                    <div className="flex items-start justify-between gap-2 mb-0.5">
-                                        <p className="text-[10px] font-bold uppercase leading-snug min-w-0" style={{ color: REPORT_COLORS.neutral800 }}>
-                                            {test.testName}{chart.unit ? ` (${chart.unit})` : ""}
-                                        </p>
-                                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                                            <span className="text-[11px] font-extrabold" style={{ color: REPORT_COLORS.neutral900 }}>{chart.latestValueLabel}</span>
-                                            {chart.statusLabel && (
-                                                <span className="inline-flex items-center gap-1 text-[8px] font-bold uppercase whitespace-nowrap" style={{ color: chart.color }}>
-                                                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: chart.color }} />
-                                                    {chart.statusLabel}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <svg
-                                        viewBox={`0 0 ${SNAPSHOT_VB_W} ${SNAPSHOT_VB_H}`}
-                                        preserveAspectRatio="xMidYMid meet"
-                                        style={{ width: "100%", height: "auto", display: "block" }}
-                                    >
-                                        {/* Dashed gridlines + y-axis value ticks */}
-                                        {chart.gridlines.map((g, i) => (
-                                            <g key={`grid-${i}`}>
-                                                <line
-                                                    x1={chart.padL}
-                                                    y1={g.y}
-                                                    x2={SNAPSHOT_VB_W - SNAPSHOT_PAD_R}
-                                                    y2={g.y}
-                                                    stroke={SNAPSHOT_GRID_COLOR}
-                                                    strokeWidth="1"
-                                                    strokeDasharray="3 3"
-                                                />
-                                                <text x={chart.padL - 6} y={g.y + 3} textAnchor="end" fontSize="10" fill={SNAPSHOT_AXIS_TEXT}>
-                                                    {g.label}
-                                                </text>
-                                            </g>
-                                        ))}
-                                        {/* Trend line */}
-                                        {chart.points.length > 1 && (
+                                <div key={test.testName} className="flex items-center gap-2">
+                                    <p className="text-[10px] font-medium uppercase leading-snug flex-[0_0_42%] min-w-0" style={{ color: REPORT_COLORS.neutral800 }}>{test.testName}</p>
+                                    {sparkline ? (
+                                        <svg className="flex-1 min-w-0" height="24" viewBox={`0 0 ${sparkline.width} ${sparkline.height}`} preserveAspectRatio="none">
                                             <polyline
-                                                points={chart.pointsAttr}
+                                                points={sparkline.pointsAttr}
                                                 fill="none"
-                                                stroke={chart.color}
-                                                strokeWidth="2.5"
+                                                stroke={sparkline.color}
+                                                strokeWidth="2"
                                                 strokeLinecap="round"
                                                 strokeLinejoin="round"
                                             />
-                                        )}
-                                        {/* Points, their value labels, and the x-axis date labels */}
-                                        {chart.points.map((p, i) => (
-                                            <g key={`pt-${i}`}>
-                                                <circle cx={p.x} cy={p.y} r="4" fill={REPORT_COLORS.white} stroke={chart.color} strokeWidth="2" />
-                                                {p.valueLabel && (
-                                                    <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize="10" fontWeight="700" fill={REPORT_COLORS.neutral800}>
-                                                        {p.valueLabel}
-                                                    </text>
-                                                )}
-                                                <text x={p.x} y={chart.baselineY + 14} textAnchor="middle" fontSize="9" fill={SNAPSHOT_AXIS_TEXT}>
-                                                    {p.dateLabel}
-                                                </text>
-                                            </g>
-                                        ))}
-                                    </svg>
+                                            {sparkline.points.map((p, i) => (
+                                                <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={sparkline.color} />
+                                            ))}
+                                        </svg>
+                                    ) : (
+                                        <span className="flex-1 flex justify-center">
+                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: REPORT_COLORS.neutral600 }} />
+                                        </span>
+                                    )}
                                 </div>
                             );
                         })}
