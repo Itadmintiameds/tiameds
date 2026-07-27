@@ -5,7 +5,7 @@ import {
   FaArrowLeft, FaSignInAlt,FaFlask, 
   FaMicroscope, FaLock, FaUser, FaEye, FaEyeSlash, FaEnvelope
 } from 'react-icons/fa'
-import {FaUserPlus} from 'react-icons/fa';
+// import {FaUserPlus} from 'react-icons/fa';
 import { FiLoader } from 'react-icons/fi'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -258,8 +258,8 @@ const LoginPage: React.FC = () => {
           <Image
             src="/LOGO.svg"
             alt="Tiamed Logo"
-            width={180}
-            height={90}
+            width={500}
+            height={250}
             className="transition-transform duration-300 hover:scale-105"
             priority
           />
@@ -473,21 +473,21 @@ const LoginPage: React.FC = () => {
           )}
 
           {/* Divider */}
-          <div className="relative">
+          {/* <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-200" />
             </div>
             <div className="relative flex justify-center">
               <span className="px-3 bg-white text-sm text-gray-500">New to our platform?</span>
             </div>
-          </div>
+          </div> */}
 
-          <Link href="/onboarding/request" passHref>
+          {/* <Link href="/onboarding/request" passHref>
             <button className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors">
               <FaUserPlus className="text-purple-600" />
               Register Laboratory
             </button>
-          </Link>
+          </Link> */}
 
           <p className="text-center text-xs text-gray-400">
             © {new Date().getFullYear()} Tiamed Diagnostics. All rights reserved.
