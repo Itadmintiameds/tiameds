@@ -71,7 +71,7 @@ const NewModal = ({
               z-10
               flex
               w-full
-              max-h-[calc(100vh-2rem)]
+              max-h-[85vh]
               flex-col
               bg-white
               rounded-2xl
@@ -123,8 +123,8 @@ const NewModal = ({
                             </div>
                         )}
 
-                        {/* Body - the only part that scrolls when content overflows the viewport */}
-                        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-5">
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto p-5">
                             {children}
                         </div>
 
