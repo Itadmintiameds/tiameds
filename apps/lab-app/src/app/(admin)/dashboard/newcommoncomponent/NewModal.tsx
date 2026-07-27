@@ -1,6 +1,6 @@
 "use client";
 
-import { Dialog, DialogBackdrop, DialogTitle } from "@headlessui/react";
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import Image from "next/image";
@@ -45,6 +45,7 @@ const NewModal = ({
                     />
 
                     {/* Modal */}
+                    <DialogPanel as="div" className="contents">
                     <motion.div
                         initial={{
                             opacity: 0,
@@ -68,7 +69,10 @@ const NewModal = ({
                         className={`
               relative
               z-10
+              flex
               w-full
+              max-h-[calc(100vh-2rem)]
+              flex-col
               bg-white
               rounded-2xl
               shadow-[0_20px_60px_rgba(0,0,0,0.15)]
@@ -81,6 +85,7 @@ const NewModal = ({
                             <div
                                 className="
                   flex
+                  shrink-0
                   items-center
                   justify-between
                   px-5
@@ -118,8 +123,8 @@ const NewModal = ({
                             </div>
                         )}
 
-                        {/* Body */}
-                        <div className="p-5">
+                        {/* Body - the only part that scrolls when content overflows the viewport */}
+                        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-5">
                             {children}
                         </div>
 
@@ -127,6 +132,7 @@ const NewModal = ({
                         {footer && (
                             <div
                                 className="
+                  shrink-0
                   border-t
                   border-gray-200
                   bg-white
@@ -138,6 +144,7 @@ const NewModal = ({
                             </div>
                         )}
                     </motion.div>
+                    </DialogPanel>
                 </Dialog>
             )}
         </AnimatePresence>

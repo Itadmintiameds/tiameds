@@ -1,9 +1,23 @@
 import { Doctor } from '@/types/doctor/doctor';
-import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+    FaCity,
+    FaEnvelope,
+    FaFlag,
+    FaGraduationCap,
+    FaHospital,
+    FaIdCard,
+    FaMapMarkerAlt,
+    FaPhone,
+    FaStethoscope,
+    FaTimes,
+    FaUser,
+} from 'react-icons/fa';
 
 interface AddDoctorProps {
     handleAddDoctor: (doctor: Doctor) => void;
+    closeModal?: () => void;
 }
 
 const DOCTOR_SPECIALITIES = [
@@ -47,7 +61,7 @@ const DOCTOR_QUALIFICATIONS = [
     'Others',
 ];
 
-const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
+const AddDoctor = ({ handleAddDoctor, closeModal }: AddDoctorProps) => {
     const [doctor, setDoctor] = useState<Doctor>({
         id: undefined,
         name: '',
@@ -73,9 +87,7 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 if (!value || value.trim() === '') return 'Name is required';
                 if (value.length < 2) return 'Name must be at least 2 characters long';
                 if (!/^[a-zA-Z\s]+$/.test(value)) return 'Name should contain only alphabets and spaces';
-                // Check for leading spaces
                 if (value.startsWith(' ')) return 'Name should not start with a space';
-                // Check for multiple consecutive spaces
                 if (/\s{2,}/.test(value)) return 'Name should not contain multiple consecutive spaces';
                 return '';
 
@@ -83,7 +95,6 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 if (typeof value !== 'string') return 'Email must be a valid value';
                 if (!value || value.trim() === '') return 'Email is required';
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
-                // Check for leading spaces
                 if (value.startsWith(' ')) return 'Email should not start with a space';
                 return '';
 
@@ -111,9 +122,7 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 if (typeof value !== 'string') return 'Hospital affiliation must be a valid value';
                 if (!value || value.trim() === '') return 'Hospital affiliation is required';
                 if (!/^[a-zA-Z\s]+$/.test(value)) return 'Hospital affiliation should contain only alphabets and spaces';
-                // Check for leading spaces
                 if (value.startsWith(' ')) return 'Hospital affiliation should not start with a space';
-                // Check for multiple consecutive spaces
                 if (/\s{2,}/.test(value)) return 'Hospital affiliation should not contain multiple consecutive spaces';
                 return '';
 
@@ -121,7 +130,6 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 if (typeof value !== 'string') return 'Address must be a valid value';
                 if (!value || value.trim() === '') return 'Address is required';
                 if (value.length < 5) return 'Address must be at least 5 characters long';
-                // Check for leading spaces
                 if (value.startsWith(' ')) return 'Address should not start with a space';
                 return '';
 
@@ -129,9 +137,7 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 if (typeof value !== 'string') return 'City must be a valid value';
                 if (!value || value.trim() === '') return 'City is required';
                 if (!/^[a-zA-Z\s]+$/.test(value)) return 'City should contain only alphabets and spaces';
-                // Check for leading spaces
                 if (value.startsWith(' ')) return 'City should not start with a space';
-                // Check for multiple consecutive spaces
                 if (/\s{2,}/.test(value)) return 'City should not contain multiple consecutive spaces';
                 return '';
 
@@ -139,9 +145,7 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 if (typeof value !== 'string') return 'State must be a valid value';
                 if (!value || value.trim() === '') return 'State is required';
                 if (!/^[a-zA-Z\s]+$/.test(value)) return 'State should contain only alphabets and spaces';
-                // Check for leading spaces
                 if (value.startsWith(' ')) return 'State should not start with a space';
-                // Check for multiple consecutive spaces
                 if (/\s{2,}/.test(value)) return 'State should not contain multiple consecutive spaces';
                 return '';
 
@@ -149,9 +153,7 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
                 if (typeof value !== 'string') return 'Country must be a valid value';
                 if (!value || value.trim() === '') return 'Country is required';
                 if (!/^[a-zA-Z\s]+$/.test(value)) return 'Country should contain only alphabets and spaces';
-                // Check for leading spaces
                 if (value.startsWith(' ')) return 'Country should not start with a space';
-                // Check for multiple consecutive spaces
                 if (/\s{2,}/.test(value)) return 'Country should not contain multiple consecutive spaces';
                 return '';
 
@@ -258,301 +260,332 @@ const AddDoctor = ({ handleAddDoctor }: AddDoctorProps) => {
     };
 
     const inputClass = (name: string) =>
-        `w-full border rounded-full border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 ${errors[name] && touched[name] ? 'border-red-400' : ''
+        `w-full rounded-lg border border-pneutral-200 pl-9 pr-4 py-2 text-p3 focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500 bg-white ${errors[name] && touched[name] ? 'border-warning-500' : ''
         }`;
 
-    const labelClass = 'text-sm font-medium text-gray-600 mb-1.5 block';
+    const labelClass = 'block text-p3 font-medium text-pneutral-900 mb-1.5';
 
     return (
-        <form onSubmit={handleSubmit} noValidate className="space-y-3 text-sm">
+        <form onSubmit={handleSubmit} noValidate className="space-y-5">
             {/* Personal Information Section */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
+            <div className="bg-info-50 rounded-lg p-4 space-y-4">
+                <h4 className="font-semibold text-info-700 text-p3 flex items-center gap-2">
+                    <FaUser className="text-info-600" size={16} />
                     Personal Information
-                </p>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="name" className={labelClass}>
-                                Name <span className="text-red-500">*</span>
-                            </label>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="name" className={labelClass}>
+                            Name <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaUser className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
                             <input
                                 type="text"
                                 id="name"
                                 name="name"
-                                placeholder="Enter Doctor Name"
+                                placeholder="Enter doctor name"
                                 value={doctor.name}
                                 onChange={handleChange}
                                 onBlur={handleBlur}
                                 required
                                 className={inputClass('name')}
                             />
-                            {errors.name && touched.name && (
-                                <p className="text-xs text-red-500 mt-1">{errors.name}</p>
-                            )}
                         </div>
-                        <div>
-                            <label htmlFor="email" className={labelClass}>
-                                Email <span className="text-red-500">*</span>
-                            </label>
+                        {errors.name && touched.name && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.name}</p>
+                        )}
+                    </div>
+                    <div>
+                        <label htmlFor="email" className={labelClass}>
+                            Email <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaEnvelope className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
                             <input
                                 type="email"
                                 id="email"
                                 name="email"
-                                placeholder="Enter Doctor Email"
+                                placeholder="Enter doctor email"
                                 value={doctor.email || ''}
                                 onChange={handleChange}
                                 onBlur={handleBlur}
                                 required
                                 className={inputClass('email')}
                             />
-                            {errors.email && touched.email && (
-                                <p className="text-xs text-red-500 mt-1">{errors.email}</p>
-                            )}
                         </div>
+                        {errors.email && touched.email && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.email}</p>
+                        )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="phone" className={labelClass}>
-                                Phone <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="tel"
-                                id="phone"
-                                name="phone"
-                                placeholder="Enter Doctor Phone Number"
-                                value={doctor.phone?.toString() || ''}
-                                onChange={handleChange}
-                                onBlur={handleBlur}
-                                required
-                                inputMode="numeric"
-                                pattern="[0-9]*"
-                                maxLength={10}
-                                onKeyPress={(e) => {
-                                    if (!/[0-9]/.test(e.key)) {
-                                        e.preventDefault();
-                                    }
-                                }}
-                                className={inputClass('phone')}
-                            />
-                            {errors.phone && touched.phone && (
-                                <p className="text-xs text-red-500 mt-1">{errors.phone}</p>
-                            )}
-                        </div>
+                </div>
+
+                <div>
+                    <label htmlFor="phone" className={labelClass}>
+                        Phone <span className="text-warning-500">*</span>
+                    </label>
+                    <div className="relative">
+                        <FaPhone className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
+                        <input
+                            type="tel"
+                            id="phone"
+                            name="phone"
+                            placeholder="Enter doctor phone number"
+                            value={doctor.phone?.toString() || ''}
+                            onChange={handleChange}
+                            onBlur={handleBlur}
+                            required
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={10}
+                            onKeyPress={(e) => {
+                                if (!/[0-9]/.test(e.key)) {
+                                    e.preventDefault();
+                                }
+                            }}
+                            className={inputClass('phone')}
+                        />
                     </div>
+                    {errors.phone && touched.phone && (
+                        <p className="text-xs text-warning-500 mt-1">{errors.phone}</p>
+                    )}
                 </div>
             </div>
 
             {/* Professional Information Section */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
+            <div className="bg-danger-100 rounded-lg p-4 space-y-4">
+                <h4 className="font-semibold text-warning-800 text-p3 flex items-center gap-2">
+                    <FaStethoscope className="text-success-800" size={16} />
                     Professional Information
-                </p>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="speciality" className={labelClass}>
-                                Speciality
-                            </label>
-                            <div className="relative">
-                                <select
-                                    id="speciality"
-                                    name="speciality"
-                                    value={doctor.speciality || ''}
-                                    onChange={handleChange}
-                                    onBlur={handleBlur}
-                                    className={`${inputClass('speciality')} bg-white appearance-none`}
-                                >
-                                    <option value="">Select Speciality</option>
-                                    {DOCTOR_SPECIALITIES.map((speciality) => (
-                                        <option key={speciality} value={speciality}>
-                                            {speciality}
-                                        </option>
-                                    ))}
-                                </select>
-                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
-                            {errors.speciality && touched.speciality && (
-                                <p className="text-xs text-red-500 mt-1">{errors.speciality}</p>
-                            )}
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="speciality" className={labelClass}>
+                            Speciality
+                        </label>
+                        <div className="relative">
+                            <FaStethoscope className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400 z-10" size={14} />
+                            <select
+                                id="speciality"
+                                name="speciality"
+                                value={doctor.speciality || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                className={`${inputClass('speciality')} appearance-none`}
+                            >
+                                <option value="">Select speciality</option>
+                                {DOCTOR_SPECIALITIES.map((speciality) => (
+                                    <option key={speciality} value={speciality}>
+                                        {speciality}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
-                        <div>
-                            <label htmlFor="qualification" className={labelClass}>
-                                Qualification
-                            </label>
-                            <div className="relative">
-                                <select
-                                    id="qualification"
-                                    name="qualification"
-                                    value={doctor.qualification || ''}
-                                    onChange={handleChange}
-                                    onBlur={handleBlur}
-                                    className={`${inputClass('qualification')} bg-white appearance-none`}
-                                >
-                                    <option value="">Select Qualification</option>
-                                    {DOCTOR_QUALIFICATIONS.map((qualification) => (
-                                        <option key={qualification} value={qualification}>
-                                            {qualification}
-                                        </option>
-                                    ))}
-                                </select>
-                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
-                            {errors.qualification && touched.qualification && (
-                                <p className="text-xs text-red-500 mt-1">{errors.qualification}</p>
-                            )}
-                        </div>
+                        {errors.speciality && touched.speciality && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.speciality}</p>
+                        )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="hospitalAffiliation" className={labelClass}>
-                                Hospital Affiliation <span className="text-red-500">*</span>
-                            </label>
+                    <div>
+                        <label htmlFor="qualification" className={labelClass}>
+                            Qualification
+                        </label>
+                        <div className="relative">
+                            <FaGraduationCap className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400 z-10" size={14} />
+                            <select
+                                id="qualification"
+                                name="qualification"
+                                value={doctor.qualification || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                className={`${inputClass('qualification')} appearance-none`}
+                            >
+                                <option value="">Select qualification</option>
+                                {DOCTOR_QUALIFICATIONS.map((qualification) => (
+                                    <option key={qualification} value={qualification}>
+                                        {qualification}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        {errors.qualification && touched.qualification && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.qualification}</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="hospitalAffiliation" className={labelClass}>
+                            Hospital Affiliation <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaHospital className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
                             <input
                                 type="text"
                                 id="hospitalAffiliation"
                                 name="hospitalAffiliation"
-                                placeholder="Enter Hospital Affiliation"
+                                placeholder="Enter hospital affiliation"
                                 value={doctor.hospitalAffiliation || ''}
                                 onChange={handleChange}
                                 onBlur={handleBlur}
                                 required
                                 className={inputClass('hospitalAffiliation')}
                             />
-                            {errors.hospitalAffiliation && touched.hospitalAffiliation && (
-                                <p className="text-xs text-red-500 mt-1">{errors.hospitalAffiliation}</p>
-                            )}
                         </div>
-                        <div>
-                            <label htmlFor="licenseNumber" className={labelClass}>
-                                License Number <span className="text-red-500">*</span>
-                            </label>
+                        {errors.hospitalAffiliation && touched.hospitalAffiliation && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.hospitalAffiliation}</p>
+                        )}
+                    </div>
+                    <div>
+                        <label htmlFor="licenseNumber" className={labelClass}>
+                            License Number <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaIdCard className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
                             <input
                                 type="text"
                                 id="licenseNumber"
                                 name="licenseNumber"
-                                placeholder="Enter License Number"
+                                placeholder="Enter license number"
                                 value={doctor.licenseNumber || ''}
                                 onChange={handleChange}
                                 onBlur={handleBlur}
                                 required
                                 className={inputClass('licenseNumber')}
                             />
-                            {errors.licenseNumber && touched.licenseNumber && (
-                                <p className="text-xs text-red-500 mt-1">{errors.licenseNumber}</p>
-                            )}
                         </div>
+                        {errors.licenseNumber && touched.licenseNumber && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.licenseNumber}</p>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Address Information Section */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
+            <div className="bg-success-50 rounded-lg p-4 space-y-4">
+                <h4 className="font-semibold text-success-800 text-p3 flex items-center gap-2">
+                    <FaMapMarkerAlt className="text-success-700" size={16} />
                     Address Information
-                </p>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="address" className={labelClass}>
-                                Address <span className="text-red-500">*</span>
-                            </label>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="address" className={labelClass}>
+                            Address <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaMapMarkerAlt className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
                             <input
                                 type="text"
                                 id="address"
                                 name="address"
-                                placeholder="Enter Doctor Address"
+                                placeholder="Enter doctor address"
                                 value={doctor.address || ''}
                                 onChange={handleChange}
                                 onBlur={handleBlur}
                                 required
                                 className={inputClass('address')}
                             />
-                            {errors.address && touched.address && (
-                                <p className="text-xs text-red-500 mt-1">{errors.address}</p>
-                            )}
                         </div>
-                        <div>
-                            <label htmlFor="city" className={labelClass}>
-                                City <span className="text-red-500">*</span>
-                            </label>
+                        {errors.address && touched.address && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.address}</p>
+                        )}
+                    </div>
+                    <div>
+                        <label htmlFor="city" className={labelClass}>
+                            City <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaCity className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
                             <input
                                 type="text"
                                 id="city"
                                 name="city"
-                                placeholder="Enter Doctor City"
+                                placeholder="Enter doctor city"
                                 value={doctor.city || ''}
                                 onChange={handleChange}
                                 onBlur={handleBlur}
                                 required
                                 className={inputClass('city')}
                             />
-                            {errors.city && touched.city && (
-                                <p className="text-xs text-red-500 mt-1">{errors.city}</p>
-                            )}
                         </div>
+                        {errors.city && touched.city && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.city}</p>
+                        )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="state" className={labelClass}>
-                                State <span className="text-red-500">*</span>
-                            </label>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="state" className={labelClass}>
+                            State <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaMapMarkerAlt className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
                             <input
                                 type="text"
                                 id="state"
                                 name="state"
-                                placeholder="Enter Doctor State"
+                                placeholder="Enter doctor state"
                                 value={doctor.state || ''}
                                 onChange={handleChange}
                                 onBlur={handleBlur}
                                 required
                                 className={inputClass('state')}
                             />
-                            {errors.state && touched.state && (
-                                <p className="text-xs text-red-500 mt-1">{errors.state}</p>
-                            )}
                         </div>
-                        <div>
-                            <label htmlFor="country" className={labelClass}>
-                                Country <span className="text-red-500">*</span>
-                            </label>
+                        {errors.state && touched.state && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.state}</p>
+                        )}
+                    </div>
+                    <div>
+                        <label htmlFor="country" className={labelClass}>
+                            Country <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaFlag className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
                             <input
                                 type="text"
                                 id="country"
                                 name="country"
-                                placeholder="Enter Doctor Country"
+                                placeholder="Enter doctor country"
                                 value={doctor.country || ''}
                                 onChange={handleChange}
                                 onBlur={handleBlur}
                                 required
                                 className={inputClass('country')}
                             />
-                            {errors.country && touched.country && (
-                                <p className="text-xs text-red-500 mt-1">{errors.country}</p>
-                            )}
                         </div>
+                        {errors.country && touched.country && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.country}</p>
+                        )}
                     </div>
                 </div>
             </div>
 
-            <p className="text-xs text-gray-400 text-right">
-                <span className="text-red-500">*</span> indicates required fields
+            <p className="text-xs text-pneutral-400 text-right">
+                <span className="text-warning-500">*</span> indicates required fields
             </p>
 
-            {/* Submit Button */}
-            <div className="flex justify-end pt-2">
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-2 border-t border-pneutral-200">
+                {closeModal && (
+                    <button
+                        type="button"
+                        onClick={closeModal}
+                        className="px-4 py-2 text-p3 border border-pneutral-400 font-medium text-pneutral-700 bg-pneutral-50 rounded-full flex items-center gap-1"
+                    >
+                        <FaTimes size={16} />
+                        Cancel
+                    </button>
+                )}
                 <button
                     type="submit"
-                    className="px-5 py-2.5 text-sm font-medium text-white rounded-full transition-all duration-200 flex items-center"
-                    style={{
-                        background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
-                    }}
+                    className="px-4 py-2 text-p3 font-medium text-pneutral-50 bg-secondary-700 rounded-full flex items-center gap-1"
                 >
-                    <Plus size={18} className="mr-2" />
+                    <Plus size={16} />
                     Add Doctor
                 </button>
             </div>
