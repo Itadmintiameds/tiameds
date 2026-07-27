@@ -3,21 +3,17 @@
 'use client';
 
 import { getPackage, updatePackage } from '@/../services/packageServices';
-// import { packageDelete } from '@/../services/packageServices'; // Deletion disabled — see note near confirmDeletePackage below
-import Modal from '@/app/(admin)/component/common/Model';
 import { useLabs } from '@/context/LabContext';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Image from 'next/image';
-import { FaEdit, FaEye, FaSearch, FaTimes, FaSortAmountDown, FaSortAmountUp } from 'react-icons/fa';
+import { useRouter } from 'next/navigation';
+import { Edit, Eye, Plus, Search } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Loader from '../common/Loader';
 import UpdatePackage from './UpdatePackage';
 import ViewPackage from './ViewPackage';
-// import DeletePackage from './DeletePackage'; // Deletion disabled — see note near confirmDeletePackage below
 import { TestList } from '@/types/test/testlist';
-import Pagination from '../common/Pagination';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiPackage } from 'react-icons/fi';
+import NewCommonTable from '@/app/(admin)/dashboard/newcommoncomponent/NewCommonTable';
+import NewModal from '@/app/(admin)/dashboard/newcommoncomponent/NewModal';
 
 interface editingPackage {
   id: number
@@ -43,27 +39,20 @@ interface updatePackage {
   tests: TestList[];
 }
 
-interface PackageListProps {
-  closeModal?: () => void;
-}
-
-const PackageList = ({ closeModal }: PackageListProps = {}) => {
+const PackageList = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'new' | 'old'>('new');
-  const [currentPage, setCurrentPage] = useState<number>(1);
   const [editingPackage, setEditingPackage] = useState<editingPackage | null>(null);
   const [viewingPackage, setViewingPackage] = useState<Package | null>(null);
   // Package deletion is disabled — once created, a package cannot be deleted
   // (backend silently fails to remove packages linked to orders/reports).
-  // const [deletingPackage, setDeletingPackage] = useState<Package | null>(null);
-  // const [isDeleting, setIsDeleting] = useState<number | null>(null);
-  const itemsPerPage = 5;
 
   const { currentLab } = useLabs();
+  const router = useRouter();
 
   const fetchPackages = useCallback(async () => {
     if (!currentLab) {
@@ -97,8 +86,19 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
     packages.forEach(pkg => {
       pkg.tests?.forEach(test => unique.add(test.category));
     });
-    return ['All Categories', ...Array.from(unique)];
+    return Array.from(unique);
   }, [packages]);
+
+  const averagePrice = useMemo(() => {
+    if (packages.length === 0) return 0;
+    return packages.reduce((sum, pkg) => sum + Number(pkg.price || 0), 0) / packages.length;
+  }, [packages]);
+
+  // Use useMemo to create a reset key based on filter changes so NewCommonTable resets to page 1
+  const resetPageKey = useMemo(
+    () => JSON.stringify({ searchQuery, categoryFilter, sortOrder }),
+    [searchQuery, categoryFilter, sortOrder]
+  );
 
   const filteredPackages = useMemo(() => {
     let result = [...packages];
@@ -111,86 +111,29 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
       );
     }
 
-    if (selectedCategory !== 'All Categories') {
+    if (categoryFilter) {
       result = result.filter((pkg) =>
-        Array.isArray(pkg.tests) && pkg.tests.some((test) => test.category === selectedCategory)
+        Array.isArray(pkg.tests) && pkg.tests.some((test) => test.category === categoryFilter)
       );
     }
 
     result.sort((a, b) => (sortOrder === 'new' ? b.id - a.id : a.id - b.id));
 
     return result;
-  }, [packages, searchQuery, selectedCategory, sortOrder]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, selectedCategory, sortOrder]);
-
-  const totalPages = Math.ceil(filteredPackages.length / itemsPerPage);
-  const paginatedPackages = filteredPackages.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+  }, [packages, searchQuery, categoryFilter, sortOrder]);
 
   // Package deletion is disabled — once created, a package cannot be deleted.
   // Backend deletes on packages linked to orders/reports silently no-op
   // (returns success without removing the row), so the feature is turned
   // off here rather than showing users a false success/failure state.
   // Users are warned about this at creation time instead (see Pakage.tsx).
-  //
-  // const handleDeletePackage = (pkgId: number) => {
-  //   const pkgToDelete = packages.find(pkg => pkg.id === pkgId);
-  //   if (pkgToDelete) {
-  //     setDeletingPackage(pkgToDelete);
-  //   }
-  // };
-  //
-  // const confirmDeletePackage = async () => {
-  //   if (!deletingPackage) return;
-  //   const pkgId = deletingPackage.id;
-  //
-  //   setIsDeleting(pkgId);
-  //   try {
-  //     if (currentLab) {
-  //       const response = await packageDelete(currentLab.id, pkgId);
-  //       if (response && response.status && response.status !== 'success') {
-  //         throw new Error(response.message || 'Failed to delete package');
-  //       }
-  //       setPackages(prev => prev.filter(pkg => pkg.id !== pkgId));
-  //       toast.success('Package deleted successfully', {
-  //         autoClose: 2000,
-  //         className: 'bg-success text-white'
-  //       });
-  //     } else {
-  //       setError('No lab selected');
-  //     }
-  //   } catch (error) {
-  //     const message = (error as { message?: string })?.message || 'Failed to delete package';
-  //     toast.error(message, {
-  //       className: 'bg-error text-white'
-  //     });
-  //   } finally {
-  //     setIsDeleting(null);
-  //     setDeletingPackage(null);
-  //   }
-  // };
 
-  const handleEditPackage = (pkgId: number) => {
-    const pkgToEdit = packages.find(pkg => pkg.id === pkgId);
-    if (pkgToEdit) {
-      setEditingPackage(pkgToEdit);
-    }
+  const handleEditPackage = (pkg: Package) => {
+    setEditingPackage(pkg);
   };
 
-  const handleViewPackage = (pkgId: number) => {
-    const pkgToView = packages.find(pkg => pkg.id === pkgId);
-    if (pkgToView) {
-      setViewingPackage(pkgToView);
-    }
+  const handleViewPackage = (pkg: Package) => {
+    setViewingPackage(pkg);
   };
 
   const handleUpdatePackage = async (updatedPackageData: updatePackage) => {
@@ -223,260 +166,260 @@ const PackageList = ({ closeModal }: PackageListProps = {}) => {
     }
   };
 
-  if (loading) {
+  const clearFilters = () => {
+    setSearchQuery('');
+    setCategoryFilter('');
+  };
+
+  const columns = [
+    {
+      header: 'Package Name',
+      accessor: 'packageName',
+      render: (row: Package) => (
+        <p className="font-semibold text-p3 text-pneutral-900">{row.packageName}</p>
+      ),
+    },
+    {
+      header: 'No. of Tests',
+      accessor: 'tests',
+      render: (row: Package) => (
+        <span className="inline-flex items-center rounded-full bg-info-50 px-3 py-1 text-p2 font-medium text-info-700">
+          {row.tests?.length || 0} Test{row.tests?.length === 1 ? '' : 's'}
+        </span>
+      ),
+    },
+    {
+      header: 'Discount %',
+      accessor: 'discount',
+      render: (row: Package) => (
+        <p className="text-p3 text-pneutral-700">{row.discount}%</p>
+      ),
+    },
+    {
+      header: 'Price',
+      accessor: 'price',
+      render: (row: Package) => (
+        <p className="text-p3 font-medium text-success-900">₹{Number(row.price).toFixed(0)}</p>
+      ),
+    },
+    {
+      header: 'Actions',
+      accessor: 'actions',
+      render: (row: Package) => (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleEditPackage(row)}
+            className="flex h-[28px] w-[28px] items-center border border-info-700 justify-center rounded-full text-info-700 hover:bg-info-50 transition-colors"
+            title="Edit Package"
+          >
+            <Edit size={12} />
+          </button>
+          <button
+            onClick={() => handleViewPackage(row)}
+            className="flex h-[28px] w-[28px] items-center border border-secondary-500 justify-center rounded-full text-secondary-600 hover:bg-secondary-50 transition-colors"
+            title="View Package"
+          >
+            <Eye size={12} />
+          </button>
+          {/* Delete disabled — packages cannot be deleted once created */}
+        </div>
+      ),
+    },
+  ];
+
+  if (loading && packages.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-6">
+      <div className="flex flex-col items-center justify-center h-64">
         <Loader type="progress" fullScreen={false} text="Loading packages..." />
-        <p className="mt-4 text-sm text-gray-600">Please wait while we load the available packages.</p>
+        <p className="mt-4 text-sm text-gray-500">Please wait while we load the available packages.</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="text-center p-6 bg-red-50 rounded-xl border border-red-100"
-      >
-        <div className="text-red-600 font-semibold text-lg mb-2">
-          {error}
-        </div>
+      <div className="text-center p-6 bg-red-50 rounded-xl border border-red-100">
+        <div className="text-red-600 font-semibold text-lg mb-2">{error}</div>
         <button
           onClick={fetchPackages}
           className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-all duration-200"
         >
           Retry
         </button>
-      </motion.div>
+      </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-4 bg-gray-50 rounded-xl shadow-lg">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between mb-2"
-      >
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Package Management</h1>
-          <p className="text-sm text-gray-500">View and manage all your test packages</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {closeModal && (
-            <button
-              onClick={closeModal}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Close"
-            >
-              <FaTimes className="h-5 w-5" />
-            </button>
-          )}
-        </div>
-      </motion.div>
+    <div className="w-full">
+      {/* Header Section */}
+      <div className="mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-h3 font-semibold text-pneutral-900">
+              Package Management
+            </h1>
+            <p className="mt-1 text-p3 text-pneutral-500">
+              View and manage all your test packages
+            </p>
+          </div>
 
-      {/* Table Card */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-        {/* Toolbar */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">Package List</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FaSearch className="text-gray-400 text-sm" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search tests..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 border border-gray-200 rounded-full text-sm bg-gray-50 hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors"
-              />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/dashboard/package?tab=package')}
+              className="flex items-center gap-2 rounded-full bg-secondary-700 px-4 py-2 text-label-l3 font-medium text-pneutral-50"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add New Package</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Section */}
+      <div className="mb-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
+            <h3 className="text-sm font-medium text-pneutral-900">Total Packages</h3>
+            <p className="mt-4 text-3xl font-semibold text-pneutral-900">{packages.length}</p>
+          </div>
+
+          <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
+            <h3 className="text-sm font-medium text-pneutral-900">Categories</h3>
+            <p className="mt-4 text-3xl font-semibold text-info-500">{categories.length}</p>
+          </div>
+
+          <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
+            <h3 className="text-sm font-medium text-pneutral-900">Avg. Package Price</h3>
+            <p className="mt-4 text-3xl font-semibold text-danger-600">₹{averagePrice.toFixed(0)}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters Section */}
+      <div className="mb-6 rounded-xl bg-white border border-pneutral-200 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative flex-1 max-w-xl">
+            <Search
+              size={18}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-sneutral-700"
+            />
+            <input
+              type="text"
+              placeholder="Search packages or tests..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 w-full rounded-lg border border-pneutral-200 pl-10 pr-4 text-sm outline-none focus:border-pneutral-500"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-p3 text-pneutral-500">Category:</span>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="h-10 rounded-md border border-pneutral-200 px-3 text-p3 focus:border-pneutral-500"
+              >
+                <option value="">All Categories</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-full text-sm bg-gray-50 hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors uppercase"
-            >
-              {categories.map((category) => (
-                <option key={category} value={category} className="normal-case">
-                  {category}
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={() => setSortOrder(prev => (prev === 'new' ? 'old' : 'new'))}
-              className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-full text-sm bg-gray-50 hover:bg-purple-50 hover:border-purple-300 transition-colors"
-            >
-              {sortOrder === 'new' ? <FaSortAmountDown className="text-gray-500" /> : <FaSortAmountUp className="text-gray-500" />}
-              {sortOrder === 'new' ? 'New to Old' : 'Old to New'}
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-pneutral-500">Sort by:</span>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'new' | 'old')}
+                className="h-10 rounded-md border border-pneutral-200 px-3 text-sm focus:border-pneutral-500"
+              >
+                <option value="new">Newest First</option>
+                <option value="old">Oldest First</option>
+              </select>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Table */}
-        {paginatedPackages.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-sm text-gray-500 border-b border-gray-100">
-                  <th className="px-6 py-3 font-medium">Package Name</th>
-                  <th className="px-6 py-3 font-medium">No. of Test</th>
-                  <th className="px-6 py-3 font-medium">Discount %</th>
-                  <th className="px-6 py-3 font-medium">Price</th>
-                  <th className="px-6 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <AnimatePresence>
-                  {paginatedPackages.map((pkg) => (
-                    <motion.tr
-                      key={pkg.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="border-b border-gray-50 last:border-none hover:bg-purple-50 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 flex items-center justify-center rounded-full bg-purple-50 overflow-hidden shrink-0">
-                            <Image src="/package.png" alt="" width={20} height={20} />
-                          </div>
-                          <span className="text-sm font-medium text-gray-800">{pkg.packageName}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full">
-                          {pkg.tests.length} Test
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{pkg.discount}%</td>
-                      <td className="px-6 py-4 text-sm text-gray-700">₹{Number(pkg.price).toFixed(0)}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleEditPackage(pkg.id)}
-                            className="w-8 h-8 flex items-center justify-center rounded-full border border-purple-300 text-purple-600 hover:bg-purple-50 transition-colors"
-                            title="Edit package"
-                          >
-                            <FaEdit className="text-sm" />
-                          </button>
-                          <button
-                            onClick={() => handleViewPackage(pkg.id)}
-                            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100 transition-colors"
-                            title="View package"
-                          >
-                            <FaEye className="text-sm" />
-                          </button>
-                          {/* Delete disabled — packages cannot be deleted once created */}
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-              </tbody>
-            </table>
+      {/* Table Section - NewCommonTable handles pagination internally */}
+      <div className="relative">
+        {filteredPackages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-pneutral-200 bg-white py-16">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-16 w-16 text-pneutral-300"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1}
+                d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+              />
+            </svg>
+            <p className="mt-4 text-sm font-medium text-pneutral-500">
+              {searchQuery || categoryFilter
+                ? 'No results found'
+                : 'No packages available'}
+            </p>
+            {(searchQuery || categoryFilter) && (
+              <>
+                <p className="mt-1 text-xs text-pneutral-400">
+                  Try adjusting your search or filter criteria
+                </p>
+                <button
+                  onClick={clearFilters}
+                  className="mt-4 flex items-center gap-2 rounded-full bg-secondary-700 px-4 py-2 text-label-l3 font-medium text-pneutral-50"
+                >
+                  Clear filters
+                </button>
+              </>
+            )}
           </div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center p-8"
-          >
-            <FiPackage className="mx-auto text-4xl text-gray-300 mb-3" />
-            <h3 className="text-lg font-semibold text-gray-800">No packages found</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              {searchQuery ? 'Try a different search term' : 'Create your first package to get started'}
-            </p>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="mt-3 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
-                style={{
-                  background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
-                }}
-              >
-                Clear search
-              </button>
-            )}
-          </motion.div>
+          <NewCommonTable
+            columns={columns}
+            data={filteredPackages}
+            pageSize={10}
+            showPagination={true}
+            resetPageKey={resetPageKey}
+          />
         )}
       </div>
 
-      {/* Pagination */}
-      {filteredPackages.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="flex justify-center"
+      {/* Edit Package Modal */}
+      {editingPackage && (
+        <NewModal
+          isOpen={!!editingPackage}
+          onClose={() => setEditingPackage(null)}
+          title="Update Package"
+          modalClassName="max-w-3xl"
         >
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
+          <UpdatePackage
+            packageData={editingPackage}
+            onClose={() => setEditingPackage(null)}
+            handleUpdatePackage={handleUpdatePackage}
           />
-        </motion.div>
+        </NewModal>
       )}
 
-      {/* Edit Package Modal */}
-      <AnimatePresence>
-        {editingPackage && (
-          <Modal
-            isOpen={!!editingPackage}
-            onClose={() => setEditingPackage(null)}
-            title="Update Package"
-            modalClassName="max-w-2xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
-          >
-            <UpdatePackage
-              packageData={editingPackage}
-              onClose={() => setEditingPackage(null)}
-              handleUpdatePackage={handleUpdatePackage}
-            />
-          </Modal>
-        )}
-      </AnimatePresence>
-
       {/* View Package Modal */}
-      <AnimatePresence>
-        {viewingPackage && (
-          <Modal
-            isOpen={!!viewingPackage}
-            onClose={() => setViewingPackage(null)}
-            title="View Package"
-            modalClassName="max-w-2xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
-          >
-            <ViewPackage
-              packageData={viewingPackage}
-              onClose={() => setViewingPackage(null)}
-            />
-          </Modal>
-        )}
-      </AnimatePresence>
-
-      {/* Delete Package Confirmation Modal — disabled, packages cannot be deleted once created */}
-      {/* <AnimatePresence>
-        {deletingPackage && (
-          <Modal
-            isOpen={!!deletingPackage}
-            onClose={() => setDeletingPackage(null)}
-            title="Delete Package"
-            modalClassName="max-w-2xl max-h-[90vh] rounded-lg overflow-y-auto overflow-hidden"
-          >
-            <DeletePackage
-              packageName={deletingPackage.packageName}
-              isDeleting={isDeleting === deletingPackage.id}
-              onClose={() => setDeletingPackage(null)}
-              onConfirm={confirmDeletePackage}
-            />
-          </Modal>
-        )}
-      </AnimatePresence> */}
+      {viewingPackage && (
+        <NewModal
+          isOpen={!!viewingPackage}
+          onClose={() => setViewingPackage(null)}
+          title="View Package"
+          modalClassName="max-w-2xl"
+        >
+          <ViewPackage packageData={viewingPackage} />
+        </NewModal>
+      )}
     </div>
   );
 };

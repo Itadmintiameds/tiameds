@@ -5,9 +5,8 @@ import { getTests } from '@/../services/testService';
 import Loader from '@/app/(admin)/component/common/Loader';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
-import { PlusIcon } from 'lucide-react';
+import { Plus, Search, X, ChevronDown } from 'lucide-react';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { FaTimes, FaMinus, FaPlus, FaSearch, FaChevronDown } from 'react-icons/fa';
 import { debounce } from '@/utils/debounce';
 
 interface PackageData {
@@ -217,145 +216,141 @@ const UpdatePackage = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl p-2">
-      <h2 className="text-xl font-bold text-gray-900 mb-5">Package Details</h2>
-
+    <div className="space-y-5">
       {/* Package Name / Discount Percentage */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Package name
-          </label>
-          <input
-            type="text"
-            name="packageName"
-            value={packageDetails.packageName}
-            onChange={handleFieldChange}
-            className="w-full px-4 py-3 border border-gray-200 rounded-full bg-gray-50 text-sm text-gray-700 hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors"
-            placeholder="Health Master Package"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            Discount Percentage:
-          </label>
-          <div className="relative">
+      <div className="bg-info-50 rounded-lg p-4 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-p3 font-medium text-pneutral-900 mb-1.5">
+              Package name <span className="text-warning-500">*</span>
+            </label>
             <input
-              type="number"
-              name="discount"
-              value={packageDetails.discount || ''}
-              onChange={handleDiscountChange}
-              className="w-full px-4 py-3 pr-8 border border-gray-200 rounded-full bg-gray-50 text-sm text-gray-700 hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              placeholder="0.00"
-              min="0"
-              max="100"
-              step="0.01"
+              type="text"
+              name="packageName"
+              value={packageDetails.packageName}
+              onChange={handleFieldChange}
+              className="w-full rounded-lg border border-pneutral-200 px-4 py-2 text-p3 bg-white focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500"
+              placeholder="Health Master Package"
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">%</span>
+          </div>
+
+          <div>
+            <label className="block text-p3 font-medium text-pneutral-900 mb-1.5">
+              Discount Percentage
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                name="discount"
+                value={packageDetails.discount || ''}
+                onChange={handleDiscountChange}
+                className="w-full rounded-lg border border-pneutral-200 px-4 py-2 pr-8 text-p3 bg-white focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                placeholder="0.00"
+                min="0"
+                max="100"
+                step="0.01"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-pneutral-400 text-p3">%</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Included Tests */}
-      <div className="bg-purple-50 rounded-2xl p-5 mb-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-bold text-gray-900">
+      <div className="bg-danger-100 rounded-lg p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="font-semibold text-warning-800 text-p3">
             Included Tests ({packageDetails.tests.length})
-          </h3>
+          </h4>
           <button
             onClick={() => setShowAddTest(prev => !prev)}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 transition-colors"
+            className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-success-600 text-success-700 hover:bg-success-50 transition-colors"
             title={showAddTest ? 'Close' : 'Add test'}
           >
-            {showAddTest ? <FaTimes className="text-sm" /> : <FaPlus className="text-sm" />}
+            {showAddTest ? <X size={14} /> : <Plus size={14} />}
           </button>
         </div>
 
         {showAddTest && (
-          <div className="relative mb-4">
+          <div className="relative">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <FaSearch className="text-gray-400 text-sm" />
-              </div>
+              <Search className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search test by name..."
-                className="w-full pl-10 pr-10 py-3 rounded-full border border-gray-200 bg-white text-sm text-gray-700 hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors"
+                className="w-full rounded-lg border border-pneutral-200 pl-9 pr-9 py-2 text-p3 bg-white focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500"
               />
-              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                <FaChevronDown className="text-gray-400 text-sm" />
-              </div>
+              <ChevronDown className="absolute top-1/2 -translate-y-1/2 right-3 text-pneutral-400" size={14} />
             </div>
 
-            <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg divide-y divide-gray-100">
+            <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-pneutral-200 bg-white shadow-lg divide-y divide-pneutral-100">
               {isLoading || isSearching ? (
-                <div className="p-4 text-center text-sm text-gray-500">Loading tests...</div>
+                <div className="p-4 text-center text-p3 text-pneutral-500">Loading tests...</div>
               ) : filteredTests.length > 0 ? (
                 filteredTests.map(test => (
                   <button
                     key={test.id}
                     onClick={() => addTestToPackage(test)}
-                    className="w-full flex justify-between items-center px-4 py-2.5 text-left hover:bg-purple-50 transition-colors"
+                    className="w-full flex justify-between items-center px-4 py-2.5 text-left hover:bg-secondary-50 transition-colors"
                   >
-                    <span className="text-sm font-medium text-gray-800">{test.name}</span>
-                    <span className="text-sm text-gray-600">₹{Number(test.price).toFixed(2)}</span>
+                    <span className="text-p3 font-medium text-pneutral-900">{test.name}</span>
+                    <span className="text-p3 text-pneutral-600">₹{Number(test.price).toFixed(2)}</span>
                   </button>
                 ))
               ) : (
-                <div className="p-4 text-center text-sm text-gray-500">No matching tests found</div>
+                <div className="p-4 text-center text-p3 text-pneutral-500">No matching tests found</div>
               )}
             </div>
           </div>
         )}
 
-        <div className="divide-y divide-purple-100">
+        <div className="divide-y divide-danger-300">
           {packageDetails.tests.length > 0 ? (
             packageDetails.tests.map(test => (
               <div
                 key={test.id}
-                className="flex justify-between items-center py-3"
+                className="flex justify-between items-center py-2.5"
               >
-                <span className="text-base font-medium text-purple-700">{test.name}</span>
-                <div className="flex items-center gap-4">
-                  <span className="text-base text-gray-900">₹{Number(test.price).toFixed(2)}</span>
+                <span className="text-p3 font-medium text-pneutral-900">{test.name}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-p3 text-pneutral-700">₹{Number(test.price).toFixed(2)}</span>
                   <button
                     onClick={() => removeTestFromPackage(test.id)}
-                    className="w-6 h-6 flex items-center justify-center rounded-full border border-red-400 text-red-500 hover:bg-red-50 transition-colors"
+                    className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-warning-500 text-warning-500 hover:bg-warning-50 transition-colors"
                     aria-label="Remove test"
                   >
-                    <FaMinus className="text-[10px]" />
+                    <X size={12} />
                   </button>
                 </div>
               </div>
             ))
           ) : (
-            <p className="text-center text-gray-500 py-4 text-sm">No tests selected yet</p>
+            <p className="text-center text-p3 text-pneutral-500 py-4">No tests selected yet</p>
           )}
         </div>
       </div>
 
       {/* Package Summary */}
-      <div className="mb-5">
-        <h3 className="text-lg font-bold text-gray-900 pb-2 border-b border-gray-200 mb-3">
+      <div>
+        <h4 className="font-semibold text-pneutral-900 text-p3 pb-2 border-b border-pneutral-200 mb-3">
           Package Summary
-        </h3>
+        </h4>
         <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Subtotal ({packageDetails.tests.length} tests)</span>
-            <span className="text-gray-900">₹{subtotal.toFixed(2)}</span>
+          <div className="flex justify-between text-p3">
+            <span className="text-pneutral-500">Subtotal ({packageDetails.tests.length} tests)</span>
+            <span className="text-pneutral-900">₹{subtotal.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Discount ({packageDetails.discount}%):</span>
-            <span className="text-red-500 font-medium">
+          <div className="flex justify-between text-p3">
+            <span className="text-pneutral-500">Discount ({packageDetails.discount}%):</span>
+            <span className="text-warning-600 font-medium">
               -₹{(subtotal * packageDetails.discount / 100).toFixed(2)}
             </span>
           </div>
-          <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
-            <span className="text-lg font-bold text-gray-900">Total</span>
-            <span className="text-lg font-bold text-gray-900">
+          <div className="border-t border-pneutral-200 pt-2 mt-2 flex justify-between">
+            <span className="text-p1 font-bold text-pneutral-900">Total</span>
+            <span className="text-p1 font-bold text-pneutral-900">
               ₹{packageDetails.price.toFixed(2)}
             </span>
           </div>
@@ -363,22 +358,19 @@ const UpdatePackage = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-center gap-4">
+      <div className="flex justify-end gap-3 pt-2 border-t border-pneutral-200">
         <button
           onClick={onClose}
-          className="px-6 py-2.5 text-sm font-semibold text-gray-500 bg-white rounded-full border border-gray-300 hover:bg-gray-50 transition-all duration-200 flex items-center gap-2"
+          className="px-4 py-2 text-p3 border border-pneutral-400 font-medium text-pneutral-700 bg-pneutral-50 rounded-full flex items-center gap-1"
         >
-          <FaTimes className="h-4 w-4" />
+          <X size={16} />
           Cancel
         </button>
         <button
           onClick={submitPackageUpdate}
-          className="px-6 py-2.5 text-sm font-semibold text-white rounded-full transition-all duration-200 flex items-center gap-2"
-          style={{
-            background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
-          }}
+          className="px-4 py-2 text-p3 font-medium text-pneutral-50 bg-secondary-700 rounded-full flex items-center gap-1"
         >
-          <PlusIcon className="h-4 w-4" />
+          <Plus size={16} />
           Update Package
         </button>
       </div>

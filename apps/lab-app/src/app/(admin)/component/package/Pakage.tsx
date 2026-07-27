@@ -1,5 +1,3 @@
-
-
 'use client';
 import { getTests } from '@/../../services/testService';
 import { createPackage } from '@/../services/packageServices';
@@ -8,8 +6,7 @@ import { useLabs } from '@/context/LabContext';
 import { packageDataSchema } from '@/schema/packageDataSchema';
 import { TestList } from '@/types/test/testlist';
 import { useEffect, useState } from 'react';
-import { FiCheck, FiChevronDown, FiSearch, FiAlertTriangle } from 'react-icons/fi';
-import { FaTimes, FaPlus, FaMinus } from 'react-icons/fa';
+import { Plus, Search, X, AlertTriangle, Check } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 interface PackageFormData {
@@ -197,38 +194,39 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
   const isSelected = (testId: number) => selectedTests.some((t) => t.id === testId);
 
   return (
-    <div className="p-6 bg-gray-50 rounded-xl shadow-lg max-w-full mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="w-full space-y-5">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Create New Package</h1>
-          <p className="text-sm text-gray-500">Combine multiple tests into a single discounted package</p>
+          <h1 className="text-h3 font-semibold text-pneutral-900">Create New Package</h1>
+          <p className="mt-1 text-p3 text-pneutral-500">
+            Combine multiple tests into a single discounted package
+          </p>
         </div>
         {closeModal && (
           <button
             onClick={closeModal}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-pneutral-500 hover:text-pneutral-700 hover:bg-pneutral-100 rounded-lg transition-colors"
             title="Close"
           >
-            <FaTimes className="h-5 w-5" />
+            <X className="h-5 w-5" />
           </button>
         )}
       </div>
 
-      <div className="flex items-start gap-2 mb-6 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
-        <FiAlertTriangle className="text-base mt-0.5 shrink-0" />
-        <p className="text-sm">
+      <div className="flex items-start gap-2 rounded-lg bg-danger-100 border border-danger-300 px-4 py-3 text-warning-800">
+        <AlertTriangle className="mt-0.5 shrink-0" size={16} />
+        <p className="text-p3">
           Packages cannot be deleted once created. Please review the package name, tests, and pricing carefully before submitting.
         </p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-5 items-start">
         {/* Left Column */}
-        <div className="flex-1 w-full bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-5">
+        <div className="flex-1 w-full bg-info-50 rounded-lg p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2">
-                Package name
+              <label className="block text-p3 font-medium text-pneutral-900 mb-1.5">
+                Package name <span className="text-warning-500">*</span>
               </label>
               <input
                 type="text"
@@ -240,12 +238,12 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
                   setPackageData({ ...packageData, packageName: filteredValue });
                 }}
                 placeholder="Enter the package name"
-                className="w-full border border-gray-300 rounded-full px-5 py-3 text-sm bg-white hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors"
+                className="w-full rounded-lg border border-pneutral-200 px-4 py-2 text-p3 bg-white focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2">
+              <label className="block text-p3 font-medium text-pneutral-900 mb-1.5">
                 Discount Percentage
               </label>
               <div className="relative">
@@ -291,83 +289,78 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
                   min="0"
                   max="100"
                   step="0.01"
-                  className="w-full border border-gray-300 rounded-full px-5 py-3 pr-10 text-sm bg-white hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-full rounded-lg border border-pneutral-200 px-4 py-2 pr-8 text-p3 bg-white focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
-                <div className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</div>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-pneutral-400 text-p3">%</span>
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-800 mb-2">
+            <label className="block text-p3 font-medium text-pneutral-900 mb-1.5">
               Available Tests
             </label>
             <div className="relative mb-3">
-              <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                <FiSearch className="text-gray-400" />
-              </div>
+              <Search className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Search test by name or category..."
-                className="w-full pl-12 pr-10 py-3 border border-gray-300 rounded-full text-sm bg-white hover:border-purple-300 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 focus:outline-none transition-colors"
+                className="w-full rounded-lg border border-pneutral-200 pl-9 pr-4 py-2 text-p3 bg-white focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500"
               />
-              <div className="absolute inset-y-0 right-0 pr-5 flex items-center pointer-events-none">
-                <FiChevronDown className="text-gray-400" />
-              </div>
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <div className="border border-pneutral-200 rounded-lg overflow-hidden bg-white">
               {loading ? (
                 <div className="flex flex-col items-center justify-center h-64">
                   <Loader type="progress" fullScreen={false} text=" Loading tests..." />
-                  <p className="mt-4 text-sm text-gray-500">Please wait while we load the available tests.</p>
+                  <p className="mt-4 text-p3 text-pneutral-500">Please wait while we load the available tests.</p>
                 </div>
               ) : (
-                <div className="max-h-[420px] overflow-y-auto">
+                <div className="max-h-[360px] overflow-y-auto">
                   <table className="w-full text-left">
-                    <thead className="sticky top-0 bg-purple-100">
-                      <tr className="text-sm text-gray-600">
-                        <th className="px-4 py-3 font-semibold">Code</th>
-                        <th className="px-4 py-3 font-semibold">Test Name</th>
-                        <th className="px-4 py-3 font-semibold">Category</th>
-                        <th className="px-4 py-3 font-semibold">Price</th>
-                        <th className="px-4 py-3 font-semibold"></th>
+                    <thead className="sticky top-0 bg-pneutral-50 border-b border-pneutral-200">
+                      <tr className="text-p2 text-pneutral-500">
+                        <th className="px-4 py-3 font-medium">Code</th>
+                        <th className="px-4 py-3 font-medium">Test Name</th>
+                        <th className="px-4 py-3 font-medium">Category</th>
+                        <th className="px-4 py-3 font-medium">Price</th>
+                        <th className="px-4 py-3 font-medium"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredTests.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="text-center py-8 text-gray-500 text-sm">
+                          <td colSpan={5} className="text-center py-8 text-p3 text-pneutral-500">
                             {searchQuery ? 'No tests match your search' : 'No tests available'}
                           </td>
                         </tr>
                       ) : (
                         filteredTests.map((test) => (
-                          <tr key={test.id} className="border-t border-gray-100 hover:bg-purple-50 transition-colors">
-                            <td className="px-4 py-3 text-sm font-medium text-gray-700">{test.testCode || '—'}</td>
-                            <td className="px-4 py-3 text-sm text-gray-800">{test.name}</td>
+                          <tr key={test.id} className="border-t border-pneutral-100 hover:bg-secondary-50 transition-colors">
+                            <td className="px-4 py-3 text-p3 font-medium text-pneutral-700">{test.testCode || '—'}</td>
+                            <td className="px-4 py-3 text-p3 text-pneutral-900">{test.name}</td>
                             <td className="px-4 py-3">
-                              <span className="text-xs bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full">
+                              <span className="inline-flex items-center rounded-full bg-info-50 px-2.5 py-1 text-p2 font-medium text-info-700">
                                 {test.category}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">₹{Number(test.price).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-p3 text-pneutral-700">₹{Number(test.price).toFixed(2)}</td>
                             <td className="px-4 py-3">
                               {isSelected(test.id) ? (
                                 <button
                                   onClick={() => handleRemoveTest(test.id)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-red-400 text-red-500 text-xs font-semibold hover:bg-red-50 transition-colors"
+                                  className="flex items-center gap-1.5 rounded-full border border-warning-500 px-3 py-1 text-p2 font-semibold text-warning-500 hover:bg-warning-50 transition-colors"
                                 >
-                                  <FaMinus className="text-[10px]" /> Remove
+                                  <X size={12} /> Remove
                                 </button>
                               ) : (
                                 <button
                                   onClick={() => handleAddTest(test)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-green-400 text-green-600 text-xs font-semibold hover:bg-green-50 transition-colors"
+                                  className="flex items-center gap-1.5 rounded-full border border-success-600 px-3 py-1 text-p2 font-semibold text-success-700 hover:bg-success-50 transition-colors"
                                 >
-                                  <FaPlus className="text-[10px]" /> Add
+                                  <Plus size={12} /> Add
                                 </button>
                               )}
                             </td>
@@ -383,73 +376,66 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
         </div>
 
         {/* Right Column - Summary Sidebar */}
-        <div className="w-full lg:w-[340px] lg:sticky lg:top-6 bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
-          <h3 className="text-lg font-bold text-gray-900">Package Summary</h3>
+        <div className="w-full lg:w-[320px] lg:sticky lg:top-0 bg-danger-100 rounded-lg p-4 space-y-4">
+          <h3 className="font-semibold text-warning-800 text-p3">Package Summary</h3>
 
           <div
             className={`space-y-3 pr-1 ${selectedTests.length > 4
-              ? 'max-h-64 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full'
+              ? 'max-h-56 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#d1d5db_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-pneutral-300 [&::-webkit-scrollbar-thumb]:rounded-full'
               : ''
               }`}
           >
             {selectedTests.length > 0 ? (
               selectedTests.map((test) => (
-                <div key={test.id} className="flex justify-between items-start">
+                <div key={test.id} className="flex justify-between items-start bg-white rounded-lg px-3 py-2">
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">{test.name}</p>
+                    <p className="text-p3 font-medium text-pneutral-900">{test.name}</p>
                     {test.testCode && (
-                      <p className="text-xs text-gray-400">{test.testCode}</p>
+                      <p className="text-p2 text-pneutral-400">{test.testCode}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-700">₹{Number(test.price).toFixed(0)}</span>
+                    <span className="text-p3 text-pneutral-700">₹{Number(test.price).toFixed(0)}</span>
                     <button
                       onClick={() => handleRemoveTest(test.id)}
-                      className="text-gray-400 hover:text-red-500 transition-colors"
+                      className="text-pneutral-400 hover:text-warning-500 transition-colors"
                       title="Remove"
                     >
-                      <FaTimes className="text-sm" />
+                      <X size={14} />
                     </button>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-gray-500">No tests selected yet. Search and add tests to build your package.</p>
+              <p className="text-p3 text-pneutral-500">No tests selected yet. Search and add tests to build your package.</p>
             )}
           </div>
 
-          <div className="border-t border-gray-100 pt-3 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Subtotal ({selectedTests.length} tests)</span>
-              <span className="text-gray-800">₹{calculateTotal()}</span>
+          <div className="border-t border-danger-300 pt-3 space-y-2">
+            <div className="flex justify-between text-p3">
+              <span className="text-pneutral-600">Subtotal ({selectedTests.length} tests)</span>
+              <span className="text-pneutral-900">₹{calculateTotal()}</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Discount</span>
-              <span className="text-red-500">-₹{((calculateTotal() * (parseFloat(discount) || 0)) / 100).toFixed(2)}</span>
+            <div className="flex justify-between text-p3">
+              <span className="text-pneutral-600">Discount</span>
+              <span className="text-warning-600">-₹{((calculateTotal() * (parseFloat(discount) || 0)) / 100).toFixed(2)}</span>
             </div>
-            <div className="border-t border-gray-100 pt-2 flex justify-between items-center">
-              <span className="text-base font-bold text-gray-900">Total</span>
-              <span className="text-base font-bold text-gray-900">₹{calculateFinalPrice().toFixed(2)}</span>
+            <div className="border-t border-danger-300 pt-2 flex justify-between items-center">
+              <span className="text-p1 font-bold text-pneutral-900">Total</span>
+              <span className="text-p1 font-bold text-pneutral-900">₹{calculateFinalPrice().toFixed(2)}</span>
             </div>
           </div>
 
           <button
             onClick={handleSubmit}
             disabled={!packageData.packageName.trim() || selectedTests.length === 0 || loading}
-            className={`w-full px-6 py-3 rounded-full text-white font-semibold shadow-md transition-all flex items-center justify-center gap-2
-              ${(!packageData.packageName.trim() || selectedTests.length === 0)
-                ? 'bg-gray-300 cursor-not-allowed'
-                : ''
-              }`}
-            style={(!packageData.packageName.trim() || selectedTests.length === 0) ? {} : {
-              background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
-            }}
+            className="w-full flex items-center justify-center gap-2 rounded-full bg-secondary-700 px-6 py-2.5 text-p3 font-medium text-pneutral-50 disabled:bg-pneutral-300 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? (
               <span>Creating...</span>
             ) : (
               <>
-                <FiCheck className="text-lg" />
+                <Check size={16} />
                 <span>Create Package</span>
               </>
             )}
@@ -458,9 +444,9 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
           {closeModal && (
             <button
               onClick={closeModal}
-              className="w-full px-6 py-2.5 text-sm font-semibold text-gray-500 bg-white rounded-full border border-gray-300 hover:bg-gray-50 transition-all duration-200 flex items-center justify-center gap-2"
+              className="w-full flex items-center justify-center gap-2 rounded-full border border-pneutral-400 bg-pneutral-50 px-6 py-2 text-p3 font-medium text-pneutral-700 transition-colors"
             >
-              <FaTimes className="h-4 w-4" />
+              <X size={14} />
               Cancel
             </button>
           )}
