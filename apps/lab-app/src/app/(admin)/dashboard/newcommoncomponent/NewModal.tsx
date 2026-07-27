@@ -68,7 +68,10 @@ const NewModal = ({
                         className={`
               relative
               z-10
+              flex
               w-full
+              max-h-[85vh]
+              flex-col
               bg-white
               rounded-2xl
               shadow-[0_20px_60px_rgba(0,0,0,0.15)]
@@ -81,6 +84,7 @@ const NewModal = ({
                             <div
                                 className="
                   flex
+                  shrink-0
                   items-center
                   justify-between
                   px-5
@@ -119,7 +123,7 @@ const NewModal = ({
                         )}
 
                         {/* Body */}
-                        <div className="p-5">
+                        <div className="flex-1 overflow-y-auto p-5">
                             {children}
                         </div>
 
@@ -127,6 +131,7 @@ const NewModal = ({
                         {footer && (
                             <div
                                 className="
+                  shrink-0
                   border-t
                   border-gray-200
                   bg-white
