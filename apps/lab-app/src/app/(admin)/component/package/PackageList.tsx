@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { getPackage, updatePackage } from '@/../services/packageServices';
