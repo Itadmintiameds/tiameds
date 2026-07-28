@@ -498,6 +498,7 @@ const SuperAdminStats = () => {
 
   // Revenue Trend (Top 5 Labs) card
   const [revenueByLab, setRevenueByLab] = useState<RevenueByLabRow[]>([]);
+  const [totalLabsForRevenue, setTotalLabsForRevenue] = useState<number>(0);
 
   const [labPerformance, setLabPerformance] = useState<LabPerformanceRow[]>([]);
   const [topDoctors, setTopDoctors] = useState<TopReferringDoctor[]>([]);
@@ -646,9 +647,12 @@ const SuperAdminStats = () => {
       const topLabsRange = getDateRange(topLabsFilter, topLabsCustomRange);
       try {
         const topLabsStats = await fetchStats(topLabsRange.startDate, topLabsRange.endDate);
-        setRevenueByLab((topLabsStats.revenueByLab || []).slice(0, 5));
+        const allLabsRevenue = topLabsStats.revenueByLab || [];
+        setTotalLabsForRevenue(allLabsRevenue.length);
+        setRevenueByLab(allLabsRevenue.slice(0, 5));
       } catch (error) {
         console.error("Error fetching revenue by lab:", error);
+        setTotalLabsForRevenue(0);
         setRevenueByLab([]);
       }
 
@@ -1349,7 +1353,11 @@ const SuperAdminStats = () => {
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="mb-8 flex items-center justify-between">
             <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-              {selectedLabName ? `Revenue Trend "${selectedLabName}"` : "Revenue Trend (Top 5 Labs)"}
+              {selectedLabName
+                ? `Revenue Trend "${selectedLabName}"`
+                : totalLabsForRevenue > 5
+                  ? "Revenue Trend (Top 5 Labs)"
+                  : "Revenue Trend Lab Wise"}
             </h2>
             <div className="flex items-center gap-3">
               {renderFilterDropdown(
