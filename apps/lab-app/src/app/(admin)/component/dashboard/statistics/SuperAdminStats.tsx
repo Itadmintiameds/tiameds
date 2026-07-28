@@ -1056,7 +1056,8 @@ const SuperAdminStats = () => {
     onFilterChange: (filter: DateFilterType) => void,
     customRange: DateRange,
     onCustomRangeChange: (range: DateRange) => void,
-    isGlobal: boolean = false
+    isGlobal: boolean = false,
+    stackCustomRange: boolean = false
   ) => {
     const filterOptions: { value: DateFilterType; label: string }[] = [
       { value: "currentFY", label: `Current FY: ${getShortFYLabel(dayjs())}` },
@@ -1068,8 +1069,12 @@ const SuperAdminStats = () => {
 
     const maxDate = dayjs().format("YYYY-MM-DD");
 
+    const dateInputClassName = `rounded-lg border border-pneutral-100 bg-base-white px-3 py-2 text-p3 text-pneutral-900 shadow-xsm focus:outline-none focus:ring-2 focus:ring-secondary-500 ${
+      stackCustomRange ? "w-35" : ""
+    }`;
+
     return (
-      <div className="flex items-center gap-2">
+      <div className={`flex gap-2 ${stackCustomRange ? "flex-col items-end" : "items-center"}`}>
         <select
           value={currentFilter}
           onChange={(e) => onFilterChange(e.target.value as DateFilterType)}
@@ -1095,7 +1100,7 @@ const SuperAdminStats = () => {
                   startDate: e.target.value,
                 })
               }
-              className="rounded-lg border border-pneutral-100 bg-base-white px-3 py-2 text-p3 text-pneutral-900 shadow-xsm focus:outline-none focus:ring-2 focus:ring-secondary-500"
+              className={dateInputClassName}
             />
             <span className="text-p3 text-pneutral-500">to</span>
             <input
@@ -1108,7 +1113,7 @@ const SuperAdminStats = () => {
                   endDate: e.target.value,
                 })
               }
-              className="rounded-lg border border-pneutral-100 bg-base-white px-3 py-2 text-p3 text-pneutral-900 shadow-xsm focus:outline-none focus:ring-2 focus:ring-secondary-500"
+              className={dateInputClassName}
             />
           </div>
         )}
@@ -1557,7 +1562,8 @@ const SuperAdminStats = () => {
               setPackagesFilter,
               packagesCustomRange,
               setPackagesCustomRange,
-              false
+              false,
+              true
             )}
           </div>
           <div className="flex items-center justify-between">
@@ -1704,7 +1710,8 @@ const SuperAdminStats = () => {
               setDoctorsFilter,
               doctorsCustomRange,
               setDoctorsCustomRange,
-              false
+              false,
+              true
             )}
           </div>
           <div className="mt-2 overflow-x-auto max-h-[220px] overflow-y-auto">
