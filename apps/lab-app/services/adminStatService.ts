@@ -298,16 +298,14 @@ export const getTechnicianPerformance = async (
 };
 
 /**
- * Get top ordered tests.
- * Backend wraps the list as { total, tests } (total = all tests ordered in the
- * range, not just the top N) - unwrapped here so callers keep working with a
- * plain array.
+ * Get top ordered tests. `data` is the flat, already-sorted list of every
+ * ordered test in the range (not just a top-N slice).
  */
 export const getTopOrderedTests = async (
     labId: number | string,
     startDate?: string,
     endDate?: string,
-    limit: number = 5
+    limit: number = 1000
 ): Promise<TopOrderedTest[]> => {
     const baseUrl = `/${labId}/top-ordered-tests`;
     const params = new URLSearchParams();
@@ -316,11 +314,11 @@ export const getTopOrderedTests = async (
     params.append('limit', limit.toString());
     const url = `${baseUrl}?${params.toString()}`;
 
-    const result = await get<{ total: number; tests: TopOrderedTest[] }>(
+    const result = await get<TopOrderedTest[]>(
         url,
         'An error occurred while fetching top ordered tests.'
     );
-    return result.tests || [];
+    return result || [];
 };
 
 /**

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import dayjs from "dayjs";
+import dayjs from "dayjs";  
 import {
   ArrowUp,
   ArrowDown,
@@ -608,13 +608,12 @@ const AdminStats = () => {
           setCategoryTotal(0);
         }
 
-        // 5. Fetch top ordered tests with the category filter
+        // 5. Fetch top ordered tests with the category filter (all tests, not just top N)
         try {
           const topTests = await getTopOrderedTests(
             labId,
             categoryRange.startDate,
-            categoryRange.endDate,
-            5
+            categoryRange.endDate
           );
           setTopOrderedTests(topTests || []);
         } catch (error) {
@@ -1726,7 +1725,7 @@ const AdminStats = () => {
               false
             )}
           </div>
-          <div className="space-y-4">
+          <div className="max-h-41 space-y-4 overflow-y-auto pr-1">
             {topOrderTests.length > 0 ? (
               topOrderTests.map((item, index) => (
                 <div
