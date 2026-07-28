@@ -8,6 +8,7 @@ import { TestList } from '@/types/test/testlist';
 import { useEffect, useState } from 'react';
 import { Plus, Search, X, AlertTriangle, Check } from 'lucide-react';
 import { toast } from 'react-toastify';
+import NewCommonTable, { Column } from '@/app/(admin)/dashboard/newcommoncomponent/NewCommonTable';
 
 interface PackageFormData {
   packageName: string;
@@ -193,6 +194,57 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
 
   const isSelected = (testId: number) => selectedTests.some((t) => t.id === testId);
 
+  const testColumns: Column<TestList>[] = [
+    {
+      header: 'Code',
+      accessor: 'testCode',
+      render: (row) => (
+        <p className="text-p3 font-medium text-pneutral-700">{row.testCode || '—'}</p>
+      ),
+    },
+    {
+      header: 'Test Name',
+      accessor: 'name',
+      render: (row) => <p className="text-p3 text-pneutral-900">{row.name}</p>,
+    },
+    {
+      header: 'Category',
+      accessor: 'category',
+      render: (row) => (
+        <span className="inline-flex items-center rounded-full bg-info-50 px-2.5 py-1 text-p2 font-medium text-info-700">
+          {row.category}
+        </span>
+      ),
+    },
+    {
+      header: 'Price',
+      accessor: 'price',
+      render: (row) => (
+        <p className="text-p3 text-pneutral-700">₹{Number(row.price).toFixed(2)}</p>
+      ),
+    },
+    {
+      header: 'Actions',
+      accessor: 'actions',
+      render: (row) =>
+        isSelected(row.id) ? (
+          <button
+            onClick={() => handleRemoveTest(row.id)}
+            className="flex items-center gap-1.5 rounded-full border border-warning-500 px-3 py-1 text-p2 font-semibold text-warning-500 hover:bg-warning-50 transition-colors"
+          >
+            <X size={12} /> Remove
+          </button>
+        ) : (
+          <button
+            onClick={() => handleAddTest(row)}
+            className="flex items-center gap-1.5 rounded-full border border-success-600 px-3 py-1 text-p2 font-semibold text-success-700 hover:bg-success-50 transition-colors"
+          >
+            <Plus size={12} /> Add
+          </button>
+        ),
+    },
+  ];
+
   return (
     <div className="w-full space-y-5">
       <div className="flex items-center justify-between">
@@ -311,67 +363,26 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
               />
             </div>
 
-            <div className="border border-pneutral-200 rounded-lg overflow-hidden bg-white">
-              {loading ? (
-                <div className="flex flex-col items-center justify-center h-64">
-                  <Loader type="progress" fullScreen={false} text=" Loading tests..." />
-                  <p className="mt-4 text-p3 text-pneutral-500">Please wait while we load the available tests.</p>
-                </div>
-              ) : (
-                <div className="max-h-[360px] overflow-y-auto">
-                  <table className="w-full text-left">
-                    <thead className="sticky top-0 bg-pneutral-50 border-b border-pneutral-200">
-                      <tr className="text-p2 text-pneutral-500">
-                        <th className="px-4 py-3 font-medium">Code</th>
-                        <th className="px-4 py-3 font-medium">Test Name</th>
-                        <th className="px-4 py-3 font-medium">Category</th>
-                        <th className="px-4 py-3 font-medium">Price</th>
-                        <th className="px-4 py-3 font-medium"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredTests.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="text-center py-8 text-p3 text-pneutral-500">
-                            {searchQuery ? 'No tests match your search' : 'No tests available'}
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredTests.map((test) => (
-                          <tr key={test.id} className="border-t border-pneutral-100 hover:bg-secondary-50 transition-colors">
-                            <td className="px-4 py-3 text-p3 font-medium text-pneutral-700">{test.testCode || '—'}</td>
-                            <td className="px-4 py-3 text-p3 text-pneutral-900">{test.name}</td>
-                            <td className="px-4 py-3">
-                              <span className="inline-flex items-center rounded-full bg-info-50 px-2.5 py-1 text-p2 font-medium text-info-700">
-                                {test.category}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-p3 text-pneutral-700">₹{Number(test.price).toFixed(2)}</td>
-                            <td className="px-4 py-3">
-                              {isSelected(test.id) ? (
-                                <button
-                                  onClick={() => handleRemoveTest(test.id)}
-                                  className="flex items-center gap-1.5 rounded-full border border-warning-500 px-3 py-1 text-p2 font-semibold text-warning-500 hover:bg-warning-50 transition-colors"
-                                >
-                                  <X size={12} /> Remove
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleAddTest(test)}
-                                  className="flex items-center gap-1.5 rounded-full border border-success-600 px-3 py-1 text-p2 font-semibold text-success-700 hover:bg-success-50 transition-colors"
-                                >
-                                  <Plus size={12} /> Add
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            {loading ? (
+              <div className="flex flex-col items-center justify-center h-64 rounded-xl border border-pneutral-200 bg-white">
+                <Loader type="progress" fullScreen={false} text=" Loading tests..." />
+                <p className="mt-4 text-p3 text-pneutral-500">Please wait while we load the available tests.</p>
+              </div>
+            ) : filteredTests.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-pneutral-200 bg-white py-16">
+                <p className="text-p3 font-medium text-pneutral-500">
+                  {searchQuery ? 'No tests match your search' : 'No tests available'}
+                </p>
+              </div>
+            ) : (
+              <NewCommonTable
+                columns={testColumns}
+                data={filteredTests}
+                pageSize={10}
+                showPagination={true}
+                resetPageKey={searchQuery}
+              />
+            )}
           </div>
         </div>
 
