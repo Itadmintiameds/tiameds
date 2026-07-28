@@ -26,8 +26,6 @@ import {
   Pie,
   Cell,
 } from "recharts";
-
-// Import context + services
 import { useLabs } from "@/context/LabContext";
 import {
   getAvgTat,
@@ -48,6 +46,7 @@ import {
   getTopOrderedTests,
   getRevenueByCollectionMethod,
   getAgeGenderDistribution,
+  getGridReport,
 } from "../../../../../../services/adminStatService";
 import {
   DashboardKpi,
@@ -57,7 +56,15 @@ import {
   TopOrderedTest,
   RevenueByCollectionMethod as RevenueByCollectionMethodType,
   AgeGenderDistribution as AgeGenderDistributionType,
+  GridReportResponse,
+  GridReportRow,
 } from "@/types/adminStatsData";
+import {
+  downloadCSV,
+  formatAmount as formatCsvAmount,
+  formatDate as formatCsvDate,
+  generateCSVFilename,
+} from "@/utils/csvUtils";
 
 type DateFilterType = "currentFY" | "week" | "month" | "year" | "custom";
 
@@ -66,9 +73,6 @@ interface DateRange {
   endDate: string;
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Helper Functions
-// ─────────────────────────────────────────────────────────────────────────
 
 // Helper: Get financial year start and end
 const getFinancialYear = (date: dayjs.Dayjs): { start: string; end: string } => {
@@ -234,6 +238,76 @@ const getOrdinalSuffix = (num: number): string => {
   return "th";
 };
 
+// Visit Status color coding for the Billing Report table: completed -> success,
+// cancelled -> warning, pending -> danger. Backend values are uppercase (e.g. "CANCELLED")
+// but this normalizes case defensively.
+const getVisitStatusColorClass = (status?: string): string => {
+  switch ((status || "").toUpperCase()) {
+    case "COMPLETED":
+      return "text-success-500";
+    case "CANCELLED":
+      return "text-warning-500";
+    case "PENDING":
+      return "text-danger-500";
+    default:
+      return "text-pneutral-900";
+  }
+};
+
+// Builds the CSV for the Billing Report table/export - one row per visit/billing record.
+const buildGridReportCsv = (rows: GridReportRow[]): string => {
+  const headers = [
+    "SI No.",
+    "Visit Code",
+    "Patient Name",
+    "Patient Phone",
+    "Doctor Name",
+    "Visit Type",
+    "Visit Status",
+    "Billing Code",
+    "Billing Date",
+    "Payment Status",
+    "Payment Method",
+    "Total Amount",
+    "Discount",
+    "Net Amount",
+    "Paid Amount",
+    "Due Amount",
+    "Lab Name",
+  ];
+
+  const csvRows = rows.map((row, index) =>
+    [
+      index + 1,
+      row.visitCode,
+      row.patientName,
+      row.patientPhone,
+      row.doctorName || "N/A",
+      row.visitType,
+      row.visitStatus,
+      row.billingCode,
+      formatCsvDate(row.billingDate),
+      row.paymentStatus,
+      row.paymentMethod,
+      formatCsvAmount(row.totalAmount),
+      formatCsvAmount(row.discount),
+      formatCsvAmount(row.netAmount),
+      formatCsvAmount(row.paidAmount),
+      formatCsvAmount(row.dueAmount),
+      row.labName,
+    ]
+      .map((field) => `"${String(field ?? "").replace(/"/g, '""')}"`)
+      .join(",")
+  );
+
+  return [headers.join(","), ...csvRows].join("\n");
+};
+
+// Billing Report table shows every row with no pagination in the UI, but the backend
+// endpoint itself is still paginated - this is the page size used internally to pull
+// every page and stitch them into one full row list.
+const GRID_FETCH_PAGE_SIZE = 200;
+
 // Color constants for charts
 const CATEGORY_COLORS = [
   "#4F6BED",
@@ -310,6 +384,12 @@ const AdminStats = () => {
     endDate: dayjs().format("YYYY-MM-DD"),
   });
 
+  const [gridFilter, setGridFilter] = useState<DateFilterType>("currentFY");
+  const [gridCustomRange, setGridCustomRange] = useState<DateRange>({
+    startDate: dayjs().subtract(7, "days").format("YYYY-MM-DD"),
+    endDate: dayjs().format("YYYY-MM-DD"),
+  });
+
   // ========== STATE FOR ALL METRICS ==========
   // KPI Cards
   const [totalAdmins, setTotalAdmins] = useState<number>(0);
@@ -352,6 +432,11 @@ const AdminStats = () => {
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
+  // Billing Report table - shows every row (no pagination), own filter, CSV export
+  const emptyGridData: GridReportResponse = { page: 0, size: 0, totalRecords: 0, totalPages: 0, rows: [] };
+  const [gridData, setGridData] = useState<GridReportResponse>(emptyGridData);
+  const [gridLoading, setGridLoading] = useState<boolean>(true);
+
   // ========== SYNC FILTERS ==========
   useEffect(() => {
     setRevenueFilter(globalFilter);
@@ -361,6 +446,7 @@ const AdminStats = () => {
     setDoctorsFilter(globalFilter);
     setCollectionFilter(globalFilter);
     setAgeGenderFilter(globalFilter);
+    setGridFilter(globalFilter);
   }, [globalFilter]);
 
   useEffect(() => {
@@ -372,6 +458,7 @@ const AdminStats = () => {
       setDoctorsCustomRange(globalCustomRange);
       setCollectionCustomRange(globalCustomRange);
       setAgeGenderCustomRange(globalCustomRange);
+      setGridCustomRange(globalCustomRange);
     }
   }, [globalCustomRange, globalFilter]);
 
@@ -414,12 +501,6 @@ const AdminStats = () => {
             percent: `${funnelResult.reportsGenerated.percentage}%`,
             color: "#EF5A5A",
           },
-          // {
-          //   label: "Reports Delivered",
-          //   value: funnelResult.reportsDelivered.count.toLocaleString(),
-          //   percent: `${funnelResult.reportsDelivered.percentage}%`,
-          //   color: "#52C41A",
-          // },
         ]);
       } catch (error) {
         console.error("Error fetching funnel data:", error);
@@ -637,18 +718,69 @@ const AdminStats = () => {
     ]
   );
 
-  // Initial load
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
+
+  const fetchGridData = useCallback(
+    async (silent = false) => {
+      if (!labId) return;
+      if (!silent) setGridLoading(true);
+      try {
+        const range = getDateRange(gridFilter, gridCustomRange);
+
+        const firstPage = await getGridReport(labId, range.startDate, range.endDate, 0, GRID_FETCH_PAGE_SIZE);
+        let allRows: GridReportRow[] = [...firstPage.rows];
+
+        if (firstPage.totalPages > 1) {
+          const remainingPages = await Promise.all(
+            Array.from({ length: firstPage.totalPages - 1 }, (_, i) =>
+              getGridReport(labId, range.startDate, range.endDate, i + 1, GRID_FETCH_PAGE_SIZE)
+            )
+          );
+          remainingPages.forEach((p) => {
+            allRows = allRows.concat(p.rows);
+          });
+        }
+
+        setGridData({
+          page: 0,
+          size: allRows.length,
+          totalRecords: firstPage.totalRecords,
+          totalPages: 1,
+          rows: allRows,
+        });
+      } catch (error) {
+        console.error("Error fetching billing grid report:", error);
+        if (!silent) setGridData({ page: 0, size: 0, totalRecords: 0, totalPages: 0, rows: [] });
+      } finally {
+        if (!silent) setGridLoading(false);
+      }
+    },
+    [labId, gridFilter, gridCustomRange]
+  );
+
+  // Initial load + reload whenever the lab or the section's own date filter changes.
+  useEffect(() => {
+    fetchGridData();
+  }, [fetchGridData]);
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       fetchAllData(true);
+      fetchGridData(true);
     }, 30000);
     return () => clearInterval(interval);
-  }, [fetchAllData]);
+  }, [fetchAllData, fetchGridData]);
+
+  // The grid table already holds the full filtered result set (no pagination), so the
+  // CSV export just converts what's already loaded - no extra fetch needed.
+  const handleDownloadGridCsv = () => {
+    if (gridData.rows.length === 0) return;
+    const csv = buildGridReportCsv(gridData.rows);
+    downloadCSV(csv, generateCSVFilename("billing-report"));
+  };
 
   // ========== DATA FORMATTING FUNCTIONS ==========
 
@@ -1965,6 +2097,113 @@ const AdminStats = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      {/* ===== BILLING REPORT ===== */}
+      <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+          <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+            Billing Report
+          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadGridCsv}
+              disabled={gridLoading || gridData.rows.length === 0}
+              className="rounded-lg border border-success-500 bg-[#55D400] px-4 py-2 text-p3 font-medium text-pneutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Download as CSV
+            </button>
+            {renderFilterDropdown(
+              gridFilter,
+              setGridFilter,
+              gridCustomRange,
+              setGridCustomRange,
+              false
+            )}
+          </div>
+        </div>
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+          <table className="min-w-full border-separate border-spacing-y-0">
+            <thead className="sticky top-0 bg-white z-10">
+              <tr className="border-b border-pneutral-100 bg-pneutral-50">
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">SI No.</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Code</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Patient Name</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Phone</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Doctor</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Type</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Status</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Billing Code</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Billing Date</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Payment Status</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Payment Method</th>
+                <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Total Amount</th>
+                <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Discount</th>
+                <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Net Amount</th>
+                <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Paid</th>
+                <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Due</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Lab Name</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gridLoading ? (
+                <tr>
+                  <td colSpan={17} className="px-4 py-8 text-center text-pneutral-500">
+                    Loading...
+                  </td>
+                </tr>
+              ) : gridData.rows.length > 0 ? (
+                gridData.rows.map((row, index) => (
+                  <tr key={row.billingId ?? index} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">
+                      {index + 1}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.visitCode}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.patientName}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.patientPhone}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.doctorName || "N/A"}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.visitType}</td>
+                    <td className={`border-b border-pneutral-100 px-4 py-2 text-p3 font-medium ${getVisitStatusColorClass(row.visitStatus)}`}>
+                      {row.visitStatus}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.billingCode}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.billingDate}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.paymentStatus}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.paymentMethod}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-right text-p3 text-pneutral-900">
+                      ₹{(row.totalAmount || 0).toLocaleString()}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-right text-p3 text-pneutral-900">
+                      ₹{(row.discount || 0).toLocaleString()}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-right text-p3 text-pneutral-900">
+                      ₹{(row.netAmount || 0).toLocaleString()}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-right font-medium text-pneutral-900">
+                      ₹{(row.paidAmount || 0).toLocaleString()}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-right font-medium text-danger-600">
+                      ₹{(row.dueAmount || 0).toLocaleString()}
+                    </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.labName}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={17} className="px-4 py-8 text-center text-pneutral-500">
+                    No billing records found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 px-1">
+          <p className="text-p3 text-pneutral-500">
+            {gridData.totalRecords > 0 ? `${gridData.totalRecords} records` : "0 records"}
+          </p>
         </div>
       </div>
     </div>

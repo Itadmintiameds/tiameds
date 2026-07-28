@@ -22,6 +22,7 @@ import {
     TopOrderedTest,
     AgeGenderDistribution,
     TechnicianPerformance,
+    GridReportResponse,
 } from '@/types/adminStatsData';
 
 const adminStatsApi = axios.create({
@@ -298,6 +299,9 @@ export const getTechnicianPerformance = async (
 
 /**
  * Get top ordered tests.
+ * Backend wraps the list as { total, tests } (total = all tests ordered in the
+ * range, not just the top N) - unwrapped here so callers keep working with a
+ * plain array.
  */
 export const getTopOrderedTests = async (
     labId: number | string,
@@ -312,7 +316,11 @@ export const getTopOrderedTests = async (
     params.append('limit', limit.toString());
     const url = `${baseUrl}?${params.toString()}`;
 
-    return get<TopOrderedTest[]>(url, 'An error occurred while fetching top ordered tests.');
+    const result = await get<{ total: number; tests: TopOrderedTest[] }>(
+        url,
+        'An error occurred while fetching top ordered tests.'
+    );
+    return result.tests || [];
 };
 
 /**
@@ -340,3 +348,24 @@ export const getAgeGenderDistribution = async (
         buildUrlWithDates(`/${labId}/age-gender-distribution`, startDate, endDate),
         'An error occurred while fetching age & gender distribution.'
     );
+
+/**
+ * Get the paginated billing grid report (one row per visit/billing record) for this lab.
+ */
+export const getGridReport = async (
+    labId: number | string,
+    startDate?: string,
+    endDate?: string,
+    page: number = 0,
+    size: number = 20
+): Promise<GridReportResponse> => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    params.append('page', String(page));
+    params.append('size', String(size));
+
+    const url = `/${labId}/grid?${params.toString()}`;
+
+    return get<GridReportResponse>(url, 'An error occurred while fetching the grid report.');
+};

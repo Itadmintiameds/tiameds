@@ -200,6 +200,41 @@ export interface AgeGenderDistribution {
     ageGroups: AgeGroupDistribution[];
 }
 
+// Billing Grid Report (one row per visit/billing record)
+export interface GridReportRow {
+    paymentStatus: string;
+    discount: number;
+    dueAmount: number;
+    netAmount: number;
+    paymentMethod: string;
+    totalAmount: number;
+    paidAmount: number;
+    labId: number;
+    labName: string;
+    createdAt: string;
+    visitCode: string;
+    visitDate: string;
+    visitId: number;
+    patientCode: string;
+    patientId: number;
+    visitType: string;
+    visitStatus: string;
+    patientName: string;
+    billingCode: string;
+    billingId: number;
+    billingDate: string;
+    patientPhone: string;
+    doctorName: string;
+}
+
+export interface GridReportResponse {
+    page: number;
+    size: number;
+    totalRecords: number;
+    totalPages: number;
+    rows: GridReportRow[];
+}
+
 
 
 
