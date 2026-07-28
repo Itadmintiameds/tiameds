@@ -1538,6 +1538,8 @@ const AdminStats = () => {
                         innerRadius={70}
                         outerRadius={120}
                         paddingAngle={0}
+                        startAngle={90}
+                        endAngle={-270}
                       >
                         {categoryChartData.map((item, index) => (
                           <Cell key={index} fill={item.color} />
@@ -1691,6 +1693,8 @@ const AdminStats = () => {
                       outerRadius={120}
                       paddingAngle={1}
                       stroke="none"
+                      startAngle={90}
+                      endAngle={-270}
                     >
                       {collectionChartData.map((item, index) => (
                         <Cell key={index} fill={item.color} />
@@ -1775,6 +1779,8 @@ const AdminStats = () => {
                         innerRadius={45}
                         outerRadius={75}
                         stroke="none"
+                        startAngle={90}
+                        endAngle={-270}
                       >
                         {genderData.map((item, index) => (
                           <Cell key={index} fill={item.color} />
@@ -1875,7 +1881,7 @@ const AdminStats = () => {
               <thead className="sticky top-0 bg-white z-10">
                 <tr className="border-y border-pneutral-100 bg-pneutral-50">
                   <th className="px-4 py-2 text-left text-label-l3 font-semibold text-pneutral-900">
-                    #
+                    SI No.
                   </th>
                   <th className="px-4 py-2 text-left text-label-l3 font-semibold text-pneutral-900">
                     Technician
@@ -1938,7 +1944,7 @@ const AdminStats = () => {
               <thead className="sticky top-0 bg-white z-10">
                 <tr className="border-y border-pneutral-100 bg-pneutral-50">
                   <th className="px-4 py-2 text-left text-label-l3 font-semibold text-pneutral-900">
-                    #
+                    SI NO.
                   </th>
                   <th className="px-4 py-2 text-left text-label-l3 font-semibold text-pneutral-900">
                     Doctor Name
