@@ -113,7 +113,6 @@ const DropdownInput = ({
 };
 
 // Combobox Component for Percentage Input with Dropdown
-// Combobox Component for Percentage Input with Dropdown
 const PercentageCombobox = ({
   value,
   onChange,
@@ -360,13 +359,6 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const isModalManuallyClosed = React.useRef(false);
 
-  // const patientForInfo: PatientData = useMemo(() => ({
-  //   ...(editPatient as PatientData),
-  //   gender: editPatient.gender ?? '',
-  //   contactNumber: editPatient.contactNumber ?? '',
-  //   email: editPatient.email ?? '',
-  // }), [editPatient]);
-
   const filterReferenceData = useCallback((referenceData: Record<string, TestReferancePoint[]>) => {
     const filteredData: Record<string, TestReferancePoint[]> = {};
 
@@ -535,35 +527,6 @@ mappedReportData.forEach((reportItem) => {
     }
   }
 });
-
-      // mappedReportData.forEach((reportItem) => {
-      //   const reportKey = normalizeKey(reportItem.referenceDescription);
-      //   const pointIndex = refPoints.findIndex(
-      //     point => normalizeKey(point.testDescription) === reportKey
-      //   );
-
-      //   if (pointIndex >= 0) {
-      //     if (!initialInputValues[selectedTest.name]) {
-      //       initialInputValues[selectedTest.name] = {};
-      //     }
-
-      //     const descriptionKey = `${pointIndex}_description`;
-      //     const descriptionUpper = normalizeKey(refPoints[pointIndex]?.testDescription);
-      //     if (descriptionUpper === 'DESCRIPTION') {
-      //       initialInputValues[selectedTest.name][pointIndex] = reportItem.description || reportItem.enteredValue || '';
-      //     } else if (
-      //       descriptionUpper === 'DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE' ||
-      //       descriptionUpper === 'DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT'
-      //     ) {
-      //       initialInputValues[selectedTest.name][pointIndex] = reportItem.enteredValue || '';
-      //       if (reportItem.description) {
-      //         initialInputValues[selectedTest.name][descriptionKey] = reportItem.description;
-      //       }
-      //     } else {
-      //       initialInputValues[selectedTest.name][pointIndex] = reportItem.enteredValue || '';
-      //     }
-      //   }
-      // });
 
       setInputValues(initialInputValues);
       setValidationErrors({});
@@ -907,44 +870,6 @@ mappedReportData.forEach((reportItem) => {
 
   return (
     <div className="w-full">
-      {/* Differential Count Validation Alert - Only for CBC */}
-      {/* {differentialValidation && (
-        <div className={`mb-4 rounded-2xl border p-4 ${
-          differentialValidation.type === 'error'
-            ? 'bg-red-50 border-red-300'
-            : 'bg-green-50 border-green-300'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              {differentialValidation.type === 'error' ? (
-                <TbX className="text-red-500 mr-3" size={24} />
-              ) : (
-                <TbSquareRoundedCheck className="text-green-500 mr-3" size={24} />
-              )}
-              <div>
-                <span className={`text-base font-semibold ${
-                  differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'
-                }`}>
-                  {differentialValidation.message}
-                </span>
-                <p className={`text-sm mt-1 ${
-                  differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {differentialValidation.type === 'error' ?
-                    'Please check your differential count values' :
-                    'Differential count is correctly balanced'
-                  }
-                </p>
-              </div>
-            </div>
-            <div className={`text-lg font-bold ${
-              differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
-            }`}>
-              Total: {differentialValidation.total}
-            </div>
-          </div>
-        </div>
-      )} */}
 
       {/* Differential Count Validation Modal */}
       {differentialResult && (
@@ -1078,13 +1003,16 @@ mappedReportData.forEach((reportItem) => {
                     const dropdownItems = dropdownResult.data;
 
                     // Check if this is RANDOM URINE SUGAR test
-                    const isRandomUrineSugar = selectedTest?.name?.toUpperCase().includes('RANDOM URINE SUGAR') || 
+                    const isRandomUrineSugar = selectedTest?.name?.toUpperCase().includes('RANDOM URINE SUGAR') ||
                                               selectedTest?.name?.toUpperCase().includes('RUS');
 
                     // For RANDOM URINE SUGAR with DROPDOWN-PERCENTAGE, use combobox with dropdown
-                    const isPercentageTest = isRandomUrineSugar && 
-                      (point.testDescription?.toUpperCase().includes('DROPDOWN-PERCENTAGE') || 
+                    const isPercentageTest = isRandomUrineSugar &&
+                      (point.testDescription?.toUpperCase().includes('DROPDOWN-PERCENTAGE') ||
                        point.testDescription?.toUpperCase().includes('PERCENTAGE'));
+
+                    // WIDAL test results are titre ratios (e.g. "1:80"), not plain numbers
+                    const isWidalTest = selectedTest?.name?.toUpperCase().includes('WIDAL');
 
                     // Override isDropdown for percentage tests
                     const isDropdown = !isPercentageTest && (hasApiDropdown || 
@@ -1214,6 +1142,20 @@ mappedReportData.forEach((reportItem) => {
                               }
                               placeholder=""
                             />
+                          ) : isWidalTest ? (
+                            // WIDAL titres are ratios like "1:80" — needs a text input so ":" can be typed
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={currentValue}
+                                placeholder="e.g. 1:80"
+                                onChange={(e) =>
+                                  handleInputChange(selectedTest?.name, index, e.target.value)
+                                }
+                                className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(status)}`}
+                                disabled={isAutoCalculated}
+                              />
+                            </div>
                           ) : (
                             <div className="flex items-center gap-2">
                               <input
@@ -1355,7 +1297,10 @@ export default PatientReportDataEdit;
 
 
 
-// code dated 21.07.2026............ withouit detailed report .........
+
+
+
+// code dated 29.07.2026......without column{:} in data field..........
 
 // /* eslint-disable @typescript-eslint/no-explicit-any */
 // "use client";
@@ -1369,17 +1314,10 @@ export default PatientReportDataEdit;
 // import { calculateAgeObject } from '@/utils/ageUtils';
 // import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
 // import React, { useCallback, useEffect, useRef, useState } from 'react';
-// import {
-//   // TbInfoCircle,
-//   TbReportMedical,
-//   // TbArrowDownCircle,
-//   // TbArrowUpCircle,
-//   // TbSquareRoundedCheck,
-//   TbChevronLeft,
-//   // TbX
-// } from "react-icons/tb";
+// import { TbReportMedical, TbChevronLeft,} from "react-icons/tb";
 // import { toast } from 'react-toastify';
 // import AutoCalculation from './AutoCalculation';
+// import DetailedReportEditor from './DetailedReportEditor';
 // import NewModal from "../../../newcommoncomponent/NewModal";
 // import { FaChevronDown } from "react-icons/fa";
 // import { createPortal } from "react-dom";
@@ -2241,6 +2179,8 @@ export default PatientReportDataEdit;
 
 //   // Get the reference data for the current test
 //   const currentTestRefs = referencePoints[selectedTest?.name] || [];
+//   const detailedReportPoint = currentTestRefs.find(point => point.testDescription === "DETAILED REPORT");
+//   const hasNonDetailedReportParams = currentTestRefs.some(point => point.testDescription !== "DETAILED REPORT");
 
 //   // If no reference data is available, show a message
 //   if (!loading && currentTestRefs.length === 0 && selectedTest) {
@@ -2418,6 +2358,7 @@ export default PatientReportDataEdit;
 //           </div>
 
 //           {/* Test Table Card */}
+//           {hasNonDetailedReportParams && (
 //           <div className="overflow-hidden rounded-xl border border-pneutral-200 bg-white">
 //             <div className="overflow-x-auto">
 //               <table className="w-full min-w-[750px]">
@@ -2626,6 +2567,24 @@ export default PatientReportDataEdit;
 //               </table>
 //             </div>
 //           </div>
+//           )}
+
+//           {/* Detailed Report Editor (table-based report sections, e.g. Complete Urine Analysis) */}
+//           {detailedReportPoint && (
+//             <div className="rounded-xl border border-pneutral-200 bg-white p-4">
+//               <DetailedReportEditor
+//                 point={detailedReportPoint}
+//                 onReportJsonChange={(reportJson) => {
+//                   setReferencePoints(prev => ({
+//                     ...prev,
+//                     [selectedTest.name]: (prev[selectedTest.name] || []).map(p =>
+//                       p.testDescription === "DETAILED REPORT" ? { ...p, reportJson } : p
+//                     )
+//                   }));
+//                 }}
+//               />
+//             </div>
+//           )}
 //         </div>
 
 //         {/* Right Sidebar - Patient Details */}
@@ -2685,6 +2644,7 @@ export default PatientReportDataEdit;
 // };
 
 // export default PatientReportDataEdit;
+
 
 
 

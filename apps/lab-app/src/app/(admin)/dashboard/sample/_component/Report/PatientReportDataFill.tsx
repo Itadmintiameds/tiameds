@@ -927,8 +927,11 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
                     const dropdownItems = dropdownResult.data;
 
                     // Check if this is RANDOM URINE SUGAR test
-                    const isRandomUrineSugarTest = selectedTest?.name?.toUpperCase().includes('RANDOM URINE SUGAR') || 
+                    const isRandomUrineSugarTest = selectedTest?.name?.toUpperCase().includes('RANDOM URINE SUGAR') ||
                                                   selectedTest?.name?.toUpperCase().includes('RUS');
+
+                    // WIDAL test results are titre ratios (e.g. "1:80"), not plain numbers
+                    const isWidalTest = selectedTest?.name?.toUpperCase().includes('WIDAL');
 
                     // For RANDOM URINE SUGAR with DROPDOWN-PERCENTAGE, use combobox with dropdown
                     const isPercentageTest = isRandomUrineSugarTest && 
@@ -1064,6 +1067,20 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
                               }
                               placeholder=""
                             />
+                          ) : isWidalTest ? (
+                            // WIDAL titres are ratios like "1:80" — needs a text input so ":" can be typed
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={currentValue}
+                                placeholder="e.g. 1:80"
+                                onChange={(e) =>
+                                  handleInputChange(selectedTest?.name, index, e.target.value)
+                                }
+                                className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(status)}`}
+                                disabled={isAutoCalculated}
+                              />
+                            </div>
                           ) : (
                             <div className="flex items-center gap-2">
                               <input
@@ -1206,7 +1223,13 @@ export default PatientReportDataFill;
 
 
 
-// code dated 21.07.2026..............
+
+
+
+
+
+
+// code dated 29.07.2026......without column{:} in data field..........
 
 // "use client";
 
@@ -1222,6 +1245,7 @@ export default PatientReportDataFill;
 // import { calculateAgeObject } from '@/utils/ageUtils';
 // import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
 // import AutoCalculation from './AutoCalculation';
+// import DetailedReportEditor from './DetailedReportEditor';
 // // import { TbSquareRoundedCheck, TbX } from "react-icons/tb";
 // import NewModal from "../../../newcommoncomponent/NewModal";
 // import { FaChevronDown } from "react-icons/fa";
@@ -1980,6 +2004,8 @@ export default PatientReportDataFill;
 
 //   // Get the reference data for the current test
 //   const currentTestRefs = referencePoints[selectedTest?.name] || [];
+//   const detailedReportPoint = currentTestRefs.find(point => point.testDescription === "DETAILED REPORT");
+//   const hasNonDetailedReportParams = currentTestRefs.some(point => point.testDescription !== "DETAILED REPORT");
 
 //   // If no reference data is available, show a message
 //   if (!loading && currentTestRefs.length === 0 && selectedTest) {
@@ -2000,46 +2026,7 @@ export default PatientReportDataFill;
 //   }
 
 //   return (
-//     <div className="min-h-screen bg-info-50">
-//       {/* Differential Count Validation Alert - Only for CBC */}
-//       {/* {differentialValidation && (
-//         <div className={`mb-4 rounded-2xl border p-4 ${
-//           differentialValidation.type === 'error' 
-//             ? 'bg-red-50 border-red-300' 
-//             : 'bg-green-50 border-green-300'
-//         }`}>
-//           <div className="flex items-center justify-between">
-//             <div className="flex items-center">
-//               {differentialValidation.type === 'error' ? (
-//                 <TbX className="text-red-500 mr-3" size={24} />
-//               ) : (
-//                 <TbSquareRoundedCheck className="text-green-500 mr-3" size={24} />
-//               )}
-//               <div>
-//                 <span className={`text-base font-semibold ${
-//                   differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'
-//                 }`}>
-//                   {differentialValidation.message}
-//                 </span>
-//                 <p className={`text-sm mt-1 ${
-//                   differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
-//                 }`}>
-//                   {differentialValidation.type === 'error' ? 
-//                     'Please check your differential count values' :
-//                     'Differential count is correctly balanced'
-//                   }
-//                 </p>
-//               </div>
-//             </div>
-//             <div className={`text-lg font-bold ${
-//               differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
-//             }`}>
-//               Total: {differentialValidation.total}
-//             </div>
-//           </div>
-//         </div>
-//       )} */}
-
+//     <div className="min-h-screen bg-secondary-50">
 //       {/* Differential Count Validation Modal */}
 //       {differentialResult && (
 //         <NewModal
@@ -2149,6 +2136,7 @@ export default PatientReportDataFill;
 //           </div>
 
 //           {/* Test Table Card */}
+//           {hasNonDetailedReportParams && (
 //           <div className="overflow-hidden rounded-xl border border-pneutral-200 bg-white">
 //             <div className="overflow-x-auto">
 //               <table className="w-full min-w-[750px]">
@@ -2359,6 +2347,24 @@ export default PatientReportDataFill;
 //               </table>
 //             </div>
 //           </div>
+//           )}
+
+//           {/* Detailed Report Editor (table-based report sections, e.g. Complete Urine Analysis) */}
+//           {detailedReportPoint && (
+//             <div className="rounded-xl border border-pneutral-200 bg-white p-4">
+//               <DetailedReportEditor
+//                 point={detailedReportPoint}
+//                 onReportJsonChange={(reportJson) => {
+//                   setReferencePoints(prev => ({
+//                     ...prev,
+//                     [selectedTest.name]: (prev[selectedTest.name] || []).map(p =>
+//                       p.testDescription === "DETAILED REPORT" ? { ...p, reportJson } : p
+//                     )
+//                   }));
+//                 }}
+//               />
+//             </div>
+//           )}
 //         </div>
 
 //         {/* Right Sidebar - Patient Details */}
@@ -2418,6 +2424,20 @@ export default PatientReportDataFill;
 // };
 
 // export default PatientReportDataFill;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
