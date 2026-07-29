@@ -41,12 +41,12 @@ import {
   getTotalTechnicians,
   getTotalTests,
   getTotalRevenue,
-  getSampleWorkflowFunnel,
   getTechnicianPerformance,
   getTopOrderedTests,
   getRevenueByCollectionMethod,
   getAgeGenderDistribution,
   getGridReport,
+  getPackagePerformance,
 } from "../../../../../../services/adminStatService";
 import {
   DashboardKpi,
@@ -58,6 +58,7 @@ import {
   AgeGenderDistribution as AgeGenderDistributionType,
   GridReportResponse,
   GridReportRow,
+  PackagePerformance,
 } from "@/types/adminStatsData";
 import {
   downloadCSV,
@@ -322,6 +323,15 @@ const CATEGORY_COLORS = [
 
 const COLLECTION_COLORS = ["#6C63FF", "#008000", "#6BD3A7", "#FF5A5F"];
 
+const PACKAGE_COLORS = [
+  "#4F11B8",
+  "#FDBA12",
+  "#5470F5",
+  "#EF5A5A",
+  "#10B981",
+  "#F97316",
+];
+
 // ─────────────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────
@@ -354,8 +364,8 @@ const AdminStats = () => {
     endDate: dayjs().format("YYYY-MM-DD"),
   });
 
-  const [funnelFilter, setFunnelFilter] = useState<DateFilterType>("currentFY");
-  const [funnelCustomRange, setFunnelCustomRange] = useState<DateRange>({
+  const [packageFilter, setPackageFilter] = useState<DateFilterType>("currentFY");
+  const [packageCustomRange, setPackageCustomRange] = useState<DateRange>({
     startDate: dayjs().subtract(7, "days").format("YYYY-MM-DD"),
     endDate: dayjs().format("YYYY-MM-DD"),
   });
@@ -419,16 +429,8 @@ const AdminStats = () => {
   const [revenueByCollection, setRevenueByCollection] = useState<RevenueByCollectionMethodType | null>(null);
   const [ageGenderData, setAgeGenderData] = useState<AgeGenderDistributionType | null>(null);
 
-  // Funnel Data (from API)
-  const [funnelData, setFunnelData] = useState<
-    Array<{ label: string; value: string; percent: string; color: string }>
-  >([
-    { label: "Samples Registered", value: "0", percent: "0%", color: "#4F11B8" },
-    { label: "Samples Collected", value: "0", percent: "0%", color: "#FDBA12" },
-    { label: "Results Entered", value: "0", percent: "0%", color: "#5470F5" },
-    { label: "Reports Generated", value: "0", percent: "0%", color: "#EF5A5A" },
-    // { label: "Reports Delivered", value: "0", percent: "0%", color: "#52C41A" },
-  ]);
+  // Package Performance (from API)
+  const [packagePerformance, setPackagePerformance] = useState<PackagePerformance[]>([]);
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -441,7 +443,7 @@ const AdminStats = () => {
   useEffect(() => {
     setRevenueFilter(globalFilter);
     setCategoryFilter(globalFilter);
-    setFunnelFilter(globalFilter);
+    setPackageFilter(globalFilter);
     setTechnicianFilter(globalFilter);
     setDoctorsFilter(globalFilter);
     setCollectionFilter(globalFilter);
@@ -453,7 +455,7 @@ const AdminStats = () => {
     if (globalFilter === "custom") {
       setRevenueCustomRange(globalCustomRange);
       setCategoryCustomRange(globalCustomRange);
-      setFunnelCustomRange(globalCustomRange);
+      setPackageCustomRange(globalCustomRange);
       setTechnicianCustomRange(globalCustomRange);
       setDoctorsCustomRange(globalCustomRange);
       setCollectionCustomRange(globalCustomRange);
@@ -462,51 +464,27 @@ const AdminStats = () => {
     }
   }, [globalCustomRange, globalFilter]);
 
-  // ========== FETCH FUNNEL DATA ==========
-  const fetchFunnelData = useCallback(
+  // ========== FETCH PACKAGE PERFORMANCE DATA ==========
+  const fetchPackagePerformance = useCallback(
     async () => {
       if (!labId) return;
 
       try {
-        const funnelRange = getDateRange(funnelFilter, funnelCustomRange);
-        
-        const funnelResult = await getSampleWorkflowFunnel(
+        const packageRange = getDateRange(packageFilter, packageCustomRange);
+
+        const packageResult = await getPackagePerformance(
           labId,
-          funnelRange.startDate,
-          funnelRange.endDate
+          packageRange.startDate,
+          packageRange.endDate
         );
 
-        setFunnelData([
-          {
-            label: "Samples Registered",
-            value: funnelResult.samplesRegistered.count.toLocaleString(),
-            percent: `${funnelResult.samplesRegistered.percentage}%`,
-            color: "#4F11B8",
-          },
-          {
-            label: "Samples Collected",
-            value: funnelResult.samplesCollected.count.toLocaleString(),
-            percent: `${funnelResult.samplesCollected.percentage}%`,
-            color: "#FDBA12",
-          },
-          {
-            label: "Results Entered",
-            value: funnelResult.resultsEntered.count.toLocaleString(),
-            percent: `${funnelResult.resultsEntered.percentage}%`,
-            color: "#5470F5",
-          },
-          {
-            label: "Reports Generated",
-            value: funnelResult.reportsGenerated.count.toLocaleString(),
-            percent: `${funnelResult.reportsGenerated.percentage}%`,
-            color: "#EF5A5A",
-          },
-        ]);
+        setPackagePerformance(packageResult || []);
       } catch (error) {
-        console.error("Error fetching funnel data:", error);
+        console.error("Error fetching package performance:", error);
+        setPackagePerformance([]);
       }
     },
-    [labId, funnelFilter, funnelCustomRange]
+    [labId, packageFilter, packageCustomRange]
   );
 
   // ========== FETCH FUNCTION ==========
@@ -681,8 +659,8 @@ const AdminStats = () => {
           setAgeGenderData(null);
         }
 
-        // 10. Fetch funnel data
-        await fetchFunnelData();
+        // 10. Fetch package performance
+        await fetchPackagePerformance();
 
         setLastUpdated(new Date());
       } catch (error) {
@@ -703,8 +681,8 @@ const AdminStats = () => {
       revenueCustomRange,
       categoryFilter,
       categoryCustomRange,
-      funnelFilter,
-      funnelCustomRange,
+      packageFilter,
+      packageCustomRange,
       technicianFilter,
       technicianCustomRange,
       doctorsFilter,
@@ -713,7 +691,7 @@ const AdminStats = () => {
       collectionCustomRange,
       ageGenderFilter,
       ageGenderCustomRange,
-      fetchFunnelData,
+      fetchPackagePerformance,
     ]
   );
 
@@ -1019,6 +997,31 @@ const AdminStats = () => {
     }));
   };
 
+  // Format package performance data for the pie chart
+  const getPackageChartData = () => {
+    if (!packagePerformance || packagePerformance.length === 0) {
+      return [];
+    }
+    const totalRevenue = packagePerformance.reduce(
+      (sum, item) => sum + (item.revenue || 0),
+      0
+    );
+    return packagePerformance
+      .filter((item) => (item.revenue || 0) > 0)
+      .map((item, index) => ({
+        name: item.packageName || "Unknown",
+        packageCode: item.packageCode || "",
+        value: item.revenue || 0,
+        percentage: totalRevenue > 0 ? ((item.revenue || 0) / totalRevenue) * 100 : 0,
+        amount: formatCurrencyFull(item.revenue || 0),
+        visitCount: item.visitCount || 0,
+        discount: item.discount || 0,
+        paidRevenue: item.paidRevenue || 0,
+        dueRevenue: item.dueRevenue || 0,
+        color: PACKAGE_COLORS[index % PACKAGE_COLORS.length],
+      }));
+  };
+
   // Format revenue by collection method data
   const getCollectionChartData = () => {
     if (!revenueByCollection || !revenueByCollection.methods || revenueByCollection.methods.length === 0) {
@@ -1169,6 +1172,8 @@ const AdminStats = () => {
   const topOrderTests = getTopOrderTests();
   const doctorsData = getFormattedDoctors();
   const techniciansData = getFormattedTechnicians();
+  const packageChartData = getPackageChartData();
+  const totalPackageRevenue = packageChartData.reduce((sum, item) => sum + item.value, 0);
   const collectionChartData = getCollectionChartData();
   const genderData = getGenderData();
   const ageData = getAgeData();
@@ -1315,6 +1320,65 @@ const AdminStats = () => {
               {data.amount}
             </span>
           </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const PackageTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="rounded-lg border border-pneutral-100 bg-base-white p-4 shadow-lg min-w-[220px]">
+          <p className="text-p3 font-semibold text-pneutral-900">
+            {data.name}
+          </p>
+          {data.packageCode && (
+            <p className="mb-2 text-label-l3 text-pneutral-500">
+              {data.packageCode}
+            </p>
+          )}
+          <div className="space-y-1 text-p3 text-pneutral-600">
+            <p>
+              Visits:{" "}
+              <span className="font-semibold text-pneutral-900">
+                {data.visitCount.toLocaleString()}
+              </span>
+            </p>
+            <p>
+              Revenue:{" "}
+              <span className="font-semibold text-pneutral-900">
+                {data.amount}
+              </span>
+            </p>
+            <p>
+              Share:{" "}
+              <span className="font-semibold text-pneutral-900">
+                {data.percentage.toFixed(1)}%
+              </span>
+            </p>
+            <p>
+              Paid:{" "}
+              <span className="font-semibold text-success-600">
+                {formatCurrencyFull(data.paidRevenue)}
+              </span>
+            </p>
+            <p>
+              Due:{" "}
+              <span className="font-semibold text-danger-600">
+                {formatCurrencyFull(data.dueRevenue)}
+              </span>
+            </p>
+            {data.discount > 0 && (
+              <p>
+                Discount:{" "}
+                <span className="font-semibold text-pneutral-900">
+                  {formatCurrencyFull(data.discount)}
+                </span>
+              </p>
+            )}
+          </div>
         </div>
       );
     }
@@ -1542,87 +1606,93 @@ const AdminStats = () => {
           </div>
         </div>
 
-        {/* Sample Workflow Funnel - Right */}
+        {/* Package Performance - Right */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-              Sample Workflow Funnel
+              Package Performance
             </h2>
             {renderFilterDropdown(
-              funnelFilter,
-              setFunnelFilter,
-              funnelCustomRange,
-              setFunnelCustomRange,
+              packageFilter,
+              setPackageFilter,
+              packageCustomRange,
+              setPackageCustomRange,
               false
             )}
           </div>
-          <div className="flex flex-col lg:flex-row items-center justify-between">
-            {/* Funnel SVG - Dynamic heights based on percentages */}
-            <div className="flex justify-center w-full lg:w-[42%]">
-              <svg width="230" height="300" viewBox="0 0 230 300">
-                {/* Fixed funnel shape (equal segment heights) — only the
-                    labels/values/percentages next to it are data-driven. */}
-                {(() => {
-                  const gap = 8;
-                  const totalGap = gap * (funnelData.length - 1);
-                  const segmentHeight = (280 - totalGap) / funnelData.length;
 
-                  // Colors for each funnel section
-                  const colors = ["#4F11B8", "#FDBA12", "#5470F5", "#EF5A5A"];
-                  // One extra "tip" width so the last section tapers like the rest
-                  // instead of ending in a flat-bottomed rectangle.
-                  const widths = [170, 130, 90, 60, 30];
+          {packageChartData.length > 0 ? (
+            <div className="flex flex-col items-center justify-between gap-6 lg:flex-row">
+              <div className="h-[230px] w-[230px] flex-shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={packageChartData}
+                      dataKey="value"
+                      innerRadius={65}
+                      outerRadius={110}
+                      paddingAngle={1}
+                      stroke="none"
+                      startAngle={90}
+                      endAngle={-270}
+                    >
+                      {packageChartData.map((item, index) => (
+                        <Cell key={index} fill={item.color} />
+                      ))}
+                    </Pie>
+                    <text
+                      x="50%"
+                      y="47%"
+                      textAnchor="middle"
+                      className="fill-pneutral-500 text-label-l3 font-medium"
+                    >
+                      Total Revenue
+                    </text>
+                    <text
+                      x="50%"
+                      y="58%"
+                      textAnchor="middle"
+                      className="fill-pneutral-900 text-h4 font-semibold"
+                    >
+                      {formatCurrencyFull(totalPackageRevenue)}
+                    </text>
+                    <Tooltip content={<PackageTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
 
-                  return funnelData.map((_, index) => {
-                    const y = index * (segmentHeight + gap);
-                    const width = widths[index] || 30;
-                    const x = (230 - width) / 2;
-                    const nextWidth = widths[index + 1] || 30;
-                    const nextX = (230 - nextWidth) / 2;
-
-                    // All sections taper into the next section's width,
-                    // including the last one, so the funnel narrows consistently.
-                    return (
-                      <polygon
-                        key={index}
-                        points={`${x},${y} ${x + width},${y} ${nextX + nextWidth},${y + segmentHeight} ${nextX},${y + segmentHeight}`}
-                        fill={colors[index]}
+              <div className="w-full lg:w-[55%] max-h-[230px] space-y-4 overflow-y-auto pr-1">
+                {packageChartData.map((item) => (
+                  <div
+                    key={item.name}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="h-3 w-3 flex-shrink-0 rounded-full"
+                        style={{ background: item.color }}
                       />
-                    );
-                  });
-                })()}
-              </svg>
+                      <span className="truncate text-p3 text-pneutral-700">
+                        {item.name}
+                      </span>
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-3">
+                      <span className="text-p3 font-medium text-pneutral-600">
+                        {item.amount}
+                      </span>
+                      <span className="text-p3 font-medium text-pneutral-500">
+                        {item.percentage.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-
-            {/* Right Side - Data Labels */}
-            <div className="w-full lg:w-[55%] space-y-11">
-              {funnelData.map((item) => (
-                <div
-                  key={item.label}
-                  className="grid grid-cols-[1fr_70px_60px] items-center"
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="h-3.5 w-3.5 rounded-full shadow-md"
-                      style={{
-                        background: item.color,
-                        boxShadow: "0 2px 8px rgba(0,0,0,.25)",
-                      }}
-                    />
-                    <span className="text-[16px] text-[#555] font-medium">
-                      {item.label}
-                    </span>
-                  </div>
-                  <div className="text-right text-[16px] text-[#555]">
-                    {item.value}
-                  </div>
-                  <div className="text-right text-[16px] text-[#555]">
-                    {item.percent}
-                  </div>
-                </div>
-              ))}
+          ) : (
+            <div className="w-full py-8 text-center text-pneutral-500">
+              No package data available
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -2233,20 +2303,13 @@ export default AdminStats;
 
 
 
-
-
-
-
-
-
-
-
+// code without package performance ......................
 
 // /* eslint-disable @typescript-eslint/no-explicit-any */
 // "use client";
 
 // import { useState, useEffect, useCallback } from "react";
-// import dayjs from "dayjs";
+// import dayjs from "dayjs";  
 // import {
 //   ArrowUp,
 //   ArrowDown,
@@ -2270,8 +2333,6 @@ export default AdminStats;
 //   Pie,
 //   Cell,
 // } from "recharts";
-
-// // Import context + services
 // import { useLabs } from "@/context/LabContext";
 // import {
 //   getAvgTat,
@@ -2292,6 +2353,7 @@ export default AdminStats;
 //   getTopOrderedTests,
 //   getRevenueByCollectionMethod,
 //   getAgeGenderDistribution,
+//   getGridReport,
 // } from "../../../../../../services/adminStatService";
 // import {
 //   DashboardKpi,
@@ -2301,7 +2363,15 @@ export default AdminStats;
 //   TopOrderedTest,
 //   RevenueByCollectionMethod as RevenueByCollectionMethodType,
 //   AgeGenderDistribution as AgeGenderDistributionType,
+//   GridReportResponse,
+//   GridReportRow,
 // } from "@/types/adminStatsData";
+// import {
+//   downloadCSV,
+//   formatAmount as formatCsvAmount,
+//   formatDate as formatCsvDate,
+//   generateCSVFilename,
+// } from "@/utils/csvUtils";
 
 // type DateFilterType = "currentFY" | "week" | "month" | "year" | "custom";
 
@@ -2310,9 +2380,6 @@ export default AdminStats;
 //   endDate: string;
 // }
 
-// // ─────────────────────────────────────────────────────────────────────────
-// // Helper Functions
-// // ─────────────────────────────────────────────────────────────────────────
 
 // // Helper: Get financial year start and end
 // const getFinancialYear = (date: dayjs.Dayjs): { start: string; end: string } => {
@@ -2478,6 +2545,76 @@ export default AdminStats;
 //   return "th";
 // };
 
+// // Visit Status color coding for the Billing Report table: completed -> success,
+// // cancelled -> warning, pending -> danger. Backend values are uppercase (e.g. "CANCELLED")
+// // but this normalizes case defensively.
+// const getVisitStatusColorClass = (status?: string): string => {
+//   switch ((status || "").toUpperCase()) {
+//     case "COMPLETED":
+//       return "text-success-500";
+//     case "CANCELLED":
+//       return "text-warning-500";
+//     case "PENDING":
+//       return "text-danger-500";
+//     default:
+//       return "text-pneutral-900";
+//   }
+// };
+
+// // Builds the CSV for the Billing Report table/export - one row per visit/billing record.
+// const buildGridReportCsv = (rows: GridReportRow[]): string => {
+//   const headers = [
+//     "SI No.",
+//     "Visit Code",
+//     "Patient Name",
+//     "Patient Phone",
+//     "Doctor Name",
+//     "Visit Type",
+//     "Visit Status",
+//     "Billing Code",
+//     "Billing Date",
+//     "Payment Status",
+//     "Payment Method",
+//     "Total Amount",
+//     "Discount",
+//     "Net Amount",
+//     "Paid Amount",
+//     "Due Amount",
+//     "Lab Name",
+//   ];
+
+//   const csvRows = rows.map((row, index) =>
+//     [
+//       index + 1,
+//       row.visitCode,
+//       row.patientName,
+//       row.patientPhone,
+//       row.doctorName || "N/A",
+//       row.visitType,
+//       row.visitStatus,
+//       row.billingCode,
+//       formatCsvDate(row.billingDate),
+//       row.paymentStatus,
+//       row.paymentMethod,
+//       formatCsvAmount(row.totalAmount),
+//       formatCsvAmount(row.discount),
+//       formatCsvAmount(row.netAmount),
+//       formatCsvAmount(row.paidAmount),
+//       formatCsvAmount(row.dueAmount),
+//       row.labName,
+//     ]
+//       .map((field) => `"${String(field ?? "").replace(/"/g, '""')}"`)
+//       .join(",")
+//   );
+
+//   return [headers.join(","), ...csvRows].join("\n");
+// };
+
+// // Billing Report table shows every row with no pagination in the UI, but the backend
+// // endpoint itself is still paginated - this is the page size used internally to pull
+// // every page and stitch them into one full row list.
+// const GRID_FETCH_PAGE_SIZE = 200;
+
 // // Color constants for charts
 // const CATEGORY_COLORS = [
 //   "#4F6BED",
@@ -2554,6 +2691,12 @@ export default AdminStats;
 //     endDate: dayjs().format("YYYY-MM-DD"),
 //   });
 
+//   const [gridFilter, setGridFilter] = useState<DateFilterType>("currentFY");
+//   const [gridCustomRange, setGridCustomRange] = useState<DateRange>({
+//     startDate: dayjs().subtract(7, "days").format("YYYY-MM-DD"),
+//     endDate: dayjs().format("YYYY-MM-DD"),
+//   });
+
 //   // ========== STATE FOR ALL METRICS ==========
 //   // KPI Cards
 //   const [totalAdmins, setTotalAdmins] = useState<number>(0);
@@ -2596,6 +2739,11 @@ export default AdminStats;
 
 //   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
+//   // Billing Report table - shows every row (no pagination), own filter, CSV export
+//   const emptyGridData: GridReportResponse = { page: 0, size: 0, totalRecords: 0, totalPages: 0, rows: [] };
+//   const [gridData, setGridData] = useState<GridReportResponse>(emptyGridData);
+//   const [gridLoading, setGridLoading] = useState<boolean>(true);
+
 //   // ========== SYNC FILTERS ==========
 //   useEffect(() => {
 //     setRevenueFilter(globalFilter);
@@ -2605,6 +2753,7 @@ export default AdminStats;
 //     setDoctorsFilter(globalFilter);
 //     setCollectionFilter(globalFilter);
 //     setAgeGenderFilter(globalFilter);
+//     setGridFilter(globalFilter);
 //   }, [globalFilter]);
 
 //   useEffect(() => {
@@ -2616,6 +2765,7 @@ export default AdminStats;
 //       setDoctorsCustomRange(globalCustomRange);
 //       setCollectionCustomRange(globalCustomRange);
 //       setAgeGenderCustomRange(globalCustomRange);
+//       setGridCustomRange(globalCustomRange);
 //     }
 //   }, [globalCustomRange, globalFilter]);
 
@@ -2658,12 +2808,6 @@ export default AdminStats;
 //             percent: `${funnelResult.reportsGenerated.percentage}%`,
 //             color: "#EF5A5A",
 //           },
-//           // {
-//           //   label: "Reports Delivered",
-//           //   value: funnelResult.reportsDelivered.count.toLocaleString(),
-//           //   percent: `${funnelResult.reportsDelivered.percentage}%`,
-//           //   color: "#52C41A",
-//           // },
 //         ]);
 //       } catch (error) {
 //         console.error("Error fetching funnel data:", error);
@@ -2771,13 +2915,12 @@ export default AdminStats;
 //           setCategoryTotal(0);
 //         }
 
-//         // 5. Fetch top ordered tests with the category filter
+//         // 5. Fetch top ordered tests with the category filter (all tests, not just top N)
 //         try {
 //           const topTests = await getTopOrderedTests(
 //             labId,
 //             categoryRange.startDate,
-//             categoryRange.endDate,
-//             5
+//             categoryRange.endDate
 //           );
 //           setTopOrderedTests(topTests || []);
 //         } catch (error) {
@@ -2881,18 +3024,69 @@ export default AdminStats;
 //     ]
 //   );
 
-//   // Initial load
 //   useEffect(() => {
 //     fetchAllData();
 //   }, [fetchAllData]);
+
+//   const fetchGridData = useCallback(
+//     async (silent = false) => {
+//       if (!labId) return;
+//       if (!silent) setGridLoading(true);
+//       try {
+//         const range = getDateRange(gridFilter, gridCustomRange);
+
+//         const firstPage = await getGridReport(labId, range.startDate, range.endDate, 0, GRID_FETCH_PAGE_SIZE);
+//         let allRows: GridReportRow[] = [...firstPage.rows];
+
+//         if (firstPage.totalPages > 1) {
+//           const remainingPages = await Promise.all(
+//             Array.from({ length: firstPage.totalPages - 1 }, (_, i) =>
+//               getGridReport(labId, range.startDate, range.endDate, i + 1, GRID_FETCH_PAGE_SIZE)
+//             )
+//           );
+//           remainingPages.forEach((p) => {
+//             allRows = allRows.concat(p.rows);
+//           });
+//         }
+
+//         setGridData({
+//           page: 0,
+//           size: allRows.length,
+//           totalRecords: firstPage.totalRecords,
+//           totalPages: 1,
+//           rows: allRows,
+//         });
+//       } catch (error) {
+//         console.error("Error fetching billing grid report:", error);
+//         if (!silent) setGridData({ page: 0, size: 0, totalRecords: 0, totalPages: 0, rows: [] });
+//       } finally {
+//         if (!silent) setGridLoading(false);
+//       }
+//     },
+//     [labId, gridFilter, gridCustomRange]
+//   );
+
+//   // Initial load + reload whenever the lab or the section's own date filter changes.
+//   useEffect(() => {
+//     fetchGridData();
+//   }, [fetchGridData]);
 
 //   // Auto-refresh every 30 seconds
 //   useEffect(() => {
 //     const interval = setInterval(() => {
 //       fetchAllData(true);
+//       fetchGridData(true);
 //     }, 30000);
 //     return () => clearInterval(interval);
-//   }, [fetchAllData]);
+//   }, [fetchAllData, fetchGridData]);
+
+//   // The grid table already holds the full filtered result set (no pagination), so the
+//   // CSV export just converts what's already loaded - no extra fetch needed.
+//   const handleDownloadGridCsv = () => {
+//     if (gridData.rows.length === 0) return;
+//     const csv = buildGridReportCsv(gridData.rows);
+//     downloadCSV(csv, generateCSVFilename("billing-report"));
+//   };
 
 //   // ========== DATA FORMATTING FUNCTIONS ==========
 
@@ -3673,27 +3867,12 @@ export default AdminStats;
 //             {/* Funnel SVG - Dynamic heights based on percentages */}
 //             <div className="flex justify-center w-full lg:w-[42%]">
 //               <svg width="230" height="300" viewBox="0 0 230 300">
-//                 {/* Calculate dynamic heights based on percentages */}
+//                 {/* Fixed funnel shape (equal segment heights) — only the
+//                     labels/values/percentages next to it are data-driven. */}
 //                 {(() => {
-//                   const percentages = funnelData.map(d => parseFloat(d.percent));
-//                   const maxPercent = Math.max(...percentages, 1);
-//                   const baseHeight = 300;
-                  
-//                   // Calculate heights proportional to percentages
-//                   const heights = percentages.map(p => (p / maxPercent) * baseHeight * 0.9);
-                  
-//                   // Calculate Y positions
-//                   const yPositions = [0];
-//                   for (let i = 1; i < heights.length; i++) {
-//                     yPositions.push(yPositions[i-1] + heights[i-1] + 8);
-//                   }
-
-//                   // Scale to fit in 300px
-//                   const totalHeight = yPositions[yPositions.length - 1] + heights[heights.length - 1];
-//                   const scale = 280 / totalHeight;
-
-//                   const scaledHeights = heights.map(h => h * scale);
-//                   const scaledYPositions = yPositions.map(y => y * scale);
+//                   const gap = 8;
+//                   const totalGap = gap * (funnelData.length - 1);
+//                   const segmentHeight = (280 - totalGap) / funnelData.length;
 
 //                   // Colors for each funnel section
 //                   const colors = ["#4F11B8", "#FDBA12", "#5470F5", "#EF5A5A"];
@@ -3701,8 +3880,8 @@ export default AdminStats;
 //                   // instead of ending in a flat-bottomed rectangle.
 //                   const widths = [170, 130, 90, 60, 30];
 
-//                   return scaledHeights.map((height, index) => {
-//                     const y = scaledYPositions[index];
+//                   return funnelData.map((_, index) => {
+//                     const y = index * (segmentHeight + gap);
 //                     const width = widths[index] || 30;
 //                     const x = (230 - width) / 2;
 //                     const nextWidth = widths[index + 1] || 30;
@@ -3713,7 +3892,7 @@ export default AdminStats;
 //                     return (
 //                       <polygon
 //                         key={index}
-//                         points={`${x},${y} ${x + width},${y} ${nextX + nextWidth},${y + height} ${nextX},${y + height}`}
+//                         points={`${x},${y} ${x + width},${y} ${nextX + nextWidth},${y + segmentHeight} ${nextX},${y + segmentHeight}`}
 //                         fill={colors[index]}
 //                       />
 //                     );
@@ -3853,7 +4032,7 @@ export default AdminStats;
 //               false
 //             )}
 //           </div>
-//           <div className="space-y-4">
+//           <div className="max-h-41 space-y-4 overflow-y-auto pr-1">
 //             {topOrderTests.length > 0 ? (
 //               topOrderTests.map((item, index) => (
 //                 <div
@@ -4224,6 +4403,113 @@ export default AdminStats;
 //               </tbody>
 //             </table>
 //           </div>
+//         </div>
+//       </div>
+
+//       {/* ===== BILLING REPORT ===== */}
+//       <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
+//         <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+//           <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+//             Billing Report
+//           </h2>
+//           <div className="flex items-center gap-2">
+//             <button
+//               type="button"
+//               onClick={handleDownloadGridCsv}
+//               disabled={gridLoading || gridData.rows.length === 0}
+//               className="rounded-lg border border-success-500 bg-[#55D400] px-4 py-2 text-p3 font-medium text-pneutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+//             >
+//               Download as CSV
+//             </button>
+//             {renderFilterDropdown(
+//               gridFilter,
+//               setGridFilter,
+//               gridCustomRange,
+//               setGridCustomRange,
+//               false
+//             )}
+//           </div>
+//         </div>
+//         <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+//           <table className="min-w-full border-separate border-spacing-y-0">
+//             <thead className="sticky top-0 bg-white z-10">
+//               <tr className="border-b border-pneutral-100 bg-pneutral-50">
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">SI No.</th>
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Code</th>
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Patient Name</th>
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Phone</th>
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Doctor</th>
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Type</th>
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Status</th>
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Billing Code</th>
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Billing Date</th>
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Payment Status</th>
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Payment Method</th>
+//                 <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Total Amount</th>
+//                 <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Discount</th>
+//                 <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Net Amount</th>
+//                 <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Paid</th>
+//                 <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Due</th>
+//                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Lab Name</th>
+//               </tr>
+//             </thead>
+//             <tbody>
+//               {gridLoading ? (
+//                 <tr>
+//                   <td colSpan={17} className="px-4 py-8 text-center text-pneutral-500">
+//                     Loading...
+//                   </td>
+//                 </tr>
+//               ) : gridData.rows.length > 0 ? (
+//                 gridData.rows.map((row, index) => (
+//                   <tr key={row.billingId ?? index} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">
+//                       {index + 1}
+//                     </td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.visitCode}</td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.patientName}</td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.patientPhone}</td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.doctorName || "N/A"}</td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.visitType}</td>
+//                     <td className={`border-b border-pneutral-100 px-4 py-2 text-p3 font-medium ${getVisitStatusColorClass(row.visitStatus)}`}>
+//                       {row.visitStatus}
+//                     </td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.billingCode}</td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.billingDate}</td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.paymentStatus}</td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.paymentMethod}</td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-right text-p3 text-pneutral-900">
+//                       ₹{(row.totalAmount || 0).toLocaleString()}
+//                     </td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-right text-p3 text-pneutral-900">
+//                       ₹{(row.discount || 0).toLocaleString()}
+//                     </td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-right text-p3 text-pneutral-900">
+//                       ₹{(row.netAmount || 0).toLocaleString()}
+//                     </td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-right font-medium text-pneutral-900">
+//                       ₹{(row.paidAmount || 0).toLocaleString()}
+//                     </td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-right font-medium text-danger-600">
+//                       ₹{(row.dueAmount || 0).toLocaleString()}
+//                     </td>
+//                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.labName}</td>
+//                   </tr>
+//                 ))
+//               ) : (
+//                 <tr>
+//                   <td colSpan={17} className="px-4 py-8 text-center text-pneutral-500">
+//                     No billing records found
+//                   </td>
+//                 </tr>
+//               )}
+//             </tbody>
+//           </table>
+//         </div>
+//         <div className="mt-3 px-1">
+//           <p className="text-p3 text-pneutral-500">
+//             {gridData.totalRecords > 0 ? `${gridData.totalRecords} records` : "0 records"}
+//           </p>
 //         </div>
 //       </div>
 //     </div>

@@ -23,6 +23,7 @@ import {
     AgeGenderDistribution,
     TechnicianPerformance,
     GridReportResponse,
+    PackagePerformance,
 } from '@/types/adminStatsData';
 
 const adminStatsApi = axios.create({
@@ -366,4 +367,24 @@ export const getGridReport = async (
     const url = `/${labId}/grid?${params.toString()}`;
 
     return get<GridReportResponse>(url, 'An error occurred while fetching the grid report.');
+};
+
+/**
+ * Get package performance data (visit count/revenue breakdown per health package) for this lab.
+ */
+export const getPackagePerformance = async (
+    labId: number | string,
+    startDate?: string,
+    endDate?: string,
+    limit: number = 10
+): Promise<PackagePerformance[]> => {
+    const baseUrl = `/${labId}/package-performance`;
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    params.append('limit', limit.toString());
+    const url = `${baseUrl}?${params.toString()}`;
+
+    const result = await get<PackagePerformance[]>(url, 'An error occurred while fetching package performance.');
+    return result || [];
 };
