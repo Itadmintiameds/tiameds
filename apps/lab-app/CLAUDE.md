@@ -59,7 +59,13 @@ src/app/
 │   ├── dashboard/layout.tsx  client layout: useAuth() + useLabs(), fetches labs via
 │   │                         getUsersLab(), renders SideBar + TopNav, Ctrl+B toggle,
 │   │                         lab switching. → real path prefix is /dashboard/*
-│   ├── dashboard/page.tsx    home: BarGraph, PieChartStatus, TopStatus widgets
+│   ├── dashboard/page.tsx    home: role-routed tab shell. ADMIN/SUPERADMIN land directly
+│   │                         on `<Statistics />` (Patient/Sample Management moved to the
+│   │                         sidebar nav for these roles); DESKROLE/TECHNICIAN (or both)
+│   │                         still get a Patient Management / Sample Management tab
+│   │                         toggle (`PatientDashboard` / `Technacian`). Most of the file
+│   │                         below the export is commented-out prior iterations — don't
+│   │                         confuse them with live code.
 │   ├── dashboard/patients/ , patientdetails/       patient list/detail
 │   ├── dashboard/doctor/                            referring doctor mgmt
 │   ├── dashboard/test/ , test-detailed-report/,
@@ -95,8 +101,14 @@ src/app/
   `ReceiptsSummary`, `ReportsGraphView`).
 - `dashboard/patient/` — AddPatient, PatientList, UpdatePatient, ViewPatientDetails,
   LabReport.
-- `dashboard/statistics/` — BarGraph, PieChartStatus, Statistics, StatisticsMain,
-  TopStatus.
+- `dashboard/statistics/` — `Statistics.tsx` role-switches between `AdminStats.tsx`
+  (~4.5k lines) and `SuperAdminStats.tsx` (~3.9k lines), the real analytics dashboards
+  (KPIs, revenue trend, sample workflow funnel, technician/package/doctor performance,
+  billing grid, age/gender distribution, etc. — fed by `adminStatService.ts` /
+  `statisticsService.ts`, see Data/service layer). `BarGraph`, `PieChartStatus`,
+  `TopStatus`, `StatisticsMain` are the prior generation — **`StatisticsMain.tsx` is now
+  dead code**, referenced nowhere except itself; `BarGraph`/`PieChartStatus`/`TopStatus`
+  are still imported by `StatisticsMain` only.
 - `doctor/`, `insurance/`, `package/`, `lab/` — standard Add/List/Update/View CRUD sets
   per domain (`Lab`, `LabList`, `TestPriceList`, `TestReferanceList` for lab).
 - `patientDashboard/` — richer patient workflow: `AddPatientComponent`,
@@ -125,6 +137,17 @@ src/app/
   "welcome" account-creation email via Nodemailer/Gmail.
 - `sendReport/route.ts` — emails a lab report (likely PDF attachment).
 - `sendinvoice/route.ts` — emails an invoice.
+- `admin-stats/[...path]/route.ts`, `superadmin-stats/[...path]/route.ts` — GET-only
+  catch-all proxies in front of the backend's `AdminStatsController`
+  (`/lab-admin/stats/*`) and `SuperAdminStatsController` (`/lab-super-admin/stats/*`).
+  Exist because those two controllers authenticate via an `Authorization: Bearer`
+  header instead of the httpOnly `accessToken` cookie every other endpoint uses — the
+  browser can't read that cookie to build the header itself, so this runs server-side,
+  reads the cookie, and re-attaches it as Bearer. Each route has its own in-process
+  refresh-token dedup (`refreshInFlight`) mirroring `utils/api.ts`'s browser-side dedup,
+  needed because `AdminStats.tsx`/`SuperAdminStats.tsx` fan out many `Promise.allSettled`
+  calls at once and a naive implementation would race multiple `/auth/refresh` calls
+  against the same rotating refresh token.
 
 ### `src/middleware.ts`
 Matches `['/', '/user-login', '/login', '/dashboard/:path*', '/admin/:path*',
@@ -150,8 +173,10 @@ before tokens are issued — login now requires OTP verification too).
   deduplicated via a single in-flight `refreshPromise` + `failedQueue`. If refresh
   itself fails, clears the legacy `token` cookie and hard-redirects to `/user-login`
   (skipped on public routes). `refreshAccessToken` exported for proactive/silent
-  refresh elsewhere. **Every service file imports this same instance** — there is no
-  per-service axios setup.
+  refresh elsewhere. **Almost every service file imports this same instance** — the
+  exceptions are `adminStatService.ts` and `statisticsService.ts`, which create their
+  own local axios instances pointed at `/api/admin-stats` and `/api/superadmin-stats`
+  (the BFF proxies described above) instead of hitting the backend directly.
 - **`src/context/userStore.ts`** (Zustand, despite the "context" folder name) —
   `useAuthStore`: `{user, token, isAuthenticated, isLoading}` + `login`, `logout`,
   `updateUser`, `initializeToken` (hydrates session from httpOnly cookies via
@@ -178,9 +203,11 @@ before tokens are issued — login now requires OTP verification too).
 
 ## Data/service layer (`services/` at repo root, sibling to `src`)
 
-All 12 files use axios via `src/utils/api.ts`, calling the Spring Boot backend. Endpoint
-shape is generally `/lab/{labId}/...` or `admin/lab/{labId}/...` (multi-tenant, scoped by
-lab). Summary:
+15 files. 13 use axios via `src/utils/api.ts` and call the Spring Boot backend directly;
+`adminStatService.ts` and `statisticsService.ts` are the exception (see Auth section) —
+they use their own axios instances against the local `/api/admin-stats` and
+`/api/superadmin-stats` BFF proxies. Endpoint shape is generally `/lab/{labId}/...` or
+`admin/lab/{labId}/...` (multi-tenant, scoped by lab). Summary:
 
 | File | Domain | Notes |
 |---|---|---|
@@ -194,9 +221,11 @@ lab). Summary:
 | `patientServices.ts` | **largest**: visits by date range, get/search (debounced 300ms) patient, add/update/delete patient, visits by patient/date, health snapshot (AI trend context), visit cancellation, partial payment, datewise transaction/payment details | `/lab/{labId}/*` |
 | `reportServices.ts` | report CRUD + report settings (letterhead/signature, S3 signature upload) | `/lab/{labId}/report*`, `/report-settings` |
 | `sampleServices.ts` | sample CRUD + visit-sample ops (add/get/collected-completed/update/delete) | `/lab/{labId}/sample*`, `/lab/*-samples`; samples are **lab-isolated**, see `docs/sampledoc.md` |
-| `statusServices.ts` | `getLabStatsData(labId, startDate, endDate)` | `lab/statistics/{labId}` |
+| `statusServices.ts` | `getLabStatsData(labId, startDate, endDate)` — old single-lab stats call | `lab/statistics/{labId}`; only remaining consumer is `StatisticsMain.tsx`, which is itself dead code (see routing map) |
 | `technicianServices.ts` | actually staff/member mgmt: get/create/update/reset-password/delete member | `/user-management/*`; **inconsistent error handling** — catches and *returns* `error.response?.data` instead of throwing, unlike other services |
 | `testService.ts` | **most complex**: test catalog CRUD + pagination, CSV upload/download, reference-range CRUD + CSV, "master"/super-admin test & reference lists | `admin/lab/*`, `lab/test-reference/*`, `super-admin/referance-and-test/*` |
+| `adminStatService.ts` | ADMIN dashboard analytics feeding `AdminStats.tsx`: per-lab KPIs (revenue/patients/tests/TAT/etc.), revenue trend, sample workflow funnel, technician/package performance, top referring doctors, top ordered tests, age/gender distribution, billing grid report, `getMyLabsCount` (the one endpoint not scoped by `{labId}`) | via `/api/admin-stats` proxy → backend `/lab-admin/stats/*`; every call unwraps `{data, message, status}` through a shared `get<T>()` helper |
+| `statisticsService.ts` | SUPERADMIN dashboard analytics feeding `SuperAdminStats.tsx`: cross-lab KPIs, role/lab-wise breakdowns, revenue-by-lab, earnings by category, lab performance ranking, billing grid | via `/api/superadmin-stats` proxy → backend `/lab-super-admin/stats/*` |
 
 Only public env var: `NEXT_PUBLIC_API_URL` (backend base URL) — used solely in
 `src/utils/api.ts`. No `.env.example` committed; real `.env` exists at project root.
@@ -228,6 +257,10 @@ Server-only secrets (`OPENAI_API_KEY`, SMTP creds, MailboxLayer key) are consume
 - `loginUser/LogedUserType.ts` — simplified logged-in user shape.
 - `reportSettings.ts`, `labStatus.ts` (`LabStats`), `aiInsights.ts`,
   `pendingTable/PendingTatbleDataType.tsx`, `NavigationItem.ts`, `nodemailer.d.ts`.
+- `adminStatsData.ts` / `statisticsData.ts` — response shapes for `adminStatService.ts`
+  (single-lab, ADMIN) / `statisticsService.ts` (cross-lab, SUPERADMIN) respectively; both
+  large and mostly parallel (KPIs, revenue trend, grid report, top referring doctors,
+  etc.) but not shared — same-shaped types are independently declared in each file.
 
 ## Validation (`src/schema/`, Zod + react-hook-form)
 
@@ -296,3 +329,14 @@ issuance/refresh/revocation on the backend). At monorepo root:
   required public var is `NEXT_PUBLIC_API_URL`, but server route handlers additionally
   need `OPENAI_API_KEY` and SMTP/MailboxLayer secrets (check `src/app/api/*/route.ts`
   for exact var names when needed).
+- `dashboard/statistics/StatisticsMain.tsx`, `BarGraph.tsx`, `PieChartStatus.tsx`,
+  `TopStatus.tsx`, and `services/statusServices.ts` are dead code — nothing outside that
+  cluster imports them anymore. `Statistics.tsx` now renders `AdminStats.tsx` /
+  `SuperAdminStats.tsx` directly based on `isSuperAdmin`. Don't assume they're wired up;
+  confirm with a grep before editing or deleting.
+- `adminStatService.ts` / `statisticsService.ts` deliberately don't go through
+  `src/utils/api.ts` — they call local `/api/admin-stats` and `/api/superadmin-stats`
+  BFF proxy routes instead, because those two backend controllers need a Bearer header
+  the browser can't construct from an httpOnly cookie. If a bug looks like a stats call
+  is "ignoring" the shared axios interceptor/refresh logic, this is why — check the
+  route handler under `src/app/api/{admin,superadmin}-stats/[...path]/route.ts` first.
