@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 import {
   ArrowUp,
   ArrowDown,
-  Users,
+  Users, 
   Monitor,
   FlaskConical,
   UserRound,
@@ -488,6 +488,10 @@ const AdminStats = () => {
   );
 
   // ========== FETCH FUNCTION ==========
+  // All sections below are independent of each other (each computes its own date range
+  // locally and calls its own endpoint), so they're fired together via Promise.allSettled
+  // instead of one after another - this turns what used to be ~9 sequential round trips
+  // into a single parallel batch, which is the main lever for a faster first paint.
   const fetchAllData = useCallback(
     async (silent = false) => {
       if (!labId) return;
@@ -499,168 +503,186 @@ const AdminStats = () => {
       }
 
       try {
-        // 1. Fetch KPIs WITHOUT date filters (all-time)
-        const [
-          adminsResult,
-          techniciansResult,
-          deskRolesResult,
-          dashboardKpisResult,
-        ] = await Promise.allSettled([
-          getTotalAdmins(labId),
-          getTotalTechnicians(labId),
-          getTotalDeskRoles(labId),
-          getDashboardKpis(labId),
-        ]);
-
-        if (adminsResult.status === "fulfilled")
-          setTotalAdmins(adminsResult.value.totalAdmins);
-        if (techniciansResult.status === "fulfilled")
-          setTotalTechnicians(techniciansResult.value.totalTechnicians);
-        if (deskRolesResult.status === "fulfilled")
-          setTotalDeskRoles(deskRolesResult.value.totalDeskRoles);
-        if (dashboardKpisResult.status === "fulfilled")
-          setDashboardKpis(dashboardKpisResult.value);
-
-        // 2. Fetch data with GLOBAL date filter for main KPIs
         const globalRange = getDateRange(globalFilter, globalCustomRange);
-        const [
-          testsResult,
-          reportsResult,
-          pendingResult,
-          patientsResult,
-          revenueResult,
-          avgTatResult,
-        ] = await Promise.allSettled([
-          getTotalTests(labId, globalRange.startDate, globalRange.endDate),
-          getReportsGenerated(labId, globalRange.startDate, globalRange.endDate),
-          getPendingSamples(labId, globalRange.startDate, globalRange.endDate),
-          getTotalPatients(labId, globalRange.startDate, globalRange.endDate),
-          getTotalRevenue(labId, globalRange.startDate, globalRange.endDate),
-          getAvgTat(labId, globalRange.startDate, globalRange.endDate),
-        ]);
-
-        if (testsResult.status === "fulfilled")
-          setTotalTests(testsResult.value.totalTests);
-        if (reportsResult.status === "fulfilled")
-          setReportsGenerated(reportsResult.value.reportsGenerated);
-        if (pendingResult.status === "fulfilled")
-          setPendingSamples(pendingResult.value.pendingSamples);
-        if (patientsResult.status === "fulfilled")
-          setTotalPatients(patientsResult.value.totalPatients);
-        if (revenueResult.status === "fulfilled")
-          setTotalRevenue(revenueResult.value.totalRevenue);
-        if (avgTatResult.status === "fulfilled")
-          setAvgTat(avgTatResult.value.avgTatHours);
-
-        // 3. Fetch revenue trend with its OWN filter
         const revenueRange = getDateRange(revenueFilter, revenueCustomRange);
-        if (revenueRange.startDate && revenueRange.endDate) {
-          try {
-            const trendResult = await getRevenueTrend(
-              labId,
-              revenueRange.startDate,
-              revenueRange.endDate
-            );
-            setRevenueTrend(trendResult.trend || []);
-          } catch (error) {
-            console.error("Error fetching revenue trend:", error);
-            setRevenueTrend([]);
-          }
-        } else {
-          setRevenueTrend([]);
-        }
-
-        // 4. Fetch tests by category with the section's OWN filter
         const categoryRange = getDateRange(categoryFilter, categoryCustomRange);
-        try {
-          const categoryResult = await getTestsByCategory(
-            labId,
-            categoryRange.startDate,
-            categoryRange.endDate
-          );
-          setTestsByCategory(categoryResult.categories || []);
-          setCategoryTotal(categoryResult.total || 0);
-        } catch (error) {
-          console.error("Error fetching tests by category:", error);
-          setTestsByCategory([]);
-          setCategoryTotal(0);
-        }
-
-        // 5. Fetch top ordered tests with the category filter (all tests, not just top N)
-        try {
-          const topTests = await getTopOrderedTests(
-            labId,
-            categoryRange.startDate,
-            categoryRange.endDate
-          );
-          setTopOrderedTests(topTests || []);
-        } catch (error) {
-          console.error("Error fetching top ordered tests:", error);
-          setTopOrderedTests([]);
-        }
-
-        // 6. Fetch technician performance with its OWN filter
-        const technicianRange = getDateRange(
-          technicianFilter,
-          technicianCustomRange
-        );
-        try {
-          const techResult = await getTechnicianPerformance(
-            labId,
-            technicianRange.startDate,
-            technicianRange.endDate
-          );
-          setTechnicianPerformance(techResult || []);
-        } catch (error) {
-          console.error("Error fetching technician performance:", error);
-          setTechnicianPerformance([]);
-        }
-
-        // 7. Fetch top doctors with its OWN filter
+        const technicianRange = getDateRange(technicianFilter, technicianCustomRange);
         const doctorsRange = getDateRange(doctorsFilter, doctorsCustomRange);
-        try {
-          const doctorsResult = await getTopReferringDoctors(
-            labId,
-            doctorsRange.startDate,
-            doctorsRange.endDate,
-            5
-          );
-          setTopDoctors(doctorsResult || []);
-        } catch (error) {
-          console.error("Error fetching top doctors:", error);
-          setTopDoctors([]);
-        }
-
-        // 8. Fetch revenue by collection method
         const collectionRange = getDateRange(collectionFilter, collectionCustomRange);
-        try {
-          const collectionResult = await getRevenueByCollectionMethod(
-            labId,
-            collectionRange.startDate,
-            collectionRange.endDate
-          );
-          setRevenueByCollection(collectionResult);
-        } catch (error) {
-          console.error("Error fetching revenue by collection:", error);
-          setRevenueByCollection(null);
-        }
-
-        // 9. Fetch age & gender distribution
         const ageGenderRange = getDateRange(ageGenderFilter, ageGenderCustomRange);
-        try {
-          const ageGenderResult = await getAgeGenderDistribution(
-            labId,
-            ageGenderRange.startDate,
-            ageGenderRange.endDate
-          );
-          setAgeGenderData(ageGenderResult);
-        } catch (error) {
-          console.error("Error fetching age & gender:", error);
-          setAgeGenderData(null);
-        }
 
-        // 10. Fetch package performance
-        await fetchPackagePerformance();
+        await Promise.allSettled([
+          // 1. KPIs WITHOUT date filters (all-time)
+          (async () => {
+            const [
+              adminsResult,
+              techniciansResult,
+              deskRolesResult,
+              dashboardKpisResult,
+            ] = await Promise.allSettled([
+              getTotalAdmins(labId),
+              getTotalTechnicians(labId),
+              getTotalDeskRoles(labId),
+              getDashboardKpis(labId),
+            ]);
+
+            if (adminsResult.status === "fulfilled")
+              setTotalAdmins(adminsResult.value.totalAdmins);
+            if (techniciansResult.status === "fulfilled")
+              setTotalTechnicians(techniciansResult.value.totalTechnicians);
+            if (deskRolesResult.status === "fulfilled")
+              setTotalDeskRoles(deskRolesResult.value.totalDeskRoles);
+            if (dashboardKpisResult.status === "fulfilled")
+              setDashboardKpis(dashboardKpisResult.value);
+          })(),
+
+          // 2. Data with GLOBAL date filter for main KPIs
+          (async () => {
+            const [
+              testsResult,
+              reportsResult,
+              pendingResult,
+              patientsResult,
+              revenueResult,
+              avgTatResult,
+            ] = await Promise.allSettled([
+              getTotalTests(labId, globalRange.startDate, globalRange.endDate),
+              getReportsGenerated(labId, globalRange.startDate, globalRange.endDate),
+              getPendingSamples(labId, globalRange.startDate, globalRange.endDate),
+              getTotalPatients(labId, globalRange.startDate, globalRange.endDate),
+              getTotalRevenue(labId, globalRange.startDate, globalRange.endDate),
+              getAvgTat(labId, globalRange.startDate, globalRange.endDate),
+            ]);
+
+            if (testsResult.status === "fulfilled")
+              setTotalTests(testsResult.value.totalTests);
+            if (reportsResult.status === "fulfilled")
+              setReportsGenerated(reportsResult.value.reportsGenerated);
+            if (pendingResult.status === "fulfilled")
+              setPendingSamples(pendingResult.value.pendingSamples);
+            if (patientsResult.status === "fulfilled")
+              setTotalPatients(patientsResult.value.totalPatients);
+            if (revenueResult.status === "fulfilled")
+              setTotalRevenue(revenueResult.value.totalRevenue);
+            if (avgTatResult.status === "fulfilled")
+              setAvgTat(avgTatResult.value.avgTatHours);
+          })(),
+
+          // 3. Revenue trend with its OWN filter
+          (async () => {
+            if (revenueRange.startDate && revenueRange.endDate) {
+              try {
+                const trendResult = await getRevenueTrend(
+                  labId,
+                  revenueRange.startDate,
+                  revenueRange.endDate
+                );
+                setRevenueTrend(trendResult.trend || []);
+              } catch (error) {
+                console.error("Error fetching revenue trend:", error);
+                setRevenueTrend([]);
+              }
+            } else {
+              setRevenueTrend([]);
+            }
+          })(),
+
+          // 4. Tests by category with the section's OWN filter
+          (async () => {
+            try {
+              const categoryResult = await getTestsByCategory(
+                labId,
+                categoryRange.startDate,
+                categoryRange.endDate
+              );
+              setTestsByCategory(categoryResult.categories || []);
+              setCategoryTotal(categoryResult.total || 0);
+            } catch (error) {
+              console.error("Error fetching tests by category:", error);
+              setTestsByCategory([]);
+              setCategoryTotal(0);
+            }
+          })(),
+
+          // 5. Top ordered tests with the category filter (all tests, not just top N)
+          (async () => {
+            try {
+              const topTests = await getTopOrderedTests(
+                labId,
+                categoryRange.startDate,
+                categoryRange.endDate
+              );
+              setTopOrderedTests(topTests || []);
+            } catch (error) {
+              console.error("Error fetching top ordered tests:", error);
+              setTopOrderedTests([]);
+            }
+          })(),
+
+          // 6. Technician performance with its OWN filter
+          (async () => {
+            try {
+              const techResult = await getTechnicianPerformance(
+                labId,
+                technicianRange.startDate,
+                technicianRange.endDate
+              );
+              setTechnicianPerformance(techResult || []);
+            } catch (error) {
+              console.error("Error fetching technician performance:", error);
+              setTechnicianPerformance([]);
+            }
+          })(),
+
+          // 7. Top doctors with its OWN filter
+          (async () => {
+            try {
+              const doctorsResult = await getTopReferringDoctors(
+                labId,
+                doctorsRange.startDate,
+                doctorsRange.endDate,
+                5
+              );
+              setTopDoctors(doctorsResult || []);
+            } catch (error) {
+              console.error("Error fetching top doctors:", error);
+              setTopDoctors([]);
+            }
+          })(),
+
+          // 8. Revenue by collection method
+          (async () => {
+            try {
+              const collectionResult = await getRevenueByCollectionMethod(
+                labId,
+                collectionRange.startDate,
+                collectionRange.endDate
+              );
+              setRevenueByCollection(collectionResult);
+            } catch (error) {
+              console.error("Error fetching revenue by collection:", error);
+              setRevenueByCollection(null);
+            }
+          })(),
+
+          // 9. Age & gender distribution
+          (async () => {
+            try {
+              const ageGenderResult = await getAgeGenderDistribution(
+                labId,
+                ageGenderRange.startDate,
+                ageGenderRange.endDate
+              );
+              setAgeGenderData(ageGenderResult);
+            } catch (error) {
+              console.error("Error fetching age & gender:", error);
+              setAgeGenderData(null);
+            }
+          })(),
+
+          // 10. Package performance
+          fetchPackagePerformance(),
+        ]);
 
         setLastUpdated(new Date());
       } catch (error) {

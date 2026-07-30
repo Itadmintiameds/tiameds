@@ -581,6 +581,11 @@ const SuperAdminStats = () => {
   }, [fetchStats]);
 
   // Fetch function
+  // Every section hits the same consolidated getAllStats endpoint but with its own date
+  // range, and none of the sections depend on another section's result - so they're all
+  // fired together via Promise.allSettled instead of one after another. This also drops
+  // the old duplicate call for "earnings by category": it used the exact same date range
+  // as "tests by category", so a single fetchStats call now backs both.
   const fetchAllData = useCallback(async (silent = false) => {
     if (!silent) {
       setLoading(true);
@@ -589,132 +594,148 @@ const SuperAdminStats = () => {
     }
 
     try {
-      // 1. Remaining KPIs + Billing Summary card, scoped by the GLOBAL filter + selected lab
       const globalRange = getDateRange(globalFilter, globalCustomRange);
-      try {
-        const globalStats = await fetchStats(globalRange.startDate, globalRange.endDate);
-        setTotalTests(globalStats.kpis?.totalTests || 0);
-        setTotalRevenue(globalStats.kpis?.totalRevenue || 0);
-        setReportsGenerated(globalStats.kpis?.reportsGenerated || 0);
-        setPendingSamples(globalStats.kpis?.pendingSamples || 0);
-        setBillingSummary(globalStats.detailedBilling?.summary || emptyBillingSummary);
-      } catch (error) {
-        console.error("Error fetching global stats:", error);
-        setTotalTests(0);
-        setTotalRevenue(0);
-        setReportsGenerated(0);
-        setPendingSamples(0);
-        setBillingSummary(emptyBillingSummary);
-      }
-
-      // 3. Revenue trend with its OWN filter. The header total comes from the full-range
-      // call; each chart bar comes from re-querying getAllStats for just that bucket's
-      // range, same bucketing scheme (day/week/month, by filter type) as before.
       const revenueRange = getDateRange(revenueFilter, revenueCustomRange);
-      if (revenueRange.startDate && revenueRange.endDate) {
-        try {
-          const revenueTotalStats = await fetchStats(revenueRange.startDate, revenueRange.endDate);
-          setRevenueTrendTotal(revenueTotalStats.revenueTrend?.totalRevenue || 0);
-        } catch (error) {
-          console.error("Error fetching revenue section total:", error);
-          setRevenueTrendTotal(0);
-        }
-
-        const buckets = getRevenueBuckets(revenueFilter, revenueCustomRange);
-        try {
-          const bucketResults = await Promise.all(
-            buckets.map(async (bucket) => {
-              try {
-                const bucketStats = await fetchStats(bucket.start, bucket.end);
-                return { label: bucket.label, revenue: bucketStats.revenueTrend?.totalRevenue || 0 };
-              } catch (error) {
-                console.error(`Error fetching revenue bucket ${bucket.label}:`, error);
-                return { label: bucket.label, revenue: 0 };
-              }
-            })
-          );
-          setRevenueChartData(bucketResults);
-        } catch (error) {
-          console.error("Error fetching revenue chart data:", error);
-          setRevenueChartData([]);
-        }
-      } else {
-        setRevenueTrendTotal(0);
-        setRevenueChartData([]);
-      }
-
-      // 4. Revenue by lab (top 5) with its OWN filter
       const topLabsRange = getDateRange(topLabsFilter, topLabsCustomRange);
-      try {
-        const topLabsStats = await fetchStats(topLabsRange.startDate, topLabsRange.endDate);
-        const allLabsRevenue = topLabsStats.revenueByLab || [];
-        setTotalLabsForRevenue(allLabsRevenue.length);
-        setRevenueByLab(allLabsRevenue.slice(0, 5));
-      } catch (error) {
-        console.error("Error fetching revenue by lab:", error);
-        setTotalLabsForRevenue(0);
-        setRevenueByLab([]);
-      }
-
-      // 5. Packages summary with its OWN filter
       const packagesRange = getDateRange(packagesFilter, packagesCustomRange);
-      try {
-        const packagesStats = await fetchStats(packagesRange.startDate, packagesRange.endDate);
-        setPackageSummary(packagesStats.detailedBilling?.packageSummary || emptyPackageSummary);
-        setPackages(packagesStats.detailedBilling?.packages || []);
-      } catch (error) {
-        console.error("Error fetching packages:", error);
-        setPackageSummary(emptyPackageSummary);
-        setPackages([]);
-      }
-
-      // 6. Tests by category with the section's OWN filter
       const categoryRange = getDateRange(categoryFilter, categoryCustomRange);
-      try {
-        const categoryStats = await fetchStats(categoryRange.startDate, categoryRange.endDate);
-        setTestCategories(categoryStats.detailedBilling?.testCategories || []);
-        setTestCategoriesSummary(categoryStats.detailedBilling?.testsSummary || emptyTestsSummary);
-      } catch (error) {
-        console.error("Error fetching tests by category:", error);
-        setTestCategories([]);
-        setTestCategoriesSummary(emptyTestsSummary);
-      }
-
-      // Earnings by category (same filter) - backs the "Revenue by Test" drilldown table
-      try {
-        const earningsResult = await fetchStats(categoryRange.startDate, categoryRange.endDate);
-        const earnings = earningsResult.earningsByCategory || { summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] };
-        setEarningsData(earnings);
-
-        // Default selected category to the one with the highest test count
-        if (earnings.categories && earnings.categories.length > 0) {
-          const sorted = [...earnings.categories].sort((a, b) => (b.totalTests || 0) - (a.totalTests || 0));
-          setSelectedCategory(sorted[0].category);
-        }
-      } catch (error) {
-        console.error("Error fetching earnings by category:", error);
-        setEarningsData({ summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] });
-      }
-
-      // 7. Lab performance with its OWN filter
       const performanceRange = getDateRange(performanceFilter, performanceCustomRange);
-      try {
-        const performanceStats = await fetchStats(performanceRange.startDate, performanceRange.endDate);
-        setLabPerformance((performanceStats.labPerformance || []).slice(0, 6));
-      } catch (error) {
-        console.error("Error fetching lab performance:", error);
-        setLabPerformance([]);
-      }
-
-      // 8. Top doctors with its OWN filter
       const doctorsRange = getDateRange(doctorsFilter, doctorsCustomRange);
-      try {
-        const doctorsStats = await fetchStats(doctorsRange.startDate, doctorsRange.endDate);
-        setTopDoctors((doctorsStats.topReferringDoctors || []).slice(0, 5));
-      } catch (error) {
-        console.error("Error fetching top doctors:", error);
-        setTopDoctors([]);
-      }
+
+      await Promise.allSettled([
+        // 1. Remaining KPIs + Billing Summary card, scoped by the GLOBAL filter + selected lab
+        (async () => {
+          try {
+            const globalStats = await fetchStats(globalRange.startDate, globalRange.endDate);
+            setTotalTests(globalStats.kpis?.totalTests || 0);
+            setTotalRevenue(globalStats.kpis?.totalRevenue || 0);
+            setReportsGenerated(globalStats.kpis?.reportsGenerated || 0);
+            setPendingSamples(globalStats.kpis?.pendingSamples || 0);
+            setBillingSummary(globalStats.detailedBilling?.summary || emptyBillingSummary);
+          } catch (error) {
+            console.error("Error fetching global stats:", error);
+            setTotalTests(0);
+            setTotalRevenue(0);
+            setReportsGenerated(0);
+            setPendingSamples(0);
+            setBillingSummary(emptyBillingSummary);
+          }
+        })(),
+
+        // 2. Revenue trend with its OWN filter. The header total comes from the full-range
+        // call; each chart bar comes from re-querying getAllStats for just that bucket's
+        // range, same bucketing scheme (day/week/month, by filter type) as before. The
+        // total and the per-bucket fetches are independent, so they run together too.
+        (async () => {
+          if (revenueRange.startDate && revenueRange.endDate) {
+            const buckets = getRevenueBuckets(revenueFilter, revenueCustomRange);
+            const [totalSettled, bucketsSettled] = await Promise.allSettled([
+              fetchStats(revenueRange.startDate, revenueRange.endDate),
+              Promise.all(
+                buckets.map(async (bucket) => {
+                  try {
+                    const bucketStats = await fetchStats(bucket.start, bucket.end);
+                    return { label: bucket.label, revenue: bucketStats.revenueTrend?.totalRevenue || 0 };
+                  } catch (error) {
+                    console.error(`Error fetching revenue bucket ${bucket.label}:`, error);
+                    return { label: bucket.label, revenue: 0 };
+                  }
+                })
+              ),
+            ]);
+
+            if (totalSettled.status === "fulfilled") {
+              setRevenueTrendTotal(totalSettled.value.revenueTrend?.totalRevenue || 0);
+            } else {
+              console.error("Error fetching revenue section total:", totalSettled.reason);
+              setRevenueTrendTotal(0);
+            }
+
+            if (bucketsSettled.status === "fulfilled") {
+              setRevenueChartData(bucketsSettled.value);
+            } else {
+              console.error("Error fetching revenue chart data:", bucketsSettled.reason);
+              setRevenueChartData([]);
+            }
+          } else {
+            setRevenueTrendTotal(0);
+            setRevenueChartData([]);
+          }
+        })(),
+
+        // 3. Revenue by lab (top 5) with its OWN filter
+        (async () => {
+          try {
+            const topLabsStats = await fetchStats(topLabsRange.startDate, topLabsRange.endDate);
+            const allLabsRevenue = topLabsStats.revenueByLab || [];
+            setTotalLabsForRevenue(allLabsRevenue.length);
+            setRevenueByLab(allLabsRevenue.slice(0, 5));
+          } catch (error) {
+            console.error("Error fetching revenue by lab:", error);
+            setTotalLabsForRevenue(0);
+            setRevenueByLab([]);
+          }
+        })(),
+
+        // 4. Packages summary with its OWN filter
+        (async () => {
+          try {
+            const packagesStats = await fetchStats(packagesRange.startDate, packagesRange.endDate);
+            setPackageSummary(packagesStats.detailedBilling?.packageSummary || emptyPackageSummary);
+            setPackages(packagesStats.detailedBilling?.packages || []);
+          } catch (error) {
+            console.error("Error fetching packages:", error);
+            setPackageSummary(emptyPackageSummary);
+            setPackages([]);
+          }
+        })(),
+
+        // 5. Tests by category + earnings by category with the section's OWN filter -
+        // both come off the same getAllStats response since they share categoryRange.
+        (async () => {
+          try {
+            const categoryStats = await fetchStats(categoryRange.startDate, categoryRange.endDate);
+            setTestCategories(categoryStats.detailedBilling?.testCategories || []);
+            setTestCategoriesSummary(categoryStats.detailedBilling?.testsSummary || emptyTestsSummary);
+
+            const earnings = categoryStats.earningsByCategory || { summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] };
+            setEarningsData(earnings);
+
+            // Default selected category to the one with the highest test count
+            if (earnings.categories && earnings.categories.length > 0) {
+              const sorted = [...earnings.categories].sort((a, b) => (b.totalTests || 0) - (a.totalTests || 0));
+              setSelectedCategory(sorted[0].category);
+            }
+          } catch (error) {
+            console.error("Error fetching tests/earnings by category:", error);
+            setTestCategories([]);
+            setTestCategoriesSummary(emptyTestsSummary);
+            setEarningsData({ summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] });
+          }
+        })(),
+
+        // 6. Lab performance with its OWN filter
+        (async () => {
+          try {
+            const performanceStats = await fetchStats(performanceRange.startDate, performanceRange.endDate);
+            setLabPerformance((performanceStats.labPerformance || []).slice(0, 6));
+          } catch (error) {
+            console.error("Error fetching lab performance:", error);
+            setLabPerformance([]);
+          }
+        })(),
+
+        // 7. Top doctors with its OWN filter
+        (async () => {
+          try {
+            const doctorsStats = await fetchStats(doctorsRange.startDate, doctorsRange.endDate);
+            setTopDoctors((doctorsStats.topReferringDoctors || []).slice(0, 5));
+          } catch (error) {
+            console.error("Error fetching top doctors:", error);
+            setTopDoctors([]);
+          }
+        })(),
+      ]);
 
       setLastUpdated(new Date());
     } catch (error) {
