@@ -280,7 +280,7 @@ const SUMMARY_CARD_ORDER: SummaryCardId[] = ["alerts", "findings", "ai", "snapsh
 // only need to be close enough to rank arrangements, so keep them roughly in step with
 // the card CSS rather than exact.
 const SUMMARY_CARD_CHROME_PX = 52; // card padding + title row
-const ALERT_TILES_PX = 92; // the four stat tiles: one row at any width
+const ALERT_TILES_PX = 80; // the four stat tiles: one row at any width
 const FINDING_ROW_PX = 30; // one two-line finding entry + its row gap
 const SNAPSHOT_ROW_PX = 30; // one test name + sparkline
 const AI_FIELD_LABEL_PX = 13;
@@ -876,11 +876,14 @@ const CommonReportView2 = ({
         };
     };
 
-    // Drives the Clinical Alert Summary counts, Key Findings list, Overall Risk Score,
-    // and Clinical Attention Required section from the same row data already rendered in
-    // Detailed Lab Results -- no separate AI/analytics backend involved.
+    // Drives the Clinical Alert Summary counts, Key Findings list, and Clinical Attention
+    // Required section from the same row data already rendered in Detailed Lab Results --
+    // no separate AI/analytics backend involved.
     const clinicalSummary = useMemo(() => {
-        let critical = 0;
+        // Critical rows are split by direction so the alert tiles can show High and Low
+        // separately; borderline rows stay pooled regardless of direction.
+        let high = 0;
+        let low = 0;
         let borderline = 0;
         let normal = 0;
         const findings: ClinicalFinding[] = [];
@@ -914,8 +917,10 @@ const CommonReportView2 = ({
                 }
 
                 reportHasAbnormality = true;
-                if (score.kind === "critical") critical += 1;
-                else borderline += 1;
+                if (score.kind === "critical") {
+                    if (score.direction === "low") low += 1;
+                    else high += 1;
+                } else borderline += 1;
                 findings.push({ report, row, kind: score.kind, direction: score.direction });
             });
 
@@ -927,11 +932,7 @@ const CommonReportView2 = ({
         const severityRank: Record<ClinicalFinding["kind"], number> = { critical: 0, borderline: 1 };
         findings.sort((a, b) => severityRank[a.kind] - severityRank[b.kind]);
 
-        const totalScored = critical + borderline + normal;
-        const overallRisk: "HIGH" | "MODERATE" | "LOW" | null =
-            totalScored === 0 ? null : critical > 0 ? "HIGH" : borderline > 0 ? "MODERATE" : "LOW";
-
-        return { critical, borderline, normal, findings, normalReportNames, overallRisk };
+        return { high, low, borderline, normal, findings, normalReportNames };
     }, [sortedReports]);
 
     // Full (not just abnormal) row-level view of the current report, shaped for the AI prompt --
@@ -1231,9 +1232,10 @@ const CommonReportView2 = ({
             {/* Tiles wrap rather than squeeze: flex-basis with a floor, no hardcoded widths. */}
             <div className="flex flex-wrap items-stretch gap-1.5">
                 {[
-                    { label: "High / Low", sub: "Abnormality", icon: "/report/exclamation-triangle/red.jpg", color: REPORT_COLORS.danger600, value: clinicalSummary.critical },
-                    { label: "Borderline", sub: "Abnormalities", icon: "/report/exclamation-triangle/outline.png", color: REPORT_COLORS.warning500, value: clinicalSummary.borderline },
-                    { label: "Normal", sub: "Parameters", icon: "/report/check-circle/solid.png", color: REPORT_COLORS.success600, value: clinicalSummary.normal },
+                    { label: "High", icon: "/report/arrow-up-circle.png", color: REPORT_COLORS.danger600, value: clinicalSummary.high },
+                    { label: "Low", icon: "/report/arrow-down-circle-red.png", color: REPORT_COLORS.danger600, value: clinicalSummary.low },
+                    { label: "Borderline", icon: "/report/exclamation-triangle/outline.png", color: REPORT_COLORS.warning500, value: clinicalSummary.borderline },
+                    { label: "Normal", icon: "/report/check-circle/solid.png", color: REPORT_COLORS.success600, value: clinicalSummary.normal },
                 ].map((item) => (
                     <div
                         key={item.label}
@@ -1243,17 +1245,8 @@ const CommonReportView2 = ({
                         <img src={item.icon} alt="" className="w-5 h-5" crossOrigin="anonymous" />
                         <p className="text-lg font-extrabold" style={{ color: REPORT_COLORS.neutral900 }}>{item.value}</p>
                         <p className="text-[9px] font-bold uppercase" style={{ color: item.color }}>{item.label}</p>
-                        <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>{item.sub}</p>
                     </div>
                 ))}
-                <div
-                    className="flex-[1_1_70px] p-1.5 rounded-lg flex flex-col items-center gap-0.5 text-center"
-                    style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                >
-                    <img src="/report/Purpose.png" alt="" className="w-5 h-5" crossOrigin="anonymous" />
-                    <p className="text-sm font-extrabold text-center" style={{ color: REPORT_COLORS.secondary800 }}>{clinicalSummary.overallRisk || "—"}</p>
-                    <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>Overall Risk Score</p>
-                </div>
             </div>
         </div>
     );
