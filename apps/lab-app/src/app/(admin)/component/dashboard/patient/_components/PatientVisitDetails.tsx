@@ -244,14 +244,17 @@ const PatientVisitDetails = ({ patinetVisitDetails }: PatientVisitDetailsProps) 
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {healthPackage?.map((pkg) => (
+                                    {healthPackage?.map((pkg) => {
+                                        const grossPrice = pkg.tests?.reduce((sum, t) => sum + t.price, 0) ?? pkg.price;
+                                        const discountAmount = (grossPrice * pkg.discount) / 100;
+                                        return (
                                         <React.Fragment key={pkg.id}>
                                             <tr className="border-b hover:bg-gray-50 transition duration-300 ease-in-out">
                                                 <td className="p-4">{pkg.packageName}</td>
-                                                <td className="p-4 text-right text-gray-700">₹{pkg.price.toFixed(2)}</td>
-                                                <td className="p-4 text-right text-red-600">- ₹{pkg.discount.toFixed(2)}</td>
+                                                <td className="p-4 text-right text-gray-700">₹{grossPrice.toFixed(2)}</td>
+                                                <td className="p-4 text-right text-red-600">- ₹{discountAmount.toFixed(2)}</td>
                                                 <td className="p-4 text-right text-green-600 font-semibold">
-                                                    ₹{(pkg.price - pkg.discount).toFixed(2)}
+                                                    ₹{(grossPrice - discountAmount).toFixed(2)}
                                                 </td>
                                             </tr>
 
@@ -276,7 +279,8 @@ const PatientVisitDetails = ({ patinetVisitDetails }: PatientVisitDetailsProps) 
                                                 </td>
                                             </tr>
                                         </React.Fragment>
-                                    ))}
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>

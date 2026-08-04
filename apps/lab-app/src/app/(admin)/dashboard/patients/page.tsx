@@ -192,17 +192,21 @@ const Page = () => {
         category: test.category,
 
       })),
-      healthPackages: healthPackage?.map((pkg) => ({
+      healthPackages: healthPackage?.map((pkg) => {
+        const grossPrice = pkg.tests?.reduce((sum, t) => sum + t.price, 0) ?? pkg.price;
+        const discountAmount = (grossPrice * pkg.discount) / 100;
+        return {
         packageName: pkg.packageName,
-        price: pkg.price,
-        discount: pkg.discount,
-        netPrice: pkg.price - pkg.discount,
+        price: grossPrice,
+        discount: discountAmount,
+        netPrice: grossPrice - discountAmount,
         tests: pkg.tests.map((test) => ({
           name: test.name,
           category: test.category,
           price: test.price,
         })),
-      })),
+        };
+      }),
       patient: {
         name: `${patientDetails?.firstName || ''} ${patientDetails?.lastName || ''}`,
         age: parseInt(calculateAge(patientDetails?.dateOfBirth || '')) || 0,
@@ -463,14 +467,17 @@ const Page = () => {
                 </tr>
               </thead>
               <tbody>
-                {healthPackage?.map((pkg) => (
+                {healthPackage?.map((pkg) => {
+                  const grossPrice = pkg.tests?.reduce((sum, t) => sum + t.price, 0) ?? pkg.price;
+                  const discountAmount = (grossPrice * pkg.discount) / 100;
+                  return (
                   <React.Fragment key={pkg.id}>
                     <tr className="border-b hover:bg-gray-50 transition duration-300">
                       <td className="p-3 text-gray-800">{pkg.packageName}</td>
-                      <td className="p-3 text-right text-gray-700">₹{pkg.price.toFixed(2)}</td>
-                      <td className="p-3 text-right text-red-600">-₹{pkg.discount.toFixed(2)}</td>
+                      <td className="p-3 text-right text-gray-700">₹{grossPrice.toFixed(2)}</td>
+                      <td className="p-3 text-right text-red-600">-₹{discountAmount.toFixed(2)}</td>
                       <td className="p-3 text-right text-green-600 font-semibold">
-                        ₹{(pkg.price - pkg.discount).toFixed(2)}
+                        ₹{(grossPrice - discountAmount).toFixed(2)}
                       </td>
                     </tr>
                     {/* Tests in Package */}
@@ -491,7 +498,8 @@ const Page = () => {
                       </td>
                     </tr>
                   </React.Fragment>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

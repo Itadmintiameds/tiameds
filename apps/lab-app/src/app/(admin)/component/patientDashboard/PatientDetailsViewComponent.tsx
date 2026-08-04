@@ -103,7 +103,10 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
       const discountInfo = getTestDiscount(test.id);
       total += discountInfo.finalPrice || test.price;
     });
-    healthPackage?.forEach(pkg => total += (pkg.price - pkg.discount));
+    healthPackage?.forEach(pkg => {
+      const grossPrice = pkg.tests?.reduce((sum, t) => sum + t.price, 0) ?? pkg.price;
+      total += grossPrice - (grossPrice * pkg.discount) / 100;
+    });
     return total;
   };
 
@@ -392,13 +395,16 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                 </tr>
               </thead>
               <tbody>
-                {healthPackage.map((pkg, idx) => (
+                {healthPackage.map((pkg, idx) => {
+                  const grossPrice = pkg.tests?.reduce((sum, t) => sum + t.price, 0) ?? pkg.price;
+                  const discountAmount = (grossPrice * pkg.discount) / 100;
+                  return (
                   <React.Fragment key={`pkg-${idx}`}>
                     <tr style={{ backgroundColor: c.white }}>
                       <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{pkg.packageName}</td>
-                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{pkg.price.toFixed(2)}</td>
-                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>-₹{pkg.discount.toFixed(2)}</td>
-                      <td className="p-1.5 text-right border font-semibold leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{(pkg.price - pkg.discount).toFixed(2)}</td>
+                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{grossPrice.toFixed(2)}</td>
+                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>-₹{discountAmount.toFixed(2)}</td>
+                      <td className="p-1.5 text-right border font-semibold leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{(grossPrice - discountAmount).toFixed(2)}</td>
                     </tr>
                     {pkg.tests && pkg.tests.length > 0 && (
                       <tr style={{ backgroundColor: c.white }}>
@@ -417,7 +423,8 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                       </tr>
                     )}
                   </React.Fragment>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -443,7 +450,10 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                 {healthPackage && healthPackage.length > 0 && (
                   <div className="flex justify-between py-1 border-b" style={{ borderColor: c.gray400 }}>
                     <span className="font-semibold" style={{ color: c.black }}>Packages Total:</span>
-                    <span style={{ color: c.black }}>₹{healthPackage.reduce((sum, pkg) => sum + (pkg.price - pkg.discount), 0).toFixed(2)}</span>
+                    <span style={{ color: c.black }}>₹{healthPackage.reduce((sum, pkg) => {
+                      const grossPrice = pkg.tests?.reduce((s, t) => s + t.price, 0) ?? pkg.price;
+                      return sum + (grossPrice - (grossPrice * pkg.discount) / 100);
+                    }, 0).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between py-1 border-b font-bold" style={{ borderColor: c.gray400 }}>
