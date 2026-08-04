@@ -81,6 +81,7 @@ interface PatientDetails {
   bloodGroup: string;
   patientId: string;
   Gender: string;
+  visitType: string;
 }
 
 // Type for the bill object
@@ -275,6 +276,7 @@ const Page = () => {
         bloodGroup: patientDetails?.bloodGroup || 'N/A',
         patientId: (patientDetails?.id || 'N/A').toString(),
         Gender: patientDetails?.gender || 'N/A',
+        visitType: patientDetails?.visit?.visitType || 'N/A',
     }
     });
   };

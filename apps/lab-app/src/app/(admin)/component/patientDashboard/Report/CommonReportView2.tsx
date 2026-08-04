@@ -2580,6 +2580,7 @@ const CommonReportView2 = ({
                                         })(), noWrap: true
                                     },
                                     { icon: "/report/id-card.png", label: "Patient No.", value: primaryReport?.patientCode || "N/A", noWrap: true },
+                                    { icon: "/report/clipboard-check.png", label: "Patient Type", value: patientData?.visitType || "N/A", noWrap: true },
                                 ],
                                 [
                                     { icon: "/report/stethoscope.png", label: "Referred By", value: displayDoctorName, noWrap: false },
@@ -2593,7 +2594,7 @@ const CommonReportView2 = ({
                                         <div
                                             key={field.label}
                                             className="flex-1 flex items-center"
-                                            style={{ marginLeft: fieldIdx > 0 ? "0.75rem" : 0, minWidth: "150px" }}
+                                            style={{ marginLeft: fieldIdx > 0 ? "0.75rem" : 0, minWidth: row.length > 4 ? "128px" : "150px" }}
                                         >
                                             <div
                                                 className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"

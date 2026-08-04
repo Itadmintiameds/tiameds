@@ -53,6 +53,7 @@ interface Patient {
   address: string;
   bloodGroup: string;
   Gender: string;
+  visitType: string;
 }
 
 const PatientDetails = ({ patient }: { patient: Patient }) => {
@@ -94,8 +95,10 @@ const PatientDetails = ({ patient }: { patient: Patient }) => {
           <Text style={patientStyles.boldText}>Address:</Text>
           <Text style={patientStyles.patientDetailText}>{patient.address}</Text>
         </View>
-        {/* Empty column to maintain 4-column layout */}
-        <View style={patientStyles.column}></View>
+        <View style={patientStyles.column}>
+          <Text style={patientStyles.boldText}>Patient Type:</Text>
+          <Text style={patientStyles.patientDetailText}>{patient.visitType}</Text>
+        </View>
       </View>
     </View>
   );

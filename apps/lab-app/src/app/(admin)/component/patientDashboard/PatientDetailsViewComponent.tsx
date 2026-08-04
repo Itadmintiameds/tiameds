@@ -342,6 +342,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
             <div>
               <p className="font-semibold mb-1 border-b pb-0.5" style={{ color: c.black, borderColor: c.gray400 }}>Reference</p>
               <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Referred By:</span> {doctor?.name || 'N/A'}</p>
+              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Patient Type:</span> {patient?.visit?.visitType || 'N/A'}</p>
             </div>
           </div>
         </div>

@@ -31,6 +31,7 @@ export interface PatientDetails {
     bloodGroup: string;
     patientId: string;
     Gender: string;
+    visitType: string;
 }
 export interface Bill {
     lab: LabDetails;
