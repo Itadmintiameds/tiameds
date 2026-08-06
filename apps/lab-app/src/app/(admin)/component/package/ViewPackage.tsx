@@ -70,8 +70,8 @@ const ViewPackage = ({ packageData }: ViewPackageProps) => {
             <span className="text-warning-600 font-medium">-₹{discountAmount.toFixed(2)}</span>
           </div>
           <div className="border-t border-info-200 pt-2 mt-2 flex justify-between">
-            <span className="text-p1 font-bold text-pneutral-900">Total</span>
-            <span className="text-p1 font-bold text-pneutral-900">₹{Number(packageData.price).toFixed(2)}</span>
+            <span className="text-p3 font-bold text-pneutral-900">Total</span>
+            <span className="text-p3 font-bold text-pneutral-900">₹{Number(packageData.price).toFixed(2)}</span>
           </div>
         </div>
       </div>
