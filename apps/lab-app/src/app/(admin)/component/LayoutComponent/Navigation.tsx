@@ -14,18 +14,26 @@ interface BaseNavigationItem {
   name: string;
   href?: string;
   icon?: React.ElementType;
+  // Roles allowed to see this item; omit/leave empty to allow every authenticated role.
+  allowedRoles?: string[];
   children?: (BaseNavigationItem & { icon?: React.ElementType })[];
 }
 
 const baseNavigation: BaseNavigationItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon },
 
-  { name: "Patient Management", href: "/dashboard/patient-management", icon: UsersIcon },
+  {
+    name: "Patient Management",
+    href: "/dashboard/patient-management",
+    icon: UsersIcon,
+    allowedRoles: ["SUPERADMIN", "ADMIN"],
+  },
 
   {
   name: "Sample Management",
   href: "/dashboard/sample",
   icon: ClipboardListIcon,
+  allowedRoles: ["SUPERADMIN", "ADMIN", "TECHNICIAN"],
   children: [
     {
       name: "Samples Pending",
@@ -63,7 +71,7 @@ const baseNavigation: BaseNavigationItem[] = [
     name: "Lab Management",
     icon: FlaskConical,
     children: [
-      { name: "Tests", href: "/dashboard/test", icon: ClipboardListIcon },
+      { name: "Tests", href: "/dashboard/test", icon: ClipboardListIcon, allowedRoles: ["SUPERADMIN", "ADMIN", "TECHNICIAN"] },
       { name: "Doctors", href: "/dashboard/doctor", icon: FaUserDoctor },
       { name: "Sample List", href: "/dashboard/sample/add", icon: FaPeriscope },
       // { name: "Sample Collection", href: "/dashboard/sample", icon: ClipboardListIcon },
@@ -73,6 +81,7 @@ const baseNavigation: BaseNavigationItem[] = [
   {
     name: "Package Management",
     icon: PiPackageFill,
+    allowedRoles: ["SUPERADMIN", "ADMIN"],
     children: [
       { name: "Package List", href: "/dashboard/package?tab=packageList", icon: ClipboardListIcon },
       { name: "Add Package", href: "/dashboard/package?tab=package", icon: PiPackageFill },
@@ -81,6 +90,7 @@ const baseNavigation: BaseNavigationItem[] = [
   {
     name: "User Management",
     icon: UserGroupIcon,
+    allowedRoles: ["SUPERADMIN", "ADMIN"],
     children: [
       { name: "Manage Members", href: "/dashboard/technicians", icon: ClipboardListIcon },
     ],
@@ -102,6 +112,7 @@ const baseNavigation: BaseNavigationItem[] = [
   {
     name: "Settings",
     icon: CogIcon,
+    allowedRoles: ["SUPERADMIN", "ADMIN"],
     children: [
       // { name: "Profile", href: "/dashboard/profile", icon: UserIcon },
       // { name: "Preferences", href: "#", icon: ClipboardListIcon },
