@@ -238,6 +238,154 @@ const dedupeSnapshotResults = (results: HealthSnapshotTestResult[]) => {
     );
 };
 
+interface SnapshotParamSeries {
+    key: string;
+    label: string;
+    points: HealthSnapshotTestResult[];
+}
+
+// A multi-parameter test (CBC, LFT, urine R/E, ...) carries every parameter's own
+// value on each visit's `testRows`, while the snapshot API also mirrors just one of
+// them onto the visit-level enteredValue/unit/referenceRange. Pivoting on testRows
+// here is what lets both the sparkline card and the AI history feed trend every
+// parameter separately, instead of collapsing a multi-row test down to whichever one
+// value happened to land on that mirrored field. Single-parameter tests (no testRows)
+// fall back to that mirrored field and produce exactly one series, unchanged from
+// before.
+const getSnapshotParameterSeries = (test: HealthSnapshotTest): SnapshotParamSeries[] => {
+    const deduped = dedupeSnapshotResults(test.results);
+    const order: string[] = [];
+    const byKey = new Map<string, SnapshotParamSeries>();
+
+    deduped.forEach((result) => {
+        const rows =
+            result.testRows && result.testRows.length > 0
+                ? result.testRows
+                : [
+                    {
+                        testParameter: test.testName,
+                        normalRange: result.referenceRange,
+                        enteredValue: result.enteredValue,
+                        unit: result.unit,
+                        referenceAgeRange: result.referenceAgeRange,
+                    },
+                ];
+
+        rows.forEach((row) => {
+            const label = (row.testParameter || test.testName).trim();
+            const key = label.toLowerCase();
+            if (!byKey.has(key)) {
+                byKey.set(key, { key, label, points: [] });
+                order.push(key);
+            }
+            byKey.get(key)!.points.push({
+                ...result,
+                enteredValue: row.enteredValue,
+                unit: row.unit,
+                referenceRange: row.normalRange,
+                referenceAgeRange: row.referenceAgeRange,
+            });
+        });
+    });
+
+    return order.map((key) => byKey.get(key)!);
+};
+
+// How far one parameter's reading sits from its own normal range, in half-width units:
+// 0 sits at the range's centre, +-1 sits exactly on its boundary. Every reference-range
+// format below is normalized into that same +-1 scale so parameters reported in
+// completely different units (mg/dL, cells/cumm, %, ...) can be averaged together
+// meaningfully -- that average is what lets one sparkline speak for an entire
+// multi-parameter panel. The math mirrors scoreValue's own overshoot ratio exactly
+// (verified boundary-for-boundary), so a single-parameter test's composite reduces to
+// the exact same critical/borderline call scoreValue would already make for it.
+const parameterDeviation = (enteredValue?: string, normalRange?: string): number | null => {
+    if (!enteredValue || !normalRange || enteredValue === "N/A" || normalRange === "N/A") return null;
+    const value = parseFloat(enteredValue);
+    if (isNaN(value)) return null;
+    const range = normalRange.trim();
+
+    // Format 1: "12 - 16" (min-max band).
+    const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+    if (rangeMatch) {
+        const min = parseFloat(rangeMatch[1]);
+        const max = parseFloat(rangeMatch[2]);
+        const mid = (min + max) / 2;
+        const half = Math.max((max - min) / 2, Number.EPSILON);
+        return (value - mid) / half;
+    }
+
+    // Format 2: "< 5.0" -- below threshold is unconditionally normal (pinned to 0,
+    // matching scoreValue's own unconditional "normal" verdict there); at/above the
+    // threshold the deviation crosses +1 right at the boundary and grows from there.
+    const lessThanMatch = range.match(/<\s*(\d+(?:\.\d+)?)/);
+    if (lessThanMatch) {
+        const threshold = parseFloat(lessThanMatch[1]);
+        if (threshold <= 0) return null;
+        if (value < threshold) return 0;
+        return 1 + 2 * ((value - threshold) / threshold);
+    }
+
+    // Format 3: mirror of Format 2 -- at/above threshold is unconditionally normal
+    // (pinned to 0); below it the deviation crosses -1 at the boundary and falls further.
+    const greaterThanMatch = range.match(/>\s*(\d+(?:\.\d+)?)/);
+    if (greaterThanMatch) {
+        const threshold = parseFloat(greaterThanMatch[1]);
+        if (threshold <= 0) return null;
+        if (value >= threshold) return 0;
+        return -1 + 2 * ((value - threshold) / threshold);
+    }
+
+    // Format 4: qualitative -- no numeric band to measure a deviation against.
+    return null;
+};
+
+// A large, arbitrary shift so the composite value below never prints as a negative
+// number -- the min-max regex scoreValue/parameterDeviation both use has no support for
+// a leading "-", so a genuinely negative composite would be silently misparsed. The
+// shift is constant across every point in a series, so it cancels out of the
+// sparkline's own min/max normalization and never affects the drawn shape.
+const COMPOSITE_OFFSET = 1000;
+
+// One point per visit: every parameter on that visit's testRows gets its own deviation
+// (see parameterDeviation), averaged into a single composite and re-encoded onto the
+// enteredValue/referenceRange fields buildTestSparkline and scoreValue already know how
+// to plot and grade -- this is what lets one sparkline represent an entire panel (CBC,
+// LFT, ...) instead of whichever single field the snapshot API happens to mirror onto
+// the visit level. A visit with nothing numerically scoreable (e.g. an all-qualitative
+// panel) keeps its original mirrored value, leaving the existing categorical sparkline
+// path in buildTestSparkline untouched.
+const buildCompositeTestSeries = (test: HealthSnapshotTest): HealthSnapshotTestResult[] => {
+    const deduped = dedupeSnapshotResults(test.results);
+    return deduped.map((result) => {
+        const rows =
+            result.testRows && result.testRows.length > 0
+                ? result.testRows
+                : [
+                    {
+                        testParameter: test.testName,
+                        normalRange: result.referenceRange,
+                        enteredValue: result.enteredValue,
+                        unit: result.unit,
+                        referenceAgeRange: result.referenceAgeRange,
+                    },
+                ];
+
+        const deviations = rows
+            .map((row) => parameterDeviation(row.enteredValue, row.normalRange))
+            .filter((d): d is number => d !== null);
+
+        if (deviations.length === 0) return result;
+
+        const avg = deviations.reduce((sum, d) => sum + d, 0) / deviations.length;
+        return {
+            ...result,
+            enteredValue: String(avg + COMPOSITE_OFFSET),
+            referenceRange: `${COMPOSITE_OFFSET - 1} - ${COMPOSITE_OFFSET + 1}`,
+        };
+    });
+};
+
 // Health Snapshot trend lines always lay dots on a fixed grid of the last N visits.
 const SPARKLINE_MAX_VISITS = 4;
 
@@ -756,10 +904,10 @@ const CommonReportView2 = ({
     // Health Snapshot card shows trend as a small colored line chart instead of raw
     // numbers -- color reflects the latest reading's status (reuses the same
     // normal/borderline/critical scoring as Detailed Lab Results), shape reflects the
-    // last few visits' relative movement.
-    const buildTestSparkline = (test: HealthSnapshotTest) => {
-        const deduped = dedupeSnapshotResults(test.results);
-
+    // last few visits' relative movement. Takes one already-deduped points array per
+    // test, built by buildCompositeTestSeries (all of that test's parameters combined
+    // into one value per visit).
+    const buildTestSparkline = (results: HealthSnapshotTestResult[]) => {
         const width = 200;
         const height = 28;
         const padX = 6;
@@ -771,7 +919,7 @@ const CommonReportView2 = ({
         const xAt = (i: number) => padX + stepX * i;
 
         // --- Numeric tests: value over time (Haemoglobin, WBC count, ...) ---
-        const numericPoints = deduped
+        const numericPoints = results
             .map((r) => ({
                 value: parseFloat(r.enteredValue),
                 score: scoreValue(r.enteredValue, r.referenceRange),
@@ -816,7 +964,7 @@ const CommonReportView2 = ({
         // they used to collapse to a lone bullet that showed no history at all. Mapping each
         // distinct result to its own y-level keeps the same compact sparkline shape: a test
         // that stays Negative reads as a flat line, one that flips reads as a step. ---
-        const categoricalPoints = deduped
+        const categoricalPoints = results
             .map((r) => (r.enteredValue || "").trim())
             .filter((value) => value && value.toUpperCase() !== "N/A");
 
@@ -1029,15 +1177,20 @@ const CommonReportView2 = ({
         if (!visibleSnapshot) return [];
         const points: AiHistoryPoint[] = [];
         visibleSnapshot.tests.forEach((test) => {
-            // Same dedupe as the sparklines, so the AI never reasons about duplicate
-            // rows the deployed backend returns for a single visit.
-            dedupeSnapshotResults(test.results).forEach((result) => {
-                points.push({
-                    testName: test.testName,
-                    visitDate: result.visitDate,
-                    value: result.enteredValue,
-                    unit: result.unit,
-                    normalRange: result.referenceRange,
+            // Same dedupe+pivot as the sparklines (getSnapshotParameterSeries), so the AI
+            // gets one history point per parameter per visit -- not just whichever single
+            // value the snapshot API mirrors onto the visit-level field -- and never
+            // reasons about duplicate rows the deployed backend returns for a single visit.
+            getSnapshotParameterSeries(test).forEach((param) => {
+                param.points.forEach((result) => {
+                    points.push({
+                        testName: test.testName,
+                        parameter: param.label,
+                        visitDate: result.visitDate,
+                        value: result.enteredValue,
+                        unit: result.unit,
+                        normalRange: result.referenceRange,
+                    });
                 });
             });
         });
@@ -1143,22 +1296,32 @@ const CommonReportView2 = ({
         };
     };
 
+    // One entry per test -- Health Snapshot renders exactly one row/sparkline per test,
+    // same as before. What's new is the points behind that sparkline: buildCompositeTestSeries
+    // averages every parameter on the panel into each visit's point (see its comment),
+    // instead of whichever single field the snapshot API happens to mirror onto the
+    // visit level, so a multi-parameter test's one line now speaks for the whole panel.
+    // Computed once and reused by hasSnapshotTrends, the row-count layout math, and the
+    // card render below, so all three agree on exactly what's being shown.
+    const snapshotTrendEntries = useMemo(
+        () =>
+            (visibleSnapshot?.tests || [])
+                .map((test) => ({ test, points: buildCompositeTestSeries(test) }))
+                .filter((entry) => entry.points.length > 1),
+        [visibleSnapshot]
+    );
+
     // Health Snapshot only appears once the patient has genuine history: at least one
     // test with results from 2+ distinct visits (after dedupe). First-time patients get
     // no card at all -- not even a placeholder message.
-    const hasSnapshotTrends = useMemo(
-        () => (visibleSnapshot?.tests || []).some((t) => dedupeSnapshotResults(t.results).length > 1),
-        [visibleSnapshot]
-    );
+    const hasSnapshotTrends = snapshotTrendEntries.length > 0;
 
     // Which summary cards exist, and how they get arranged, is decided entirely by this
     // patient's content volume -- see planSummaryLayout. The cards themselves never know
     // where they land: each renders at w-full and the column/band container sizes it.
     const summaryLayout = useMemo(() => {
         const findingsCount = clinicalSummary.findings.length;
-        const snapshotRows = (visibleSnapshot?.tests || []).filter(
-            (test) => dedupeSnapshotResults(test.results).length > 1
-        ).length;
+        const snapshotRows = snapshotTrendEntries.length;
 
         const cards: SummaryCard[] = [
             {
@@ -1184,7 +1347,7 @@ const CommonReportView2 = ({
         }
 
         return planSummaryLayout(cards);
-    }, [clinicalSummary.findings.length, visibleSnapshot, hasSnapshotTrends]);
+    }, [clinicalSummary.findings.length, snapshotTrendEntries, hasSnapshotTrends]);
 
     const renderClinicalAlertCard = () => (
         <div
@@ -1329,13 +1492,7 @@ const CommonReportView2 = ({
             {healthSnapshotLoading ? (
                 <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Loading history...</p>
             ) : (() => {
-                // Count distinct visits ourselves (dedupeSnapshotResults) instead of trusting
-                // the backend's totalVisits, which double-counts re-saved reports on the same
-                // visit and made first-time patients show a trend line.
-                const trendTests = (visibleSnapshot?.tests || []).filter(
-                    (t) => dedupeSnapshotResults(t.results).length > 1
-                );
-                if (trendTests.length === 0) {
+                if (snapshotTrendEntries.length === 0) {
                     return (
                         <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>
                             {visibleSnapshot ? "No prior visit history for these tests yet." : "Trend data will appear here once available."}
@@ -1344,8 +1501,8 @@ const CommonReportView2 = ({
                 }
                 return (
                     <div className="flex flex-col gap-2 px-1">
-                        {trendTests.map((test: HealthSnapshotTest) => {
-                            const sparkline = buildTestSparkline(test);
+                        {snapshotTrendEntries.map(({ test, points }) => {
+                            const sparkline = buildTestSparkline(points);
                             return (
                                 <div key={test.testName} className="flex items-center gap-2">
                                     <p className="text-[10px] font-medium uppercase leading-snug flex-[0_0_42%] min-w-0" style={{ color: REPORT_COLORS.neutral800 }}>{test.testName}</p>

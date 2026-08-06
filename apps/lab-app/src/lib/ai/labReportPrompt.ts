@@ -14,6 +14,7 @@ export interface AiTestFinding {
 
 export interface AiHistoryPoint {
   testName: string;
+  parameter: string;
   visitDate: string;
   value: string;
   unit?: string;
@@ -130,16 +131,34 @@ export function buildLabReportPrompt({ patient, testFindings, history }: BuildLa
         .join("\n\n")
     : "No structured test findings available.";
 
-  // History grouped by test and ordered chronologically per test, so a trend reads as a
-  // simple top-to-bottom progression instead of an interleaved timeline across tests.
+  // History grouped by test panel, then by parameter within the panel, each parameter's
+  // points ordered chronologically -- a multi-parameter test (CBC, LFT, ...) reads as one
+  // trend per parameter instead of interleaving unrelated parameters under one timeline.
   const historyLines = history.length
     ? groupByTestName(history)
-        .map(([testName, points]) => {
-          const sorted = [...points].sort((a, b) => parseDateSafe(a.visitDate) - parseDateSafe(b.visitDate));
-          const pointLines = sorted
-            .map((h) => `  - ${h.visitDate}: ${h.value}${h.unit ? ` ${h.unit}` : ""} (reference ${h.normalRange || "N/A"})`)
+        .map(([testName, testPoints]) => {
+          const paramOrder: string[] = [];
+          const byParameter = new Map<string, AiHistoryPoint[]>();
+          testPoints.forEach((point) => {
+            const key = point.parameter || testName;
+            if (!byParameter.has(key)) {
+              byParameter.set(key, []);
+              paramOrder.push(key);
+            }
+            byParameter.get(key)!.push(point);
+          });
+          const paramLines = paramOrder
+            .map((parameter) => {
+              const sorted = [...byParameter.get(parameter)!].sort(
+                (a, b) => parseDateSafe(a.visitDate) - parseDateSafe(b.visitDate)
+              );
+              const pointLines = sorted
+                .map((h) => `    - ${h.visitDate}: ${h.value}${h.unit ? ` ${h.unit}` : ""} (reference ${h.normalRange || "N/A"})`)
+                .join("\n");
+              return `  ${parameter}:\n${pointLines}`;
+            })
             .join("\n");
-          return `${testName}:\n${pointLines}`;
+          return `${testName}:\n${paramLines}`;
         })
         .join("\n\n")
     : "No prior visit history available.";
