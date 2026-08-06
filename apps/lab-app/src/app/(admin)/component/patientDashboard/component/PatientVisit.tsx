@@ -2,13 +2,13 @@ import React from 'react';
 import { Patient, VisitType } from '@/types/patient/patient';
 import { Doctor } from '@/types/doctor/doctor';
 import { FaCalendarAlt, FaUserPlus } from 'react-icons/fa';
-import Modal from '../../common/Model';
-import AddDoctor from '../../doctor/AddDoctor';
+import NewModal from '@/app/(admin)/dashboard/newcommoncomponent/NewModal';
 import { createDoctor } from '../../../../../../services/doctorServices';
 import { useLabs } from '@/context/LabContext';
 import { useState } from 'react';
 import { FaUserDoctor } from 'react-icons/fa6';
 import { toast } from 'react-toastify';
+import AddDoctorForPatientReg from '../../doctor/AddDoctorForPatientReg';
 
 interface PatientVisitProps {
     newPatient: Patient;
@@ -123,13 +123,16 @@ const PatientVisit = ({ newPatient, handleChange, doctors, mode = 'full' }: Pati
                 )}
             </div>
             {isDoctorModalOpen && (
-                <Modal
+                <NewModal
                     isOpen={isDoctorModalOpen}
                     onClose={() => setIsDoctorModalOpen(false)}
                     modalClassName='max-w-2xl'
                     title="Register New Doctor">
-                    <AddDoctor handleAddDoctor={handleAddDoctor} />
-                </Modal>
+                    <AddDoctorForPatientReg
+                        handleAddDoctor={handleAddDoctor}
+                        closeModal={() => setIsDoctorModalOpen(false)}
+                    />
+                </NewModal>
             )}
         </section>
     );
