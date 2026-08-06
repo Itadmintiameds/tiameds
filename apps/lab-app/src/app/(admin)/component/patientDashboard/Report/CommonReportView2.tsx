@@ -244,13 +244,14 @@ const SPARKLINE_MAX_VISITS = 4;
 // ---------------------------------------------------------------------------
 // Summary region layout planner
 // ---------------------------------------------------------------------------
-// The four summary cards (Clinical Alert Summary, Key Findings, AI Clinical
-// Observations, Health Snapshot) have wildly different intrinsic heights from one
-// patient to the next: one finding or twenty, a two-line AI note or fifteen lines of
-// it. A hard-coded "alerts | findings" then "ai | snapshot" grid can therefore only
-// ever be balanced for one particular patient, and the row's `items-stretch` inflated
-// the short card's border box to match the tall one -- that stretched, mostly empty
-// box is what printed as the dead white area under Clinical Alert Summary.
+// The three summary cards (Clinical Alert Summary, Key Findings, Health Snapshot) --
+// AI Clinical Observations now renders as its own standalone section after Detailed Lab
+// Results, outside this packer -- have wildly different intrinsic heights from one
+// patient to the next: one finding or twenty. A hard-coded "alerts | findings | snapshot"
+// grid can therefore only ever be balanced for one particular patient, and the row's
+// `items-stretch` inflated the short card's border box to match the tall one -- that
+// stretched, mostly empty box is what printed as the dead white area under Clinical
+// Alert Summary.
 //
 // So: estimate each card's height from its own content, then pick the arrangement
 // that wastes the least space. The estimates only have to *rank* candidate
@@ -263,7 +264,7 @@ const SPARKLINE_MAX_VISITS = 4;
 // card (see the SUMMARY REGION comment), so keeping it minimal is what keeps that card
 // from looking hollow.
 
-type SummaryCardId = "alerts" | "findings" | "ai" | "snapshot";
+type SummaryCardId = "alerts" | "findings" | "snapshot";
 type SummaryCard = { id: SummaryCardId; columnHeight: number; bandHeight: number };
 interface SummaryLayout {
     /** Cards spanning the full content width, stacked in order, above the columns. */
@@ -273,7 +274,7 @@ interface SummaryLayout {
 }
 
 // Reading order. The alert tiles are the report's headline and always come first.
-const SUMMARY_CARD_ORDER: SummaryCardId[] = ["alerts", "findings", "ai", "snapshot"];
+const SUMMARY_CARD_ORDER: SummaryCardId[] = ["alerts", "findings", "snapshot"];
 
 // Coarse content metrics in CSS px, at the report's 210mm print width. These track the
 // cards' actual typography (11px/1.25 body, 9px/1.25 sub-text, p-2.5 card padding); they
@@ -283,12 +284,6 @@ const SUMMARY_CARD_CHROME_PX = 52; // card padding + title row
 const ALERT_TILES_PX = 80; // the four stat tiles: one row at any width
 const FINDING_ROW_PX = 30; // one two-line finding entry + its row gap
 const SNAPSHOT_ROW_PX = 30; // one test name + sparkline
-const AI_FIELD_LABEL_PX = 13;
-const AI_LINE_PX = 14;
-const AI_FOOTNOTE_PX = 16;
-// ~11px text: characters that fit on one line in a half-width column vs a full-width band.
-const AI_CHARS_PER_COLUMN_LINE = 52;
-const AI_CHARS_PER_BAND_LINE = 110;
 
 // Greedy longest-first 2-partition: drop the tallest remaining card into whichever
 // column is currently shorter. This keeps the two columns within roughly one card's
@@ -336,7 +331,7 @@ const SUMMARY_BAND_CANDIDATES: SummaryCardId[][] = [
     [], // everything in two balanced columns
     ["alerts"], // alert tiles across the top, the rest in columns
     ["alerts", "findings"], // + findings flowing two-up across the full width
-    ["alerts", "findings", "ai", "snapshot"], // fully stacked (very few / very lopsided cards)
+    ["alerts", "findings", "snapshot"], // fully stacked (very few / very lopsided cards)
 ];
 
 const planSummaryLayout = (cards: SummaryCard[]): SummaryLayout | null => {
@@ -1165,29 +1160,6 @@ const CommonReportView2 = ({
             (test) => dedupeSnapshotResults(test.results).length > 1
         ).length;
 
-        const aiFieldChars = aiInsights
-            ? [
-                aiInsights.provisionalDiagnosis,
-                aiInsights.patientInterpretation,
-                aiInsights.clinicalInterpretation,
-                aiInsights.tips,
-            ]
-                .filter((lines): lines is string[] => Array.isArray(lines) && lines.length > 0)
-                .map((lines) => lines.join(". ").length)
-            : [];
-
-        const aiHeightAt = (charsPerLine: number) => {
-            // Loading / error / empty all render a single placeholder line.
-            if (!aiInsights) return SUMMARY_CARD_CHROME_PX + AI_LINE_PX;
-            const body = aiFieldChars.reduce(
-                (sum, chars) =>
-                    sum + AI_FIELD_LABEL_PX + Math.max(1, Math.ceil(chars / charsPerLine)) * AI_LINE_PX,
-                0
-            );
-            const doctorToVisit = aiInsights.doctorToVisit ? AI_FIELD_LABEL_PX + AI_LINE_PX : 0;
-            return SUMMARY_CARD_CHROME_PX + body + doctorToVisit + AI_FOOTNOTE_PX;
-        };
-
         const cards: SummaryCard[] = [
             {
                 id: "alerts",
@@ -1205,13 +1177,6 @@ const CommonReportView2 = ({
                 bandHeight: SUMMARY_CARD_CHROME_PX + Math.ceil(findingsCount / 2) * FINDING_ROW_PX,
             });
         }
-        if (showAiInsights) {
-            cards.push({
-                id: "ai",
-                columnHeight: aiHeightAt(AI_CHARS_PER_COLUMN_LINE),
-                bandHeight: aiHeightAt(AI_CHARS_PER_BAND_LINE),
-            });
-        }
         if (hasSnapshotTrends) {
             // Sparklines stretch horizontally, so a wider snapshot card is no shorter.
             const height = SUMMARY_CARD_CHROME_PX + Math.max(1, snapshotRows) * SNAPSHOT_ROW_PX;
@@ -1219,7 +1184,7 @@ const CommonReportView2 = ({
         }
 
         return planSummaryLayout(cards);
-    }, [clinicalSummary.findings.length, visibleSnapshot, aiInsights, showAiInsights, hasSnapshotTrends]);
+    }, [clinicalSummary.findings.length, visibleSnapshot, hasSnapshotTrends]);
 
     const renderClinicalAlertCard = () => (
         <div
@@ -1314,7 +1279,10 @@ const CommonReportView2 = ({
             ) : aiInsightsError ? (
                 <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>AI observations unavailable for this report.</p>
             ) : aiInsights ? (
-                <div className="flex flex-col gap-1.5 px-1">
+                // A standalone full-width section can flow fields two-up instead of stacking
+                // them the way a half-width summary column had to -- that's what keeps this
+                // section short enough to print without eating an extra page.
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 px-1">
                     {[
                         { label: "Provisional Diagnosis", value: aiInsights.provisionalDiagnosis },
                         { label: "Patient Interpretation", value: aiInsights.patientInterpretation },
@@ -1331,12 +1299,12 @@ const CommonReportView2 = ({
                         </div>
                     ))}
                     {aiInsights.doctorToVisit && (
-                        <div>
+                        <div className="sm:col-span-2">
                             <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>Doctor to Visit</p>
                             <p className="text-[10px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>{aiInsights.doctorToVisit}</p>
                         </div>
                     )}
-                    <p className="text-[9px] mt-0.5" style={{ color: REPORT_COLORS.secondary800 }}>
+                    <p className="text-[9px] mt-0.5 sm:col-span-2" style={{ color: REPORT_COLORS.secondary800 }}>
                         <span className="font-semibold">Note: </span>
                         <span className="font-normal">This is an AI generated observation based on lab values only. Not a diagnosis.</span>
                     </p>
@@ -1415,8 +1383,6 @@ const CommonReportView2 = ({
                 return renderClinicalAlertCard();
             case "findings":
                 return renderKeyFindingsCard();
-            case "ai":
-                return renderAiObservationsCard();
             case "snapshot":
                 return renderHealthSnapshotCard();
         }
@@ -1762,9 +1728,19 @@ const CommonReportView2 = ({
             const closingReserveMm = closingHeightMm > 0 ? closingHeightMm + BLOCK_GAP_MM : 0;
             const closingFitsOnAPage = closingReserveMm > 0 && closingReserveMm < usableContentHeightMm;
             const finalContentBottomMm = closingFitsOnAPage ? contentBottomMm - closingReserveMm : contentBottomMm;
+            // Too little room left even for the header row plus a few table results: start the
+            // table on the next page instead of stranding a sliver. Shared with
+            // KEEP_WITH_NEXT_MIN_FOLLOW_MM below so the two checks can't drift apart.
+            const MIN_TABLE_START_MM = 30;
             // A heading (or any keep-with-next block) must be followed by at least this much of
             // the next block on the same page, otherwise it is an orphan and we break before it.
-            const KEEP_WITH_NEXT_MIN_FOLLOW_MM = 24;
+            // Must be >= MIN_TABLE_START_MM + BLOCK_GAP_MM: placing the heading only checks
+            // "heading height + this reserve fits", then *advances* currentY by the heading's
+            // height plus BLOCK_GAP_MM -- so the space actually left for the next block is this
+            // reserve minus BLOCK_GAP_MM. A smaller reserve here than the table's own start
+            // threshold let the heading's check pass while the table's stricter check then bumped
+            // the whole table to a fresh page anyway, orphaning the heading it was meant to protect.
+            const KEEP_WITH_NEXT_MIN_FOLLOW_MM = MIN_TABLE_START_MM + BLOCK_GAP_MM;
 
             let currentPageNumber = 1;
             const contentPages = new Set<number>();
@@ -1945,9 +1921,6 @@ const CommonReportView2 = ({
                     // footer room, which is what finalChunkLimitPx settles below.
                     const pageRemainingMm = contentBottomMm - currentY;
 
-                    // Too little room left even for the header row plus a few results: start the
-                    // table on the next page instead of stranding a sliver.
-                    const MIN_TABLE_START_MM = 30;
                     let firstChunkMm = pageRemainingMm;
                     if (pageRemainingMm < MIN_TABLE_START_MM) {
                         if (hasContentOnPage) {
@@ -2265,23 +2238,77 @@ const CommonReportView2 = ({
         return elements;
     };
 
-    // A report can be folded into the shared multi-test table only if every row is a
-    // plain numeric/qualitative-range result -- reports with free-text qualitative rows
-    // or a full JSON "detailed report" keep their own standalone card instead.
-    const isPureQuantitativeReport = (report: ConsolidatedReport) => {
-        if (isDetailedReportEntry(report)) return false;
-        const rows =
-            report.testRows && report.testRows.length > 0
-                ? report.testRows
-                : [
-                    {
-                        testParameter: report.referenceDescription || report.testName,
-                        normalRange: report.referenceRange || "N/A",
-                        enteredValue: report.enteredValue || "N/A",
-                        unit: report.unit || "N/A",
-                    },
-                ];
-        return !rows.some((row) => isExcludedQualitativeRow(row));
+    // Qualitative rows (Blood Group, a lone dropdown value, a free-text description) don't
+    // fit the numeric Result/Reference Range/Units columns, but they still render as rows of
+    // the SAME <table> as their neighbouring quantitative tests -- not a separate <table> --
+    // so a qualitative test sitting between two quantitative ones no longer forces the shared
+    // header to close and reopen. Short discrete values (a dropdown result) get a normal row
+    // with the numeric columns dashed out; free-text description rows span the full width.
+    const buildQualitativeInlineRows = (
+        reportId: number,
+        rows: TestRow[],
+        testName: string
+    ): JSX.Element[] => {
+        const descriptionRows = rows.filter((row) => shouldShowQualitativeDescriptionRow(row));
+        const otherRows = rows.filter((row) => !shouldShowQualitativeDescriptionRow(row));
+        const elements: JSX.Element[] = [];
+
+        otherRows.forEach((row, idx) => {
+            elements.push(
+                <tr key={`${reportId}-qual-${idx}`}>
+                    <td
+                        className="px-2 py-1 text-xs font-normal"
+                        style={{ color: REPORT_COLORS.neutral900, borderBottom: RESULT_TABLE_ROW_BORDER, wordBreak: "break-word", ...RESULT_CELL_VALIGN }}
+                    >
+                        {getQualitativeDisplayName(row, testName)}
+                    </td>
+                    <td
+                        className="px-1 py-1 text-center text-xs font-semibold"
+                        style={{ color: REPORT_COLORS.neutral900, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.result, whiteSpace: "nowrap", ...RESULT_CELL_VALIGN }}
+                    >
+                        {row.enteredValue || "N/A"}
+                    </td>
+                    <td
+                        className="px-1 py-1 text-center text-xs font-normal"
+                        style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.reference, ...RESULT_CELL_VALIGN }}
+                    >
+                        —
+                    </td>
+                    <td
+                        className="px-1 py-1 text-center text-xs font-normal"
+                        style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.units, ...RESULT_CELL_VALIGN }}
+                    >
+                        —
+                    </td>
+                    <td
+                        className="px-1 py-1 text-center"
+                        style={{ borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.status, ...RESULT_CELL_VALIGN }}
+                    />
+                </tr>
+            );
+        });
+
+        descriptionRows.forEach((row, idx) => {
+            const resultValue = row.enteredValue || "N/A";
+            const normalizedResult = resultValue.toString().trim().toLowerCase();
+            const normalizedDescription = (row.description || "").toString().trim().toLowerCase();
+            const showDescription = !!row.description && normalizedDescription !== normalizedResult;
+
+            elements.push(
+                <tr key={`${reportId}-qual-desc-${idx}`}>
+                    <td
+                        colSpan={5}
+                        className="px-2 py-1 text-xs"
+                        style={{ color: REPORT_COLORS.neutral900, borderBottom: RESULT_TABLE_ROW_BORDER, ...RESULT_CELL_VALIGN }}
+                    >
+                        <p className="font-semibold whitespace-pre-wrap">{resultValue}</p>
+                        {showDescription && <p className="mt-0.5">{row.description}</p>}
+                    </td>
+                </tr>
+            );
+        });
+
+        return elements;
     };
 
     const renderTestCardBody = (report: ConsolidatedReport, index: number) => {
@@ -2714,65 +2741,52 @@ const CommonReportView2 = ({
                             const detailedReports = sortedReports.filter(isDetailedReportEntry);
                             const simpleReports = sortedReports.filter((r) => !isDetailedReportEntry(r));
 
-                            // Figma groups consecutive plain-numeric tests under one continuous table with
-                            // a single shared header instead of repeating the header per test -- only
-                            // reports with qualitative rows or a full JSON detailed report break the run.
+                            // Figma groups every non-detailed-JSON test under one continuous table with a
+                            // single shared header instead of repeating the header per test. A qualitative
+                            // test (Blood Group, a lone dropdown, a free-text description) still renders as
+                            // rows of this SAME <table> -- see buildQualitativeInlineRows -- instead of
+                            // breaking out into its own card, so mixing quantitative and qualitative tests
+                            // in one visit no longer closes and reopens the header mid-list. Only a full
+                            // JSON "detailed report" (already filtered into detailedReports before this is
+                            // called) needs its own card, because its content is several tables/paragraphs
+                            // wide, not a handful of rows.
                             const renderReportBlocks = (col: ConsolidatedReport[]) => {
-                                const blocks: JSX.Element[] = [];
-                                let run: ConsolidatedReport[] = [];
-
-                                const flushRun = () => {
-                                    if (run.length === 0) return;
-                                    const runItems = run;
-                                    blocks.push(
-                                        <div
-                                            key={`table-${runItems[0].reportId}`}
-                                            className="mb-2"
-                                            data-print-block
-                                            data-print-table="true"
-                                        >
-                                            <table className="w-full table-fixed text-[12px] border-collapse">
-                                                <thead>{renderResultTableHeaderRow()}</thead>
-                                                {runItems.map((r) => {
-                                                    const rows =
-                                                        r.testRows && r.testRows.length > 0
-                                                            ? r.testRows
-                                                            : [
-                                                                {
-                                                                    testParameter: r.referenceDescription || r.testName,
-                                                                    normalRange: r.referenceRange || "N/A",
-                                                                    enteredValue: r.enteredValue || "N/A",
-                                                                    unit: r.unit || "N/A",
-                                                                },
-                                                            ];
-                                                    const isCBCTest = (r.testName || "").toUpperCase().includes("CBC");
-                                                    return (
-                                                        <tbody key={r.reportId} data-report-id={r.reportId}>
-                                                            {renderSectionTitleRow(r.reportId, `${numberByReportId.get(r.reportId)}. ${r.testName}`)}
-                                                            {buildResultTableRows(r.reportId, rows, isCBCTest)}
-                                                        </tbody>
-                                                    );
-                                                })}
-                                            </table>
-                                        </div>
-                                    );
-                                    run = [];
-                                };
-
-                                col.forEach((report) => {
-                                    if (isPureQuantitativeReport(report)) {
-                                        run.push(report);
-                                    } else {
-                                        flushRun();
-                                        blocks.push(
-                                            <div key={report.reportId}>
-                                                {renderTestCardBody(report, numberByReportId.get(report.reportId)!)}
-                                            </div>
-                                        );
-                                    }
-                                });
-                                flushRun();
-                                return blocks;
+                                if (col.length === 0) return [];
+                                return [
+                                    <div
+                                        key={`table-${col[0].reportId}`}
+                                        className="mb-2"
+                                        data-print-block
+                                        data-print-table="true"
+                                    >
+                                        <table className="w-full table-fixed text-[12px] border-collapse">
+                                            <thead>{renderResultTableHeaderRow()}</thead>
+                                            {col.map((r) => {
+                                                const rows =
+                                                    r.testRows && r.testRows.length > 0
+                                                        ? r.testRows
+                                                        : [
+                                                            {
+                                                                testParameter: r.referenceDescription || r.testName,
+                                                                normalRange: r.referenceRange || "N/A",
+                                                                enteredValue: r.enteredValue || "N/A",
+                                                                unit: r.unit || "N/A",
+                                                            },
+                                                        ];
+                                                const isCBCTest = (r.testName || "").toUpperCase().includes("CBC");
+                                                const quantitativeRows = rows.filter((row) => !isExcludedQualitativeRow(row));
+                                                const qualitativeRows = rows.filter((row) => isExcludedQualitativeRow(row));
+                                                return (
+                                                    <tbody key={r.reportId} data-report-id={r.reportId}>
+                                                        {renderSectionTitleRow(r.reportId, `${numberByReportId.get(r.reportId)}. ${r.testName}`)}
+                                                        {quantitativeRows.length > 0 && buildResultTableRows(r.reportId, quantitativeRows, isCBCTest)}
+                                                        {qualitativeRows.length > 0 && buildQualitativeInlineRows(r.reportId, qualitativeRows, r.testName)}
+                                                    </tbody>
+                                                );
+                                            })}
+                                        </table>
+                                    </div>,
+                                ];
                             };
 
                             return (
@@ -2801,14 +2815,18 @@ const CommonReportView2 = ({
                         })()}
                     </div>
 
-                    {/* ================= CLOSING (SIGNATURE + FOOTER) =================
-                        One atomic print block on purpose. As two separate blocks the paginator
-                        could fit the signature at the foot of a page and spill the footer onto
-                        a page of its own -- which is exactly how reports ended up with a final
-                        page that was 90% white. Together they are placed or moved as a unit,
-                        and the paginator reserves room for them so they land under the last
-                        content instead of alone. */}
-                    <div data-print-block data-print-role="closing">
+                    {/* ================= SIGNATURE =================
+                        A normal flow block (not bundled into the "closing" role below): the
+                        AI Clinical Observations section now has to sit between this and the
+                        footer, and "closing" is always rendered dead last by the paginator
+                        regardless of DOM order, so anything that must appear *before* AI can't
+                        be part of that bundle. No keep-with-next here on purpose -- unlike the
+                        Detailed Lab Results heading, a signature ending one page while AI starts
+                        the next is a normal, unremarkable break. Forcing them together instead
+                        left a large blank gap under the results table on any page too short for
+                        the whole signature+AI+footer run, when the small signature block alone
+                        would have fit there. */}
+                    <div data-print-block>
                     <div
                         className="mt-3 pt-2 flex flex-wrap items-start gap-3"
                         style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }}
@@ -2867,9 +2885,28 @@ const CommonReportView2 = ({
                             </div>
                         </div>
                     </div>
+                    </div>
 
-                    {/* ================= FOOTER ================= */}
-                    <div>
+                    {/* ================= AI CLINICAL OBSERVATIONS =================
+                        Rendered after Detailed Lab Results but above the Disclaimer/footer,
+                        instead of inside the summary region above: it reads as an appendix to
+                        the report rather than competing with Clinical Alert Summary / Key
+                        Findings / Health Snapshot for column space, and its own grid (see
+                        renderAiObservationsCard) flows fields two-up so it stays short. */}
+                    {showAiInsights && (
+                        <div className="mt-2" data-print-block>
+                            {renderAiObservationsCard()}
+                        </div>
+                    )}
+
+                    {/* ================= FOOTER (CLOSING) =================
+                        The only block left in the "closing" role now that AI Clinical
+                        Observations has to render between Signature and this: a footer this
+                        size (a short disclaimer paragraph + a thank-you line) is always small
+                        enough to fit the reservation math below, which is what broke when the
+                        much longer AI card used to live inside this same bundle -- see the
+                        Signature block's comment above. */}
+                    <div data-print-block data-print-role="closing">
                         <div
                             className="mt-2 rounded-xl p-2 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0"
                             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
@@ -2918,7 +2955,6 @@ const CommonReportView2 = ({
                                 })()}</p>
                             </div> */}
                         </div>
-                    </div>
                     </div>
                 </section>
             </div>
