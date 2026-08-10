@@ -19,7 +19,48 @@ import { MdDownloading } from "react-icons/md";
 import Image from 'next/image';
 
 const A4_WIDTH = 210; // mm
-const TESTS_PER_PAGE = 10;
+
+// ---- Page geometry, in mm of the 210mm-wide virtual page that generatePDF() renders
+// and rasterises. Every value below was measured from a real headless-Chrome render of
+// this exact markup (not estimated), then rounded up slightly as a safety margin.
+// Pagination is driven by these so a page holds as much as physically fits and no more
+// — a small invoice stays on one page, a large one splits only where it genuinely must.
+const LETTERHEAD_PAGE_PADDING_MM = 76;       // 56 top + 20 bottom (see LETTERHEAD_MARGINS)
+const PLAIN_PAGE_PADDING_MM = 10.6;          // 20px top + 20px bottom
+const HEADER_PATIENT_MM = 56;                // invoice-no box + patient/visit/reference box.
+                                             // Covers both header variants: letterhead
+                                             // (logo suppressed, 53.9mm) and plain paper
+                                             // (logo + lab name block, 55.5mm).
+const FOOTER_MM = 28;                        // disclaimer + signatory + "powered by" strip
+const TESTS_CHROME_MM = 19;                  // "Tests Conducted" heading + table header row
+const TEST_ROW_MM = 7.5;                     // a single-line test row
+const PACKAGES_CHROME_MM = 19;               // "Health Packages" heading + table header row
+const PACKAGE_ROW_MM = 7.5;                  // a package's own single-line name/price row
+const PACKAGE_INCLUDES_MM = 8;               // the "Includes:" label + surrounding cell padding
+const PACKAGE_CHIP_ROW_MM = 6.2;             // each row of up to 3 included-test chips
+const TRANSACTIONS_CHROME_MM = 41;           // heading + header row + the 2 totals rows
+const TRANSACTIONS_CHROME_NO_TOTALS_MM = 18; // per-transaction mode omits the totals rows
+const TRANSACTION_ROW_MM = 7.2;              // a single-line transaction row
+const PAYMENT_SUMMARY_MM = 51;
+
+// Long values wrap onto extra lines and make their row taller — the single biggest
+// source of drift, since lab test names and payment remarks are free-form. Each extra
+// wrapped line costs TEXT_LINE_MM. The per-column character budgets below were measured
+// against the widest realistic characters (all-caps), so they under-estimate how much
+// actually fits, which errs toward breaking a page early rather than clipping content.
+const TEXT_LINE_MM = 4;
+const TEST_NAME_CHARS_PER_LINE = 48;    // "Test Name" column of the 5-column tests table
+const PACKAGE_NAME_CHARS_PER_LINE = 45; // "Package Name" column of the 4-column table
+const TXN_REMARK_CHARS_PER_LINE = 12;   // "Remarks" column is narrow — 10 columns share the width
+
+// A page's rendered height must stay under this or the export clips. generatePDF()
+// draws each page with addImage(..., 10, 10, A4_WIDTH - 20, ...), i.e. scaled by 190/210
+// and offset 10mm down, so a virtual height H lands at real 10 + H*(19/21). Staying
+// under this keeps content both on the physical page (needs H <= 317.2) and clear of
+// the letterhead's pre-printed bottom band, which starts 20mm up from the page edge
+// (needs H <= 315). The gap below 315 is deliberate headroom for text that wraps a
+// line more than the estimates above predict.
+const SAFE_BUDGET_MM = 308;
 
 // Plain hex values (not Tailwind color-* classes) on purpose: Tailwind v4 generates
 // its color palette via oklch()/color-mix(), which html2canvas cannot parse and will
@@ -34,7 +75,54 @@ const INVOICE_COLORS = {
   gray300: '#D1D5DB',
 };
 
+// Measured off the CURE+ Hospitals pre-printed letterhead stock (A4): the purple
+// header band runs ~56mm from the top edge, the footer band starts ~20mm from the
+// bottom edge, and the white printable area is inset ~16mm from the left/right edges
+// of the purple frame. Content on "Letterhead" print types must stay inside that box.
+const LETTERHEAD_MARGINS = {
+  top: '56mm',
+  bottom: '20mm',
+  left: '16mm',
+  right: '16mm',
+};
+const PLAIN_PAGE_PADDING = '20px';
+
+// The invoice header logo used to be this static file, hardcoded. It now prefers the
+// lab's own uploaded logo (labLogo/logo, set from the lab settings screen) and falls
+// back to this so labs that have never uploaded one keep the header they had before
+// rather than printing with no logo at all. Same asset CommonReportView.tsx uses.
+const FALLBACK_LAB_LOGO_SRC = '/CUREPLUS HOSPITALS (1).png';
+
 type PatientWithVisit = Patient;
+
+type PrintType = 'letterhead' | 'plain' | 'letterhead-dept' | 'plain-dept';
+
+interface InvoicePageData {
+  tests: TestList[];
+  departmentName?: string;
+  packages: Packages[];
+  transactions: BillingTransaction[];
+  isLastTransactionsChunk: boolean;
+  showSummary: boolean;
+}
+
+// Extra height a value adds by wrapping past one line in its column.
+const wrapExtraMm = (text: string | undefined | null, charsPerLine: number): number =>
+  (Math.max(1, Math.ceil((text?.length || 0) / charsPerLine)) - 1) * TEXT_LINE_MM;
+
+const testRowMm = (test: TestList): number =>
+  TEST_ROW_MM + wrapExtraMm(test.name, TEST_NAME_CHARS_PER_LINE);
+
+const transactionRowMm = (txn: BillingTransaction): number =>
+  TRANSACTION_ROW_MM + wrapExtraMm(txn.remarks, TXN_REMARK_CHARS_PER_LINE);
+
+const packageHeightMm = (pkg: Packages): number => {
+  const testCount = pkg.tests?.length || 0;
+  // The included-test chips render in a 3-column grid under the package's own row.
+  return PACKAGE_ROW_MM
+    + wrapExtraMm(pkg.packageName, PACKAGE_NAME_CHARS_PER_LINE)
+    + (testCount > 0 ? PACKAGE_INCLUDES_MM + Math.ceil(testCount / 3) * PACKAGE_CHIP_ROW_MM : 0);
+};
 
 const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit }) => {
   const { currentLab } = useLabs();
@@ -45,6 +133,9 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [printMode, setPrintMode] = useState<'all' | 'per-transaction' | 'no-transaction'>('no-transaction');
+  const [printType, setPrintType] = useState<PrintType>('plain');
+  const isLetterhead = printType === 'letterhead' || printType === 'letterhead-dept';
+  const isDepartmentWise = printType === 'letterhead-dept' || printType === 'plain-dept';
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -110,17 +201,124 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
     return total;
   };
 
-  const generateInvoicePages = () => {
+  // Lays the invoice out across as few pages as physically fit, by measuring each
+  // section against the page's real height budget rather than a fixed row count.
+  // Sections are placed in the same order they render (tests -> packages -> payment
+  // summary -> transactions), each flowing onto a new page only when the current one
+  // is genuinely full, so a small invoice stays on a single page.
+  const generateInvoicePages = (): InvoicePageData[] => {
     if (!invoiceRef.current) return [];
 
-    const testChunks = [];
-    for (let i = 0; i < tests.length; i += TESTS_PER_PAGE) {
-      testChunks.push(tests.slice(i, i + TESTS_PER_PAGE));
+    const pageFixedMm = (isLetterhead ? LETTERHEAD_PAGE_PADDING_MM : PLAIN_PAGE_PADDING_MM)
+      + HEADER_PATIENT_MM + FOOTER_MM;
+    const budgetMm = SAFE_BUDGET_MM - pageFixedMm;
+
+    const newPage = (departmentName?: string): InvoicePageData => ({
+      tests: [], packages: [], transactions: [],
+      isLastTransactionsChunk: false, showSummary: false, departmentName,
+    });
+
+    const pages: InvoicePageData[] = [];
+    let current = newPage();
+    let used = 0;
+
+    const hasContent = () => current.tests.length > 0 || current.packages.length > 0
+      || current.transactions.length > 0 || current.showSummary;
+    const breakPage = (departmentName?: string) => {
+      pages.push(current);
+      current = newPage(departmentName);
+      used = 0;
+    };
+
+    // --- Tests. Department-wise printing starts each department on its own page so
+    // pages can be handed to the department that runs them.
+    const testGroups: { departmentName?: string; items: TestList[] }[] = [];
+    if (isDepartmentWise) {
+      const byDepartment = new Map<string, TestList[]>();
+      tests.forEach((test) => {
+        const department = test.category || 'General';
+        if (!byDepartment.has(department)) byDepartment.set(department, []);
+        byDepartment.get(department)!.push(test);
+      });
+      Array.from(byDepartment.keys())
+        .sort((a, b) => a.localeCompare(b))
+        .forEach((department) => testGroups.push({ departmentName: department, items: byDepartment.get(department)! }));
+    } else if (tests.length > 0) {
+      testGroups.push({ items: tests });
     }
 
-    if (testChunks.length === 0) testChunks.push([]);
+    testGroups.forEach((group) => {
+      if (hasContent()) breakPage(group.departmentName);
+      else current.departmentName = group.departmentName;
 
-    return testChunks;
+      group.items.forEach((test) => {
+        const rowMm = testRowMm(test);
+        const inc = rowMm + (current.tests.length === 0 ? TESTS_CHROME_MM : 0);
+        if (hasContent() && used + inc > budgetMm) {
+          breakPage(group.departmentName);
+          current.tests.push(test);
+          used = TESTS_CHROME_MM + rowMm;
+        } else {
+          current.tests.push(test);
+          used += inc;
+        }
+      });
+    });
+
+    // --- Health packages
+    (healthPackage || []).forEach((pkg) => {
+      const pkgMm = packageHeightMm(pkg);
+      const inc = pkgMm + (current.packages.length === 0 ? PACKAGES_CHROME_MM : 0);
+      if (hasContent() && used + inc > budgetMm) {
+        breakPage();
+        current.packages.push(pkg);
+        used = PACKAGES_CHROME_MM + pkgMm;
+      } else {
+        current.packages.push(pkg);
+        used += inc;
+      }
+    });
+
+    // --- Payment summary. In per-transaction mode a single transaction table renders
+    // alongside it, so reserve that too.
+    const allTransactions = patient?.visit?.billing?.transactions || [];
+    const perTransactionExtraMm = printMode === 'per-transaction' && allTransactions.length > 0
+      ? TRANSACTIONS_CHROME_NO_TOTALS_MM
+        + Math.max(...allTransactions.map(transactionRowMm)) // any one of them may be the one rendered
+      : 0;
+    const summaryIncMm = PAYMENT_SUMMARY_MM + perTransactionExtraMm;
+    if (hasContent() && used + summaryIncMm > budgetMm) breakPage();
+    current.showSummary = true;
+    used += summaryIncMm;
+
+    // --- Transactions ("All Transactions" only; the other modes render a single
+    // transaction next to the summary above, or none at all).
+    if (printMode === 'all') {
+      allTransactions.forEach((txn) => {
+        const rowMm = transactionRowMm(txn);
+        const inc = rowMm + (current.transactions.length === 0 ? TRANSACTIONS_CHROME_MM : 0);
+        if (hasContent() && used + inc > budgetMm) {
+          breakPage();
+          current.transactions.push(txn);
+          used = TRANSACTIONS_CHROME_MM + rowMm;
+        } else {
+          current.transactions.push(txn);
+          used += inc;
+        }
+      });
+    }
+
+    pages.push(current);
+
+    // The totals row belongs only on the final page of the transactions table.
+    for (let i = pages.length - 1; i >= 0; i--) {
+      if (pages[i].transactions.length > 0) {
+        pages[i].isLastTransactionsChunk = true;
+        break;
+      }
+    }
+
+    return pages;
   };
 
   const formatPaymentMethod = (method: string) => {
@@ -134,12 +332,14 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
     return date.toLocaleString();
   };
 
-  const renderTransactionTable = (transaction?: BillingTransaction) => {
-    const transactions: BillingTransaction[] = transaction ? [transaction] : (patient?.visit?.billing?.transactions || []);
+  const renderTransactionTable = (transaction?: BillingTransaction, displayTransactions?: BillingTransaction[], showTotals: boolean = true) => {
+    const allTransactions: BillingTransaction[] = patient?.visit?.billing?.transactions || [];
+    const transactions: BillingTransaction[] = transaction ? [transaction] : (displayTransactions ?? allTransactions);
     if (transactions.length === 0) return null;
 
-    // Use API's due_amount instead of calculating on frontend
-    const totalReceived = transactions.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.received_amount || 0), 0);
+    // Totals always reflect the full transaction list, even when only a subset of
+    // rows (one paginated chunk) is being rendered on this particular page.
+    const totalReceived = allTransactions.reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.received_amount || 0), 0);
     const remainingDue = Number(patient?.visit?.billing?.due_amount || 0);
 
     const c = INVOICE_COLORS;
@@ -210,22 +410,22 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                 })}
             </tbody>
 
-            {!transaction && (
+            {!transaction && showTotals && (
               <tfoot>
                 <tr className="font-semibold" style={{ backgroundColor: c.white }}>
                   <td colSpan={2} className="p-1.5 border align-top" style={footTdStyle}>Total:</td>
                   <td className="p-1.5 border align-top text-right" style={footTdStyle}>
-                    ₹{transactions
+                    ₹{allTransactions
                       .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.upi_amount || 0), 0)
                       .toFixed(2)}
                   </td>
                   <td className="p-1.5 border align-top text-right" style={footTdStyle}>
-                    ₹{transactions
+                    ₹{allTransactions
                       .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.card_amount || 0), 0)
                       .toFixed(2)}
                   </td>
                   <td className="p-1.5 border align-top text-right" style={footTdStyle}>
-                    ₹{transactions
+                    ₹{allTransactions
                       .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.cash_amount || 0), 0)
                       .toFixed(2)}
                   </td>
@@ -267,7 +467,8 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
     });
   };
 
-  const renderInvoicePage = (pageTests: TestList[], pageNumber: number, totalPages: number, transaction?: BillingTransaction, hideButtons: boolean = false) => {
+  const renderInvoicePage = (page: InvoicePageData, pageNumber: number, totalPages: number, transaction?: BillingTransaction, hideButtons: boolean = false) => {
+    const { tests: pageTests, departmentName } = page;
     // Get invoice date/time from API - use billing createdAt or updatedAt or paymentDate
     const billing = patient?.visit?.billing;
     const invoiceDateTime = billing?.createdAt
@@ -283,38 +484,51 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
     return (
       <div
         key={`page-${pageNumber}${transaction ? `-txn-${transaction.id}` : ''}`}
-        className="p-5 mb-6 font-sans"
+        className="mb-6 font-sans"
         style={{
           width: '210mm',
           minHeight: '297mm',
+          paddingTop: isLetterhead ? LETTERHEAD_MARGINS.top : PLAIN_PAGE_PADDING,
+          paddingBottom: isLetterhead ? LETTERHEAD_MARGINS.bottom : PLAIN_PAGE_PADDING,
+          paddingLeft: isLetterhead ? LETTERHEAD_MARGINS.left : PLAIN_PAGE_PADDING,
+          paddingRight: isLetterhead ? LETTERHEAD_MARGINS.right : PLAIN_PAGE_PADDING,
           pageBreakAfter: pageNumber < totalPages ? 'always' : 'auto',
           backgroundColor: c.white
         }}
       >
         {/* Header Section - Compact */}
         <div className="flex justify-between items-start mb-4 border-b pb-2" style={{ borderColor: c.gray600 }}>
-          <div className="flex items-center gap-3">
-            <div>
-              <Image src="/CUREPLUS HOSPITALS (1).png"
-                alt="Lab Logo" width={70} height={44}
-                className="h-11 w-auto" priority loading="eager"
-                unoptimized crossOrigin="anonymous" data-print-logo="true"
-                quality={100}
-              />
+          {isLetterhead ? (
+            // Letterhead mode: physical stationery already has the lab's branding
+            // pre-printed in the top ~56mm band, so leave that space empty instead of
+            // drawing over it. The page's own top padding (above) reserves the space;
+            // this empty node just keeps the flex row's two-item split intact so the
+            // invoice no./date box on the right stays right-aligned.
+            <div />
+          ) : (
+            <div className="flex items-center gap-3">
+              <div>
+                <Image src={currentLab?.labLogo || currentLab?.logo || FALLBACK_LAB_LOGO_SRC}
+                  alt="Lab Logo" width={70} height={44}
+                  className="h-11 w-auto" priority loading="eager"
+                  unoptimized crossOrigin="anonymous" data-print-logo="true"
+                  quality={100}
+                />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold uppercase tracking-tight leading-tight" style={{ color: c.black }}>{currentLab?.name || 'DIAGNOSTIC CENTER'}</h1>
+                <p className="text-xs leading-tight" style={{ color: c.black }}>{currentLab?.address || ''}</p>
+                {(currentLab?.city || currentLab?.state) && (
+                  <p className="text-xs leading-tight" style={{ color: c.black }}>
+                    {[currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
+                  </p>
+                )}
+                {currentLab?.labPhone && (
+                  <p className="text-xs leading-tight" style={{ color: c.black }}>Phone: {currentLab.labPhone}</p>
+                )}
+              </div>
             </div>
-            <div>
-              <h1 className="text-lg font-bold uppercase tracking-tight leading-tight" style={{ color: c.black }}>{currentLab?.name || 'DIAGNOSTIC CENTER'}</h1>
-              <p className="text-xs leading-tight" style={{ color: c.black }}>{currentLab?.address || ''}</p>
-              {(currentLab?.city || currentLab?.state) && (
-                <p className="text-xs leading-tight" style={{ color: c.black }}>
-                  {[currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
-                </p>
-              )}
-              {currentLab?.labPhone && (
-                <p className="text-xs leading-tight" style={{ color: c.black }}>Phone: {currentLab.labPhone}</p>
-              )}
-            </div>
-          </div>
+          )}
           <div className="text-right border px-3 py-1.5" style={{ borderColor: c.gray600, backgroundColor: c.white }}>
             <p className="text-xs font-bold mb-0.5" style={{ color: c.black }}>INVOICE</p>
             <p className="text-xs leading-tight" style={{ color: c.black }}><span className="font-semibold">No:</span> {patient?.visit?.billing?.billingCode || patient?.visit?.billing?.billingId || 'N/A'}</p>
@@ -348,42 +562,46 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         </div>
 
         {/* Tests Table - Compact */}
-        <div className="mb-4">
-          <h2 className="text-xs font-bold mb-1.5 border-b pb-0.5 uppercase" style={{ color: c.black, borderColor: c.gray600 }}>Tests Conducted</h2>
-          <table className="w-full border-collapse border text-xs" style={{ borderColor: c.gray600 }}>
-            <thead>
-              <tr style={{ backgroundColor: c.white }}>
-                <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Test Name</th>
-                <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Category</th>
-                <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Price</th>
-                <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Discount</th>
-                <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageTests.map((test, idx) => {
-                const discountInfo = getTestDiscount(test.id);
-                const hasDiscount = discountInfo.discountAmount > 0;
-                return (
-                  <tr key={`test-${idx}`} style={{ backgroundColor: c.white }}>
-                    <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{test.name}</td>
-                    <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{test.category || 'General'}</td>
-                    <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{test.price.toFixed(2)}</td>
-                    <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>
-                      {hasDiscount ? `-₹${discountInfo.discountAmount.toFixed(2)}` : '₹0.00'}
-                    </td>
-                    <td className="p-1.5 text-right border font-semibold leading-tight" style={{ borderColor: c.gray400, color: c.black }}>
-                      ₹{hasDiscount ? discountInfo.finalPrice.toFixed(2) : test.price.toFixed(2)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {pageTests.length > 0 && (
+          <div className="mb-4">
+            <h2 className="text-xs font-bold mb-1.5 border-b pb-0.5 uppercase" style={{ color: c.black, borderColor: c.gray600 }}>
+              Tests Conducted{departmentName ? ` — Department: ${departmentName}` : ''}
+            </h2>
+            <table className="w-full border-collapse border text-xs" style={{ borderColor: c.gray600 }}>
+              <thead>
+                <tr style={{ backgroundColor: c.white }}>
+                  <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Test Name</th>
+                  <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Category</th>
+                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Price</th>
+                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Discount</th>
+                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageTests.map((test, idx) => {
+                  const discountInfo = getTestDiscount(test.id);
+                  const hasDiscount = discountInfo.discountAmount > 0;
+                  return (
+                    <tr key={`test-${idx}`} style={{ backgroundColor: c.white }}>
+                      <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{test.name}</td>
+                      <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{test.category || 'General'}</td>
+                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{test.price.toFixed(2)}</td>
+                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>
+                        {hasDiscount ? `-₹${discountInfo.discountAmount.toFixed(2)}` : '₹0.00'}
+                      </td>
+                      <td className="p-1.5 text-right border font-semibold leading-tight" style={{ borderColor: c.gray400, color: c.black }}>
+                        ₹{hasDiscount ? discountInfo.finalPrice.toFixed(2) : test.price.toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        {/* Packages Section (only on last page) - Compact */}
-        {pageNumber === totalPages && healthPackage && healthPackage.length > 0 && (
+        {/* Packages Section (only on the page(s) this fix assigns them to) - Compact */}
+        {page.packages.length > 0 && (
           <div className="mb-4">
             <h2 className="text-xs font-bold mb-1.5 border-b pb-0.5 uppercase" style={{ color: c.black, borderColor: c.gray600 }}>Health Packages</h2>
             <table className="w-full border-collapse border text-xs" style={{ borderColor: c.gray600 }}>
@@ -396,7 +614,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                 </tr>
               </thead>
               <tbody>
-                {healthPackage.map((pkg, idx) => {
+                {page.packages.map((pkg, idx) => {
                   const grossPrice = pkg.tests?.reduce((sum, t) => sum + t.price, 0) ?? pkg.price;
                   const discountAmount = (grossPrice * pkg.discount) / 100;
                   return (
@@ -432,7 +650,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         )}
 
         {/* Payment Summary Section */}
-        {pageNumber === totalPages && (() => {
+        {page.showSummary && (() => {
           const summaryTxn = transaction ? transaction : undefined;
           const totalDue = summaryTxn
             ? Math.max(0, Number(summaryTxn.due_amount || 0))
@@ -494,8 +712,8 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         })()}
 
         {/* Transactions Table */}
-        {printMode === 'all' && pageNumber === totalPages && renderTransactionTable()}
-        {printMode === 'per-transaction' && transaction && pageNumber === totalPages && renderTransactionTable(transaction)}
+        {printMode === 'all' && page.transactions.length > 0 && renderTransactionTable(undefined, page.transactions, page.isLastTransactionsChunk)}
+        {printMode === 'per-transaction' && transaction && page.showSummary && renderTransactionTable(transaction)}
 
         {/* Individual Transaction Action Buttons - Only for Per Transaction mode */}
         {!hideButtons && printMode === 'per-transaction' && transaction && (
@@ -559,27 +777,23 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
       const renderPages = () => {
         // If specific transaction is provided, generate only for that transaction
         if (specificTransaction) {
-          return pages.map((pageTests, index) =>
-            renderInvoicePage(pageTests, index + 1, pages.length, specificTransaction, true)
+          return pages.map((page, index) =>
+            renderInvoicePage(page, index + 1, pages.length, specificTransaction, true)
           );
         }
 
         if (printMode === 'per-transaction' && transactions.length > 0) {
           // Generate one invoice per transaction
           return transactions.flatMap((txn: BillingTransaction) => {
-            return pages.map((pageTests, index) =>
-              renderInvoicePage(pageTests, index + 1, pages.length, txn, true)
+            return pages.map((page, index) =>
+              renderInvoicePage(page, index + 1, pages.length, txn, true)
             );
           });
-        } else if (printMode === 'no-transaction') {
-          // Generate invoice without transactions
-          return pages.map((pageTests, index) =>
-            renderInvoicePage(pageTests, index + 1, pages.length, undefined, true)
-          );
         } else {
-          // Default: generate invoice with all transactions
-          return pages.map((pageTests, index) =>
-            renderInvoicePage(pageTests, index + 1, pages.length, undefined, true)
+          // 'no-transaction' or 'all' (the latter's transactions are already assigned
+          // per-page inside `pages` by generateInvoicePages())
+          return pages.map((page, index) =>
+            renderInvoicePage(page, index + 1, pages.length, undefined, true)
           );
         }
       };
@@ -668,17 +882,15 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
     if (printMode === 'per-transaction' && transactions.length > 0) {
       return transactions.flatMap((txn: BillingTransaction) => {
-        return pages.map((pageTests, index) =>
-          renderInvoicePage(pageTests, index + 1, pages.length, txn)
+        return pages.map((page, index) =>
+          renderInvoicePage(page, index + 1, pages.length, txn, false)
         );
       });
-    } else if (printMode === 'no-transaction') {
-      return pages.map((pageTests, index) =>
-        renderInvoicePage(pageTests, index + 1, pages.length)
-      );
     } else {
-      return pages.map((pageTests, index) =>
-        renderInvoicePage(pageTests, index + 1, pages.length)
+      // 'no-transaction' or 'all' (the latter's transactions are already assigned
+      // per-page inside `pages` by generateInvoicePages())
+      return pages.map((page, index) =>
+        renderInvoicePage(page, index + 1, pages.length, undefined, false)
       );
     }
   };
@@ -702,6 +914,21 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+            <div className="flex gap-3 items-center">
+              <label className="text-sm font-medium whitespace-nowrap">Print Type:</label>
+              <select
+                value={printType}
+                onChange={(e) => setPrintType(e.target.value as PrintType)}
+                className="border rounded px-2 py-1 text-sm min-w-[220px]"
+                disabled={isGeneratingPDF}
+              >
+                <option value="letterhead">Print on Letterhead</option>
+                <option value="plain">Print on Plain Paper</option>
+                <option value="letterhead-dept">Print on Letterhead (Department-wise)</option>
+                <option value="plain-dept">Print on Plain Paper (Department-wise)</option>
+              </select>
+            </div>
+
             <div className="flex gap-3 items-center">
               <label className="text-sm font-medium whitespace-nowrap">Print Mode:</label>
               <select
