@@ -570,12 +570,6 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         }
       }
 
-      // Validate UPI ID for UPI-related payment methods
-      if ((paymentMethod === PaymentMethod.UPI || paymentMethod === PaymentMethod.UPI_CASH) && !editedPatient.visit?.billing?.upi_id?.trim()) {
-        toast.error("UPI ID is required for UPI payment methods");
-        return;
-      }
-
       if (missingFields.length > 0) {
         toast.error(`Please fill the required payment fields: ${missingFields.join(', ')}`);
         return;
@@ -672,7 +666,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
           payment_method: transactionPaymentMethod,
           received_amount: receivedAmount,
           date: paymentDate,
-          upi_id: billing.upi_id || '',
+          upi_id: billing.upi_id?.trim() || 'N/A',
           card_amount: cardAmount,
           cash_amount: cashAmount,
           upi_amount: upiAmount,

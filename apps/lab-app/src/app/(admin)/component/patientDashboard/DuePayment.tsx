@@ -99,11 +99,11 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
     }
   }, [billing]);
 
-  // Handle UPI ID input with space validation
+  // Handle UTR No. input with space validation
   const handleUpiIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Remove spaces from UPI ID
-    const cleanValue = value.replace(/\s/g, '');
+    // Remove spaces from UTR No. and uppercase any letters
+    const cleanValue = value.replace(/\s/g, '').toUpperCase();
     setPaymentData({ ...paymentData, upiId: cleanValue });
   };
 
@@ -163,7 +163,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
 
       transaction: {
         payment_method: paymentMethod,
-        upi_id: paymentMethod.includes('UPI') ? paymentData.upiId : null,
+        upi_id: paymentMethod.includes('UPI') ? (paymentData.upiId.trim() || 'N/A') : null,
         upi_amount: paymentMethod.includes('UPI') ? paymentData.upiAmount.toNumber() : null,
         card_amount: paymentMethod.includes('CARD') ? paymentData.cardAmount.toNumber() : null,
         cash_amount: paymentMethod.includes('CASH') ? paymentData.cashAmount.toNumber() : null,
@@ -192,12 +192,6 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
 
     if (paymentData.receivedAmount.lte(0)) {
       toast.error("Please enter a valid payment amount");
-      return;
-    }
-
-    // Validate UPI ID for UPI-related payment methods
-    if ((paymentMethod === PaymentMethod.UPI || paymentMethod === PaymentMethod.UPI_CASH) && !paymentData.upiId.trim()) {
-      toast.error("UPI ID is required for UPI payment methods");
       return;
     }
 
@@ -448,11 +442,11 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
               </select>
             </div>
 
-            {/* UPI ID Field */}
+            {/* UTR No. Field */}
             {(paymentMethod === PaymentMethod.UPI || paymentMethod === PaymentMethod.UPI_CASH) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  UPI ID <span className="text-red-500">*</span>
+                  UTR No.
                 </label>
                 <input
                   type="text"
@@ -460,8 +454,7 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
                   value={paymentData.upiId}
                   onChange={handleUpiIdChange}
                   className="border rounded-md border-gray-300 px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Enter UPI ID"
-                  required
+                  placeholder="Enter UTR No."
                 />
               </div>
             )}
