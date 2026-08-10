@@ -904,12 +904,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
                   <div key={test.id} className="flex justify-between items-center text-xs">
                     <span className="text-gray-700">{test.name}</span>
                     <span className="text-gray-900 font-medium">
-                      ₹{test.discountedPrice || test.price}
-                      {(test.discountAmount || test.discountPercent) && (
-                        <span className="text-green-600 ml-1">
-                          (Disc: ₹{test.discountAmount || (test.price * (test.discountPercent || 0) / 100).toFixed(2)})
-                        </span>
-                      )}
+                      ₹{test.price}
                     </span>
                   </div>
                 ))}
