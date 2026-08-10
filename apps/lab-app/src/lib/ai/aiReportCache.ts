@@ -1,5 +1,5 @@
 import type { AiReportInsights } from "@/types/aiInsights";
-import type { AiHistoryPoint, AiTestFinding } from "@/lib/ai/labReportPrompt";
+import type { AiTestFinding } from "@/lib/ai/labReportPrompt";
 
 const STORAGE_PREFIX = "ai-report-cache:";
 const MAX_ENTRIES = 100;
@@ -19,13 +19,19 @@ const hashString = (input: string): string => {
   return (hash >>> 0).toString(36);
 };
 
+// Keyed on the report set plus the values printed on it, and deliberately NOT on the
+// patient's visit history: the history is a supporting input to the prompt, not part of
+// the report's identity, and it is fetched separately (getPatientHealthSnapshot) so it
+// can arrive empty when that call fails. Folding it into the key would mint a second
+// entry for the same report and re-run the OpenAI call the next time the report is
+// opened -- exactly the duplicate spend the cache exists to prevent. The findings hash
+// stays in, so editing a result still invalidates stale insights.
 export const buildAiReportCacheKey = (
   reportIds: number[],
-  testFindings: AiTestFinding[],
-  history: AiHistoryPoint[]
+  testFindings: AiTestFinding[]
 ): string => {
   const sortedIds = [...reportIds].sort((a, b) => a - b).join(",");
-  const payloadHash = hashString(JSON.stringify({ testFindings, history }));
+  const payloadHash = hashString(JSON.stringify(testFindings));
   return `${STORAGE_PREFIX}${sortedIds}:${payloadHash}`;
 };
 

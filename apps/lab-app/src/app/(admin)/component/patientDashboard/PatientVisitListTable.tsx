@@ -816,7 +816,6 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
       >
         {viewReportDetails && (
           <ReportView
-            viewReportDetailsbyId={viewReportDetails.visit?.visitId ?? 0}
             viewPatient={{
               visitId: viewReportDetails.visit?.visitId ?? 0,
               patientId: viewReportDetails.id,
@@ -834,6 +833,10 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
               doctorId: viewReportDetails.visit?.doctorId !== undefined && viewReportDetails.visit?.doctorId !== null
                 ? Number(viewReportDetails.visit?.doctorId)
                 : 0,
+              // Same array this table renders "N/M Completed" from -- the report view
+              // needs it to decide whether the order is finished enough for AI
+              // observations (it is reachable here on partially completed visits too).
+              testResult: viewReportDetails.visit?.testResult ?? [],
             }}
             doctorName={
               ((viewReportDetails as unknown) as { doctorName?: string }).doctorName ||

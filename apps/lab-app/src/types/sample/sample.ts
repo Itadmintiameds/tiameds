@@ -24,6 +24,15 @@ export interface TestResult {
     reportId?: number;
 }
 
+// Per-test completion status, narrowed to the fields the sample API and the patient-visit
+// API agree on -- their full TestResult shapes differ (patient/patient.ts makes `id`
+// optional, this file requires it), so a consumer that only cares about completion takes
+// this instead and both are assignable to it.
+export interface VisitTestStatus {
+    testId: number;
+    reportStatus: string;
+}
+
 // export interface VisitSampleList {
 //     visitId: number;
 //     patientname: string;
@@ -92,6 +101,10 @@ export interface PatientData {
   doctorId?: number; // Optional field for doctor ID
   doctorName?: string; // Optional field for doctor name
   visitCode?: string;
+  // Per-test completion state for this visit. The shared report view uses it to decide
+  // whether every ordered test is done -- AI Clinical Observations are only generated
+  // for a 100% complete order (see CommonReportView2).
+  testResult?: VisitTestStatus[];
 }
   
 export interface ApiResponse<T> {

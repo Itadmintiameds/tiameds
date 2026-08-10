@@ -787,17 +787,31 @@ interface CommonReportView2Props {
     doctorName?: string;
     hidePrintButton?: boolean;
     reportsData: ConsolidatedReport[];
-    // Sample Management passes false: its report view skips the AI Clinical
-    // Observations card (and the OpenAI call behind it). Dashboard views keep it.
-    showAiInsights?: boolean;
 }
+
+// AI Clinical Observations are only worth generating on a finished order: a partially
+// completed visit would burn an OpenAI call on data that is about to change, and the
+// insights would be drawn from half the picture. `testResult` carries one row per
+// ordered test with its own reportStatus, so "every row Completed" is the whole-order
+// check -- the same idiom CollectedSample/CompletedTable use to bucket visits.
+// Deliberately NOT derived from `reportsData`: that only ever contains the tests that
+// already have reports, so it looks "complete" even when tests are still pending.
+const areAllTestsCompleted = (patientData: PatientData): boolean => {
+    const testResults = patientData?.testResult;
+    if (Array.isArray(testResults) && testResults.length > 0) {
+        return testResults.every((tr) => tr?.reportStatus === "Completed");
+    }
+    // No per-test breakdown available (older callers / API shapes): fall back to the
+    // visit-level status, which the backend only flips to Completed once the visit is
+    // finished. Anything else is treated as incomplete, so we never generate on doubt.
+    return (patientData?.visitStatus || "").toLowerCase() === "completed";
+};
 
 const CommonReportView2 = ({
     patientData,
     doctorName,
     hidePrintButton = false,
     reportsData,
-    showAiInsights = true,
 }: CommonReportView2Props) => {
     const { currentLab } = useLabs();
     const reportRef = useRef<HTMLDivElement>(null);
@@ -809,6 +823,9 @@ const CommonReportView2 = ({
     const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
     const [aiInsightsError, setAiInsightsError] = useState<string | null>(null);
     const [healthSnapshotFetched, setHealthSnapshotFetched] = useState(false);
+    // Drives both the OpenAI call and the card: a partially completed order gets no
+    // request and no section at all, in every place this view is opened from.
+    const showAiInsights = useMemo(() => areAllTestsCompleted(patientData), [patientData]);
     const sortedReports = useMemo(() => {
         const copy = [...reportsData];
         copy.sort((a, b) => {
@@ -1228,7 +1245,10 @@ const CommonReportView2 = ({
 
     // Auto-generate AI Clinical Observations once the report data (and, if available, the
     // Health Snapshot history) are ready. Result is cached in localStorage keyed by the
-    // report set + its content, so reopening the same report skips the OpenAI call entirely.
+    // report set + its content, so reopening the same report skips the OpenAI call
+    // entirely -- including when it is reopened from the other entry point (Sample
+    // Management vs Patient Dashboard), since both render this component over the same
+    // reports. Skipped outright unless every test in the order is complete.
     useEffect(() => {
         if (!showAiInsights || !healthSnapshotFetched || aiTestFindings.length === 0) {
             return;
@@ -1236,8 +1256,7 @@ const CommonReportView2 = ({
 
         const cacheKey = buildAiReportCacheKey(
             sortedReports.map((r) => r.reportId),
-            aiTestFindings,
-            aiHistoryPoints
+            aiTestFindings
         );
         const cached = readAiReportCache(cacheKey);
         if (cached) {
@@ -3049,7 +3068,9 @@ const CommonReportView2 = ({
                         instead of inside the summary region above: it reads as an appendix to
                         the report rather than competing with Clinical Alert Summary / Key
                         Findings / Health Snapshot for column space, and its own grid (see
-                        renderAiObservationsCard) flows fields two-up so it stays short. */}
+                        renderAiObservationsCard) flows fields two-up so it stays short.
+                        Omitted entirely while any test in the order is still pending --
+                        no card, no placeholder, no generation call. */}
                     {showAiInsights && (
                         <div className="mt-2" data-print-block>
                             {renderAiObservationsCard()}
