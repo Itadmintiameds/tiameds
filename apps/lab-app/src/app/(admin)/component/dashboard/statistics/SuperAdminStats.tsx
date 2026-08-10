@@ -1185,27 +1185,27 @@ const SuperAdminStats = () => {
     return null;
   };
 
-  // Custom tooltip for packages pie chart
-  const PackageTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="rounded-lg border border-pneutral-100 bg-base-white p-4 shadow-lg min-w-[200px]">
-          <p className="text-p3 font-semibold text-pneutral-900 mb-2">{data.name}</p>
-          <div className="space-y-1 text-p3 text-pneutral-600">
-            <p>Revenue: <span className="font-semibold text-pneutral-900">₹{data.revenue.toLocaleString()}</span></p>
-            <p>Discount: <span className="font-semibold text-pneutral-900">₹{data.discount.toLocaleString()}</span></p>
-            <p>Paid: <span className="font-semibold text-pneutral-900">₹{data.paidRevenue.toLocaleString()}</span></p>
-            <p>Due: <span className="font-semibold text-pneutral-900">₹{data.dueRevenue.toLocaleString()}</span></p>
-            <p>Cash: <span className="font-semibold text-pneutral-900">₹{data.cashRevenue.toLocaleString()}</span></p>
-            <p>UPI: <span className="font-semibold text-pneutral-900">₹{data.upiRevenue.toLocaleString()}</span></p>
-            <p>Card: <span className="font-semibold text-pneutral-900">₹{data.cardRevenue.toLocaleString()}</span></p>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
+  // Custom tooltip for packages pie chart (hover details disabled)
+  // const PackageTooltip = ({ active, payload }: any) => {
+  //   if (active && payload && payload.length) {
+  //     const data = payload[0].payload;
+  //     return (
+  //       <div className="rounded-lg border border-pneutral-100 bg-base-white p-4 shadow-lg min-w-[200px]">
+  //         <p className="text-p3 font-semibold text-pneutral-900 mb-2">{data.name}</p>
+  //         <div className="space-y-1 text-p3 text-pneutral-600">
+  //           <p>Revenue: <span className="font-semibold text-pneutral-900">₹{data.revenue.toLocaleString()}</span></p>
+  //           <p>Discount: <span className="font-semibold text-pneutral-900">₹{data.discount.toLocaleString()}</span></p>
+  //           <p>Paid: <span className="font-semibold text-pneutral-900">₹{data.paidRevenue.toLocaleString()}</span></p>
+  //           <p>Due: <span className="font-semibold text-pneutral-900">₹{data.dueRevenue.toLocaleString()}</span></p>
+  //           <p>Cash: <span className="font-semibold text-pneutral-900">₹{data.cashRevenue.toLocaleString()}</span></p>
+  //           <p>UPI: <span className="font-semibold text-pneutral-900">₹{data.upiRevenue.toLocaleString()}</span></p>
+  //           <p>Card: <span className="font-semibold text-pneutral-900">₹{data.cardRevenue.toLocaleString()}</span></p>
+  //         </div>
+  //       </div>
+  //     );
+  //   }
+  //   return null;
+  // };
 
   // Custom tooltip for alerts pie chart
   const AlertTooltip = ({ active, payload }: any) => {
@@ -1633,7 +1633,7 @@ const SuperAdminStats = () => {
                       >
                         ₹{(packageSummary.grossBilled || 0).toLocaleString()}
                       </text>
-                      <Tooltip content={<PackageTooltip />} />
+                      {/* <Tooltip content={<PackageTooltip />} /> */}
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
