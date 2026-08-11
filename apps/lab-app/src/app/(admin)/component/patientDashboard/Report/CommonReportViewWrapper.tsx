@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLabs } from "@/context/LabContext";
-import { getReportData } from "../../../../../../services/reportServices";
+import { getAiClinicalObservation, getReportData } from "../../../../../../services/reportServices";
 import { getPatientByVisitIdAndVisitDetails } from "../../../../../../services/patientServices";
 import { PatientData } from "@/types/sample/sample";
+import type { AiClinicalObservation } from "@/types/aiInsights";
 import CommonReportView from "./CommonReportView";
-import CommonReportView2 from "./CommonReportView2";
+import CommonReportView2, { areAllTestsCompleted } from "./CommonReportView2";
 import type { ConsolidatedReport } from "./CommonReportView2";
 import { TbInfoCircle } from "react-icons/tb";
 
@@ -110,8 +111,14 @@ const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
     const [error, setError] = useState<string>();
     const [reports, setReports] = useState<ConsolidatedReport[] | null>(null);
     const [resolvedPatientId, setResolvedPatientId] = useState<number>();
+    const [storedObservation, setStoredObservation] = useState<AiClinicalObservation | null>();
 
     const callerPatientId = toPatientId(patientData?.patientId);
+
+    // AI Clinical Observations only exist for a finished order, so there is nothing to look
+    // up for a part-completed visit -- same condition the report view uses to decide whether
+    // to show the section at all.
+    const orderComplete = areAllTestsCompleted(patientData);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -127,15 +134,38 @@ const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
                     ? Promise.resolve(callerPatientId)
                     : lookupPatientId(currentLab.id, visitId);
 
-            const [reportResult, patientResult] = await Promise.allSettled([
+            // Same reasoning, and the reason a reopened report has no AI wait at all: by the
+            // time the view mounts, the visit's saved observation is already in hand, so it
+            // renders on the first frame instead of after a round trip of its own.
+            const observationLookup = orderComplete
+                ? getAiClinicalObservation(currentLab.id, visitId)
+                : Promise.resolve(null);
+
+            const [reportResult, patientResult, observationResult] = await Promise.allSettled([
                 getReportData(currentLab.id.toString(), visitId.toString()),
                 patientLookup,
+                observationLookup,
             ]);
 
             // A failed lookup only costs the Health Snapshot, so it must never take the
             // report down with it -- the results are settled independently for that reason.
             setResolvedPatientId(
                 patientResult.status === "fulfilled" ? patientResult.value : undefined
+            );
+
+            // A failed read is treated as "nothing saved": the view then generates and
+            // writes, which is the correct recovery either way. Says so out loud, though --
+            // a read that fails on every open looks exactly like a visit that has never been
+            // generated, so the only visible symptom is the AI regenerating forever and the
+            // real cause (a 500 from the endpoint) staying hidden.
+            if (observationResult.status === "rejected") {
+                console.warn(
+                    `[report] could not read saved AI observations for visit ${visitId}; they will be regenerated.`,
+                    observationResult.reason
+                );
+            }
+            setStoredObservation(
+                observationResult.status === "fulfilled" ? observationResult.value : null
             );
 
             if (reportResult.status === "fulfilled") {
@@ -151,7 +181,7 @@ const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
         };
 
         fetchData();
-    }, [currentLab?.id, visitId, callerPatientId]);
+    }, [currentLab?.id, visitId, callerPatientId, orderComplete]);
 
     // What the report view actually renders against: the caller's patient data, with the
     // patient id filled in when the caller had none.
@@ -207,7 +237,14 @@ const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
     })();
 
     if (isNewFormat && Array.isArray(reports)) {
-        return <CommonReportView2 {...restProps} patientData={effectivePatientData} reportsData={reports} />;
+        return (
+            <CommonReportView2
+                {...restProps}
+                patientData={effectivePatientData}
+                reportsData={reports}
+                storedObservation={storedObservation}
+            />
+        );
     }
 
     return <CommonReportView visitId={visitId} {...restProps} patientData={effectivePatientData} />;

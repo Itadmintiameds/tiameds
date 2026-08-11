@@ -10,9 +10,9 @@ import { formatAgeForDisplay } from "@/utils/ageUtils";
 import type { PatientData } from "@/types/sample/sample";
 import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
 import { getPatientHealthSnapshot } from "../../../../../../services/patientServices";
-import { getAiClinicalObservation, saveAiClinicalObservation } from "../../../../../../services/reportServices";
+import { saveAiClinicalObservation } from "../../../../../../services/reportServices";
 import type { HealthSnapshot, HealthSnapshotTest, HealthSnapshotTestResult } from "@/types/patient/healthSnapshot";
-import type { AiReportInsights } from "@/types/aiInsights";
+import type { AiClinicalObservation, AiReportInsights } from "@/types/aiInsights";
 import type { AiHistoryPoint, AiTestFinding } from "@/lib/ai/labReportPrompt";
 import { buildObservationContentHash, toAiClinicalObservation, toAiReportInsights } from "@/lib/ai/aiClinicalObservation";
 
@@ -765,7 +765,12 @@ export interface ConsolidatedReport {
     testRows: TestRow[];
     reportJson?: string | null;
     referenceRanges?: string | null;
+    // The report header's three moments, all IST ISO-offset strings from ReportService.
+    // createdDateTime is when the report itself was generated; the other two are
+    // visit-level and therefore identical across every report of a visit.
     createdDateTime?: string;
+    registeredDateTime?: string;
+    sampleCollectedDateTime?: string;
     referenceDescription?: string;
     referenceRange?: string;
     referenceAgeRange?: string;
@@ -788,6 +793,13 @@ interface CommonReportView2Props {
     doctorName?: string;
     hidePrintButton?: boolean;
     reportsData: ConsolidatedReport[];
+    // The visit's saved AI Clinical Observations, already fetched by the wrapper in
+    // parallel with the reports themselves. Passed in rather than fetched here so a
+    // reopened report paints its AI section on the first render with no request and no
+    // spinner -- see the storedInsights memo below. `undefined` means the wrapper had
+    // nothing to look up (no lab/visit, or an order that isn't finished); `null` means it
+    // looked and there was no record.
+    storedObservation?: AiClinicalObservation | null;
 }
 
 // AI Clinical Observations are only worth generating on a finished order: a partially
@@ -797,7 +809,7 @@ interface CommonReportView2Props {
 // check -- the same idiom CollectedSample/CompletedTable use to bucket visits.
 // Deliberately NOT derived from `reportsData`: that only ever contains the tests that
 // already have reports, so it looks "complete" even when tests are still pending.
-const areAllTestsCompleted = (patientData: PatientData): boolean => {
+export const areAllTestsCompleted = (patientData: PatientData): boolean => {
     const testResults = patientData?.testResult;
     if (Array.isArray(testResults) && testResults.length > 0) {
         return testResults.every((tr) => tr?.reportStatus === "Completed");
@@ -813,6 +825,7 @@ const CommonReportView2 = ({
     doctorName,
     hidePrintButton = false,
     reportsData,
+    storedObservation,
 }: CommonReportView2Props) => {
     const { currentLab } = useLabs();
     const reportRef = useRef<HTMLDivElement>(null);
@@ -820,7 +833,12 @@ const CommonReportView2 = ({
     const [selectedReports, setSelectedReports] = useState<Record<number, boolean>>({});
     const [healthSnapshot, setHealthSnapshot] = useState<HealthSnapshot | null>(null);
     const [healthSnapshotLoading, setHealthSnapshotLoading] = useState(false);
-    const [aiInsights, setAiInsights] = useState<AiReportInsights | null>(null);
+    // Only holds insights this mount actually generated, tagged with the fingerprint of the
+    // values they were generated from -- if a result is edited while the report is open,
+    // the tag stops matching and the text is dropped rather than left on screen describing
+    // values that are no longer there. What the report renders is `aiInsights` below, which
+    // prefers the saved observation.
+    const [generated, setGenerated] = useState<{ hash: string; insights: AiReportInsights } | null>(null);
     const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
     const [aiInsightsError, setAiInsightsError] = useState<string | null>(null);
     const [healthSnapshotFetched, setHealthSnapshotFetched] = useState(false);
@@ -1257,23 +1275,46 @@ const CommonReportView2 = ({
         return fromReport?.visitId ?? null;
     }, [patientData?.visitId, reportsData]);
 
-    // Resolve the AI Clinical Observations once the report data (and, if available, the
-    // Health Snapshot history) are ready. The visit's stored observation is the single
-    // source of truth -- no local cache, so every device and every user sees the exact
-    // same text, and a result edit invalidates it for everyone at once rather than for
-    // whoever happens to share the browser that generated it:
-    //   1. Read the observation stored against the visit. Present and still matching the
-    //      current values -> render it, no model call. This is the path almost every open
-    //      takes, including the second entry point (Sample Management vs Patient
-    //      Dashboard), since both render this component over the same visit.
-    //   2. Nothing stored, or stored against values that have since been edited -> call
-    //      the model and write the result back, overwriting the stale record so the next
-    //      open anywhere is a plain read again.
-    // Skipped outright unless every test in the order is complete.
+    // Fingerprint of the values currently printed on this report. Written alongside the
+    // observation, so any device can tell whether saved text still describes what it sees.
+    const contentHash = useMemo(() => buildObservationContentHash(aiTestFindings), [aiTestFindings]);
+
+    // The saved observation, reusable only while it still describes the current values.
+    // Computed, not fetched: the wrapper already retrieved it in parallel with the report
+    // itself, so a reopened report has its AI section ready on the very first render --
+    // no request, no spinner, nothing to wait for. This is the path virtually every open
+    // after the first one takes, from either entry point and from any device.
+    const storedInsights = useMemo<AiReportInsights | null>(() => {
+        if (!showAiInsights || aiTestFindings.length === 0) return null;
+
+        const insights = toAiReportInsights(storedObservation);
+        if (!insights) return null;
+
+        // Re-running the model over unchanged values would only reword them, and a report
+        // has to read identically every time it is printed -- so saved text wins unless a
+        // result has actually been edited since. A record carrying no fingerprint at all
+        // (written before the column existed) is trusted rather than regenerated, so
+        // rolling this out does not re-bill every historical visit on its next open.
+        const isStale = Boolean(storedObservation?.contentHash) && storedObservation!.contentHash !== contentHash;
+        return isStale ? null : insights;
+    }, [storedObservation, showAiInsights, aiTestFindings, contentHash]);
+
+    // Saved text wins; anything generated this mount is the fallback for when there was
+    // none, or when the saved copy described values that have since changed.
+    const generatedInsights = generated?.hash === contentHash ? generated.insights : null;
+    const aiInsights = storedInsights ?? generatedInsights;
+
+    // Generate only when there is no usable saved observation -- i.e. the first time this
+    // visit's report is opened anywhere, or the first open after a result was edited. The
+    // result is written back to the visit, overwriting any stale record, so the next open
+    // on any device is a plain read again.
     useEffect(() => {
-        if (!showAiInsights || !healthSnapshotFetched || aiTestFindings.length === 0) {
-            return;
-        }
+        // Nothing to observe: a part-finished order, or no rows to reason about.
+        if (!showAiInsights || aiTestFindings.length === 0) return;
+        // Saved text is usable as-is -- rendered synchronously above.
+        if (storedInsights) return;
+        // Generating reasons over the patient's trend history, which is still in flight.
+        if (!healthSnapshotFetched) return;
 
         let cancelled = false;
         setAiInsightsLoading(true);
@@ -1281,9 +1322,8 @@ const CommonReportView2 = ({
 
         const labId = currentLab?.id;
         const canPersist = Boolean(labId) && observationVisitId != null;
-        const contentHash = buildObservationContentHash(aiTestFindings);
 
-        const generate = async (): Promise<AiReportInsights> => {
+        (async () => {
             const response = await fetch("/api/ai-report", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -1301,43 +1341,26 @@ const CommonReportView2 = ({
                 const body = await response.json().catch(() => null);
                 throw new Error(body?.message || "Failed to generate AI insights");
             }
-            return response.json() as Promise<AiReportInsights>;
-        };
 
-        (async () => {
-            if (canPersist) {
-                try {
-                    const stored = await getAiClinicalObservation(labId!, observationVisitId!);
-                    const storedInsights = toAiReportInsights(stored);
-                    // Reuse the stored text unless the values it was written from have since
-                    // changed -- the report must read identically on every device, and
-                    // re-running the model over unchanged values would only reword it.
-                    // A record carrying no fingerprint at all (written before the column
-                    // existed) is trusted rather than regenerated, so rolling this out does
-                    // not re-bill every historical visit on its next open.
-                    const isStale = Boolean(stored?.contentHash) && stored!.contentHash !== contentHash;
-                    if (storedInsights && !isStale) {
-                        if (!cancelled) setAiInsights(storedInsights);
-                        return;
-                    }
-                } catch {
-                    // Lookup failed -- fall through and generate rather than showing the
-                    // report without its observations.
-                }
-            }
-
-            const generated = await generate();
+            const insights = (await response.json()) as AiReportInsights;
             if (cancelled) return;
-            setAiInsights(generated);
+            setGenerated({ hash: contentHash, insights });
 
             // Best-effort: the report is already on screen either way, so a failed write
-            // only costs the next device to open this visit one more generation.
+            // only costs the next device to open this visit one more generation. Logged
+            // rather than swallowed -- a write that always fails presents as the AI
+            // regenerating on every open, with nothing on screen to say why.
             if (canPersist) {
                 saveAiClinicalObservation(
                     labId!,
                     observationVisitId!,
-                    toAiClinicalObservation(generated, contentHash)
-                ).catch(() => { });
+                    toAiClinicalObservation(insights, contentHash)
+                ).catch((err) => {
+                    console.warn(
+                        `[report] could not save AI observations for visit ${observationVisitId}; they will be regenerated on the next open.`,
+                        err
+                    );
+                });
             }
         })()
             .catch((err) => {
@@ -1350,7 +1373,7 @@ const CommonReportView2 = ({
         return () => {
             cancelled = true;
         };
-    }, [showAiInsights, healthSnapshotFetched, aiTestFindings, aiHistoryPoints, currentLab?.id, observationVisitId, patientData?.patientname, patientData?.dateOfBirth, patientData?.gender]);
+    }, [showAiInsights, storedInsights, healthSnapshotFetched, aiTestFindings, aiHistoryPoints, contentHash, currentLab?.id, observationVisitId, patientData?.patientname, patientData?.dateOfBirth, patientData?.gender]);
 
     const getFindingBadge = (finding: ClinicalFinding) => {
         const directionLabel = finding.direction === "high" ? "HIGH" : "LOW";
@@ -2312,6 +2335,16 @@ const CommonReportView2 = ({
         return { date, time };
     };
 
+    // The header carries a visit's three moments -- registered, samples collected, report
+    // generated -- on one row so they read as a timeline. A value the backend has no
+    // record of renders as the placeholder dashes rather than being hidden: an absent
+    // collection time is information, and silently dropping the field would make the row
+    // shift under the reader.
+    const headerDateTime = (dateTimeString?: string) => {
+        const { date, time } = formatReportDateTime(dateTimeString);
+        return `${date} ${time}`;
+    };
+
     const isDetailedReportEntry = (report: ConsolidatedReport) => {
         if (report.reportJson) return true;
         const rows = report.testRows && report.testRows.length > 0 ? report.testRows : [];
@@ -2675,7 +2708,12 @@ const CommonReportView2 = ({
     // Block the whole report (including the print/PDF button) behind a loader until AI
     // insights have either arrived, failed, or aren't applicable -- otherwise a PDF could be
     // generated mid-generation with "Generating..." baked into it instead of real insights.
-    const aiReady = healthSnapshotFetched && (!showAiInsights || aiTestFindings.length === 0 || aiInsights !== null || aiInsightsError !== null);
+    // Deliberately NOT gated on healthSnapshotFetched: that only matters on the generation
+    // path, which waits for it separately, and holding every reopened report behind a
+    // snapshot round trip is exactly what made a second open feel slow. When the saved
+    // observation is reusable, aiInsights is already populated on this first render and the
+    // report paints immediately; the trend card carries its own inline loading state.
+    const aiReady = !showAiInsights || aiTestFindings.length === 0 || aiInsights !== null || aiInsightsError !== null;
     if (!aiReady) {
         return (
             <div className="flex h-64 items-center justify-center">
@@ -2697,7 +2735,10 @@ const CommonReportView2 = ({
                     </div>
                     <button
                         onClick={printReports}
-                        disabled={printing || selectedCount === 0}
+                        // The report itself no longer waits on the Health Snapshot, so hold
+                        // just the print button until it lands -- otherwise a PDF captured in
+                        // that window would bake in the trend card's inline loading state.
+                        disabled={printing || selectedCount === 0 || healthSnapshotLoading}
                         className="inline-flex items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {printing ? (
@@ -2821,12 +2862,6 @@ const CommonReportView2 = ({
                                 [
                                     { icon: "/report/user.png", label: "Patient Name", value: patientData?.patientname || 'N/A', noWrap: false },
                                     { icon: "/report/users.png", label: "Age / Sex", value: `${formatAgeForDisplay(patientData?.dateOfBirth || '')} / ${patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}`, noWrap: true },
-                                    {
-                                        icon: "/report/calendar.png", label: "Date & Time", value: (() => {
-                                            const { date, time } = formatReportDateTime(primaryReport?.createdDateTime);
-                                            return `${date} ${time}`;
-                                        })(), noWrap: true
-                                    },
                                     { icon: "/report/id-card.png", label: "Patient No.", value: primaryReport?.patientCode || "N/A", noWrap: true },
                                     { icon: "/report/clipboard-check.png", label: "Patient Type", value: patientData?.visitType || "N/A", noWrap: true },
                                 ],
@@ -2835,6 +2870,18 @@ const CommonReportView2 = ({
                                     { icon: "/report/file-text.png", label: "Lab No.", value: currentLab?.id || 'N/A', noWrap: true },
                                     { icon: "/report/clipboard.png", label: "Report No.", value: primaryReport?.reportCode || "N/A", noWrap: true },
                                     { icon: "/report/map-pin.png", label: "Visit No.", value: primaryReport?.visitCode || "N/A", noWrap: true },
+                                ],
+                                // Kept together and in chronological order -- the whole point of
+                                // splitting the old single "Date & Time" (which was, and still is,
+                                // the report-generated moment) into three is that the reader can see
+                                // the gap between arrival, collection and result. All three come from
+                                // the report fetch (GET report/{visitId}), which every report view
+                                // calls regardless of which screen opened it -- unlike patientData,
+                                // whose shape differs by source screen, this is always present.
+                                [
+                                    { icon: "/report/calendar.png", label: "Registered", value: headerDateTime(primaryReport?.registeredDateTime), noWrap: true },
+                                    { icon: "/report/flask-round.png", label: "Sample Collected", value: headerDateTime(primaryReport?.sampleCollectedDateTime), noWrap: true },
+                                    { icon: "/report/check-circle.png", label: "Report Generated", value: headerDateTime(primaryReport?.createdDateTime), noWrap: true },
                                 ],
                             ].map((row, rowIdx) => (
                                 <div key={rowIdx} className="flex flex-wrap items-start" style={{ marginTop: rowIdx > 0 ? "0.25rem" : 0 }}>

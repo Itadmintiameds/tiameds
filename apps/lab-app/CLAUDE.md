@@ -278,7 +278,12 @@ combined, `YYYY-MM-DD` date regex), `editPatientSchema.ts`, `doctorSchemaData.ts
   serialisation (UI bullet arrays <-> the backend's flat per-visit strings) + content
   fingerprint used to detect edited results + prompt building. There is no local/
   localStorage cache for observations: the per-visit record on the backend is the only
-  store, so every device sees identical text.
+  store, so every device sees identical text. The record is fetched in
+  `CommonReportViewWrapper` alongside `getReportData` (NOT inside `CommonReportView2`) so
+  a reopened report renders its AI section on the first frame; `CommonReportView2` only
+  calls OpenAI when the wrapper found nothing or the fingerprint no longer matches, and
+  writes the result back. Backend upserts one row per visit and echoes `contentHash`
+  (`AiClinicalObservationController`).
 - `utils/api.ts` — shared axios client (see Auth section above).
 - `utils/auth.ts` — `handleLogout()`.
 - `utils/cookies.ts` — `getCookie`/`setCookie`/`deleteCookie` (non-httpOnly, secure,
