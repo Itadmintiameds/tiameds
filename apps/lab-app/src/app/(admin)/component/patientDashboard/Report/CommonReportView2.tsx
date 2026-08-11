@@ -2291,13 +2291,18 @@ const CommonReportView2 = ({
 
     const displayDoctorName = doctorName || "N/A";
     const primaryReport = sortedReports[0];
-    // Fed the footer's "Generated on" block, which is currently commented out.
-    // Restore this together with that block.
-    // const latestReportDateTime = sortedReports.reduce<string | undefined>((latest, r) => {
-    //     if (!r.createdDateTime) return latest;
-    //     if (!latest) return r.createdDateTime;
-    //     return new Date(r.createdDateTime) > new Date(latest) ? r.createdDateTime : latest;
-    // }, undefined);
+    // When the report was finished = when its LAST test was reported, so this is the max
+    // across the visit's reports rather than primaryReport's own timestamp. sortedReports
+    // is ordered by row count then test name (see its useMemo), which has nothing to do
+    // with time -- on a visit whose tests were reported over an hour, primaryReport's
+    // createdDateTime is whichever test sorted first, not when the report was done.
+    // Registered/Sample Collected need no equivalent: they are visit-level, so every
+    // report of the visit carries the same value.
+    const latestReportDateTime = sortedReports.reduce<string | undefined>((latest, r) => {
+        if (!r.createdDateTime) return latest;
+        if (!latest) return r.createdDateTime;
+        return new Date(r.createdDateTime) > new Date(latest) ? r.createdDateTime : latest;
+    }, undefined);
 
     const formatReportDateTime = (
         dateTimeString?: string
@@ -2817,7 +2822,7 @@ const CommonReportView2 = ({
                 <section data-report-shell className="flex flex-col">
                     {/* ================= HEADER ================= */}
                     <div className="bg-white" data-print-block data-print-role="header">
-                        <div className="flex flex-row items-center justify-between mb-2">
+                        <div className="flex flex-row items-start justify-between mb-2">
                             <div className="flex flex-row items-center">
                                 <img
                                     src="/report/image%201.png"
@@ -2837,12 +2842,45 @@ const CommonReportView2 = ({
                                     </p>
                                 </div>
                             </div>
-                            {/* <img
-                                src="/report/Logo.png"
-                                alt="Tiamed Logo"
-                                className="w-28 h-9 object-contain flex-shrink-0"
-                                crossOrigin="anonymous"
-                            /> */}
+                            {/* Visit timeline, top-right: registered -> collected -> reported, in
+                                chronological order so the turnaround reads at a glance. Values are
+                                right-aligned against a fixed-width column so the three line up as a
+                                block rather than ragged. Same no-gap/no-truncate rules as the patient
+                                card below -- html2canvas mangles flex `gap` and text-overflow in the
+                                exported PDF, so spacing is explicit margins only. */}
+                            <div className="flex flex-col flex-shrink-0" style={{ marginLeft: "0.75rem" }}>
+                                {[
+                                    { label: "Registered", value: headerDateTime(primaryReport?.registeredDateTime) },
+                                    { label: "Sample Collected", value: headerDateTime(primaryReport?.sampleCollectedDateTime) },
+                                    { label: "Report Generated", value: headerDateTime(latestReportDateTime) },
+                                ].map((entry, entryIdx) => (
+                                    <div
+                                        key={entry.label}
+                                        className="flex flex-row items-baseline justify-end"
+                                        style={{ marginTop: entryIdx > 0 ? "3px" : 0 }}
+                                    >
+                                        <span
+                                            className="text-[8px] font-semibold uppercase"
+                                            style={{ color: REPORT_COLORS.neutral600, lineHeight: 1.3, whiteSpace: "nowrap" }}
+                                        >
+                                            {entry.label}
+                                        </span>
+                                        <span
+                                            className="text-[9px] font-bold"
+                                            style={{
+                                                color: REPORT_COLORS.neutral900,
+                                                lineHeight: 1.3,
+                                                marginLeft: "8px",
+                                                minWidth: "108px",
+                                                textAlign: "right",
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
+                                            {entry.value}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         {/* Patient Details Card */}
@@ -2862,6 +2900,7 @@ const CommonReportView2 = ({
                                 [
                                     { icon: "/report/user.png", label: "Patient Name", value: patientData?.patientname || 'N/A', noWrap: false },
                                     { icon: "/report/users.png", label: "Age / Sex", value: `${formatAgeForDisplay(patientData?.dateOfBirth || '')} / ${patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}`, noWrap: true },
+                                    { icon: "/report/calendar.png", label: "Date & Time", value: headerDateTime(latestReportDateTime), noWrap: true },
                                     { icon: "/report/id-card.png", label: "Patient No.", value: primaryReport?.patientCode || "N/A", noWrap: true },
                                     { icon: "/report/clipboard-check.png", label: "Patient Type", value: patientData?.visitType || "N/A", noWrap: true },
                                 ],
@@ -2870,18 +2909,6 @@ const CommonReportView2 = ({
                                     { icon: "/report/file-text.png", label: "Lab No.", value: currentLab?.id || 'N/A', noWrap: true },
                                     { icon: "/report/clipboard.png", label: "Report No.", value: primaryReport?.reportCode || "N/A", noWrap: true },
                                     { icon: "/report/map-pin.png", label: "Visit No.", value: primaryReport?.visitCode || "N/A", noWrap: true },
-                                ],
-                                // Kept together and in chronological order -- the whole point of
-                                // splitting the old single "Date & Time" (which was, and still is,
-                                // the report-generated moment) into three is that the reader can see
-                                // the gap between arrival, collection and result. All three come from
-                                // the report fetch (GET report/{visitId}), which every report view
-                                // calls regardless of which screen opened it -- unlike patientData,
-                                // whose shape differs by source screen, this is always present.
-                                [
-                                    { icon: "/report/calendar.png", label: "Registered", value: headerDateTime(primaryReport?.registeredDateTime), noWrap: true },
-                                    { icon: "/report/flask-round.png", label: "Sample Collected", value: headerDateTime(primaryReport?.sampleCollectedDateTime), noWrap: true },
-                                    { icon: "/report/check-circle.png", label: "Report Generated", value: headerDateTime(primaryReport?.createdDateTime), noWrap: true },
                                 ],
                             ].map((row, rowIdx) => (
                                 <div key={rowIdx} className="flex flex-wrap items-start" style={{ marginTop: rowIdx > 0 ? "0.25rem" : 0 }}>
