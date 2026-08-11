@@ -4,6 +4,7 @@ import {
   ReportSettingsPayload,
   ReportSettingsResponse,
 } from '@/types/reportSettings';
+import { AiClinicalObservation } from '@/types/aiInsights';
 
 interface Report {
   reportId: number;
@@ -302,6 +303,71 @@ export const updateReportSettings = async (
     return response.data.data;
   } catch (error) {
     let errorMessage = 'An error occurred while updating report settings.';
+
+    if (error && (error as AxiosError).isAxiosError) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+// ─── AI Clinical Observations ───────────────────────────────────────────────────
+
+/**
+ * Read the AI Clinical Observations stored against a visit, or null when none have
+ * been generated yet. This is what makes the observations universal: whichever device
+ * generates them first writes them here, and every later open — on any device, by any
+ * user — reads that same text back instead of paying for another model call.
+ */
+export const getAiClinicalObservation = async (
+  labId: number | string,
+  visitId: number | string
+): Promise<AiClinicalObservation | null> => {
+  try {
+    const response = await api.get(`/lab/${labId}/visit/${visitId}/ai-clinical-observation`);
+
+    // Endpoints here normally wrap their payload in {data, message, status}; unwrap
+    // that, but fall back to a bare body so this keeps working either way. A body with
+    // no observation fields on it reads as "nothing stored" downstream.
+    const body = response.data as ({ data?: AiClinicalObservation | null } & Partial<AiClinicalObservation>) | null;
+    return (body?.data ?? body ?? null) as AiClinicalObservation | null;
+  } catch (error) {
+    // No record yet is the normal first-open case, not a failure.
+    if (error && (error as AxiosError).isAxiosError && (error as AxiosError).response?.status === 404) {
+      return null;
+    }
+
+    let errorMessage = 'An error occurred while fetching AI clinical observations.';
+
+    if (error && (error as AxiosError).isAxiosError) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+/** Persist freshly generated AI Clinical Observations against a visit. */
+export const saveAiClinicalObservation = async (
+  labId: number | string,
+  visitId: number | string,
+  payload: AiClinicalObservation
+): Promise<void> => {
+  try {
+    await api.post(`/lab/${labId}/visit/${visitId}/ai-clinical-observation`, payload);
+  } catch (error) {
+    let errorMessage = 'An error occurred while saving AI clinical observations.';
 
     if (error && (error as AxiosError).isAxiosError) {
       const axiosError = error as AxiosError<{ message?: string }>;

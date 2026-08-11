@@ -10,10 +10,11 @@ import { formatAgeForDisplay } from "@/utils/ageUtils";
 import type { PatientData } from "@/types/sample/sample";
 import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
 import { getPatientHealthSnapshot } from "../../../../../../services/patientServices";
+import { getAiClinicalObservation, saveAiClinicalObservation } from "../../../../../../services/reportServices";
 import type { HealthSnapshot, HealthSnapshotTest, HealthSnapshotTestResult } from "@/types/patient/healthSnapshot";
 import type { AiReportInsights } from "@/types/aiInsights";
 import type { AiHistoryPoint, AiTestFinding } from "@/lib/ai/labReportPrompt";
-import { buildAiReportCacheKey, readAiReportCache, writeAiReportCache } from "@/lib/ai/aiReportCache";
+import { buildObservationContentHash, toAiClinicalObservation, toAiReportInsights } from "@/lib/ai/aiClinicalObservation";
 
 type Html2CanvasBaseOptions = NonNullable<Parameters<typeof html2canvas>[1]>;
 type Html2CanvasEnhancedOptions = Html2CanvasBaseOptions & {
@@ -1243,58 +1244,102 @@ const CommonReportView2 = ({
         };
     }, [currentLab?.id, patientData?.patientId]);
 
-    // Auto-generate AI Clinical Observations once the report data (and, if available, the
-    // Health Snapshot history) are ready. Result is cached in localStorage keyed by the
-    // report set + its content, so reopening the same report skips the OpenAI call
-    // entirely -- including when it is reopened from the other entry point (Sample
-    // Management vs Patient Dashboard), since both render this component over the same
-    // reports. Skipped outright unless every test in the order is complete.
+    // Observations are stored per visit. `reportsData` is always one visit's reports, but
+    // prefer the visit the patient row itself carries and fall back to the reports for
+    // callers that pass a thinner patient object.
+    const observationVisitId = useMemo<number | null>(() => {
+        if (typeof patientData?.visitId === "number" && Number.isFinite(patientData.visitId)) {
+            return patientData.visitId;
+        }
+        const fromReport = reportsData.find(
+            (r) => typeof r.visitId === "number" && Number.isFinite(r.visitId)
+        );
+        return fromReport?.visitId ?? null;
+    }, [patientData?.visitId, reportsData]);
+
+    // Resolve the AI Clinical Observations once the report data (and, if available, the
+    // Health Snapshot history) are ready. The visit's stored observation is the single
+    // source of truth -- no local cache, so every device and every user sees the exact
+    // same text, and a result edit invalidates it for everyone at once rather than for
+    // whoever happens to share the browser that generated it:
+    //   1. Read the observation stored against the visit. Present and still matching the
+    //      current values -> render it, no model call. This is the path almost every open
+    //      takes, including the second entry point (Sample Management vs Patient
+    //      Dashboard), since both render this component over the same visit.
+    //   2. Nothing stored, or stored against values that have since been edited -> call
+    //      the model and write the result back, overwriting the stale record so the next
+    //      open anywhere is a plain read again.
+    // Skipped outright unless every test in the order is complete.
     useEffect(() => {
         if (!showAiInsights || !healthSnapshotFetched || aiTestFindings.length === 0) {
-            return;
-        }
-
-        const cacheKey = buildAiReportCacheKey(
-            sortedReports.map((r) => r.reportId),
-            aiTestFindings
-        );
-        const cached = readAiReportCache(cacheKey);
-        if (cached) {
-            setAiInsights(cached);
-            setAiInsightsError(null);
-            setAiInsightsLoading(false);
             return;
         }
 
         let cancelled = false;
         setAiInsightsLoading(true);
         setAiInsightsError(null);
-        fetch("/api/ai-report", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                patient: {
-                    name: patientData?.patientname,
-                    age: formatAgeForDisplay(patientData?.dateOfBirth || ""),
-                    gender: patientData?.gender,
-                },
-                testFindings: aiTestFindings,
-                history: aiHistoryPoints,
-            }),
-        })
-            .then(async (response) => {
-                if (!response.ok) {
-                    const body = await response.json().catch(() => null);
-                    throw new Error(body?.message || "Failed to generate AI insights");
+
+        const labId = currentLab?.id;
+        const canPersist = Boolean(labId) && observationVisitId != null;
+        const contentHash = buildObservationContentHash(aiTestFindings);
+
+        const generate = async (): Promise<AiReportInsights> => {
+            const response = await fetch("/api/ai-report", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    patient: {
+                        name: patientData?.patientname,
+                        age: formatAgeForDisplay(patientData?.dateOfBirth || ""),
+                        gender: patientData?.gender,
+                    },
+                    testFindings: aiTestFindings,
+                    history: aiHistoryPoints,
+                }),
+            });
+            if (!response.ok) {
+                const body = await response.json().catch(() => null);
+                throw new Error(body?.message || "Failed to generate AI insights");
+            }
+            return response.json() as Promise<AiReportInsights>;
+        };
+
+        (async () => {
+            if (canPersist) {
+                try {
+                    const stored = await getAiClinicalObservation(labId!, observationVisitId!);
+                    const storedInsights = toAiReportInsights(stored);
+                    // Reuse the stored text unless the values it was written from have since
+                    // changed -- the report must read identically on every device, and
+                    // re-running the model over unchanged values would only reword it.
+                    // A record carrying no fingerprint at all (written before the column
+                    // existed) is trusted rather than regenerated, so rolling this out does
+                    // not re-bill every historical visit on its next open.
+                    const isStale = Boolean(stored?.contentHash) && stored!.contentHash !== contentHash;
+                    if (storedInsights && !isStale) {
+                        if (!cancelled) setAiInsights(storedInsights);
+                        return;
+                    }
+                } catch {
+                    // Lookup failed -- fall through and generate rather than showing the
+                    // report without its observations.
                 }
-                return response.json() as Promise<AiReportInsights>;
-            })
-            .then((data) => {
-                if (!cancelled) {
-                    setAiInsights(data);
-                    writeAiReportCache(cacheKey, data);
-                }
-            })
+            }
+
+            const generated = await generate();
+            if (cancelled) return;
+            setAiInsights(generated);
+
+            // Best-effort: the report is already on screen either way, so a failed write
+            // only costs the next device to open this visit one more generation.
+            if (canPersist) {
+                saveAiClinicalObservation(
+                    labId!,
+                    observationVisitId!,
+                    toAiClinicalObservation(generated, contentHash)
+                ).catch(() => { });
+            }
+        })()
             .catch((err) => {
                 if (!cancelled) setAiInsightsError(err instanceof Error ? err.message : "Failed to generate AI insights");
             })
@@ -1305,7 +1350,7 @@ const CommonReportView2 = ({
         return () => {
             cancelled = true;
         };
-    }, [showAiInsights, healthSnapshotFetched, aiTestFindings, aiHistoryPoints, sortedReports, patientData?.patientname, patientData?.dateOfBirth, patientData?.gender]);
+    }, [showAiInsights, healthSnapshotFetched, aiTestFindings, aiHistoryPoints, currentLab?.id, observationVisitId, patientData?.patientname, patientData?.dateOfBirth, patientData?.gender]);
 
     const getFindingBadge = (finding: ClinicalFinding) => {
         const directionLabel = finding.direction === "high" ? "HIGH" : "LOW";

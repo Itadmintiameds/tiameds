@@ -4,7 +4,9 @@ import { PatientData } from "@/types/sample/sample";
 // The single report-view entry point for the whole app. Patient Dashboard
 // (PatientVisitListTable) and Sample Management (CompletedTable / CollectionTable /
 // LabReport) both render this, so a report looks and behaves identically wherever it
-// is opened from -- same Health Snapshot, same AI Clinical Observations, same cache.
+// is opened from -- same Health Snapshot, same AI Clinical Observations. Both pass the
+// same `viewPatient.visitId`, which is what keys the stored observation, so whichever
+// screen opens a finished visit first generates it and the other simply reads it back.
 // Sample Management imports it via the `Report/ViewReport` re-export.
 interface ReportViewProps {
     viewPatient: PatientData | null;

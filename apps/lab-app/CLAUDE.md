@@ -219,7 +219,7 @@ they use their own axios instances against the local `/api/admin-stats` and
 | `onboardingService.ts` | request/resend verification email, verify token, `completeOnboarding` | `/public/onboarding/*`, pre-auth |
 | `packageServices.ts` | health package CRUD | `/admin/lab/{labId}/package[s]` |
 | `patientServices.ts` | **largest**: visits by date range, get/search (debounced 300ms) patient, add/update/delete patient, visits by patient/date, health snapshot (AI trend context), visit cancellation, partial payment, datewise transaction/payment details | `/lab/{labId}/*` |
-| `reportServices.ts` | report CRUD + report settings (letterhead/signature, S3 signature upload) | `/lab/{labId}/report*`, `/report-settings` |
+| `reportServices.ts` | report CRUD + report settings (letterhead/signature, S3 signature upload) + get/save AI clinical observations per visit | `/lab/{labId}/report*`, `/report-settings`, `/lab/{labId}/visit/{visitId}/ai-clinical-observation` |
 | `sampleServices.ts` | sample CRUD + visit-sample ops (add/get/collected-completed/update/delete) | `/lab/{labId}/sample*`, `/lab/*-samples`; samples are **lab-isolated**, see `docs/sampledoc.md` |
 | `statusServices.ts` | `getLabStatsData(labId, startDate, endDate)` — old single-lab stats call | `lab/statistics/{labId}`; only remaining consumer is `StatisticsMain.tsx`, which is itself dead code (see routing map) |
 | `technicianServices.ts` | actually staff/member mgmt: get/create/update/reset-password/delete member | `/user-management/*`; **inconsistent error handling** — catches and *returns* `error.response?.data` instead of throwing, unlike other services |
@@ -274,8 +274,11 @@ combined, `YYYY-MM-DD` date regex), `editPatientSchema.ts`, `doctorSchemaData.ts
 ## Utilities (`src/lib/`, `src/utils/`)
 
 - `lib/utils.ts` — `cn()` (clsx + tailwind-merge).
-- `lib/ai/aiReportCache.ts`, `labReportPrompt.ts` — AI report insight caching + prompt
-  building.
+- `lib/ai/aiClinicalObservation.ts`, `labReportPrompt.ts` — AI clinical observation
+  serialisation (UI bullet arrays <-> the backend's flat per-visit strings) + content
+  fingerprint used to detect edited results + prompt building. There is no local/
+  localStorage cache for observations: the per-visit record on the backend is the only
+  store, so every device sees identical text.
 - `utils/api.ts` — shared axios client (see Auth section above).
 - `utils/auth.ts` — `handleLogout()`.
 - `utils/cookies.ts` — `getCookie`/`setCookie`/`deleteCookie` (non-httpOnly, secure,
