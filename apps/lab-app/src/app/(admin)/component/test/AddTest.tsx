@@ -1,14 +1,23 @@
-'use client';
+"use client";
 
-import { addTest } from '@/../services/testService';
-import { useLabs } from '@/context/LabContext';
-import { testFormDataSchema } from '@/schema/testFormDataSchema';
-import React, { useState } from 'react';
-import { FaTag, FaVial, FaTimes } from 'react-icons/fa';
-import { toast } from 'react-toastify';
-import { z } from 'zod';
-import { Plus } from 'lucide-react';
-import Loader from '../common/Loader';
+import React, { ChangeEvent, useState } from "react";
+import {
+  ArrowRight,
+  X,
+  CheckCircle2,
+} from "lucide-react";
+import Result from "./Result";
+import LivePreview from "./LivePreview";
+import ApplicableCriteria from "./ApplicableCriteria";
+import TestRNR from "./TestRNR";
+import ReportDisplay from "./ReportDisplay";
+import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
+
+interface TestForm {
+  category: string;
+  testName: string;
+  price: string;
+}
 
 interface AddTestProps {
   closeModal: () => void;
@@ -16,223 +25,232 @@ interface AddTestProps {
   setUpdateList: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [formData, setFormData] = useState({
-    category: '',
-    name: '',
-    price: undefined as string | undefined,
+const AddTest = ({
+  closeModal,
+  setUpdateList,
+}: AddTestProps) => {
+  const [formData, setFormData] = useState<TestForm>({
+    category: "",
+    testName: "",
+    price: "",
   });
-  const { currentLab } = useLabs();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [showResult, setShowResult] = useState(false);
+
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     
-    if (name === 'price') {
-      // Only allow numbers with max 2 digits after decimal
-      if (value === '' || /^\d+(\.\d{0,2})?$/.test(value)) {
+    if (name === "price") {
+      // Allow only numbers and up to 2 decimal places
+      const decimalRegex = /^\d*\.?\d{0,2}$/;
+      if (decimalRegex.test(value) || value === "") {
         setFormData((prev) => ({
           ...prev,
-          [name]: value === '' ? undefined : value
+          [name]: value,
         }));
       }
-    } else if (name === 'category') {
-      // Category: Only allow letters, spaces, and hyphens (no numbers)
-      if (/^[a-zA-Z\s\-]*$/.test(value)) {
-        setFormData((prev) => ({
-          ...prev,
-          [name]: value.toUpperCase()
-        }));
-      }
-    } else if (name === 'name') {
-      // Test Name: Allow alphanumeric (letters and numbers), spaces, and hyphens
-      if (/^[a-zA-Z0-9\s\-]*$/.test(value)) {
-        setFormData((prev) => ({
-          ...prev,
-          [name]: value.toUpperCase()
-        }));
-      }
+      return;
     }
+    
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Clean up and validate input
-    const cleanedCategory = formData.category.trim().replace(/\s+/g, ' ');
-    const cleanedName = formData.name.trim().replace(/\s+/g, ' ');
-    
-    if (!cleanedCategory) {
-      toast.error('Category is required');
-      return;
-    }
-    if (!cleanedName) {
-      toast.error('Test name is required');
-      return;
-    }
-    if (formData.price === undefined || Number(formData.price) < 0) {
-      toast.error('Price must be a valid positive number');
-      return;
-    }
-    
-    try {
-      const dataForValidation = {
-        ...formData,
-        price: Number(formData.price) || 0
-      };
-      testFormDataSchema.parse(dataForValidation);
-      const testListData = {
-        category: cleanedCategory,
-        name: cleanedName,
-        price: Number(formData.price) || 0,
-        id: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      if (currentLab) {
-        setIsLoading(true);
-        await addTest(currentLab.id.toString(), testListData);
-        setUpdateList(!updateList);
-        setIsLoading(false);
-        toast.success('Test added successfully!', { autoClose: 2000 });
-        setFormData({ category: '', name: '', price: undefined });
-        closeModal();
-      } else {
-        toast.error('Current lab is not selected.');
-      }
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        toast.error(err.errors[0].message);
-      } else {
-        toast.error((err as Error).message);
-      }
-    }
-  }
+  const handleContinue = () => {
+    setShowResult(true);
+  };
+
+ const handleCancel = () => {
+  setFormData({
+    category: "",
+    testName: "",
+    price: "",
+  });
+
+  setShowResult(false);
+
+  closeModal();
+};
+
+const handleSave = () => {
+  console.log("Saving test:", formData);
+
+  // Refresh TestList
+  setUpdateList((prev) => !prev);
+
+  // Close AddTest page
+  closeModal();
+
+  alert("Test saved successfully!");
+};
+
+  const isValid =
+    formData.category &&
+    formData.testName &&
+    formData.price;
 
   return (
-    <div className="w-full">
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Test Information Section */}
-        <div className="bg-info-50 rounded-lg p-4 space-y-4">
-          <h4 className="font-semibold text-info-700 text-p3 flex items-center gap-2">
-            <FaVial className="text-info-600" size={16} />
-            Test Information
-          </h4>
-          
-          {/* Category Input */}
-          <div>
-            <label htmlFor="category" className="block text-p3 font-medium text-pneutral-900 mb-1.5">
-              Category <span className="text-warning-500">*</span>
-            </label>
-            <div className="relative">
-              <FaTag className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
-              <input
-                id="category"
-                type="text"
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                className="w-full rounded-lg border border-pneutral-200 pl-9 pr-4 py-2 text-p3 focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500 bg-white"
-                placeholder="Enter category"
-                required
-              />
-            </div>
+    <div className="flex gap-6 w-full">
+      {/* Left Column - 3/4 width */}
+      <div className="w-2/3 space-y-6">
+        {/* Add Test Section */}
+        <div className="w-full">
+          {/* Heading */}
+          <div className="mb-6">
+            <h1 className="text-h6 font-semibold text-pneutral-900">
+              Add New Test
+            </h1>
+            <p className="mt-1 text-p3 text-pneutral-400">
+              Create a new laboratory test with reference ranges
+              and report configuration
+            </p>
           </div>
 
-          {/* Name Input */}
-          <div>
-            <label htmlFor="name" className="block text-p3 font-medium text-pneutral-900 mb-1.5">
-              Test Name <span className="text-warning-500">*</span>
-            </label>
-            <div className="relative">
-              <FaVial className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
-              <input
-                id="name"
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                className="w-full rounded-lg border border-pneutral-200 pl-9 pr-4 py-2 text-p3 focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500 bg-white"
-                placeholder="Enter test name"
-                required
-              />
+          {/* Card */}
+          <div className="overflow-hidden rounded-xl border border-pneutral-200 bg-white shadow-sm">
+            {/* Card Header */}
+            <div className="flex items-start border-b border-pneutral-200 px-6 py-3">
+              <div className="flex h-10 w-10 items-center justify-center">
+                <HiOutlineClipboardDocumentList
+                  size={20}
+                  className="text-secondary-700"
+                />
+              </div>
+              <div>
+                <h2 className="text-p4 font-semibold text-pneutral-900">
+                  Basic Test Information
+                </h2>
+                <p className="text-p2 text-pneutral-500">
+                  Core test identifiers and metadata
+                </p>
+              </div>
+            </div>
+
+            {/* Form */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                {/* Category - Changed to input */}
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    Test Category
+                  </label>
+                  <input
+                    type="text"
+                    name="category"
+                    value={formData.category}
+                    onChange={handleChange}
+                    placeholder="Enter test category"
+                    disabled={showResult}
+                    className={`h-12 w-full rounded-full border border-gray-300 px-5 outline-none transition focus:border-violet-500 ${
+                      showResult ? "bg-gray-100 cursor-not-allowed" : "bg-white"
+                    }`}
+                  />
+                </div>
+
+                {/* Test Name */}
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    Test Name
+                  </label>
+                  <input
+                    type="text"
+                    name="testName"
+                    value={formData.testName}
+                    onChange={handleChange}
+                    placeholder="Enter test name"
+                    disabled={showResult}
+                    className={`h-12 w-full rounded-full border border-gray-300 px-5 outline-none transition focus:border-violet-500 ${
+                      showResult ? "bg-gray-100 cursor-not-allowed" : "bg-white"
+                    }`}
+                  />
+                </div>
+
+                {/* Price */}
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    Test Price (₹)
+                  </label>
+                  <input
+                    type="text"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleChange}
+                    placeholder="Enter price"
+                    disabled={showResult}
+                    className={`h-12 w-full rounded-full border border-gray-300 px-5 outline-none transition focus:border-violet-500 ${
+                      showResult ? "bg-gray-100 cursor-not-allowed" : "bg-white"
+                    }`}
+                  />
+                </div>
+
+                {/* Continue */}
+                <div className="flex items-end">
+                  <button
+                    onClick={handleContinue}
+                    disabled={!isValid || showResult}
+                    className={`flex h-12 w-full items-center justify-center gap-2 rounded-full border text-base font-semibold transition
+                    ${
+                      isValid && !showResult
+                        ? "border-secondary-600 bg-secondary-50 text-secondary-700"
+                        : "cursor-not-allowed border-secondary-600 bg-secondary-50 text-secondary-700 opacity-50"
+                    }`}
+                  >
+                    Continue
+                    <ArrowRight size={20} />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Pricing Information Section */}
-        <div className="bg-danger-100 rounded-lg p-4 space-y-4">
-          <h4 className="font-semibold text-warning-800 text-p3 flex items-center gap-2">
-            <FaTag className="text-success-800" size={16} />
-            Pricing Information
-          </h4>
-          
-          {/* Price Input */}
-          <div>
-            <label htmlFor="price" className="block text-p3 font-medium text-pneutral-900 mb-1.5">
-              Price <span className="text-warning-500">*</span>
-            </label>
-            <div className="relative">
-              <span className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400 font-medium">₹</span>
-              <input
-                id="price"
-                type="text"
-                inputMode="decimal"
-                name="price"
-                value={formData.price ?? ''}
-                onChange={handleInputChange}
-                onKeyDown={(e) => {
-                  if (!/[0-9.]|\b/.test(e.key)) {
-                    e.preventDefault();
-                  }
-                  if (e.key === '.' && e.currentTarget.value.includes('.')) {
-                    e.preventDefault();
-                  }
-                }}
-                onBlur={(e) => {
-                  const val = e.target.value;
-                  if (val && !/^\d+(\.\d{1,2})?$/.test(val)) {
-                    e.target.value = '';
-                    setFormData((prev) => ({ ...prev, price: undefined }));
-                  }
-                }}
-                pattern="^\d+(\.\d{0,2})?$"
-                className="w-full rounded-lg border border-pneutral-200 pl-9 pr-4 py-2 text-p3 focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500 bg-white"
-                placeholder="Enter price"
-                required
-              />
-            </div>
-          </div>
-        </div>
+        {/* Result Component */}
+        {showResult && <Result />}
 
-        {/* Action Buttons */}
-        {isLoading ? (
-          <div className="flex justify-center items-center py-4">
-            <Loader type="progress" fullScreen={false} text="Adding test..." />
-          </div>
-        ) : (
-          <div className="flex justify-end gap-3 pt-2 border-t border-pneutral-200">
+        {/* Applicable Criteria Component */}
+        {showResult && <ApplicableCriteria />}
+
+        {/* Test RNR Component */}
+        {showResult && <TestRNR />}
+
+        {/* Report Display Component */}
+        {showResult && <ReportDisplay />}
+
+        {/* Cancel and Save Buttons */}
+        {showResult && (
+          <div className="flex items-center border rounded-xl bg-white border-pneutral-200 justify-between gap-4 p-4">
             <button
-              type="button"
-              onClick={closeModal}
-              className="px-4 py-2 text-p3 border border-pneutral-400 font-medium text-pneutral-700 bg-pneutral-50 rounded-full  flex items-center gap-1"
+              onClick={handleCancel}
+              className="flex h-9 items-center justify-center gap-2 rounded-full border border-pneutral-300 px-4 text-label-l3 font-semibold text-pneutral-600"
             >
-              <FaTimes size={16} />
+              <X size={16} />
               Cancel
             </button>
+
             <button
-              type="submit"
-              className="px-4 py-2 text-p3 font-medium text-pneutral-50 bg-secondary-700 rounded-full flex items-center gap-1"
+              onClick={handleSave}
+              className="flex h-9 items-center justify-center gap-2 rounded-full bg-secondary-700 px-8 text-base font-semibold text-pneutral-50 shadow-lg"
             >
-              <Plus size={16} />
-              Add Test
+              <CheckCircle2 size={16} />
+              Save Test
             </button>
           </div>
         )}
-      </form>
+      </div>
+
+      {/* Right Column - 1/4 width */}
+      {showResult && (
+        <div className="w-1/3">
+          <LivePreview />
+        </div>
+      )}
     </div>
   );
-};
+}
 
 export default AddTest;
 
@@ -248,7 +266,22 @@ export default AddTest;
 
 
 
-// code written by Abhishek , ..................do not delete the code below ....................
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// code written by abhishek ............  do not delete this code..............
 
 // import { addTest } from '@/../services/testService';
 // import { useLabs } from '@/context/LabContext';

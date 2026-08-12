@@ -1,27 +1,27 @@
 'use client';
+
 import { deleteTest, getTestsPaginated, PaginatedTestResponse } from '@/../../services/testService';
-import { downloadTestCsv, downloadTestCsvExcel } from '@/../services/testService';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
-import { Plus, Edit, Search } from 'lucide-react';
-import Papa from 'papaparse';
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { FaDownload, FaFileExcel } from 'react-icons/fa';
-import { HiOutlineTrash } from 'react-icons/hi2';
+import { Plus, Edit, Search } from 'lucide-react';
 import { toast } from 'react-toastify';
-import * as XLSX from 'xlsx';
-
-// Components
 import Loader from "@/app/(admin)/component/common/Loader";
 import NewCommonTable from '@/app/(admin)/dashboard/newcommoncomponent/NewCommonTable';
 import NewModal from '@/app/(admin)/dashboard/newcommoncomponent/NewModal';
-import AddTest from './AddTest';
 import TestEditComponent from './TestEditComponent';
 import useAuthStore from '@/context/userStore';
+import { HiOutlineTrash } from 'react-icons/hi2';
 
 const ITEMS_PER_PAGE = 500;
 
-const TestLists = () => {
+interface TestListsProps {
+  onAddTest: () => void;
+  updateList: boolean;
+  setUpdateList: (value: boolean) => void;
+}
+
+const TestLists = ({ onAddTest, updateList, setUpdateList }: TestListsProps) => {
   // Auth
   const { user: loginedUser } = useAuthStore();
   const roles = loginedUser?.roles || [];
@@ -44,10 +44,8 @@ const TestLists = () => {
   const [sortOrder, setSortOrder] = useState<'low' | 'high' | ''>('');
 
   // UI States
-  const [isModalOpen, setModalOpen] = useState(false);
   const [editPopup, setEditPopup] = useState(false);
   const [updateTest, setUpdateTest] = useState<TestList>();
-  const [updateList, setUpdateList] = useState(false);
 
   // Use useMemo to create a reset key based on filter changes
   const resetPageKey = useMemo(
@@ -59,7 +57,7 @@ const TestLists = () => {
     [searchTerm, category, sortOrder]
   );
 
-  // Fetch Tests - Keep API pagination logic intact
+  // Fetch Tests
   const fetchTests = useCallback(async (page: number = 0, size: number = ITEMS_PER_PAGE) => {
     if (currentLab?.id) {
       setLoading(true);
@@ -67,6 +65,7 @@ const TestLists = () => {
         const response: PaginatedTestResponse = await getTestsPaginated(currentLab.id, page, size);
         
         const content = Array.isArray(response?.content) ? response.content : [];
+        // const totalPages = response?.totalPages ?? 0;
         const totalElements = response?.totalElements ?? 0;
         
         setTests(content);
@@ -87,12 +86,11 @@ const TestLists = () => {
     }
   }, [currentLab?.id]);
 
-  // Fetch on page change, updateList change, or when filters change
   useEffect(() => {
     fetchTests(currentPage, ITEMS_PER_PAGE);
   }, [fetchTests, currentPage, updateList]);
 
-  // Filter and sort tests (client-side filtering on current page data)
+  // Filter and sort tests
   const filteredTests = useMemo(() => {
     const safeTests = Array.isArray(tests) ? tests : [];
     let results = [...safeTests];
@@ -118,19 +116,20 @@ const TestLists = () => {
     return results;
   }, [tests, searchTerm, category, sortOrder]);
 
-  // Handle Search Change - Reset to first page
+
+  // Handle Search Change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
     setCurrentPage(0);
   };
 
-  // Handle Category Change - Reset to first page
+  // Handle Category Change
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setCategory(e.target.value);
     setCurrentPage(0);
   };
 
-  // Handle Sort Change - Reset to first page
+  // Handle Sort Change
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSortOrder(e.target.value as 'low' | 'high' | '');
     setCurrentPage(0);
@@ -148,45 +147,7 @@ const TestLists = () => {
     }
   };
 
-  // Download Handlers (kept exactly as original)
-  const handleDownloadCsv = async () => {
-    try {
-      if (!currentLab?.id) {
-        toast.error('Current lab is not selected.');
-        return;
-      }
-      await downloadTestCsv(currentLab.id.toString());
-      toast.success('CSV downloaded successfully!');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to download CSV');
-    }
-  };
-
-  const handleDownloadExcel = async () => {
-    try {
-      if (!currentLab?.id) {
-        toast.error('Current lab is not selected.');
-        return;
-      }
-      const csvText = await downloadTestCsvExcel(currentLab.id.toString());
-      const { data } = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-      
-      if (!data.length) {
-        toast.error('No data found to export');
-        return;
-      }
-      
-      const worksheet = XLSX.utils.json_to_sheet(data);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Test List');
-      XLSX.writeFile(workbook, 'test_list.xlsx');
-      toast.success('Excel exported successfully!');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to export Excel');
-    }
-  };
-
-  // Table Columns with new UI styling
+  // Table Columns
   const columns = [
     {
       header: "Test Code",
@@ -290,34 +251,21 @@ const TestLists = () => {
           <div className="flex items-center gap-3">
             {(isSuperAdmin || isAdmin) && (
               <button
-                onClick={() => setModalOpen(true)}
-                className="flex items-center gap-2 rounded-full bg-secondary-700 px-4 py-2 text-label-l3 font-medium text-pneutral-50"
+                onClick={onAddTest}
+                className="flex items-center gap-2 rounded-full bg-secondary-700 px-4 py-2 text-label-l3 font-medium text-pneutral-50 transition-all duration-200"
               >
                 <Plus className="h-4 w-4" />
                 <span>Add Test</span>
               </button>
             )}
-            <button
-              onClick={handleDownloadExcel}
-              className="flex items-center gap-2 rounded-full bg-success-600 px-4 py-2 text-label-l3 font-medium text-pneutral-50 "
-            >
-              <FaFileExcel className="h-4 w-4" />
-              <span>Download as Excel</span>
-            </button>
-            <button
-              onClick={handleDownloadCsv}
-              className="flex items-center gap-2 rounded-full bg-info-600 px-4 py-2 text-label-l3 font-medium text-pneutral-50"
-            >
-              <FaDownload className="h-4 w-4" />
-              <span>Download as CSV</span>
-            </button>
           </div>
         </div>
       </div>
 
-      {/* KPI Section */}
+      {/* KPI Section - Built directly in component */}
       <div className="mb-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {/* KPI 1 - Total Tests (Primary) */}
           <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
             <h3 className="text-sm font-medium text-pneutral-900">
               Total Tests
@@ -327,6 +275,7 @@ const TestLists = () => {
             </p>
           </div>
 
+          {/* KPI 2 - Categories (Info) */}
           <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
             <h3 className="text-sm font-medium text-pneutral-900">
               Categories
@@ -336,6 +285,7 @@ const TestLists = () => {
             </p>
           </div>
 
+          {/* KPI 3 - Active Tests (Danger) */}
           <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
             <h3 className="text-sm font-medium text-pneutral-900">
               Active Tests
@@ -365,6 +315,7 @@ const TestLists = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-4">
+            {/* Category Filter */}
             <div className="flex items-center gap-2">
               <span className="text-p3 text-pneutral-500">Category:</span>
               <select
@@ -381,6 +332,7 @@ const TestLists = () => {
               </select>
             </div>
 
+            {/* Price Sort */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-pneutral-500">Sort by:</span>
               <select
@@ -397,7 +349,7 @@ const TestLists = () => {
         </div>
       </div>
 
-      {/* Table Section - NewCommonTable handles pagination internally */}
+      {/* Table Section */}
       <div className="relative">
         {filteredTests.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-pneutral-200 bg-white py-16">
@@ -435,27 +387,12 @@ const TestLists = () => {
         )}
       </div>
 
-      {/* Add Test Modal */}
-      <NewModal
-        isOpen={isModalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Add New Test"
-        modalClassName="max-w-lg"
-      >
-        <AddTest
-          updateList={updateList}
-          setUpdateList={setUpdateList}
-          closeModal={() => setModalOpen(false)}
-        />
-      </NewModal>
-
-      {/* Edit Modal */}
+      {/* Edit Modal - Using NewModal */}
       {editPopup && updateTest && (
         <NewModal
           isOpen={editPopup}
           onClose={() => setEditPopup(false)}
-          title="Edit Test"
-          modalClassName="max-w-lg"
+          modalClassName="max-w-4xl"
         >
           <TestEditComponent
             updateList={updateList}
@@ -488,20 +425,8 @@ export default TestLists;
 
 
 
+// code written by abhishek ............  do not delete this code..............
 
-
-
-
-
-
-
-
-
-
-
-
-
-// code written by Abhishek , ..................do not delete the code below ....................
 
 // 'use client';
 // import { deleteTest, getTestsPaginated, PaginatedTestResponse } from '@/../../services/testService';
