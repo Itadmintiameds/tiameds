@@ -11,7 +11,7 @@ import MultiParameter from "./MultiParameter";
 import Text1 from "./Text1";
 import TextArea1 from "./TextArea1";
 
-type ResultType =
+export type ResultType =
   | "Numeric"
   | "Dropdown/Select"
   | "Text"
@@ -43,10 +43,15 @@ const resultTypes = [
   "Set Range",
 ] as const;
 
-const Result = () => {
-  const [selectedResultType, setSelectedResultType] =
-    useState<ResultType | null>(null);
+interface ResultProps {
+  selectedResultType: ResultType | null;
+  onSelectResultType: (value: ResultType) => void;
+}
 
+const Result = ({
+  selectedResultType,
+  onSelectResultType,
+}: ResultProps) => {
   const [form, setForm] = useState<NumericForm>({
     normalMin: "",
     normalMax: "",
@@ -87,7 +92,7 @@ const Result = () => {
   const handleResultType = (
     value: ResultType
   ) => {
-    setSelectedResultType(value);
+    onSelectResultType(value);
   };
 
 

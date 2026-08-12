@@ -49,7 +49,7 @@ const Page = () => {
   // Show Add Test Component (inline replacement)
   if (showAddTest) {
     return (
-      <div className="w-full p-4 bg-info-50">
+      <div className="w-full p-4 bg-secondary-50">
         <AddTest
           closeModal={() => setShowAddTest(false)}
           updateList={updateList}
@@ -61,7 +61,7 @@ const Page = () => {
 
   // Show Test List
   return (
-    <div className="w-full p-4 bg-info-50">
+    <div className="w-full p-4 bg-secondary-50">
       <TestLists 
         onAddTest={() => setShowAddTest(true)}
         updateList={updateList}

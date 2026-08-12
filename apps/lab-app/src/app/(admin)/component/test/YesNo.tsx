@@ -55,15 +55,11 @@ const YesNo = () => {
       {options.map((item) => (
         <div
           key={item.id}
-          className="rounded-xl border border-pneutral-200 bg-white p-5"
+          className="rounded-xl border border-pneutral-200 bg-white p-4"
         >
-          <div className="grid grid-cols-1 items-end gap-4 lg:grid-cols-[80px_1fr_1fr]">
+          <div className="grid grid-cols-1 items-end gap-4 lg:grid-cols-[40px_1fr_1fr]">
             {/* Label */}
             <div>
-              <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
-                &nbsp;
-              </label>
-
               <p className="h-11 flex items-center text-p3 font-semibold text-pneutral-900">
                 {item.label}
               </p>
@@ -71,10 +67,6 @@ const YesNo = () => {
 
             {/* Status */}
             <div>
-              <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
-                Status Mapping
-              </label>
-
               <select
                 value={item.status}
                 onChange={(e) =>
@@ -94,9 +86,7 @@ const YesNo = () => {
 
             {/* Interpretation */}
             <div>
-              <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
-                Interpretation
-              </label>
+
 
               <input
                 type="text"

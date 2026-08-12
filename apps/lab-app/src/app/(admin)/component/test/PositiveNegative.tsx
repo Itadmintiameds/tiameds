@@ -55,14 +55,11 @@ const PositiveNegative = () => {
       {options.map((item) => (
         <div
           key={item.id}
-          className="rounded-xl border border-pneutral-200 bg-white p-5"
+          className="rounded-xl border border-pneutral-200 bg-white p-4"
         >
           <div className="grid grid-cols-1 items-end gap-4 lg:grid-cols-[100px_1fr_1fr]">
             {/* Label */}
             <div>
-              <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
-                &nbsp;
-              </label>
 
               <p className="flex h-11 items-center text-p3 font-semibold text-pneutral-900">
                 {item.label}
@@ -71,9 +68,6 @@ const PositiveNegative = () => {
 
             {/* Status Mapping */}
             <div>
-              <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
-                Status Mapping
-              </label>
 
               <select
                 value={item.status}
@@ -94,9 +88,6 @@ const PositiveNegative = () => {
 
             {/* Interpretation */}
             <div>
-              <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
-                Interpretation
-              </label>
 
               <input
                 type="text"

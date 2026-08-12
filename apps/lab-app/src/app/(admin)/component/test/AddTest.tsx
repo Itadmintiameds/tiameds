@@ -6,7 +6,7 @@ import {
   X,
   CheckCircle2,
 } from "lucide-react";
-import Result from "./Result";
+import Result, { ResultType } from "./Result";
 import LivePreview from "./LivePreview";
 import ApplicableCriteria from "./ApplicableCriteria";
 import TestRNR from "./TestRNR";
@@ -36,6 +36,8 @@ const AddTest = ({
   });
 
   const [showResult, setShowResult] = useState(false);
+  const [selectedResultType, setSelectedResultType] =
+    useState<ResultType | null>(null);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -209,7 +211,12 @@ const handleSave = () => {
         </div>
 
         {/* Result Component */}
-        {showResult && <Result />}
+        {showResult && (
+          <Result
+            selectedResultType={selectedResultType}
+            onSelectResultType={setSelectedResultType}
+          />
+        )}
 
         {/* Applicable Criteria Component */}
         {showResult && <ApplicableCriteria />}
@@ -245,7 +252,7 @@ const handleSave = () => {
       {/* Right Column - 1/4 width */}
       {showResult && (
         <div className="w-1/3">
-          <LivePreview />
+          <LivePreview resultType={selectedResultType} />
         </div>
       )}
     </div>

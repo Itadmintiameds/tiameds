@@ -181,89 +181,99 @@ const Numeric = ({
                   </div>
                 </div>
 
-                {/* ---------------- Borderline Range ---------------- */}
-                <div>
-                  <div className="mb-5 flex items-center gap-2">
-                    <div className="h-2.5 w-2.5 rounded-full bg-danger-500" />
+                {/* Borderline Range + Units & Dimension */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  {/* ---------------- Borderline Range ---------------- */}
+                  <div>
+                    <div className="mb-5 flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-danger-500" />
 
-                    <h4 className="text-p3 font-semibold text-warning-600">
-                      Borderline Range
-                    </h4>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Min */}
-                    <div>
-                      <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
-                        Min Value
-                      </label>
-
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        name="borderlineMin"
-                        value={form.borderlineMin}
-                        onChange={handleInputChange}
-                        placeholder="e.g. 10.0"
-                        className="h-9 w-full rounded-lg border border-danger-300 bg-white px-4 text-p2 outline-none transition-all focus:border-danger-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      />
+                      <h4 className="text-p3 font-semibold text-warning-600">
+                        Borderline Range
+                      </h4>
                     </div>
 
-                    {/* Max */}
-                    <div>
-                      <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
-                        Max Value
-                      </label>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Min */}
+                      <div>
+                        <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
+                          Min Value
+                        </label>
 
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        name="borderlineMax"
-                        value={form.borderlineMax}
-                        onChange={handleInputChange}
-                        placeholder="e.g. 18.0"
-                        className="h-9 w-full rounded-lg border border-danger-300 bg-white px-4 text-p2 outline-none transition-all focus:border-danger-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      />
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          name="borderlineMin"
+                          value={form.borderlineMin}
+                          onChange={handleInputChange}
+                          placeholder="e.g. 10.0"
+                          className="h-9 w-full rounded-lg border border-danger-300 bg-white px-4 text-p2 outline-none transition-all focus:border-danger-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        />
+                      </div>
+
+                      {/* Max */}
+                      <div>
+                        <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
+                          Max Value
+                        </label>
+
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          name="borderlineMax"
+                          value={form.borderlineMax}
+                          onChange={handleInputChange}
+                          placeholder="e.g. 18.0"
+                          className="h-9 w-full rounded-lg border border-danger-300 bg-white px-4 text-p2 outline-none transition-all focus:border-danger-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Divider */}
-                <div className="border-t border-pneutral-200" />
-
-                {/* Unit & Decimal */}
-                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                  {/* Unit */}
+                  {/* ---------------- Units & Dimension ---------------- */}
                   <div>
-                    <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
-                      Unit
-                    </label>
+                    <div className="mb-5 flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-success-700" />
 
-                    <input
-                      type="text"
-                      name="unit"
-                      value={form.unit}
-                      onChange={handleInputChange}
-                      placeholder="e.g. g/dL"
-                      className="h-11 w-full rounded-lg border border-pneutral-300 bg-white px-4 outline-none transition focus:border-secondary-500"
-                    />
-                  </div>
+                      <h4 className="text-p3 font-semibold text-success-800">
+                        Units & Dimension
+                      </h4>
+                    </div>
 
-                  {/* Decimal */}
-                  <div>
-                    <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
-                      Decimal Places
-                    </label>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Unit */}
+                      <div>
+                        <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
+                          Unit
+                        </label>
 
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      name="decimalPlaces"
-                      value={form.decimalPlaces}
-                      onChange={handleInputChange}
-                      placeholder="2"
-                      className="h-11 w-full rounded-lg border border-pneutral-300 bg-white px-4 outline-none transition focus:border-secondary-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    />
+                        <input
+                          type="text"
+                          name="unit"
+                          value={form.unit}
+                          onChange={handleInputChange}
+                          placeholder="e.g. g/dL"
+                          className="h-9 w-full rounded-lg border border-pneutral-200 bg-white px-4 text-p2 outline-none transition-all focus:border-secondary-500"
+                        />
+                      </div>
+
+                      {/* Decimal Places */}
+                      <div>
+                        <label className="mb-2 block text-label-l3 font-medium text-pneutral-700">
+                          Decimal Places
+                        </label>
+
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          name="decimalPlaces"
+                          value={form.decimalPlaces}
+                          onChange={handleInputChange}
+                          placeholder="2"
+                          className="h-9 w-full rounded-lg border border-pneutral-200 bg-white px-4 text-p2 outline-none transition-all focus:border-secondary-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

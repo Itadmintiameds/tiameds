@@ -1,16 +1,20 @@
 'use client';
 
 import { deleteTest, getTestsPaginated, PaginatedTestResponse } from '@/../../services/testService';
+import { downloadTestCsv, downloadTestCsvExcel } from '@/../services/testService';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Plus, Edit, Search } from 'lucide-react';
+import Papa from 'papaparse';
 import { toast } from 'react-toastify';
+import * as XLSX from 'xlsx';
 import Loader from "@/app/(admin)/component/common/Loader";
 import NewCommonTable from '@/app/(admin)/dashboard/newcommoncomponent/NewCommonTable';
 import NewModal from '@/app/(admin)/dashboard/newcommoncomponent/NewModal';
 import TestEditComponent from './TestEditComponent';
 import useAuthStore from '@/context/userStore';
+import { FaDownload, FaFileExcel } from 'react-icons/fa';
 import { HiOutlineTrash } from 'react-icons/hi2';
 
 const ITEMS_PER_PAGE = 500;
@@ -147,6 +151,44 @@ const TestLists = ({ onAddTest, updateList, setUpdateList }: TestListsProps) => 
     }
   };
 
+  // Download Handlers
+  const handleDownloadCsv = async () => {
+    try {
+      if (!currentLab?.id) {
+        toast.error('Current lab is not selected.');
+        return;
+      }
+      await downloadTestCsv(currentLab.id.toString());
+      toast.success('CSV downloaded successfully!');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to download CSV');
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    try {
+      if (!currentLab?.id) {
+        toast.error('Current lab is not selected.');
+        return;
+      }
+      const csvText = await downloadTestCsvExcel(currentLab.id.toString());
+      const { data } = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+
+      if (!data.length) {
+        toast.error('No data found to export');
+        return;
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Test List');
+      XLSX.writeFile(workbook, 'test_list.xlsx');
+      toast.success('Excel exported successfully!');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export Excel');
+    }
+  };
+
   // Table Columns
   const columns = [
     {
@@ -258,6 +300,20 @@ const TestLists = ({ onAddTest, updateList, setUpdateList }: TestListsProps) => 
                 <span>Add Test</span>
               </button>
             )}
+            <button
+              onClick={handleDownloadExcel}
+              className="flex items-center gap-2 rounded-full bg-success-600 px-4 py-2 text-label-l3 font-medium text-pneutral-50 "
+            >
+              <FaFileExcel className="h-4 w-4" />
+              <span>Download as Excel</span>
+            </button>
+            <button
+              onClick={handleDownloadCsv}
+              className="flex items-center gap-2 rounded-full bg-info-600 px-4 py-2 text-label-l3 font-medium text-pneutral-50"
+            >
+              <FaDownload className="h-4 w-4" />
+              <span>Download as CSV</span>
+            </button>
           </div>
         </div>
       </div>

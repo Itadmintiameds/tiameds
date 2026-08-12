@@ -122,7 +122,7 @@ const SetRange = () => {
             {rows.map((row) => (
               <div
                 key={row.id}
-                className="grid grid-cols-[40px_170px_80px_80px_120px_1fr] gap-3 py-4 items-center"
+                className="grid grid-cols-[40px_170px_80px_80px_120px_1fr] gap-2 py-4 items-center"
               >
                 {/* Drag */}
                 <div className="flex justify-center">
@@ -207,12 +207,6 @@ const SetRange = () => {
                 />
               </div>
             ))}
-          </div>
-                    {/* Fake Horizontal Scrollbar (UI only) */}
-          <div className="mt-2 px-2">
-            <div className="h-2 w-full rounded-full bg-pneutral-100">
-              <div className="h-2 w-[85%] rounded-full bg-pneutral-400" />
-            </div>
           </div>
         </div>
       </div>
