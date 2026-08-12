@@ -1556,7 +1556,7 @@ const CommonReportView2 = ({
                     )}
                     <p className="text-[9px] mt-0.5 sm:col-span-2" style={{ color: REPORT_COLORS.secondary800 }}>
                         <span className="font-semibold">Note: </span>
-                        <span className="font-normal">This is an AI generated observation based on lab values only. Not a diagnosis. AI can make mistakes.</span>
+                        <span className="font-normal">This is an AI generated observation based on lab values only. Not a diagnosis. AI may make mistakes.</span>
                     </p>
                 </div>
             ) : (
@@ -2822,7 +2822,7 @@ const CommonReportView2 = ({
                 <section data-report-shell className="flex flex-col">
                     {/* ================= HEADER ================= */}
                     <div className="bg-white" data-print-block data-print-role="header">
-                        <div className="flex flex-row items-start justify-between mb-2">
+                        <div className="flex flex-row items-start mb-2">
                             <div className="flex flex-row items-center">
                                 <img
                                     src="/report/image%201.png"
@@ -2842,45 +2842,6 @@ const CommonReportView2 = ({
                                     </p>
                                 </div>
                             </div>
-                            {/* Visit timeline, top-right: registered -> collected -> reported, in
-                                chronological order so the turnaround reads at a glance. Values are
-                                right-aligned against a fixed-width column so the three line up as a
-                                block rather than ragged. Same no-gap/no-truncate rules as the patient
-                                card below -- html2canvas mangles flex `gap` and text-overflow in the
-                                exported PDF, so spacing is explicit margins only. */}
-                            <div className="flex flex-col flex-shrink-0" style={{ marginLeft: "0.75rem" }}>
-                                {[
-                                    { label: "Registered", value: headerDateTime(primaryReport?.registeredDateTime) },
-                                    { label: "Sample Collected", value: headerDateTime(primaryReport?.sampleCollectedDateTime) },
-                                    { label: "Report Generated", value: headerDateTime(latestReportDateTime) },
-                                ].map((entry, entryIdx) => (
-                                    <div
-                                        key={entry.label}
-                                        className="flex flex-row items-baseline justify-end"
-                                        style={{ marginTop: entryIdx > 0 ? "3px" : 0 }}
-                                    >
-                                        <span
-                                            className="text-[8px] font-semibold uppercase"
-                                            style={{ color: REPORT_COLORS.neutral600, lineHeight: 1.3, whiteSpace: "nowrap" }}
-                                        >
-                                            {entry.label}
-                                        </span>
-                                        <span
-                                            className="text-[9px] font-bold"
-                                            style={{
-                                                color: REPORT_COLORS.neutral900,
-                                                lineHeight: 1.3,
-                                                marginLeft: "8px",
-                                                minWidth: "108px",
-                                                textAlign: "right",
-                                                whiteSpace: "nowrap",
-                                            }}
-                                        >
-                                            {entry.value}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
 
                         {/* Patient Details Card */}
@@ -2896,59 +2857,97 @@ const CommonReportView2 = ({
                             className="w-full rounded-xl p-2"
                             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
                         >
-                            {[
-                                [
-                                    { icon: "/report/user.png", label: "Patient Name", value: patientData?.patientname || 'N/A', noWrap: false },
-                                    { icon: "/report/users.png", label: "Age / Sex", value: `${formatAgeForDisplay(patientData?.dateOfBirth || '')} / ${patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}`, noWrap: true },
-                                    { icon: "/report/calendar.png", label: "Date & Time", value: headerDateTime(latestReportDateTime), noWrap: true },
-                                    { icon: "/report/id-card.png", label: "Patient No.", value: primaryReport?.patientCode || "N/A", noWrap: true },
-                                    { icon: "/report/clipboard-check.png", label: "Patient Type", value: patientData?.visitType || "N/A", noWrap: true },
-                                ],
-                                [
-                                    { icon: "/report/stethoscope.png", label: "Referred By", value: displayDoctorName, noWrap: false },
-                                    { icon: "/report/file-text.png", label: "Lab No.", value: currentLab?.id || 'N/A', noWrap: true },
-                                    { icon: "/report/clipboard.png", label: "Report No.", value: primaryReport?.reportCode || "N/A", noWrap: true },
-                                    { icon: "/report/map-pin.png", label: "Visit No.", value: primaryReport?.visitCode || "N/A", noWrap: true },
-                                ],
-                            ].map((row, rowIdx) => (
-                                <div key={rowIdx} className="flex flex-wrap items-start" style={{ marginTop: rowIdx > 0 ? "0.25rem" : 0 }}>
-                                    {row.map((field, fieldIdx) => (
-                                        <div
-                                            key={field.label}
-                                            className="flex-1 flex items-center"
-                                            style={{ marginLeft: fieldIdx > 0 ? "0.75rem" : 0, minWidth: row.length > 4 ? "128px" : "150px" }}
-                                        >
+                            <div className="flex flex-row items-start">
+                                <div className="flex-1" style={{ minWidth: 0 }}>
+                                    {[
+                                        [
+                                            { icon: "/report/user.png", label: "Patient Name", value: patientData?.patientname || 'N/A', noWrap: false },
+                                            { icon: "/report/users.png", label: "Age / Sex", value: `${formatAgeForDisplay(patientData?.dateOfBirth || '')} / ${patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}`, noWrap: true },
+                                            { icon: "/report/id-card.png", label: "Patient No.", value: primaryReport?.patientCode || "N/A", noWrap: true },
+                                            { icon: "/report/clipboard-check.png", label: "Patient Type", value: patientData?.visitType || "N/A", noWrap: true },
+                                        ],
+                                        [
+                                            { icon: "/report/stethoscope.png", label: "Referred By", value: displayDoctorName, noWrap: false },
+                                            { icon: "/report/file-text.png", label: "Lab No.", value: currentLab?.id || 'N/A', noWrap: true },
+                                            { icon: "/report/clipboard.png", label: "Report No.", value: primaryReport?.reportCode || "N/A", noWrap: true },
+                                            { icon: "/report/map-pin.png", label: "Visit No.", value: primaryReport?.visitCode || "N/A", noWrap: true },
+                                        ],
+                                    ].map((row, rowIdx) => (
+                                        <div key={rowIdx} className="flex flex-nowrap items-start" style={{ marginTop: rowIdx > 0 ? "0.25rem" : 0 }}>
+                                            {row.map((field, fieldIdx) => (
+                                                <div
+                                                    key={field.label}
+                                                    className="flex-1 flex items-center"
+                                                    style={{ marginLeft: fieldIdx > 0 ? "0.5rem" : 0, minWidth: "110px" }}
+                                                >
+                                                    <div
+                                                        className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+                                                        style={{ backgroundColor: REPORT_COLORS.secondary100, marginRight: "0.5rem" }}
+                                                    >
+                                                        <img src={field.icon} alt="" className="w-3 h-3" crossOrigin="anonymous" />
+                                                    </div>
+                                                    <div className="flex-1" style={{ minWidth: 0 }}>
+                                                        <div
+                                                            className="text-[8px] font-semibold uppercase"
+                                                            style={{ color: REPORT_COLORS.neutral600, lineHeight: 1.3 }}
+                                                        >
+                                                            {field.label}
+                                                        </div>
+                                                        <div
+                                                            className="text-[11px] font-bold"
+                                                            style={{
+                                                                color: REPORT_COLORS.neutral900,
+                                                                lineHeight: 1.35,
+                                                                marginTop: "1px",
+                                                                overflow: "visible",
+                                                                whiteSpace: field.noWrap ? "nowrap" : "normal",
+                                                                wordBreak: "break-word",
+                                                            }}
+                                                        >
+                                                            {field.value}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Visit timeline, right corner of the box: registered -> collected ->
+                                    reported, stacked vertically in chronological order so the turnaround
+                                    reads at a glance without competing with the two-row grid on the left.
+                                    No icons here (unlike the fields above) -- keeps this column narrow
+                                    enough that the left grid still fits on one line per row. */}
+                                <div
+                                    className="flex flex-col flex-shrink-0"
+                                    style={{
+                                        marginLeft: "0.5rem",
+                                        paddingLeft: "0.5rem",
+                                        borderLeft: `1px solid ${REPORT_COLORS.neutral100}`,
+                                    }}
+                                >
+                                    {[
+                                        { label: "Registered", value: headerDateTime(primaryReport?.registeredDateTime) },
+                                        { label: "Sample Collected", value: headerDateTime(primaryReport?.sampleCollectedDateTime) },
+                                        { label: "Report Generated", value: headerDateTime(latestReportDateTime) },
+                                    ].map((entry, entryIdx) => (
+                                        <div key={entry.label} style={{ marginTop: entryIdx > 0 ? "3px" : 0, minWidth: "92px" }}>
                                             <div
-                                                className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
-                                                style={{ backgroundColor: REPORT_COLORS.secondary100, marginRight: "0.5rem" }}
+                                                className="text-[6.5px] font-semibold uppercase"
+                                                style={{ color: REPORT_COLORS.neutral600, lineHeight: 1.2, whiteSpace: "nowrap" }}
                                             >
-                                                <img src={field.icon} alt="" className="w-3 h-3" crossOrigin="anonymous" />
+                                                {entry.label}
                                             </div>
-                                            <div className="flex-1" style={{ minWidth: 0 }}>
-                                                <div
-                                                    className="text-[8px] font-semibold uppercase"
-                                                    style={{ color: REPORT_COLORS.neutral600, lineHeight: 1.3 }}
-                                                >
-                                                    {field.label}
-                                                </div>
-                                                <div
-                                                    className="text-[11px] font-bold"
-                                                    style={{
-                                                        color: REPORT_COLORS.neutral900,
-                                                        lineHeight: 1.35,
-                                                        marginTop: "1px",
-                                                        overflow: "visible",
-                                                        whiteSpace: field.noWrap ? "nowrap" : "normal",
-                                                        wordBreak: "break-word",
-                                                    }}
-                                                >
-                                                    {field.value}
-                                                </div>
+                                            <div
+                                                className="text-[8.5px] font-bold"
+                                                style={{ color: REPORT_COLORS.neutral900, lineHeight: 1.3, marginTop: "1px", whiteSpace: "nowrap" }}
+                                            >
+                                                {entry.value}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            ))}
+                            </div>
                         </div>
                     </div>
 
