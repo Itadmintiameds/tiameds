@@ -1556,7 +1556,7 @@ const CommonReportView2 = ({
                     )}
                     <p className="text-[9px] mt-0.5 sm:col-span-2" style={{ color: REPORT_COLORS.secondary800 }}>
                         <span className="font-semibold">Note: </span>
-                        <span className="font-normal">This is an AI generated observation based on lab values only. Not a diagnosis.</span>
+                        <span className="font-normal">This is an AI generated observation based on lab values only. Not a diagnosis. AI can make mistakes.</span>
                     </p>
                 </div>
             ) : (
