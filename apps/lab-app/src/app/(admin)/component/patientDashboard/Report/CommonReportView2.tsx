@@ -3217,12 +3217,12 @@ const CommonReportView2 = ({
                             <div className="self-stretch flex-shrink-0 hidden sm:block" style={{ borderLeft: `1px solid ${REPORT_COLORS.secondary200}` }} />
 
                             <div className="flex-1 flex items-center gap-2 sm:px-3">
-                                <img
+                                {/* <img
                                     src="/report/Rectangle.png"
                                     alt="QR Code"
                                     className="h-9 w-9 object-contain flex-shrink-0"
                                     crossOrigin="anonymous"
-                                />
+                                /> */}
                                 <div>
                                     <p className="text-xs font-bold text-black">
                                         Thank you for choosing {currentLab?.name || "Our Lab"}
