@@ -46,14 +46,27 @@ const getBillStatus = (visit: Patient): BillStatus => {
     return BillStatus.CANCELLED;
   }
 
-  const dueAmount = Number(visit?.visit?.billing?.due_amount || 0);
-  const receivedAmount = Number(visit?.visit?.billing?.received_amount || 0);
+  const paymentStatus = visit?.visit?.billing?.paymentStatus?.toUpperCase();
 
-  if (dueAmount <= 0) {
-    return BillStatus.PAID;
+  switch (paymentStatus) {
+    case 'PAID':
+      return BillStatus.PAID;
+    case 'PARTIALLY_PAID':
+      return BillStatus.PARTIALLY_PAID;
+    case 'DUE':
+    case 'UNPAID':
+      return BillStatus.DUE;
+    default: {
+      const dueAmount = Number(visit?.visit?.billing?.due_amount || 0);
+      const receivedAmount = Number(visit?.visit?.billing?.received_amount || 0);
+
+      if (dueAmount <= 0) {
+        return BillStatus.PAID;
+      }
+
+      return receivedAmount > 0 ? BillStatus.PARTIALLY_PAID : BillStatus.DUE;
+    }
   }
-
-  return receivedAmount > 0 ? BillStatus.PARTIALLY_PAID : BillStatus.DUE;
 };
 
 
