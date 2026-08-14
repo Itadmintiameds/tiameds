@@ -265,9 +265,9 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
         )}
       </div>
 
-      <div className="flex items-start gap-2 rounded-lg bg-danger-100 border border-danger-300 px-4 py-3 text-warning-800">
-        <AlertTriangle className="mt-0.5 shrink-0" size={16} />
-        <p className="text-p3">
+      <div className="flex items-start gap-2 rounded-xl bg-white border border-gray-200 px-4 py-3 text-gray-700">
+        <AlertTriangle className="mt-0.5 shrink-0 text-purple-600" size={16} />
+        <p className="text-sm">
           Packages cannot be deleted once created. Please review the package name, tests, and pricing carefully before submitting.
         </p>
       </div>
@@ -387,8 +387,8 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
         </div>
 
         {/* Right Column - Summary Sidebar */}
-        <div className="w-full lg:w-[320px] lg:sticky lg:top-0 bg-danger-100 rounded-lg p-4 space-y-4">
-          <h3 className="font-semibold text-warning-800 text-p3">Package Summary</h3>
+        <div className="w-full lg:w-[320px] lg:sticky lg:top-0 bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+          <h3 className="text-sm font-semibold text-gray-700">Package Summary</h3>
 
           <div
             className={`space-y-3 pr-1 ${selectedTests.length > 4
@@ -398,49 +398,49 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
           >
             {selectedTests.length > 0 ? (
               selectedTests.map((test) => (
-                <div key={test.id} className="flex justify-between items-start bg-white rounded-lg px-3 py-2">
-                  <div>
-                    <p className="text-p3 font-medium text-pneutral-900">{test.name}</p>
+                <div key={test.id} className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 leading-tight">{test.name}</p>
                     {test.testCode && (
-                      <p className="text-p2 text-pneutral-400">{test.testCode}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{test.testCode}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-p3 text-pneutral-700">₹{Number(test.price).toFixed(0)}</span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <p className="text-sm font-semibold text-gray-800">₹{Number(test.price).toFixed(0)}</p>
                     <button
                       onClick={() => handleRemoveTest(test.id)}
-                      className="text-pneutral-400 hover:text-warning-500 transition-colors"
+                      className="text-gray-300 hover:text-red-500 transition-colors"
                       title="Remove"
                     >
-                      <X size={14} />
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-p3 text-pneutral-500">No tests selected yet. Search and add tests to build your package.</p>
+              <p className="text-sm text-gray-400 text-center py-8">No tests selected yet. Search and add tests to build your package.</p>
             )}
           </div>
 
-          <div className="border-t border-danger-300 pt-3 space-y-2">
-            <div className="flex justify-between text-p3">
-              <span className="text-pneutral-600">Subtotal ({selectedTests.length} tests)</span>
-              <span className="text-pneutral-900">₹{calculateTotal()}</span>
+          <div className="border-t border-gray-100 pt-3 space-y-1.5">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Subtotal ({selectedTests.length} tests)</span>
+              <span className="font-medium text-gray-800">₹{calculateTotal()}</span>
             </div>
-            <div className="flex justify-between text-p3">
-              <span className="text-pneutral-600">Discount</span>
-              <span className="text-warning-600">-₹{((calculateTotal() * (parseFloat(discount) || 0)) / 100).toFixed(2)}</span>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Discount</span>
+              <span className="font-medium text-green-600">-₹{((calculateTotal() * (parseFloat(discount) || 0)) / 100).toFixed(2)}</span>
             </div>
-            <div className="border-t border-danger-300 pt-2 flex justify-between items-center">
-              <span className="text-p1 font-bold text-pneutral-900">Total</span>
-              <span className="text-p1 font-bold text-pneutral-900">₹{calculateFinalPrice().toFixed(2)}</span>
+            <div className="border-t border-gray-100 pt-2 mt-1 flex justify-between font-bold">
+              <span className="text-gray-900">Total</span>
+              <span className="text-gray-900">₹{calculateFinalPrice().toFixed(2)}</span>
             </div>
           </div>
 
           <button
             onClick={handleSubmit}
             disabled={!packageData.packageName.trim() || selectedTests.length === 0 || loading}
-            className="w-full flex items-center justify-center gap-2 rounded-full bg-secondary-700 px-6 py-2.5 text-p3 font-medium text-pneutral-50 disabled:bg-pneutral-300 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex items-center justify-center gap-2 rounded-full bg-purple-600 px-6 py-2.5 text-sm font-semibold text-white disabled:bg-pneutral-300 disabled:cursor-not-allowed transition-colors hover:bg-purple-700"
           >
             {loading ? (
               <span>Creating...</span>
@@ -452,10 +452,20 @@ const PackageCreation = ({ closeModal }: PackageCreationProps = {}) => {
             )}
           </button>
 
+          {!loading && (!packageData.packageName.trim() || selectedTests.length === 0) && (
+            <p className="text-xs text-center text-gray-500">
+              {!packageData.packageName.trim() && selectedTests.length === 0
+                ? 'Enter a package name and add at least one test to continue'
+                : !packageData.packageName.trim()
+                ? 'Enter a package name to continue'
+                : 'Add at least one test to continue'}
+            </p>
+          )}
+
           {closeModal && (
             <button
               onClick={closeModal}
-              className="w-full flex items-center justify-center gap-2 rounded-full border border-pneutral-400 bg-pneutral-50 px-6 py-2 text-p3 font-medium text-pneutral-700 transition-colors"
+              className="w-full flex items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
               <X size={14} />
               Cancel
