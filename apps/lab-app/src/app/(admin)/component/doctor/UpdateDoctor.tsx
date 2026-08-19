@@ -1,441 +1,582 @@
 import React, { useState, useEffect } from 'react';
 import { Doctor } from '@/types/doctor/doctor';
-import { FaHospital, FaIdCard, FaMapMarkerAlt, FaPhoneAlt, FaGraduationCap, FaUserMd, FaEnvelope, FaHeart } from 'react-icons/fa';
+import { Plus } from 'lucide-react';
+import {
+    FaCity,
+    FaEnvelope,
+    FaFlag,
+    FaGraduationCap,
+    FaHospital,
+    FaIdCard,
+    FaMapMarkerAlt,
+    FaPhone,
+    FaStethoscope,
+    FaTimes,
+    FaUser,
+} from 'react-icons/fa';
 
 interface UpdateDoctorProps {
-  editDoctor: Doctor;
-  handleUpdate: (doctor: Doctor) => void;
+    editDoctor: Doctor;
+    handleUpdate: (doctor: Doctor) => void;
+    closeModal?: () => void;
 }
 
-const UpdateDoctor = ({ editDoctor, handleUpdate }: UpdateDoctorProps) => {
-  const [updatedDoctor, setUpdatedDoctor] = useState<Doctor>(editDoctor);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
+const DOCTOR_SPECIALITIES = [
+    'Cardiology',
+    'Neurology',
+    'Pediatrics',
+    'Orthopedics',
+    'Dermatology',
+    'Gynecology',
+    'Oncology',
+    'Ophthalmology',
+    'ENT',
+    'Psychiatry',
+    'Urology',
+    'Dentistry',
+    'General Medicine',
+    'General Surgery',
+    'Physiotherapy',
+    'Homeopathy',
+    'Ayurveda',
+    'Unani',
+    'Naturopathy',
+    'Siddha',
+    'Others',
+];
 
-  useEffect(() => {
-    setUpdatedDoctor(editDoctor);
-  }, [editDoctor]);
+const DOCTOR_QUALIFICATIONS = [
+    'MBBS',
+    'MD',
+    'DNB',
+    'MS',
+    'DM',
+    'MCh',
+    'BDS',
+    'MDS',
+    'BAMS',
+    'BHMS',
+    'BUMS',
+    'BNYS',
+    'BSMS',
+    'Others',
+];
 
-  // Validate individual field
-  const validateField = (name: string, value: unknown): string => {
-    switch (name) {
-      case 'name':
-        if (typeof value !== 'string') return 'Name must be a valid value';
-        if (!value || value.trim() === '') return 'Name is required';
-        if (value.length < 2) return 'Name must be at least 2 characters long';
-        if (!/^[a-zA-Z\s]+$/.test(value)) return 'Name should contain only alphabets and spaces';
-        return '';
-      
-      case 'email':
-        if (typeof value !== 'string') return 'Email must be a valid value';
-        if (!value || value.trim() === '') return 'Email is required';
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
-        return '';
-      
-      case 'phone':
-        if (typeof value === 'number') {
-          if (!value || value.toString().length !== 10) return 'Phone number must be exactly 10 digits';
-          return '';
-        } else if (typeof value === 'string') {
-          if (!value || value.trim() === '') return 'Phone is required';
-          if (value.length !== 10) return 'Phone number must be exactly 10 digits';
-          if (!/^\d+$/.test(value)) return 'Phone number must contain only digits';
-          return '';
-        } else {
-          return 'Phone must be a valid value';
-        }
-      
-      case 'licenseNumber':
-        if (typeof value !== 'string') return 'License number must be a valid value';
-        if (!value || value.trim() === '') return 'License number is required';
-        if (value.length < 3) return 'License number must be at least 3 characters long';
-        if (!/^[a-zA-Z0-9]+$/.test(value)) return 'License number should contain only letters and numbers';
-        return '';
-      
-      case 'hospitalAffiliation':
-        if (typeof value !== 'string') return 'Hospital affiliation must be a valid value';
-        if (!value || value.trim() === '') return 'Hospital affiliation is required';
-        if (!/^[a-zA-Z\s]+$/.test(value)) return 'Hospital affiliation should contain only alphabets and spaces';
-        return '';
-      
-      case 'address':
-        if (typeof value !== 'string') return 'Address must be a valid value';
-        if (!value || value.trim() === '') return 'Address is required';
-        if (value.length < 5) return 'Address must be at least 5 characters long';
-        return '';
-      
-      case 'city':
-        if (typeof value !== 'string') return 'City must be a valid value';
-        if (!value || value.trim() === '') return 'City is required';
-        if (!/^[a-zA-Z\s]+$/.test(value)) return 'City should contain only alphabets and spaces';
-        return '';
-      
-      case 'state':
-        if (typeof value !== 'string') return 'State must be a valid value';
-        if (!value || value.trim() === '') return 'State is required';
-        if (!/^[a-zA-Z\s]+$/.test(value)) return 'State should contain only alphabets and spaces';
-        return '';
-      
-      case 'country':
-        if (typeof value !== 'string') return 'Country must be a valid value';
-        if (!value || value.trim() === '') return 'Country is required';
-        if (!/^[a-zA-Z\s]+$/.test(value)) return 'Country should contain only alphabets and spaces';
-        return '';
-      
-      case 'speciality':
-        if (typeof value !== 'string') return 'Speciality must be a valid value';
-        if (value && !/^[a-zA-Z\s]+$/.test(value)) return 'Speciality should contain only alphabets and spaces';
-        return '';
-      
-      case 'qualification':
-        if (typeof value !== 'string') return 'Qualification must be a valid value';
-        if (value && !/^[a-zA-Z\s]+$/.test(value)) return 'Qualification should contain only alphabets and spaces';
-        return '';
-      
-      default:
-        return '';
-    }
-  };
+const UpdateDoctor = ({ editDoctor, handleUpdate, closeModal }: UpdateDoctorProps) => {
+    const [updatedDoctor, setUpdatedDoctor] = useState<Doctor>(editDoctor);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-    
-    if (name === 'phone') {
-      // Only allow numeric input for phone (10 digits max)
-      const numericValue = value.replace(/\D/g, '').slice(0, 10);
-      setUpdatedDoctor((prevState) => ({
-        ...prevState,
-        [name]: numericValue ? parseInt(numericValue) : '',
-      }));
-    } else if (name === 'name' || name === 'speciality' || name === 'qualification' || 
-               name === 'hospitalAffiliation' || name === 'city' || name === 'state' || name === 'country') {
-      // Only allow alphabets and spaces for name fields
-      const alphabeticValue = value.replace(/[^a-zA-Z\s]/g, '');
-      setUpdatedDoctor((prevState) => ({
-        ...prevState,
-        [name]: alphabeticValue,
-      }));
-    } else if (name === 'licenseNumber') {
-      // Allow alphanumeric for license number
-      const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, '');
-      setUpdatedDoctor((prevState) => ({
-        ...prevState,
-        [name]: alphanumericValue,
-      }));
-    } else if (name === 'address') {
-      // Allow alphanumeric, spaces, and common address characters
-      const addressValue = value.replace(/[^a-zA-Z0-9\s.,#-]/g, '');
-      setUpdatedDoctor((prevState) => ({
-        ...prevState,
-        [name]: addressValue,
-      }));
-    } else {
-      setUpdatedDoctor((prevState) => ({
-        ...prevState,
-        [name]: value,
-      }));
-    }
-  };
+    useEffect(() => {
+        setUpdatedDoctor(editDoctor);
+    }, [editDoctor]);
 
-  // Handle field blur (when user leaves the field)
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setTouched(prev => ({ ...prev, [name]: true }));
-    
-    // Validate the field when user leaves it
-    const error = validateField(name, value);
-    setErrors(prev => ({ ...prev, [name]: error }));
-  };
+    // Validate individual field
+    const validateField = (name: string, value: unknown): string => {
+        switch (name) {
+            case 'name':
+                if (typeof value !== 'string') return 'Name must be a valid value';
+                if (!value || value.trim() === '') return 'Name is required';
+                if (value.length < 2) return 'Name must be at least 2 characters long';
+                if (!/^[a-zA-Z\s]+$/.test(value)) return 'Name should contain only alphabets and spaces';
+                if (value.startsWith(' ')) return 'Name should not start with a space';
+                if (/\s{2,}/.test(value)) return 'Name should not contain multiple consecutive spaces';
+                return '';
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+            case 'email':
+                if (typeof value !== 'string') return 'Email must be a valid value';
+                if (!value || value.trim() === '') return 'Email is required';
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
+                if (value.startsWith(' ')) return 'Email should not start with a space';
+                return '';
 
-    const newErrors: Record<string, string> = {};
-    const allFields = [
-      'name', 'email', 'speciality', 'qualification', 'hospitalAffiliation',
-      'licenseNumber', 'phone', 'address', 'city', 'state', 'country'
-    ];
-
-    // Mark all fields as touched so errors will show
-    const allTouched: Record<string, boolean> = {};
-    allFields.forEach(field => {
-      allTouched[field] = true;
-    });
-    setTouched(allTouched);
-
-    // Validate all fields
-    allFields.forEach(field => {
-      const value = updatedDoctor[field as keyof Doctor];
-      const error = validateField(field, value);
-      if (error) {
-        newErrors[field] = error;
-      }
-    });
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    setErrors({});
-    handleUpdate(updatedDoctor);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-      {/* Personal Information Section */}
-      <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-        <h4 className="font-semibold text-blue-800 mb-2 flex items-center">
-          <FaUserMd className="mr-2 text-blue-500" size={16} />
-          Personal Information
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="name" className="text-xs font-medium text-gray-600 flex items-center mb-1">
-              <FaUserMd className="mr-2 text-blue-500" size={14} /> Name
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={updatedDoctor.name}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`block w-full px-3 py-2 text-xs border ${errors.name && touched.name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white`}
-            />
-            {errors.name && touched.name && (
-              <p className="text-xs text-red-500 mt-1">{errors.name}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="email" className="text-xs font-medium text-gray-600 flex items-center mb-1">
-              <FaEnvelope className="mr-2 text-blue-500" size={14} /> Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={updatedDoctor.email}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`block w-full px-3 py-2 text-xs border ${errors.email && touched.email ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white`}
-            />
-            {errors.email && touched.email && (
-              <p className="text-xs text-red-500 mt-1">{errors.email}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="phone" className="text-xs font-medium text-gray-600 flex items-center mb-1">
-              <FaPhoneAlt className="mr-2 text-blue-500" size={14} /> Phone
-            </label>
-            <input
-              type="tel"
-              id="phone"
-              name="phone"
-              value={updatedDoctor.phone}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`block w-full px-3 py-2 text-xs border ${errors.phone && touched.phone ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white`}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={10}
-              onKeyPress={(e) => {
-                // Prevent non-numeric characters
-                if (!/[0-9]/.test(e.key)) {
-                  e.preventDefault();
+            case 'phone':
+                if (value === undefined || value === null || value === '') return 'Phone is required';
+                if (typeof value === 'number') {
+                    if (value.toString().length !== 10) return 'Phone number must be exactly 10 digits';
+                    return '';
+                } else if (typeof value === 'string') {
+                    if (value.length !== 10) return 'Phone number must be exactly 10 digits';
+                    if (!/^\d+$/.test(value)) return 'Phone number must contain only digits';
+                    return '';
+                } else {
+                    return 'Phone must be a valid value';
                 }
-              }}
-            />
-            {errors.phone && touched.phone && (
-              <p className="text-xs text-red-500 mt-1">{errors.phone}</p>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* Professional Information Section */}
-      <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
-        <h4 className="font-semibold text-purple-800 mb-2 flex items-center">
-          <FaHeart className="mr-2 text-purple-500" size={16} />
-          Professional Information
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="speciality" className="text-xs font-medium text-gray-600 flex items-center mb-1">
-              <FaHeart className="mr-2 text-purple-500" size={14} /> Speciality
-            </label>
-            <input
-              type="text"
-              id="speciality"
-              name="speciality"
-              value={updatedDoctor.speciality}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`block w-full px-3 py-2 text-xs border ${errors.speciality && touched.speciality ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white`}
-            />
-            {errors.speciality && touched.speciality && (
-              <p className="text-xs text-red-500 mt-1">{errors.speciality}</p>
-            )}
-          </div>
+            case 'licenseNumber':
+                if (typeof value !== 'string') return 'License number must be a valid value';
+                if (!value || value.trim() === '') return 'License number is required';
+                if (value.length < 3) return 'License number must be at least 3 characters long';
+                if (!/^[a-zA-Z0-9]+$/.test(value)) return 'License number should contain only letters and numbers';
+                return '';
 
-          <div>
-            <label htmlFor="qualification" className="text-xs font-medium text-gray-600 flex items-center mb-1">
-              <FaGraduationCap className="mr-2 text-purple-500" size={14} /> Qualification
-            </label>
-            <input
-              type="text"
-              id="qualification"
-              name="qualification"
-              value={updatedDoctor.qualification}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`block w-full px-3 py-2 text-xs border ${errors.qualification && touched.qualification ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white`}
-            />
-            {errors.qualification && touched.qualification && (
-              <p className="text-xs text-red-500 mt-1">{errors.qualification}</p>
-            )}
-          </div>
+            case 'hospitalAffiliation':
+                if (typeof value !== 'string') return 'Hospital affiliation must be a valid value';
+                if (!value || value.trim() === '') return 'Hospital affiliation is required';
+                if (!/^[a-zA-Z\s]+$/.test(value)) return 'Hospital affiliation should contain only alphabets and spaces';
+                if (value.startsWith(' ')) return 'Hospital affiliation should not start with a space';
+                if (/\s{2,}/.test(value)) return 'Hospital affiliation should not contain multiple consecutive spaces';
+                return '';
 
-          <div>
-            <label htmlFor="hospitalAffiliation" className="text-xs font-medium text-gray-600 flex items-center mb-1">
-              <FaHospital className="mr-2 text-purple-500" size={14} /> Hospital Affiliation
-            </label>
-            <input
-              type="text"
-              id="hospitalAffiliation"
-              name="hospitalAffiliation"
-              value={updatedDoctor.hospitalAffiliation}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`block w-full px-3 py-2 text-xs border ${errors.hospitalAffiliation && touched.hospitalAffiliation ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white`}
-            />
-            {errors.hospitalAffiliation && touched.hospitalAffiliation && (
-              <p className="text-xs text-red-500 mt-1">{errors.hospitalAffiliation}</p>
-            )}
-          </div>
+            case 'address':
+                if (typeof value !== 'string') return 'Address must be a valid value';
+                if (!value || value.trim() === '') return 'Address is required';
+                if (value.length < 5) return 'Address must be at least 5 characters long';
+                if (value.startsWith(' ')) return 'Address should not start with a space';
+                return '';
 
-          <div>
-            <label htmlFor="licenseNumber" className="text-xs font-medium text-gray-600 flex items-center mb-1">
-              <FaIdCard className="mr-2 text-purple-500" size={14} /> License Number
-            </label>
-            <input
-              type="text"
-              id="licenseNumber"
-              name="licenseNumber"
-              value={updatedDoctor.licenseNumber}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`block w-full px-3 py-2 text-xs border ${errors.licenseNumber && touched.licenseNumber ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white`}
-            />
-            {errors.licenseNumber && touched.licenseNumber && (
-              <p className="text-xs text-red-500 mt-1">{errors.licenseNumber}</p>
-            )}
-          </div>
-        </div>
-      </div>
+            case 'city':
+                if (typeof value !== 'string') return 'City must be a valid value';
+                if (!value || value.trim() === '') return 'City is required';
+                if (!/^[a-zA-Z\s]+$/.test(value)) return 'City should contain only alphabets and spaces';
+                if (value.startsWith(' ')) return 'City should not start with a space';
+                if (/\s{2,}/.test(value)) return 'City should not contain multiple consecutive spaces';
+                return '';
 
-      {/* Address Information Section */}
-      <div className="bg-green-50 p-3 rounded-lg border border-green-100">
-        <h4 className="font-semibold text-green-800 mb-2 flex items-center">
-          <FaMapMarkerAlt className="mr-2 text-green-500" size={16} />
-          Address Information
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="address" className="text-xs font-medium text-gray-600 flex items-center mb-1">
-              <FaMapMarkerAlt className="mr-2 text-green-500" size={14} /> Address
-            </label>
-            <input
-              type="text"
-              id="address"
-              name="address"
-              value={updatedDoctor.address}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`block w-full px-3 py-2 text-xs border ${errors.address && touched.address ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white`}
-            />
-            {errors.address && touched.address && (
-              <p className="text-xs text-red-500 mt-1">{errors.address}</p>
-            )}
-          </div>
+            case 'state':
+                if (typeof value !== 'string') return 'State must be a valid value';
+                if (!value || value.trim() === '') return 'State is required';
+                if (!/^[a-zA-Z\s]+$/.test(value)) return 'State should contain only alphabets and spaces';
+                if (value.startsWith(' ')) return 'State should not start with a space';
+                if (/\s{2,}/.test(value)) return 'State should not contain multiple consecutive spaces';
+                return '';
 
-          <div>
-            <label htmlFor="city" className="text-xs font-medium text-gray-600 flex items-center mb-1">
-              <FaMapMarkerAlt className="mr-2 text-green-500" size={14} /> City
-            </label>
-            <input
-              type="text"
-              id="city"
-              name="city"
-              value={updatedDoctor.city}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`block w-full px-3 py-2 text-xs border ${errors.city && touched.city ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white`}
-            />
-            {errors.city && touched.city && (
-              <p className="text-xs text-red-500 mt-1">{errors.city}</p>
-            )}
-          </div>
+            case 'country':
+                if (typeof value !== 'string') return 'Country must be a valid value';
+                if (!value || value.trim() === '') return 'Country is required';
+                if (!/^[a-zA-Z\s]+$/.test(value)) return 'Country should contain only alphabets and spaces';
+                if (value.startsWith(' ')) return 'Country should not start with a space';
+                if (/\s{2,}/.test(value)) return 'Country should not contain multiple consecutive spaces';
+                return '';
 
-          <div>
-            <label htmlFor="state" className="text-xs font-medium text-gray-600 flex items-center mb-1">
-              <FaMapMarkerAlt className="mr-2 text-green-500" size={14} /> State
-            </label>
-            <input
-              type="text"
-              id="state"
-              name="state"
-              value={updatedDoctor.state}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`block w-full px-3 py-2 text-xs border ${errors.state && touched.state ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white`}
-            />
-            {errors.state && touched.state && (
-              <p className="text-xs text-red-500 mt-1">{errors.state}</p>
-            )}
-          </div>
+            default:
+                return '';
+        }
+    };
 
-          <div>
-            <label htmlFor="country" className="text-xs font-medium text-gray-600 flex items-center mb-1">
-              <FaMapMarkerAlt className="mr-2 text-green-500" size={14} /> Country
-            </label>
-            <input
-              type="text"
-              id="country"
-              name="country"
-              value={updatedDoctor.country}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`block w-full px-3 py-2 text-xs border ${errors.country && touched.country ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white`}
-            />
-            {errors.country && touched.country && (
-              <p className="text-xs text-red-500 mt-1">{errors.country}</p>
-            )}
-          </div>
-        </div>
-      </div>
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
 
-      {/* Submit Button */}
-      <div className="flex justify-end pt-4 border-t border-gray-200">
-        <button
-          type="submit"
-          className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200"
-          style={{
-            background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`
-          }}
-        >
-          Update Doctor
-        </button>
-      </div>
-    </form>
-  );
+        // Clear error when user starts typing
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: '' }));
+        }
+
+        if (name === 'phone') {
+            // Only allow numeric input for phone (10 digits max)
+            const numericValue = value.replace(/\D/g, '').slice(0, 10);
+            setUpdatedDoctor((prevState) => ({
+                ...prevState,
+                [name]: numericValue ? parseInt(numericValue, 10) : undefined,
+            }));
+        } else if (name === 'email') {
+            const emailValue = value.replace(/^\s+/, '');
+            setUpdatedDoctor((prevState) => ({
+                ...prevState,
+                [name]: emailValue,
+            }));
+        } else if (name === 'name' || name === 'hospitalAffiliation' || name === 'city' || name === 'state' || name === 'country') {
+            // Only allow alphabets and spaces for name fields, prevent leading spaces and multiple consecutive spaces
+            const alphabeticValue = value.replace(/[^a-zA-Z\s]/g, '').replace(/^\s+/, '').replace(/\s{2,}/g, ' ');
+            setUpdatedDoctor((prevState) => ({
+                ...prevState,
+                [name]: alphabeticValue,
+            }));
+        } else if (name === 'licenseNumber') {
+            // Allow alphanumeric for license number
+            const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, '');
+            setUpdatedDoctor((prevState) => ({
+                ...prevState,
+                [name]: alphanumericValue,
+            }));
+        } else if (name === 'address') {
+            // Allow alphanumeric, spaces, and common address characters, prevent leading spaces
+            const addressValue = value.replace(/[^a-zA-Z0-9\s.,#-]/g, '').replace(/^\s+/, '');
+            setUpdatedDoctor((prevState) => ({
+                ...prevState,
+                [name]: addressValue,
+            }));
+        } else {
+            setUpdatedDoctor((prevState) => ({
+                ...prevState,
+                [name]: value,
+            }));
+        }
+    };
+
+    // Handle field blur (when user leaves the field)
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
+
+        const error = validateField(name, value);
+        setErrors(prev => ({ ...prev, [name]: error }));
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const newErrors: Record<string, string> = {};
+        const allFields = [
+            'name', 'email', 'speciality', 'qualification', 'hospitalAffiliation',
+            'licenseNumber', 'phone', 'address', 'city', 'state', 'country'
+        ];
+
+        const allTouched: Record<string, boolean> = {};
+        allFields.forEach(field => {
+            allTouched[field] = true;
+        });
+        setTouched(allTouched);
+
+        allFields.forEach(field => {
+            const value = updatedDoctor[field as keyof Doctor];
+            const error = validateField(field, value);
+            if (error) {
+                newErrors[field] = error;
+            }
+        });
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
+        setErrors({});
+        handleUpdate(updatedDoctor);
+    };
+
+    const inputClass = (name: string) =>
+        `w-full rounded-lg border border-pneutral-200 pl-9 pr-4 py-2 text-p3 focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500 bg-white ${errors[name] && touched[name] ? 'border-warning-500' : ''
+        }`;
+
+    const labelClass = 'block text-p3 font-medium text-pneutral-900 mb-1.5';
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Personal Information Section */}
+            <div className="bg-info-50 rounded-lg p-4 space-y-4">
+                <h4 className="font-semibold text-info-700 text-p3 flex items-center gap-2">
+                    <FaUser className="text-info-600" size={16} />
+                    Personal Information
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="name" className={labelClass}>
+                            Name <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaUser className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
+                            <input
+                                type="text"
+                                id="name"
+                                name="name"
+                                placeholder="Enter doctor name"
+                                value={updatedDoctor.name}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                required
+                                className={inputClass('name')}
+                            />
+                        </div>
+                        {errors.name && touched.name && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.name}</p>
+                        )}
+                    </div>
+                    <div>
+                        <label htmlFor="email" className={labelClass}>
+                            Email <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaEnvelope className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                placeholder="Enter doctor email"
+                                value={updatedDoctor.email || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                required
+                                className={inputClass('email')}
+                            />
+                        </div>
+                        {errors.email && touched.email && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.email}</p>
+                        )}
+                    </div>
+                </div>
+
+                <div>
+                    <label htmlFor="phone" className={labelClass}>
+                        Phone <span className="text-warning-500">*</span>
+                    </label>
+                    <div className="relative">
+                        <FaPhone className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
+                        <input
+                            type="tel"
+                            id="phone"
+                            name="phone"
+                            placeholder="Enter doctor phone number"
+                            value={updatedDoctor.phone?.toString() || ''}
+                            onChange={handleChange}
+                            onBlur={handleBlur}
+                            required
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={10}
+                            onKeyPress={(e) => {
+                                if (!/[0-9]/.test(e.key)) {
+                                    e.preventDefault();
+                                }
+                            }}
+                            className={inputClass('phone')}
+                        />
+                    </div>
+                    {errors.phone && touched.phone && (
+                        <p className="text-xs text-warning-500 mt-1">{errors.phone}</p>
+                    )}
+                </div>
+            </div>
+
+            {/* Professional Information Section */}
+            <div className="bg-danger-100 rounded-lg p-4 space-y-4">
+                <h4 className="font-semibold text-warning-800 text-p3 flex items-center gap-2">
+                    <FaStethoscope className="text-success-800" size={16} />
+                    Professional Information
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="speciality" className={labelClass}>
+                            Speciality
+                        </label>
+                        <div className="relative">
+                            <FaStethoscope className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400 z-10" size={14} />
+                            <select
+                                id="speciality"
+                                name="speciality"
+                                value={updatedDoctor.speciality || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                className={`${inputClass('speciality')} appearance-none`}
+                            >
+                                <option value="">Select speciality</option>
+                                {DOCTOR_SPECIALITIES.map((speciality) => (
+                                    <option key={speciality} value={speciality}>
+                                        {speciality}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        {errors.speciality && touched.speciality && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.speciality}</p>
+                        )}
+                    </div>
+                    <div>
+                        <label htmlFor="qualification" className={labelClass}>
+                            Qualification
+                        </label>
+                        <div className="relative">
+                            <FaGraduationCap className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400 z-10" size={14} />
+                            <select
+                                id="qualification"
+                                name="qualification"
+                                value={updatedDoctor.qualification || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                className={`${inputClass('qualification')} appearance-none`}
+                            >
+                                <option value="">Select qualification</option>
+                                {DOCTOR_QUALIFICATIONS.map((qualification) => (
+                                    <option key={qualification} value={qualification}>
+                                        {qualification}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        {errors.qualification && touched.qualification && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.qualification}</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="hospitalAffiliation" className={labelClass}>
+                            Hospital Affiliation <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaHospital className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
+                            <input
+                                type="text"
+                                id="hospitalAffiliation"
+                                name="hospitalAffiliation"
+                                placeholder="Enter hospital affiliation"
+                                value={updatedDoctor.hospitalAffiliation || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                required
+                                className={inputClass('hospitalAffiliation')}
+                            />
+                        </div>
+                        {errors.hospitalAffiliation && touched.hospitalAffiliation && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.hospitalAffiliation}</p>
+                        )}
+                    </div>
+                    <div>
+                        <label htmlFor="licenseNumber" className={labelClass}>
+                            License Number <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaIdCard className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
+                            <input
+                                type="text"
+                                id="licenseNumber"
+                                name="licenseNumber"
+                                placeholder="Enter license number"
+                                value={updatedDoctor.licenseNumber || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                required
+                                className={inputClass('licenseNumber')}
+                            />
+                        </div>
+                        {errors.licenseNumber && touched.licenseNumber && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.licenseNumber}</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Address Information Section */}
+            <div className="bg-success-50 rounded-lg p-4 space-y-4">
+                <h4 className="font-semibold text-success-800 text-p3 flex items-center gap-2">
+                    <FaMapMarkerAlt className="text-success-700" size={16} />
+                    Address Information
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="address" className={labelClass}>
+                            Address <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaMapMarkerAlt className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
+                            <input
+                                type="text"
+                                id="address"
+                                name="address"
+                                placeholder="Enter doctor address"
+                                value={updatedDoctor.address || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                required
+                                className={inputClass('address')}
+                            />
+                        </div>
+                        {errors.address && touched.address && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.address}</p>
+                        )}
+                    </div>
+                    <div>
+                        <label htmlFor="city" className={labelClass}>
+                            City <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaCity className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
+                            <input
+                                type="text"
+                                id="city"
+                                name="city"
+                                placeholder="Enter doctor city"
+                                value={updatedDoctor.city || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                required
+                                className={inputClass('city')}
+                            />
+                        </div>
+                        {errors.city && touched.city && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.city}</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="state" className={labelClass}>
+                            State <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaMapMarkerAlt className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
+                            <input
+                                type="text"
+                                id="state"
+                                name="state"
+                                placeholder="Enter doctor state"
+                                value={updatedDoctor.state || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                required
+                                className={inputClass('state')}
+                            />
+                        </div>
+                        {errors.state && touched.state && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.state}</p>
+                        )}
+                    </div>
+                    <div>
+                        <label htmlFor="country" className={labelClass}>
+                            Country <span className="text-warning-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <FaFlag className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
+                            <input
+                                type="text"
+                                id="country"
+                                name="country"
+                                placeholder="Enter doctor country"
+                                value={updatedDoctor.country || ''}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                required
+                                className={inputClass('country')}
+                            />
+                        </div>
+                        {errors.country && touched.country && (
+                            <p className="text-xs text-warning-500 mt-1">{errors.country}</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <p className="text-xs text-pneutral-400 text-right">
+                <span className="text-warning-500">*</span> indicates required fields
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-2 border-t border-pneutral-200">
+                {closeModal && (
+                    <button
+                        type="button"
+                        onClick={closeModal}
+                        className="px-4 py-2 text-p3 border border-pneutral-400 font-medium text-pneutral-700 bg-pneutral-50 rounded-full flex items-center gap-1"
+                    >
+                        <FaTimes size={16} />
+                        Cancel
+                    </button>
+                )}
+                <button
+                    type="submit"
+                    className="px-4 py-2 text-p3 font-medium text-pneutral-50 bg-secondary-700 rounded-full flex items-center gap-1"
+                >
+                    <Plus size={16} />
+                    Update Doctor
+                </button>
+            </div>
+        </form>
+    );
 };
 
 export default UpdateDoctor;

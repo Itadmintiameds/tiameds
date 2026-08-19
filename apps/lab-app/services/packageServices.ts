@@ -22,8 +22,30 @@ export const getPackage = async (labId: number) => {
         const response = await api.get(`/admin/lab/${labId}/packages`);
         return response.data;
     } catch (error: any) {
-       
+
         throw new Error('An error occurred while fetching packages.');
+    }
+};
+
+
+export const getDisabledPackages = async (labId: number) => {
+    try {
+        const response = await api.get(`/admin/lab/${labId}/packages/disabled`);
+        return response.data;
+    } catch (error: any) {
+
+        throw new Error('An error occurred while fetching deactivated packages.');
+    }
+};
+
+
+export const enablePackage = async (labId: number, packageId: number) => {
+    try {
+        const response = await api.patch(`/admin/lab/${labId}/package/${packageId}/enable`);
+        return response.data;
+    } catch (error: any) {
+        const message = error?.response?.data?.message || 'An error occurred while activating package.';
+        throw new Error(message);
     }
 };
 

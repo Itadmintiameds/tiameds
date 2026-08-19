@@ -10,10 +10,11 @@ import { formatAgeForDisplay } from "@/utils/ageUtils";
 import type { PatientData } from "@/types/sample/sample";
 import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
 import { getPatientHealthSnapshot } from "../../../../../../services/patientServices";
-import type { HealthSnapshot, HealthSnapshotTest } from "@/types/patient/healthSnapshot";
-import type { AiReportInsights } from "@/types/aiInsights";
+import { saveAiClinicalObservation } from "../../../../../../services/reportServices";
+import type { HealthSnapshot, HealthSnapshotTest, HealthSnapshotTestResult } from "@/types/patient/healthSnapshot";
+import type { AiClinicalObservation, AiReportInsights } from "@/types/aiInsights";
 import type { AiHistoryPoint, AiTestFinding } from "@/lib/ai/labReportPrompt";
-import { buildAiReportCacheKey, readAiReportCache, writeAiReportCache } from "@/lib/ai/aiReportCache";
+import { buildObservationContentHash, toAiClinicalObservation, toAiReportInsights } from "@/lib/ai/aiClinicalObservation";
 
 type Html2CanvasBaseOptions = NonNullable<Parameters<typeof html2canvas>[1]>;
 type Html2CanvasEnhancedOptions = Html2CanvasBaseOptions & {
@@ -59,8 +60,11 @@ const REPORT_COLORS = {
 const PAGE_WIDTH_MM = 190;
 const PAGE_HEIGHT_MM = 297;
 const MARGIN_X_MM = 10;
-const TOP_MARGIN_MM = 2;
-const BOTTOM_MARGIN_MM = 4;
+// Balanced, print-safe margins. The header repeats at TOP_MARGIN_MM on every content
+// page, so this doubles as the top-of-page gutter; 8mm reads as a professional margin
+// without stranding the near-edge whitespace a 2mm gutter used to leave.
+const TOP_MARGIN_MM = 8;
+const BOTTOM_MARGIN_MM = 8;
 // Extra buffer to avoid edge clipping when html2canvas output is placed into jsPDF.
 const CONTENT_SAFETY_MM = 1;
 const BLOCK_GAP_MM = 2;
@@ -111,6 +115,21 @@ const isExcludedQualitativeRow = (row?: { referenceDescription?: string; testPar
 
 const shouldShowQualitativeDescriptionRow = (row?: { referenceDescription?: string; testParameter?: string }) =>
     doesRowMatchFieldType(row, QUALITATIVE_DESCRIPTION_FIELD_TYPES);
+
+// Human-readable name for a qualitative row. When the row's own label is just a field-type
+// token (e.g. "DROPDOWN-POSITIVE/NEGATIVE") there is no real parameter name, so fall back to
+// the test name -- a pure "Urine Pregnancy Test" reports Positive, not "DROPDOWN ...". Shared
+// by the on-screen card and the AI findings so both name qualitative results identically.
+const getQualitativeDisplayName = (
+    row: { testParameter?: string; referenceDescription?: string },
+    fallbackTestName?: string
+) => {
+    const candidate = row.testParameter || row.referenceDescription || "";
+    if (!candidate) return fallbackTestName || "Test";
+    return doesRowMatchFieldType(row, EXCLUDED_FIELD_TYPES)
+        ? (fallbackTestName || candidate)
+        : candidate;
+};
 
 const normalizeCBCKey = (value?: string) => (value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
@@ -176,6 +195,330 @@ const buildOrderedCBCRows = (rows: TestRow[]): RenderRowEntry[] => {
     });
 
     return orderedEntries;
+};
+
+// The snapshot API can return the same measurement more than once: a report
+// saved/regenerated twice inside one visit, or (seen on the deployed backend)
+// duplicate visit rows for a single booking where each copy carries its own
+// visitId/reportId -- both made a first-visit patient show a 2-point trend line.
+// Collapse to one result per real measurement before any trend logic runs,
+// oldest visit first: most-recent save wins within a visit, then identical
+// same-day values collapse even when their visit ids differ.
+const dedupeSnapshotResults = (results: HealthSnapshotTestResult[]) => {
+    const stampOf = (r: HealthSnapshotTestResult) => new Date(r.createdAt || r.visitDate).getTime();
+    const dayOf = (r: HealthSnapshotTestResult) => {
+        const parsed = new Date(r.visitDate || r.createdAt);
+        return isNaN(parsed.getTime())
+            ? String(r.visitDate || r.createdAt || "")
+            : parsed.toISOString().slice(0, 10);
+    };
+    const collapse = (
+        list: HealthSnapshotTestResult[],
+        keyOf: (r: HealthSnapshotTestResult, idx: number) => string
+    ) => {
+        const byKey = new Map<string, HealthSnapshotTestResult>();
+        list.forEach((result, idx) => {
+            const key = keyOf(result, idx);
+            const existing = byKey.get(key);
+            if (!existing || !(stampOf(result) < stampOf(existing))) {
+                byKey.set(key, result);
+            }
+        });
+        return Array.from(byKey.values());
+    };
+    // Pass 1: one result per visit (re-saved reports). A missing visitId must not
+    // merge unrelated results, so fall back to reportId/index as a unique key.
+    let deduped = collapse(results || [], (r, idx) =>
+        r.visitId != null ? `visit:${r.visitId}` : `report:${r.reportId ?? `idx-${idx}`}`
+    );
+    // Pass 2: duplicate visit rows -- same calendar day, same value, different ids.
+    deduped = collapse(deduped, (r) => `day:${dayOf(r)}|value:${(r.enteredValue || "").trim()}`);
+    return deduped.sort(
+        (a, b) =>
+            new Date(a.visitDate || a.createdAt).getTime() - new Date(b.visitDate || b.createdAt).getTime()
+    );
+};
+
+interface SnapshotParamSeries {
+    key: string;
+    label: string;
+    points: HealthSnapshotTestResult[];
+}
+
+// A multi-parameter test (CBC, LFT, urine R/E, ...) carries every parameter's own
+// value on each visit's `testRows`, while the snapshot API also mirrors just one of
+// them onto the visit-level enteredValue/unit/referenceRange. Pivoting on testRows
+// here is what lets both the sparkline card and the AI history feed trend every
+// parameter separately, instead of collapsing a multi-row test down to whichever one
+// value happened to land on that mirrored field. Single-parameter tests (no testRows)
+// fall back to that mirrored field and produce exactly one series, unchanged from
+// before.
+const getSnapshotParameterSeries = (test: HealthSnapshotTest): SnapshotParamSeries[] => {
+    const deduped = dedupeSnapshotResults(test.results);
+    const order: string[] = [];
+    const byKey = new Map<string, SnapshotParamSeries>();
+
+    deduped.forEach((result) => {
+        const rows =
+            result.testRows && result.testRows.length > 0
+                ? result.testRows
+                : [
+                    {
+                        testParameter: test.testName,
+                        normalRange: result.referenceRange,
+                        enteredValue: result.enteredValue,
+                        unit: result.unit,
+                        referenceAgeRange: result.referenceAgeRange,
+                    },
+                ];
+
+        rows.forEach((row) => {
+            const label = (row.testParameter || test.testName).trim();
+            const key = label.toLowerCase();
+            if (!byKey.has(key)) {
+                byKey.set(key, { key, label, points: [] });
+                order.push(key);
+            }
+            byKey.get(key)!.points.push({
+                ...result,
+                enteredValue: row.enteredValue,
+                unit: row.unit,
+                referenceRange: row.normalRange,
+                referenceAgeRange: row.referenceAgeRange,
+            });
+        });
+    });
+
+    return order.map((key) => byKey.get(key)!);
+};
+
+// How far one parameter's reading sits from its own normal range, in half-width units:
+// 0 sits at the range's centre, +-1 sits exactly on its boundary. Every reference-range
+// format below is normalized into that same +-1 scale so parameters reported in
+// completely different units (mg/dL, cells/cumm, %, ...) can be averaged together
+// meaningfully -- that average is what lets one sparkline speak for an entire
+// multi-parameter panel. The math mirrors scoreValue's own overshoot ratio exactly
+// (verified boundary-for-boundary), so a single-parameter test's composite reduces to
+// the exact same critical/borderline call scoreValue would already make for it.
+const parameterDeviation = (enteredValue?: string, normalRange?: string): number | null => {
+    if (!enteredValue || !normalRange || enteredValue === "N/A" || normalRange === "N/A") return null;
+    const value = parseFloat(enteredValue);
+    if (isNaN(value)) return null;
+    const range = normalRange.trim();
+
+    // Format 1: "12 - 16" (min-max band).
+    const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+    if (rangeMatch) {
+        const min = parseFloat(rangeMatch[1]);
+        const max = parseFloat(rangeMatch[2]);
+        const mid = (min + max) / 2;
+        const half = Math.max((max - min) / 2, Number.EPSILON);
+        return (value - mid) / half;
+    }
+
+    // Format 2: "< 5.0" -- below threshold is unconditionally normal (pinned to 0,
+    // matching scoreValue's own unconditional "normal" verdict there); at/above the
+    // threshold the deviation crosses +1 right at the boundary and grows from there.
+    const lessThanMatch = range.match(/<\s*(\d+(?:\.\d+)?)/);
+    if (lessThanMatch) {
+        const threshold = parseFloat(lessThanMatch[1]);
+        if (threshold <= 0) return null;
+        if (value < threshold) return 0;
+        return 1 + 2 * ((value - threshold) / threshold);
+    }
+
+    // Format 3: mirror of Format 2 -- at/above threshold is unconditionally normal
+    // (pinned to 0); below it the deviation crosses -1 at the boundary and falls further.
+    const greaterThanMatch = range.match(/>\s*(\d+(?:\.\d+)?)/);
+    if (greaterThanMatch) {
+        const threshold = parseFloat(greaterThanMatch[1]);
+        if (threshold <= 0) return null;
+        if (value >= threshold) return 0;
+        return -1 + 2 * ((value - threshold) / threshold);
+    }
+
+    // Format 4: qualitative -- no numeric band to measure a deviation against.
+    return null;
+};
+
+// A large, arbitrary shift so the composite value below never prints as a negative
+// number -- the min-max regex scoreValue/parameterDeviation both use has no support for
+// a leading "-", so a genuinely negative composite would be silently misparsed. The
+// shift is constant across every point in a series, so it cancels out of the
+// sparkline's own min/max normalization and never affects the drawn shape.
+const COMPOSITE_OFFSET = 1000;
+
+// One point per visit: every parameter on that visit's testRows gets its own deviation
+// (see parameterDeviation), averaged into a single composite and re-encoded onto the
+// enteredValue/referenceRange fields buildTestSparkline and scoreValue already know how
+// to plot and grade -- this is what lets one sparkline represent an entire panel (CBC,
+// LFT, ...) instead of whichever single field the snapshot API happens to mirror onto
+// the visit level. A visit with nothing numerically scoreable (e.g. an all-qualitative
+// panel) keeps its original mirrored value, leaving the existing categorical sparkline
+// path in buildTestSparkline untouched.
+const buildCompositeTestSeries = (test: HealthSnapshotTest): HealthSnapshotTestResult[] => {
+    const deduped = dedupeSnapshotResults(test.results);
+    return deduped.map((result) => {
+        const rows =
+            result.testRows && result.testRows.length > 0
+                ? result.testRows
+                : [
+                    {
+                        testParameter: test.testName,
+                        normalRange: result.referenceRange,
+                        enteredValue: result.enteredValue,
+                        unit: result.unit,
+                        referenceAgeRange: result.referenceAgeRange,
+                    },
+                ];
+
+        const deviations = rows
+            .map((row) => parameterDeviation(row.enteredValue, row.normalRange))
+            .filter((d): d is number => d !== null);
+
+        if (deviations.length === 0) return result;
+
+        const avg = deviations.reduce((sum, d) => sum + d, 0) / deviations.length;
+        return {
+            ...result,
+            enteredValue: String(avg + COMPOSITE_OFFSET),
+            referenceRange: `${COMPOSITE_OFFSET - 1} - ${COMPOSITE_OFFSET + 1}`,
+        };
+    });
+};
+
+// Health Snapshot trend lines always lay dots on a fixed grid of the last N visits.
+const SPARKLINE_MAX_VISITS = 4;
+
+// ---------------------------------------------------------------------------
+// Summary region layout planner
+// ---------------------------------------------------------------------------
+// The three summary cards (Clinical Alert Summary, Key Findings, Health Snapshot) --
+// AI Clinical Observations now renders as its own standalone section after Detailed Lab
+// Results, outside this packer -- have wildly different intrinsic heights from one
+// patient to the next: one finding or twenty. A hard-coded "alerts | findings | snapshot"
+// grid can therefore only ever be balanced for one particular patient, and the row's
+// `items-stretch` inflated the short card's border box to match the tall one -- that
+// stretched, mostly empty box is what printed as the dead white area under Clinical
+// Alert Summary.
+//
+// So: estimate each card's height from its own content, then pick the arrangement
+// that wastes the least space. The estimates only have to *rank* candidate
+// arrangements against each other, so they are deliberately coarse -- a mis-estimate
+// costs a slightly uneven layout, never a broken one. Nothing here writes a height to
+// the DOM; every card stays intrinsically sized.
+//
+// The `imbalance` term in the cost function is load-bearing, not cosmetic: whatever
+// column imbalance survives is absorbed as bottom padding by the short column's last
+// card (see the SUMMARY REGION comment), so keeping it minimal is what keeps that card
+// from looking hollow.
+
+type SummaryCardId = "alerts" | "findings" | "snapshot";
+type SummaryCard = { id: SummaryCardId; columnHeight: number; bandHeight: number };
+interface SummaryLayout {
+    /** Cards spanning the full content width, stacked in order, above the columns. */
+    bands: SummaryCardId[];
+    left: SummaryCardId[];
+    right: SummaryCardId[];
+}
+
+// Reading order. The alert tiles are the report's headline and always come first.
+const SUMMARY_CARD_ORDER: SummaryCardId[] = ["alerts", "findings", "snapshot"];
+
+// Coarse content metrics in CSS px, at the report's 210mm print width. These track the
+// cards' actual typography (11px/1.25 body, 9px/1.25 sub-text, p-2.5 card padding); they
+// only need to be close enough to rank arrangements, so keep them roughly in step with
+// the card CSS rather than exact.
+const SUMMARY_CARD_CHROME_PX = 52; // card padding + title row
+const ALERT_TILES_PX = 80; // the four stat tiles: one row at any width
+const FINDING_ROW_PX = 30; // one two-line finding entry + its row gap
+const SNAPSHOT_ROW_PX = 30; // one test name + sparkline
+
+// Greedy longest-first 2-partition: drop the tallest remaining card into whichever
+// column is currently shorter. This keeps the two columns within roughly one card's
+// height of each other for any content mix, so neither column trails a long blank
+// tail. Cards are then restored to reading order within their column.
+const packSummaryColumns = (cards: SummaryCard[]) => {
+    const left: SummaryCard[] = [];
+    const right: SummaryCard[] = [];
+    let leftHeight = 0;
+    let rightHeight = 0;
+
+    [...cards]
+        .sort((a, b) => b.columnHeight - a.columnHeight)
+        .forEach((card) => {
+            if (leftHeight <= rightHeight) {
+                left.push(card);
+                leftHeight += card.columnHeight;
+            } else {
+                right.push(card);
+                rightHeight += card.columnHeight;
+            }
+        });
+
+    const byReadingOrder = (a: SummaryCard, b: SummaryCard) =>
+        SUMMARY_CARD_ORDER.indexOf(a.id) - SUMMARY_CARD_ORDER.indexOf(b.id);
+    left.sort(byReadingOrder);
+    right.sort(byReadingOrder);
+
+    // Whichever column the packer happened to give the alert tiles becomes the left
+    // column, so the report always reads Clinical Alert Summary first.
+    const alertsOnRight = right.some((card) => card.id === "alerts");
+    return {
+        left: (alertsOnRight ? right : left).map((card) => card.id),
+        right: (alertsOnRight ? left : right).map((card) => card.id),
+        height: Math.max(leftHeight, rightHeight),
+        imbalance: Math.abs(leftHeight - rightHeight),
+    };
+};
+
+// Promoting a card to a full-width band lets its content flow *wider* instead of
+// taller: the findings list goes two-up, the alert tiles spread out. That is what
+// rescues the lopsided cases -- 20 findings with nothing tall enough to sit opposite
+// them would otherwise strand half a column of white space.
+const SUMMARY_BAND_CANDIDATES: SummaryCardId[][] = [
+    [], // everything in two balanced columns
+    ["alerts"], // alert tiles across the top, the rest in columns
+    ["alerts", "findings"], // + findings flowing two-up across the full width
+    ["alerts", "findings", "snapshot"], // fully stacked (very few / very lopsided cards)
+];
+
+const planSummaryLayout = (cards: SummaryCard[]): SummaryLayout | null => {
+    if (cards.length === 0) return null;
+
+    const byId = new Map(cards.map((card) => [card.id, card]));
+    let best: SummaryLayout | null = null;
+    let bestCost = Number.POSITIVE_INFINITY;
+
+    SUMMARY_BAND_CANDIDATES.forEach((candidate) => {
+        const bandCards = candidate
+            .map((id) => byId.get(id))
+            .filter((card): card is SummaryCard => Boolean(card));
+        let columnCards = cards.filter((card) => !candidate.includes(card.id));
+
+        // One leftover card would sit half-width beside a blank half. Band it instead.
+        if (columnCards.length === 1) {
+            bandCards.push(columnCards[0]);
+            columnCards = [];
+        }
+
+        const bands = [...bandCards].sort(
+            (a, b) => SUMMARY_CARD_ORDER.indexOf(a.id) - SUMMARY_CARD_ORDER.indexOf(b.id)
+        );
+        const bandsHeight = bands.reduce((sum, card) => sum + card.bandHeight, 0);
+        const columns = packSummaryColumns(columnCards);
+
+        // Wasted space is what makes a report look unprofessional, so imbalance is
+        // scored as heavily as height itself: a taller-but-flush arrangement beats a
+        // shorter one that strands a half-empty column.
+        const cost = bandsHeight + columns.height + columns.imbalance;
+        if (cost < bestCost) {
+            bestCost = cost;
+            best = { bands: bands.map((card) => card.id), left: columns.left, right: columns.right };
+        }
+    });
+
+    return best;
 };
 
 interface TestRow {
@@ -304,30 +647,30 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
             const htmlParts: string[] = [];
 
             if (parsed.description) {
-                htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000000; padding-bottom: 1px;">${parsed.description}</p>`);
+                htmlParts.push(`<p style="margin: 2px 0; font-size: 10px; line-height: 1.35; color: #000000; padding-bottom: 1px;">${parsed.description}</p>`);
             }
 
             if (parsed.impression && Array.isArray(parsed.impression) && parsed.impression.length > 0) {
-                htmlParts.push(`<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000000;"><strong style="color: #000000;">Impression:</strong> ${parsed.impression.join(', ')}</p>`);
+                htmlParts.push(`<p style="margin: 2px 0; font-size: 10px; line-height: 1.35; color: #000000;"><strong style="color: #000000;">Impression:</strong> ${parsed.impression.join(', ')}</p>`);
             }
 
             if (parsed.tables && Array.isArray(parsed.tables) && parsed.tables.length > 0) {
                 parsed.tables.forEach((table) => {
                     if (table.title) {
-                        htmlParts.push(`<h4 style="font-size: 11px; font-weight: 600; margin: 8px 0 4px 0; color: #000000;">${table.title}</h4>`);
+                        htmlParts.push(`<h4 style="font-size: 10px; font-weight: 600; margin: 4px 0 2px 0; color: #000000;">${table.title}</h4>`);
                     }
                     if (table.headers && Array.isArray(table.headers) && table.rows && Array.isArray(table.rows)) {
-                        let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 11px; border: 1px solid #000000;">';
+                        let tableHtml = '<table style="border-collapse: collapse; width: 100%; margin: 3px 0; font-size: 10px; border: 1px solid #000000;">';
                         tableHtml += '<thead><tr style="vertical-align: middle;">';
                         table.headers.forEach((header: string) => {
-                            tableHtml += `<th style="border: 1px solid #000000; padding: 5px 8px; text-align: left; background-color: #ffffff; font-size: 11px; font-weight: bold; color: #000000; line-height: 1.4; vertical-align: middle;">${header}</th>`;
+                            tableHtml += `<th style="border: 1px solid #000000; padding: 3px 6px; text-align: left; background-color: #ffffff; font-size: 10px; font-weight: bold; color: #000000; line-height: 1.3; vertical-align: middle;">${header}</th>`;
                         });
                         tableHtml += '</tr></thead>';
                         tableHtml += '<tbody>';
                         table.rows.forEach((row: (string | number | boolean | null)[]) => {
                             tableHtml += '<tr style="vertical-align: middle;">';
                             row.forEach((cell: string | number | boolean | null) => {
-                                tableHtml += `<td style="border: 1px solid #000000; padding: 5px 8px; font-size: 11px; color: #000000; line-height: 1.4; vertical-align: middle;">${String(cell)}</td>`;
+                                tableHtml += `<td style="border: 1px solid #000000; padding: 3px 6px; font-size: 10px; color: #000000; line-height: 1.3; vertical-align: middle;">${String(cell)}</td>`;
                             });
                             tableHtml += '</tr>';
                         });
@@ -350,10 +693,10 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                             // ✅ STEP 3: Remove colgroup
                             .replace(/<colgroup>[\s\S]*?<\/colgroup>/gi, '')
                             // ✅ STEP 4: Now inject clean table styles
-                            .replace(/<table[^>]*>/gi, '<table style="border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 11px; border: 1px solid #000000;">')
+                            .replace(/<table[^>]*>/gi, '<table style="border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 10px; border: 1px solid #000000;">')
                             .replace(/<tr[^>]*>/gi, '<tr style="vertical-align: middle;">')
-                            .replace(/<th[^>]*>/gi, '<th style="border: 1px solid #000000; padding: 5px 8px; text-align: left; background-color: #ffffff; font-weight: bold; color: #000000; line-height: 1.4; vertical-align: middle;">')
-                            .replace(/<td[^>]*>/gi, '<td style="border: 1px solid #000000; padding: 5px 8px; color: #000000; line-height: 1.4; vertical-align: middle;">')
+                            .replace(/<th[^>]*>/gi, '<th style="border: 1px solid #000000; padding: 3px 6px; text-align: left; background-color: #ffffff; font-weight: bold; color: #000000; line-height: 1.3; vertical-align: middle;">')
+                            .replace(/<td[^>]*>/gi, '<td style="border: 1px solid #000000; padding: 3px 6px; color: #000000; line-height: 1.3; vertical-align: middle;">')
                             // ✅ STEP 5: Strip <p> and <br> tags inside table cells
                             .replace(/(<t[dh][^>]*>)\s*(<p[^>]*>)?\s*/gi, '$1')
                             .replace(/\s*(<\/p>)?\s*(<\/t[dh]>)/gi, '$2')
@@ -363,20 +706,20 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                             .replace(/<strong>/g, '<strong style="color: #000000; font-weight: 700;">')
                             .replace(/<strong style="(?!color)/g, '<strong style="color: #000000; font-weight: 700; ')
                             // ✅ STEP 7: Fix list and paragraph styles
-                            .replace(/<ul>/g, '<ul style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4; color: #000000;">')
-                            .replace(/<ol>/g, '<ol style="margin: 2px 0; padding-left: 16px; font-size: 11px; line-height: 1.4; color: #000000;">')
-                            .replace(/<li>/g, '<li style="margin: 2px 0; color: #000000;">')
-                            .replace(/<p>/g, '<p style="margin: 4px 0; font-size: 11px; line-height: 1.4; color: #000000; padding-bottom: 1px;">')
+                            .replace(/<ul>/g, '<ul style="margin: 1px 0; padding-left: 16px; font-size: 10px; line-height: 1.35; color: #000000;">')
+                            .replace(/<ol>/g, '<ol style="margin: 1px 0; padding-left: 16px; font-size: 10px; line-height: 1.35; color: #000000;">')
+                            .replace(/<li>/g, '<li style="margin: 1px 0; color: #000000;">')
+                            .replace(/<p>/g, '<p style="margin: 2px 0; font-size: 10px; line-height: 1.35; color: #000000; padding-bottom: 1px;">')
                             // ✅ STEP 8: Clean up empty style attributes
                             .replace(/style="\s*"/gi, '');
 
                         return `
-                            <div style="margin-bottom: 8px; color: #000000; padding-bottom: 4px;">
+                            <div style="margin-bottom: 4px; color: #000000; padding-bottom: 2px;">
                                 ${section.title && section.title !== 'Formatted Report'
-                                ? `<h4 style="font-size: 11px; font-weight: 700; margin: 6px 0 2px 0; color: #000000;">${section.title}</h4>`
+                                ? `<h4 style="font-size: 10px; font-weight: 700; margin: 4px 0 2px 0; color: #000000;">${section.title}</h4>`
                                 : ''
                             }
-                                <div style="font-size: 11px; line-height: 1.4; color: #000000; padding-bottom: 4px;">${cleanedContent}</div>
+                                <div style="font-size: 10px; line-height: 1.35; color: #000000; padding-bottom: 2px;">${cleanedContent}</div>
                             </div>
                         `;
                     })
@@ -384,13 +727,34 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
                 htmlParts.push(sectionsHtml);
             }
 
-            return `<div style="color: #000000; font-size: 11px; padding-bottom: 4px;">${htmlParts.join('')}</div>`;
+            return `<div style="color: #000000; font-size: 10px; padding-bottom: 2px;">${htmlParts.join('')}</div>`;
         }
 
         return `<div style="color: #000000;">${formatMedicalReportToHTML(reportJson) || ''}</div>`;
     } catch {
         return `<div style="color: #000000;">${formatMedicalReportToHTML(reportJson) || ''}</div>`;
     }
+};
+
+// A `data-print-table` block is only safe to paginate row-by-row when it is literally a
+// single <table> -- the merged multi-test results table, whose several <tbody> groups the
+// row-chunker walks together into one rebuilt table. Detailed-report and qualitative
+// cards carry the same data-print-table flag but wrap SEVERAL tables (e.g. a urine
+// analysis' Physical Characters / Chemical Constitute / Microscopy) plus a section-title
+// band, an impression line and heading text around them. chunkTableElementByRows rebuilds
+// one table from the FIRST <table> it finds and drops everything else, so row-chunking
+// those cards makes every table after the first vanish from the PDF -- even though the
+// on-screen preview (which never runs the chunker) shows them all. Treat anything that
+// isn't a lone table as a whole block instead: it is moved intact to the next page when it
+// doesn't fit, and only bitmap-sliced if it is taller than a full page, so no content is
+// ever lost.
+const isRowChunkableTableBlock = (node: HTMLElement) => {
+    if (node.getAttribute("data-print-table") !== "true") return false;
+    return (
+        node.children.length === 1 &&
+        node.children[0].tagName === "TABLE" &&
+        node.querySelectorAll("table").length === 1
+    );
 };
 
 export interface ConsolidatedReport {
@@ -401,7 +765,12 @@ export interface ConsolidatedReport {
     testRows: TestRow[];
     reportJson?: string | null;
     referenceRanges?: string | null;
+    // The report header's three moments, all IST ISO-offset strings from ReportService.
+    // createdDateTime is when the report itself was generated; the other two are
+    // visit-level and therefore identical across every report of a visit.
     createdDateTime?: string;
+    registeredDateTime?: string;
+    sampleCollectedDateTime?: string;
     referenceDescription?: string;
     referenceRange?: string;
     referenceAgeRange?: string;
@@ -424,13 +793,39 @@ interface CommonReportView2Props {
     doctorName?: string;
     hidePrintButton?: boolean;
     reportsData: ConsolidatedReport[];
+    // The visit's saved AI Clinical Observations, already fetched by the wrapper in
+    // parallel with the reports themselves. Passed in rather than fetched here so a
+    // reopened report paints its AI section on the first render with no request and no
+    // spinner -- see the storedInsights memo below. `undefined` means the wrapper had
+    // nothing to look up (no lab/visit, or an order that isn't finished); `null` means it
+    // looked and there was no record.
+    storedObservation?: AiClinicalObservation | null;
 }
+
+// AI Clinical Observations are only worth generating on a finished order: a partially
+// completed visit would burn an OpenAI call on data that is about to change, and the
+// insights would be drawn from half the picture. `testResult` carries one row per
+// ordered test with its own reportStatus, so "every row Completed" is the whole-order
+// check -- the same idiom CollectedSample/CompletedTable use to bucket visits.
+// Deliberately NOT derived from `reportsData`: that only ever contains the tests that
+// already have reports, so it looks "complete" even when tests are still pending.
+export const areAllTestsCompleted = (patientData: PatientData): boolean => {
+    const testResults = patientData?.testResult;
+    if (Array.isArray(testResults) && testResults.length > 0) {
+        return testResults.every((tr) => tr?.reportStatus === "Completed");
+    }
+    // No per-test breakdown available (older callers / API shapes): fall back to the
+    // visit-level status, which the backend only flips to Completed once the visit is
+    // finished. Anything else is treated as incomplete, so we never generate on doubt.
+    return (patientData?.visitStatus || "").toLowerCase() === "completed";
+};
 
 const CommonReportView2 = ({
     patientData,
     doctorName,
     hidePrintButton = false,
     reportsData,
+    storedObservation,
 }: CommonReportView2Props) => {
     const { currentLab } = useLabs();
     const reportRef = useRef<HTMLDivElement>(null);
@@ -438,10 +833,18 @@ const CommonReportView2 = ({
     const [selectedReports, setSelectedReports] = useState<Record<number, boolean>>({});
     const [healthSnapshot, setHealthSnapshot] = useState<HealthSnapshot | null>(null);
     const [healthSnapshotLoading, setHealthSnapshotLoading] = useState(false);
-    const [aiInsights, setAiInsights] = useState<AiReportInsights | null>(null);
+    // Only holds insights this mount actually generated, tagged with the fingerprint of the
+    // values they were generated from -- if a result is edited while the report is open,
+    // the tag stops matching and the text is dropped rather than left on screen describing
+    // values that are no longer there. What the report renders is `aiInsights` below, which
+    // prefers the saved observation.
+    const [generated, setGenerated] = useState<{ hash: string; insights: AiReportInsights } | null>(null);
     const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
     const [aiInsightsError, setAiInsightsError] = useState<string | null>(null);
     const [healthSnapshotFetched, setHealthSnapshotFetched] = useState(false);
+    // Drives both the OpenAI call and the card: a partially completed order gets no
+    // request and no section at all, in every place this view is opened from.
+    const showAiInsights = useMemo(() => areAllTestsCompleted(patientData), [patientData]);
     const sortedReports = useMemo(() => {
         const copy = [...reportsData];
         copy.sort((a, b) => {
@@ -537,58 +940,129 @@ const CommonReportView2 = ({
     // Health Snapshot card shows trend as a small colored line chart instead of raw
     // numbers -- color reflects the latest reading's status (reuses the same
     // normal/borderline/critical scoring as Detailed Lab Results), shape reflects the
-    // last few visits' relative movement.
-    const buildTestSparkline = (test: HealthSnapshotTest) => {
-        const parsedPoints = test.results
+    // last few visits' relative movement. Takes one already-deduped points array per
+    // test, built by buildCompositeTestSeries (all of that test's parameters combined
+    // into one value per visit).
+    const buildTestSparkline = (results: HealthSnapshotTestResult[]) => {
+        const width = 200;
+        const height = 28;
+        const padX = 6;
+        const padY = 5;
+        // Fixed 4-visit slot grid: with fewer visits the dots occupy only the first
+        // slots from the left instead of stretching across the full width.
+        const stepX = (width - padX * 2) / (SPARKLINE_MAX_VISITS - 1);
+        const plotH = height - padY * 2;
+        const xAt = (i: number) => padX + stepX * i;
+
+        // --- Numeric tests: value over time (Haemoglobin, WBC count, ...) ---
+        const numericPoints = results
             .map((r) => ({
                 value: parseFloat(r.enteredValue),
                 score: scoreValue(r.enteredValue, r.referenceRange),
             }))
             .filter((p) => Number.isFinite(p.value));
 
-        if (parsedPoints.length < 2) return null;
+        if (numericPoints.length > 1) {
+            const usable = numericPoints.slice(-SPARKLINE_MAX_VISITS);
+            const values = usable.map((p) => p.value);
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const range = max - min;
 
-        const usable = parsedPoints.slice(-5);
-        const values = usable.map((p) => p.value);
-        const min = Math.min(...values);
-        const max = Math.max(...values);
-        const range = max - min || 1;
+            const points = usable.map((p, i) => ({
+                x: xAt(i),
+                // Every reading identical: centre the flat line rather than pinning it to
+                // the floor of the track, where it reads as an axis instead of as data.
+                y: range === 0 ? height / 2 : height - padY - ((p.value - min) / range) * plotH,
+            }));
 
-        const width = 200;
-        const height = 28;
-        const padX = 6;
-        const padY = 5;
-        const stepX = (width - padX * 2) / (usable.length - 1);
+            const latest = usable[usable.length - 1].score;
+            const color =
+                latest.kind === "critical"
+                    ? REPORT_COLORS.danger500
+                    : latest.kind === "borderline"
+                        ? REPORT_COLORS.warning500
+                        : latest.kind === "normal"
+                            ? REPORT_COLORS.success600
+                            : REPORT_COLORS.neutral600;
 
-        const points = usable.map((p, i) => ({
-            x: padX + stepX * i,
-            y: height - padY - ((p.value - min) / range) * (height - padY * 2),
+            return {
+                width,
+                height,
+                color,
+                points,
+                pointsAttr: points.map((p) => `${p.x},${p.y}`).join(" "),
+            };
+        }
+
+        // --- Qualitative tests: category over time (Positive/Negative, Reactive/
+        // Non-reactive, Present/Absent, ...). scoreValue can't grade these numerically, so
+        // they used to collapse to a lone bullet that showed no history at all. Mapping each
+        // distinct result to its own y-level keeps the same compact sparkline shape: a test
+        // that stays Negative reads as a flat line, one that flips reads as a step. ---
+        const categoricalPoints = results
+            .map((r) => (r.enteredValue || "").trim())
+            .filter((value) => value && value.toUpperCase() !== "N/A");
+
+        if (categoricalPoints.length < 2) return null;
+
+        const usable = categoricalPoints.slice(-SPARKLINE_MAX_VISITS);
+
+        // Case and hyphen/spacing variants of one result ("Non-reactive" vs "Non-Reactive")
+        // must collapse into a single category, or a purely cosmetic difference in how a
+        // technician typed the value draws a step implying the result changed when it did not.
+        // Other punctuation is preserved so "<0.5" and ">0.5" stay genuinely distinct.
+        const categoryKey = (value: string) => value.toUpperCase().replace(/[\s_-]+/g, " ").trim();
+
+        // Distinct categories, ordered so a "positive/present" reading sits above a
+        // "negative/absent" one -- a rising line then reads as a move toward the flagged result.
+        const distinct: string[] = [];
+        usable.forEach((value) => {
+            const key = categoryKey(value);
+            if (!distinct.includes(key)) distinct.push(key);
+        });
+        // Lower rank sits higher on the chart. Graded urine-analysis results (Trace, 1+, 2+ ...)
+        // are ranked by severity between the two poles, so protein going Trace -> 3+ draws as a
+        // rising line rather than landing in arbitrary first-seen order.
+        const categoryRank = (value: string) => {
+            if (/NOT DETECTED|\b(NEGATIVE|ABSENT|NIL|NORMAL)\b|NON ?REACTIVE/.test(value)) return 40;
+            if (/\b(POSITIVE|PRESENT|REACTIVE|DETECTED|ABNORMAL)\b/.test(value)) return 0;
+            const graded = value.match(/^(\d+)\s*\+/);
+            if (graded) return Math.max(5, 30 - Number(graded[1]) * 5);
+            if (/^TRACE\b/.test(value)) return 30;
+            return 35;
+        };
+        const categories = [...distinct].sort(
+            (a, b) => categoryRank(a) - categoryRank(b) || distinct.indexOf(a) - distinct.indexOf(b)
+        );
+        const count = categories.length;
+
+        const points = usable.map((value, i) => ({
+            x: xAt(i),
+            // Single category across every visit: a centred flat line, same as flat numerics.
+            y: count <= 1 ? height / 2 : padY + (plotH * categories.indexOf(categoryKey(value))) / (count - 1),
         }));
-
-        const latest = usable[usable.length - 1].score;
-        const color =
-            latest.kind === "critical"
-                ? REPORT_COLORS.danger500
-                : latest.kind === "borderline"
-                    ? REPORT_COLORS.warning500
-                    : latest.kind === "normal"
-                        ? REPORT_COLORS.success600
-                        : REPORT_COLORS.neutral600;
 
         return {
             width,
             height,
-            color,
+            // Qualitative results carry no normal/borderline/critical grade, so they take the
+            // neutral brand hue instead of borrowing the clinical red/amber/green -- a
+            // "Positive" here is not automatically an abnormal finding (a pregnancy test, say).
+            color: REPORT_COLORS.secondary700,
             points,
             pointsAttr: points.map((p) => `${p.x},${p.y}`).join(" "),
         };
     };
 
-    // Drives the Clinical Alert Summary counts, Key Findings list, Overall Risk Score,
-    // and Clinical Attention Required section from the same row data already rendered in
-    // Detailed Lab Results -- no separate AI/analytics backend involved.
+    // Drives the Clinical Alert Summary counts, Key Findings list, and Clinical Attention
+    // Required section from the same row data already rendered in Detailed Lab Results --
+    // no separate AI/analytics backend involved.
     const clinicalSummary = useMemo(() => {
-        let critical = 0;
+        // Critical rows are split by direction so the alert tiles can show High and Low
+        // separately; borderline rows stay pooled regardless of direction.
+        let high = 0;
+        let low = 0;
         let borderline = 0;
         let normal = 0;
         const findings: ClinicalFinding[] = [];
@@ -622,8 +1096,10 @@ const CommonReportView2 = ({
                 }
 
                 reportHasAbnormality = true;
-                if (score.kind === "critical") critical += 1;
-                else borderline += 1;
+                if (score.kind === "critical") {
+                    if (score.direction === "low") low += 1;
+                    else high += 1;
+                } else borderline += 1;
                 findings.push({ report, row, kind: score.kind, direction: score.direction });
             });
 
@@ -635,11 +1111,7 @@ const CommonReportView2 = ({
         const severityRank: Record<ClinicalFinding["kind"], number> = { critical: 0, borderline: 1 };
         findings.sort((a, b) => severityRank[a.kind] - severityRank[b.kind]);
 
-        const totalScored = critical + borderline + normal;
-        const overallRisk: "HIGH" | "MODERATE" | "LOW" | null =
-            totalScored === 0 ? null : critical > 0 ? "HIGH" : borderline > 0 ? "MODERATE" : "LOW";
-
-        return { critical, borderline, normal, findings, normalReportNames, overallRisk };
+        return { high, low, borderline, normal, findings, normalReportNames };
     }, [sortedReports]);
 
     // Full (not just abnormal) row-level view of the current report, shaped for the AI prompt --
@@ -660,7 +1132,25 @@ const CommonReportView2 = ({
                     ];
 
             rows.forEach((row) => {
-                if (isExcludedQualitativeRow(row)) return;
+                // Qualitative rows (Positive/Negative, Present/Absent, Reactive/..., colour,
+                // appearance) carry no numeric range, so they can't be scored -- but their
+                // value is clinically meaningful. Previously these were dropped entirely,
+                // which left pure-qualitative reports (e.g. a urine pregnancy test) with no AI
+                // findings at all and made mixed reports (e.g. complete urine analysis) hide
+                // the abnormal chemistry -- so the model wrongly reported "results not
+                // available". Pass them through as qualitative findings with their value.
+                if (isExcludedQualitativeRow(row)) {
+                    const qualitativeValue = (row.enteredValue ?? row.description ?? "").toString().trim();
+                    if (!qualitativeValue || qualitativeValue.toUpperCase() === "N/A") return;
+                    results.push({
+                        testName: report.testName,
+                        parameter: getQualitativeDisplayName(row, report.testName),
+                        value: qualitativeValue,
+                        status: "unscored",
+                        qualitative: true,
+                    });
+                    return;
+                }
                 const score = scoreValue(row.enteredValue, row.normalRange);
                 results.push({
                     testName: report.testName,
@@ -676,24 +1166,72 @@ const CommonReportView2 = ({
         return results;
     }, [sortedReports]);
 
+    // A report must render identically every time it is opened. The snapshot API
+    // always returns the patient's full history up to today, so re-opening an old
+    // report after newer visits exist would suddenly grow trend lines that were
+    // not on the report when it was issued. Clamp the snapshot to the visit being
+    // viewed: keep only results from that visit or earlier ones.
+    const visibleSnapshot = useMemo<HealthSnapshot | null>(() => {
+        if (!healthSnapshot) return null;
+        const visitIds = reportsData
+            .map((r) => r.visitId)
+            .filter((id): id is number => typeof id === "number" && Number.isFinite(id));
+        const maxVisitId = visitIds.length > 0 ? Math.max(...visitIds) : null;
+        // Fallback for snapshot rows missing a visitId: nothing belonging to this
+        // report can have been recorded after the report itself was created.
+        const reportTimes = reportsData
+            .map((r) => new Date(r.createdDateTime || "").getTime())
+            .filter((t) => Number.isFinite(t));
+        const cutoffTime = reportTimes.length > 0 ? Math.max(...reportTimes) : null;
+
+        const isVisible = (r: HealthSnapshotTestResult) => {
+            if (maxVisitId != null && r.visitId != null) return r.visitId <= maxVisitId;
+            if (cutoffTime == null) return true;
+            const t = new Date(r.visitDate || r.createdAt).getTime();
+            return !Number.isFinite(t) || t <= cutoffTime;
+        };
+
+        // The snapshot API returns the patient's entire test history. A visit
+        // that only ordered 2 tests should only ever show trend lines for those
+        // 2 tests, not for unrelated tests from earlier visits.
+        const currentVisitTestNames = new Set(
+            reportsData.map((r) => (r.testName || "").trim().toLowerCase())
+        );
+
+        return {
+            ...healthSnapshot,
+            tests: healthSnapshot.tests
+                .filter((test) => currentVisitTestNames.has((test.testName || "").trim().toLowerCase()))
+                .map((test) => ({ ...test, results: (test.results || []).filter(isVisible) }))
+                .filter((test) => test.results.length > 0),
+        };
+    }, [healthSnapshot, reportsData]);
+
     // Flattens the patient's Health Snapshot (test-by-test visit history) into the
     // shape the AI prompt expects, so it can reason about trends vs. the current report.
     const aiHistoryPoints = useMemo<AiHistoryPoint[]>(() => {
-        if (!healthSnapshot) return [];
+        if (!visibleSnapshot) return [];
         const points: AiHistoryPoint[] = [];
-        healthSnapshot.tests.forEach((test) => {
-            test.results.forEach((result) => {
-                points.push({
-                    testName: test.testName,
-                    visitDate: result.visitDate,
-                    value: result.enteredValue,
-                    unit: result.unit,
-                    normalRange: result.referenceRange,
+        visibleSnapshot.tests.forEach((test) => {
+            // Same dedupe+pivot as the sparklines (getSnapshotParameterSeries), so the AI
+            // gets one history point per parameter per visit -- not just whichever single
+            // value the snapshot API mirrors onto the visit-level field -- and never
+            // reasons about duplicate rows the deployed backend returns for a single visit.
+            getSnapshotParameterSeries(test).forEach((param) => {
+                param.points.forEach((result) => {
+                    points.push({
+                        testName: test.testName,
+                        parameter: param.label,
+                        visitDate: result.visitDate,
+                        value: result.enteredValue,
+                        unit: result.unit,
+                        normalRange: result.referenceRange,
+                    });
                 });
             });
         });
         return points;
-    }, [healthSnapshot]);
+    }, [visibleSnapshot]);
 
     // Fetch the patient's Health Snapshot (test history across visits) whenever the report is viewed.
     useEffect(() => {
@@ -724,56 +1262,107 @@ const CommonReportView2 = ({
         };
     }, [currentLab?.id, patientData?.patientId]);
 
-    // Auto-generate AI Clinical Observations once the report data (and, if available, the
-    // Health Snapshot history) are ready. Result is cached in localStorage keyed by the
-    // report set + its content, so reopening the same report skips the OpenAI call entirely.
-    useEffect(() => {
-        if (!healthSnapshotFetched || aiTestFindings.length === 0) {
-            return;
+    // Observations are stored per visit. `reportsData` is always one visit's reports, but
+    // prefer the visit the patient row itself carries and fall back to the reports for
+    // callers that pass a thinner patient object.
+    const observationVisitId = useMemo<number | null>(() => {
+        if (typeof patientData?.visitId === "number" && Number.isFinite(patientData.visitId)) {
+            return patientData.visitId;
         }
-
-        const cacheKey = buildAiReportCacheKey(
-            sortedReports.map((r) => r.reportId),
-            aiTestFindings,
-            aiHistoryPoints
+        const fromReport = reportsData.find(
+            (r) => typeof r.visitId === "number" && Number.isFinite(r.visitId)
         );
-        const cached = readAiReportCache(cacheKey);
-        if (cached) {
-            setAiInsights(cached);
-            setAiInsightsError(null);
-            setAiInsightsLoading(false);
-            return;
-        }
+        return fromReport?.visitId ?? null;
+    }, [patientData?.visitId, reportsData]);
+
+    // Fingerprint of the values currently printed on this report. Written alongside the
+    // observation, so any device can tell whether saved text still describes what it sees.
+    const contentHash = useMemo(() => buildObservationContentHash(aiTestFindings), [aiTestFindings]);
+
+    // The saved observation, reusable only while it still describes the current values.
+    // Computed, not fetched: the wrapper already retrieved it in parallel with the report
+    // itself, so a reopened report has its AI section ready on the very first render --
+    // no request, no spinner, nothing to wait for. This is the path virtually every open
+    // after the first one takes, from either entry point and from any device.
+    const storedInsights = useMemo<AiReportInsights | null>(() => {
+        if (!showAiInsights || aiTestFindings.length === 0) return null;
+
+        const insights = toAiReportInsights(storedObservation);
+        if (!insights) return null;
+
+        // Re-running the model over unchanged values would only reword them, and a report
+        // has to read identically every time it is printed -- so saved text wins unless a
+        // result has actually been edited since. A record carrying no fingerprint at all
+        // (written before the column existed) is trusted rather than regenerated, so
+        // rolling this out does not re-bill every historical visit on its next open.
+        const isStale = Boolean(storedObservation?.contentHash) && storedObservation!.contentHash !== contentHash;
+        return isStale ? null : insights;
+    }, [storedObservation, showAiInsights, aiTestFindings, contentHash]);
+
+    // Saved text wins; anything generated this mount is the fallback for when there was
+    // none, or when the saved copy described values that have since changed.
+    const generatedInsights = generated?.hash === contentHash ? generated.insights : null;
+    const aiInsights = storedInsights ?? generatedInsights;
+
+    // Generate only when there is no usable saved observation -- i.e. the first time this
+    // visit's report is opened anywhere, or the first open after a result was edited. The
+    // result is written back to the visit, overwriting any stale record, so the next open
+    // on any device is a plain read again.
+    useEffect(() => {
+        // Nothing to observe: a part-finished order, or no rows to reason about.
+        if (!showAiInsights || aiTestFindings.length === 0) return;
+        // Saved text is usable as-is -- rendered synchronously above.
+        if (storedInsights) return;
+        // Generating reasons over the patient's trend history, which is still in flight.
+        if (!healthSnapshotFetched) return;
 
         let cancelled = false;
         setAiInsightsLoading(true);
         setAiInsightsError(null);
-        fetch("/api/ai-report", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                patient: {
-                    name: patientData?.patientname,
-                    age: formatAgeForDisplay(patientData?.dateOfBirth || ""),
-                    gender: patientData?.gender,
-                },
-                testFindings: aiTestFindings,
-                history: aiHistoryPoints,
-            }),
-        })
-            .then(async (response) => {
-                if (!response.ok) {
-                    const body = await response.json().catch(() => null);
-                    throw new Error(body?.message || "Failed to generate AI insights");
-                }
-                return response.json() as Promise<AiReportInsights>;
-            })
-            .then((data) => {
-                if (!cancelled) {
-                    setAiInsights(data);
-                    writeAiReportCache(cacheKey, data);
-                }
-            })
+
+        const labId = currentLab?.id;
+        const canPersist = Boolean(labId) && observationVisitId != null;
+
+        (async () => {
+            const response = await fetch("/api/ai-report", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    patient: {
+                        name: patientData?.patientname,
+                        age: formatAgeForDisplay(patientData?.dateOfBirth || ""),
+                        gender: patientData?.gender,
+                    },
+                    testFindings: aiTestFindings,
+                    history: aiHistoryPoints,
+                }),
+            });
+            if (!response.ok) {
+                const body = await response.json().catch(() => null);
+                throw new Error(body?.message || "Failed to generate AI insights");
+            }
+
+            const insights = (await response.json()) as AiReportInsights;
+            if (cancelled) return;
+            setGenerated({ hash: contentHash, insights });
+
+            // Best-effort: the report is already on screen either way, so a failed write
+            // only costs the next device to open this visit one more generation. Logged
+            // rather than swallowed -- a write that always fails presents as the AI
+            // regenerating on every open, with nothing on screen to say why.
+            if (canPersist) {
+                saveAiClinicalObservation(
+                    labId!,
+                    observationVisitId!,
+                    toAiClinicalObservation(insights, contentHash)
+                ).catch((err) => {
+                    console.warn(
+                        `[report] could not save AI observations for visit ${observationVisitId}; they will be regenerated on the next open.`,
+                        err
+                    );
+                });
+            }
+        })()
             .catch((err) => {
                 if (!cancelled) setAiInsightsError(err instanceof Error ? err.message : "Failed to generate AI insights");
             })
@@ -784,7 +1373,7 @@ const CommonReportView2 = ({
         return () => {
             cancelled = true;
         };
-    }, [healthSnapshotFetched, aiTestFindings, aiHistoryPoints, sortedReports, patientData?.patientname, patientData?.dateOfBirth, patientData?.gender]);
+    }, [showAiInsights, storedInsights, healthSnapshotFetched, aiTestFindings, aiHistoryPoints, contentHash, currentLab?.id, observationVisitId, patientData?.patientname, patientData?.dateOfBirth, patientData?.gender]);
 
     const getFindingBadge = (finding: ClinicalFinding) => {
         const directionLabel = finding.direction === "high" ? "HIGH" : "LOW";
@@ -792,6 +1381,255 @@ const CommonReportView2 = ({
             label: finding.kind === "borderline" ? `BORDERLINE ${directionLabel}` : directionLabel,
             color: finding.kind === "critical" ? REPORT_COLORS.warning500 : REPORT_COLORS.danger500,
         };
+    };
+
+    // One entry per test -- Health Snapshot renders exactly one row/sparkline per test,
+    // same as before. What's new is the points behind that sparkline: buildCompositeTestSeries
+    // averages every parameter on the panel into each visit's point (see its comment),
+    // instead of whichever single field the snapshot API happens to mirror onto the
+    // visit level, so a multi-parameter test's one line now speaks for the whole panel.
+    // Computed once and reused by hasSnapshotTrends, the row-count layout math, and the
+    // card render below, so all three agree on exactly what's being shown.
+    const snapshotTrendEntries = useMemo(
+        () =>
+            (visibleSnapshot?.tests || [])
+                .map((test) => ({ test, points: buildCompositeTestSeries(test) }))
+                .filter((entry) => entry.points.length > 1),
+        [visibleSnapshot]
+    );
+
+    // Health Snapshot only appears once the patient has genuine history: at least one
+    // test with results from 2+ distinct visits (after dedupe). First-time patients get
+    // no card at all -- not even a placeholder message.
+    const hasSnapshotTrends = snapshotTrendEntries.length > 0;
+
+    // Which summary cards exist, and how they get arranged, is decided entirely by this
+    // patient's content volume -- see planSummaryLayout. The cards themselves never know
+    // where they land: each renders at w-full and the column/band container sizes it.
+    const summaryLayout = useMemo(() => {
+        const findingsCount = clinicalSummary.findings.length;
+        const snapshotRows = snapshotTrendEntries.length;
+
+        const cards: SummaryCard[] = [
+            {
+                id: "alerts",
+                // The four stat tiles sit on one row whatever the width, so the alert card
+                // is the one card whose height never varies.
+                columnHeight: SUMMARY_CARD_CHROME_PX + ALERT_TILES_PX,
+                bandHeight: SUMMARY_CARD_CHROME_PX + ALERT_TILES_PX,
+            },
+        ];
+        if (findingsCount > 0) {
+            cards.push({
+                id: "findings",
+                // Findings flow one-up in a half-width column, two-up across a full-width band.
+                columnHeight: SUMMARY_CARD_CHROME_PX + findingsCount * FINDING_ROW_PX,
+                bandHeight: SUMMARY_CARD_CHROME_PX + Math.ceil(findingsCount / 2) * FINDING_ROW_PX,
+            });
+        }
+        if (hasSnapshotTrends) {
+            // Sparklines stretch horizontally, so a wider snapshot card is no shorter.
+            const height = SUMMARY_CARD_CHROME_PX + Math.max(1, snapshotRows) * SNAPSHOT_ROW_PX;
+            cards.push({ id: "snapshot", columnHeight: height, bandHeight: height });
+        }
+
+        return planSummaryLayout(cards);
+    }, [clinicalSummary.findings.length, snapshotTrendEntries, hasSnapshotTrends]);
+
+    const renderClinicalAlertCard = () => (
+        <div
+            className="w-full rounded-xl p-2 flex flex-col gap-1.5"
+            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+        >
+            <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>
+                Clinical Alert Summary
+            </h3>
+            {/* Tiles wrap rather than squeeze: flex-basis with a floor, no hardcoded widths. */}
+            <div className="flex flex-wrap items-stretch gap-1.5">
+                {[
+                    { label: "High", icon: "/report/arrow-up-circle.png", color: REPORT_COLORS.danger600, value: clinicalSummary.high },
+                    { label: "Low", icon: "/report/arrow-down-circle-red.png", color: REPORT_COLORS.danger600, value: clinicalSummary.low },
+                    { label: "Borderline", icon: "/report/exclamation-triangle/outline.png", color: REPORT_COLORS.warning500, value: clinicalSummary.borderline },
+                    { label: "Normal", icon: "/report/check-circle/solid.png", color: REPORT_COLORS.success600, value: clinicalSummary.normal },
+                ].map((item) => (
+                    <div
+                        key={item.label}
+                        className="flex-[1_1_70px] p-1.5 rounded-lg flex flex-col items-center gap-0.5 text-center"
+                        style={{ border: `1px solid ${item.color}` }}
+                    >
+                        <img src={item.icon} alt="" className="w-5 h-5" crossOrigin="anonymous" />
+                        <p className="text-lg font-extrabold" style={{ color: REPORT_COLORS.neutral900 }}>{item.value}</p>
+                        <p className="text-[9px] font-bold uppercase" style={{ color: item.color }}>{item.label}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderKeyFindingsCard = () => (
+        <div
+            className="w-full rounded-xl p-2 flex flex-col gap-1"
+            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+        >
+            <h3 className="text-xs font-bold uppercase px-1" style={{ color: REPORT_COLORS.secondary800 }}>
+                Key Findings for Doctor
+            </h3>
+            {/* Every abnormal finding is listed (no "+N more" cutoff). The 300px basis with a
+                280px floor is what makes the card self-adapting: one finding per row inside a
+                half-width column, two per row when the planner promotes this card to a
+                full-width band -- which halves its height without touching a media query. */}
+            <div className="px-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                {clinicalSummary.findings.map((finding, idx) => {
+                    const badge = getFindingBadge(finding);
+                    const paramLabel = finding.row.testParameter || finding.report.testName;
+                    const valueLabel = `${finding.row.enteredValue || "N/A"}${finding.row.unit ? ` ${finding.row.unit}` : ""}`;
+                    return (
+                        <div key={`${finding.report.reportId}-${idx}`} className="flex-[1_1_300px] min-w-[280px] flex items-start justify-between gap-2 py-0.5">
+                            <div className="flex items-start gap-1.5">
+                                <span className="mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: badge.color }} />
+                                <div>
+                                    <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral900 }}>
+                                        <span className="font-bold">{paramLabel} : </span>
+                                        <span className="font-extrabold">{valueLabel}</span>
+                                    </p>
+                                    <p className="text-[9px] leading-tight" style={{ color: REPORT_COLORS.neutral600 }}>Reference : {finding.row.normalRange || "N/A"}</p>
+                                </div>
+                            </div>
+                            {/* Explicit inline-block + px line-height: html2canvas doesn't
+                                blockify flex children, so an inline span with py padding paints
+                                its pill background offset from the text baseline in the PDF,
+                                clipping the label. Sizing via line-height keeps text centered
+                                in both the browser and the capture clone. */}
+                            <span
+                                className="inline-block px-1.5 rounded text-[8px] leading-[14px] font-extrabold flex-shrink-0 whitespace-nowrap"
+                                style={{ backgroundColor: badge.color, color: REPORT_COLORS.white }}
+                            >
+                                {badge.label}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+
+    const renderAiObservationsCard = () => (
+        <div
+            className="w-full rounded-xl p-2 flex flex-col gap-1"
+            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+        >
+            <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
+                    <img src="/report/reddit.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
+                </span>
+                <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>AI Clinical Observations</h3>
+            </div>
+            {aiInsightsLoading ? (
+                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Generating AI observations...</p>
+            ) : aiInsightsError ? (
+                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>AI observations unavailable for this report.</p>
+            ) : aiInsights ? (
+                // A standalone full-width section can flow fields two-up instead of stacking
+                // them the way a half-width summary column had to -- that's what keeps this
+                // section short enough to print without eating an extra page.
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 px-1">
+                    {[
+                        { label: "Provisional Diagnosis", value: aiInsights.provisionalDiagnosis },
+                        { label: "Patient Interpretation", value: aiInsights.patientInterpretation },
+                        { label: "Clinical Interpretation", value: aiInsights.clinicalInterpretation },
+                        { label: "Tips", value: aiInsights.tips },
+                    ].filter((field) => field.value && field.value.length > 0).map((field) => (
+                        <div key={field.label}>
+                            <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>{field.label}</p>
+                            {/* Run the points together as flowing sentences instead of
+                                stacking bullets. */}
+                            <p className="text-[10px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
+                                {field.value!.map((line) => line.trim().replace(/[.;,]+$/, "")).join(". ")}.
+                            </p>
+                        </div>
+                    ))}
+                    {aiInsights.doctorToVisit && (
+                        <div className="sm:col-span-2">
+                            <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>Doctor to Visit</p>
+                            <p className="text-[10px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>{aiInsights.doctorToVisit}</p>
+                        </div>
+                    )}
+                    <p className="text-[9px] mt-0.5 sm:col-span-2" style={{ color: REPORT_COLORS.secondary800 }}>
+                        <span className="font-semibold">Note: </span>
+                        <span className="font-normal">This is an AI generated observation based on lab values only. Not a diagnosis. AI may make mistakes.</span>
+                    </p>
+                </div>
+            ) : (
+                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>No AI observations available yet.</p>
+            )}
+        </div>
+    );
+
+    const renderHealthSnapshotCard = () => (
+        <div
+            className="w-full rounded-xl p-2 flex flex-col gap-1.5"
+            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
+        >
+            <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
+                    <img src="/report/chart-bar/solid.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
+                </span>
+                <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>Health Snapshot</h3>
+            </div>
+            {healthSnapshotLoading ? (
+                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Loading history...</p>
+            ) : (() => {
+                if (snapshotTrendEntries.length === 0) {
+                    return (
+                        <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>
+                            {visibleSnapshot ? "No prior visit history for these tests yet." : "Trend data will appear here once available."}
+                        </p>
+                    );
+                }
+                return (
+                    <div className="flex flex-col gap-2 px-1">
+                        {snapshotTrendEntries.map(({ test, points }) => {
+                            const sparkline = buildTestSparkline(points);
+                            return (
+                                <div key={test.testName} className="flex items-center gap-2">
+                                    <p className="text-[10px] font-medium uppercase leading-snug flex-[0_0_42%] min-w-0" style={{ color: REPORT_COLORS.neutral800 }}>{test.testName}</p>
+                                    {sparkline ? (
+                                        <svg className="flex-1 min-w-0" height="24" viewBox={`0 0 ${sparkline.width} ${sparkline.height}`} preserveAspectRatio="none">
+                                            <polyline
+                                                points={sparkline.pointsAttr}
+                                                fill="none"
+                                                stroke={sparkline.color}
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                            {sparkline.points.map((p, i) => (
+                                                <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={sparkline.color} />
+                                            ))}
+                                        </svg>
+                                    ) : (
+                                        <span className="flex-1 flex justify-center">
+                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: REPORT_COLORS.neutral600 }} />
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            })()}
+        </div>
+    );
+
+    const renderSummaryCard = (id: SummaryCardId) => {
+        switch (id) {
+            case "alerts":
+                return renderClinicalAlertCard();
+            case "findings":
+                return renderKeyFindingsCard();
+            case "snapshot":
+                return renderHealthSnapshotCard();
+        }
     };
 
     const totalReports = reportsData.length;
@@ -823,6 +1661,39 @@ const CommonReportView2 = ({
             windowWidth: node.scrollWidth,
             windowHeight: node.scrollHeight,
             logging: false,
+            // html2canvas doesn't "blockify" flex/grid children the way browsers do: it keeps
+            // <img> elements inline and sits them on the text baseline, so every icon/logo in
+            // the PDF paints shifted upward relative to the on-screen layout. Forcing
+            // display:block on the capture clone matches what the browser already computes
+            // for flex children and removes the baseline offset. Icons that are the sole
+            // child of a table cell relied on text-align:center, so re-center those with
+            // auto margins once they become blocks.
+            onclone: (clonedDoc, clonedElement) => {
+                const scope: ParentNode = clonedElement ?? clonedDoc;
+                scope.querySelectorAll("img").forEach((img) => {
+                    const el = img as HTMLImageElement;
+                    el.style.display = "block";
+                    const parentTag = el.parentElement?.tagName;
+                    if (parentTag === "TD" || parentTag === "TH") {
+                        el.style.marginLeft = "auto";
+                        el.style.marginRight = "auto";
+                    }
+                });
+                // html2canvas clips glyph descenders when the line box is tighter than the
+                // glyphs themselves (leading-none and sub-1.2 line-heights). Floor those in
+                // the capture clone only; the on-screen layout is untouched.
+                const win = clonedDoc.defaultView;
+                if (win) {
+                    scope.querySelectorAll<HTMLElement>("h1, h2, h3, h4, p, span, li, td, th").forEach((el) => {
+                        const cs = win.getComputedStyle(el);
+                        const fontSize = parseFloat(cs.fontSize);
+                        const lineHeight = parseFloat(cs.lineHeight);
+                        if (Number.isFinite(fontSize) && Number.isFinite(lineHeight) && lineHeight < fontSize * 1.2) {
+                            el.style.lineHeight = "1.25";
+                        }
+                    });
+                }
+            },
         };
         const canvas = await html2canvas(node, canvasOptions);
         const context = canvas.getContext("2d");
@@ -839,6 +1710,10 @@ const CommonReportView2 = ({
     const stripBlockMargins = (el: HTMLElement) => {
         el.style.marginTop = "0";
         el.style.marginBottom = "0";
+        // html2canvas rounds the block's height down, which can shave the descenders
+        // ("g", "y", "p") off the last text line of a block. A tiny padding buffer keeps
+        // the bottom row of pixels clear of any text.
+        el.style.paddingBottom = "3px";
     };
 
     const canvasToMm = (canvas: HTMLCanvasElement, widthMm: number) => {
@@ -874,7 +1749,25 @@ const CommonReportView2 = ({
         return slices;
     };
 
-    const chunkTableElementByRows = (tableWrapper: HTMLElement, maxChunkHeightPx: number) => {
+    // The three chunk positions get different budgets, because the space available to them
+    // genuinely differs:
+    //   first  -- whatever is left of the current page, so a table can start mid-page
+    //             (firstChunkMaxHeightPx)
+    //   middle -- a whole page (maxChunkHeightPx)
+    //   final  -- a whole page MINUS whatever has to be drawn under the table, i.e. the
+    //             closing block (finalChunkLimitPx)
+    // Only the final chunk owes the closing block any room. Charging that reserve to the
+    // first chunk instead leaves a footer-sized band of white on the page where the table
+    // starts, for a footer that is only drawn pages later.
+    // finalChunkLimitPx is a callback rather than a number because the last chunk's budget
+    // depends on how many chunks there turn out to be: a table that packs into one chunk is
+    // still sitting on the current page, while any later chunk starts a page of its own.
+    const chunkTableElementByRows = (
+        tableWrapper: HTMLElement,
+        maxChunkHeightPx: number,
+        firstChunkMaxHeightPx?: number,
+        finalChunkLimitPx?: (chunkCount: number) => number
+    ) => {
         const sourceTable = tableWrapper.querySelector("table");
         if (!sourceTable) {
             return [tableWrapper.cloneNode(true) as HTMLElement];
@@ -895,8 +1788,6 @@ const CommonReportView2 = ({
         measurementHost.style.pointerEvents = "none";
         document.body.appendChild(measurementHost);
 
-        const chunks: HTMLElement[] = [];
-
         const createChunk = () => {
             const wrapperClone = tableWrapper.cloneNode(false) as HTMLElement;
             const tableClone = sourceTable.cloneNode(false) as HTMLTableElement;
@@ -911,31 +1802,92 @@ const CommonReportView2 = ({
             return { wrapperClone, tbody };
         };
 
-        let currentChunk = createChunk();
-        measurementHost.appendChild(currentChunk.wrapperClone);
+        // Greedy row packing under a per-chunk budget. Reports the height each chunk settled
+        // at, so the caller can re-pack if the chunk that ended up last is too tall for what
+        // has to be drawn beneath it.
+        const packRows = (limitAt: (chunkIndex: number) => number) => {
+            const nodes: HTMLElement[] = [];
+            const heights: number[] = [];
+            let currentChunk = createChunk();
+            measurementHost.appendChild(currentChunk.wrapperClone);
 
-        sourceRows.forEach((row) => {
-            const candidateRow = row.cloneNode(true) as HTMLTableRowElement;
-            currentChunk.tbody.appendChild(candidateRow);
+            const sealChunk = () => {
+                nodes.push(currentChunk.wrapperClone.cloneNode(true) as HTMLElement);
+                heights.push(currentChunk.wrapperClone.offsetHeight);
+            };
 
-            const hasMultipleRows = currentChunk.tbody.children.length > 1;
-            if (currentChunk.wrapperClone.offsetHeight > maxChunkHeightPx && hasMultipleRows) {
-                currentChunk.tbody.removeChild(candidateRow);
-                chunks.push(currentChunk.wrapperClone.cloneNode(true) as HTMLElement);
-                measurementHost.removeChild(currentChunk.wrapperClone);
+            sourceRows.forEach((row) => {
+                const candidateRow = row.cloneNode(true) as HTMLTableRowElement;
+                currentChunk.tbody.appendChild(candidateRow);
 
-                currentChunk = createChunk();
-                measurementHost.appendChild(currentChunk.wrapperClone);
-                currentChunk.tbody.appendChild(row.cloneNode(true));
+                const hasMultipleRows = currentChunk.tbody.children.length > 1;
+                if (currentChunk.wrapperClone.offsetHeight > limitAt(nodes.length) && hasMultipleRows) {
+                    currentChunk.tbody.removeChild(candidateRow);
+
+                    // A section-title band ("2. COMPLETE HAEMOGRAM", "DIFFERENTIAL COUNT", ...)
+                    // must not be stranded as the last row of a page -- carry it into the next
+                    // chunk so it starts the new page right above its data rows.
+                    const carryRows: Element[] = [];
+                    while (
+                        currentChunk.tbody.children.length > 1 &&
+                        currentChunk.tbody.lastElementChild?.getAttribute("data-section-title-row") === "true"
+                    ) {
+                        const titleRow = currentChunk.tbody.lastElementChild;
+                        currentChunk.tbody.removeChild(titleRow);
+                        carryRows.unshift(titleRow);
+                    }
+
+                    sealChunk();
+                    measurementHost.removeChild(currentChunk.wrapperClone);
+
+                    currentChunk = createChunk();
+                    measurementHost.appendChild(currentChunk.wrapperClone);
+                    carryRows.forEach((carried) => currentChunk.tbody.appendChild(carried));
+                    currentChunk.tbody.appendChild(row.cloneNode(true));
+                }
+            });
+
+            if (currentChunk.tbody.children.length > 0) {
+                sealChunk();
             }
-        });
+            measurementHost.removeChild(currentChunk.wrapperClone);
+            return { nodes, heights };
+        };
 
-        if (currentChunk.tbody.children.length > 0) {
-            chunks.push(currentChunk.wrapperClone.cloneNode(true) as HTMLElement);
+        // A budget is only ever tightened, never relaxed, so re-packing always pushes rows
+        // forward and the chunk count can only grow -- which is what makes the loop below settle.
+        const tightenedLimits = new Map<number, number>();
+        const limitAt = (chunkIndex: number) => {
+            const budget =
+                chunkIndex === 0 && firstChunkMaxHeightPx !== undefined ? firstChunkMaxHeightPx : maxChunkHeightPx;
+            const tightened = tightenedLimits.get(chunkIndex);
+            return tightened === undefined ? budget : Math.max(1, Math.min(budget, tightened));
+        };
+
+        let packed = packRows(limitAt);
+
+        // Now that the chunk count is known, check the chunk that actually ends the table: if
+        // the closing block cannot fit under it, cap it and re-pack. Its tail rows spill into
+        // one more chunk, which begins a fresh page with room to spare for the footer. In the
+        // common case the final chunk is a short remainder that already fits, and this costs
+        // one comparison and no re-pack.
+        if (finalChunkLimitPx) {
+            for (let pass = 0; pass < 3; pass += 1) {
+                const finalIndex = packed.nodes.length - 1;
+                if (finalIndex < 0) {
+                    break;
+                }
+                const finalLimit = Math.max(1, finalChunkLimitPx(packed.nodes.length));
+                if (packed.heights[finalIndex] <= finalLimit) {
+                    break;
+                }
+                tightenedLimits.set(finalIndex, finalLimit);
+                packed = packRows(limitAt);
+            }
         }
 
         document.body.removeChild(measurementHost);
-        return chunks.length > 0 ? chunks : [tableWrapper.cloneNode(true) as HTMLElement];
+        return packed.nodes.length > 0 ? packed.nodes : [tableWrapper.cloneNode(true) as HTMLElement];
     };
 
     const printReports = async () => {
@@ -976,11 +1928,9 @@ const CommonReportView2 = ({
             document.body.appendChild(tempContainer);
 
             let headerCanvas: HTMLCanvasElement | null = null;
-            let signatureCanvas: HTMLCanvasElement | null = null;
-            let footerCanvas: HTMLCanvasElement | null = null;
+            let closingCanvas: HTMLCanvasElement | null = null;
             let headerHeightMm = 0;
-            let signatureHeightMm = 0;
-            let footerHeightMm = 0;
+            let closingHeightMm = 0;
             const pageTemplateSection = sections[0].cloneNode(true) as HTMLElement;
             pageTemplateSection.style.width = "210mm";
             pageTemplateSection.style.maxWidth = "210mm";
@@ -992,33 +1942,49 @@ const CommonReportView2 = ({
             tempContainer.appendChild(pageTemplateSection);
 
             const headerTemplate = pageTemplateSection.querySelector('[data-print-role="header"]') as HTMLElement | null;
-            const signatureTemplate = pageTemplateSection.querySelector('[data-print-role="signature"]') as HTMLElement | null;
-            const footerTemplate = pageTemplateSection.querySelector('[data-print-role="footer"]') as HTMLElement | null;
+            const closingTemplate = pageTemplateSection.querySelector('[data-print-role="closing"]') as HTMLElement | null;
 
             if (headerTemplate) {
                 stripBlockMargins(headerTemplate);
                 headerCanvas = await renderNodeToCanvas(headerTemplate, renderScale);
                 headerHeightMm = canvasToMm(headerCanvas, PAGE_WIDTH_MM).heightMm;
             }
-            if (signatureTemplate) {
-                stripBlockMargins(signatureTemplate);
-                signatureCanvas = await renderNodeToCanvas(signatureTemplate, renderScale);
-                signatureHeightMm = canvasToMm(signatureCanvas, PAGE_WIDTH_MM).heightMm;
-            }
-            if (footerTemplate) {
-                stripBlockMargins(footerTemplate);
-                footerCanvas = await renderNodeToCanvas(footerTemplate, renderScale);
-                footerHeightMm = canvasToMm(footerCanvas, PAGE_WIDTH_MM).heightMm;
+            if (closingTemplate) {
+                stripBlockMargins(closingTemplate);
+                closingCanvas = await renderNodeToCanvas(closingTemplate, renderScale);
+                closingHeightMm = canvasToMm(closingCanvas, PAGE_WIDTH_MM).heightMm;
             }
             tempContainer.removeChild(pageTemplateSection);
 
             const contentTopMm = TOP_MARGIN_MM + (headerHeightMm > 0 ? headerHeightMm + BLOCK_GAP_MM : 0);
-            // Signature/footer are no longer reserved on every page -- they're appended to the
-            // normal content flow after the last block, so a report that fits on one page (the
-            // Figma target) actually stays on one page instead of leaving a permanent blank gap
-            // sized for a footer that only ever gets drawn on the final page.
+            // The closing block isn't reserved on every page -- it's appended to the normal
+            // content flow after the last block, so a report that fits on one page actually
+            // stays on one page instead of leaving a permanent blank gap sized for a footer
+            // that only ever gets drawn on the final page.
             const contentBottomMm = PAGE_HEIGHT_MM - BOTTOM_MARGIN_MM - CONTENT_SAFETY_MM;
             const usableContentHeightMm = contentBottomMm - contentTopMm > 0 ? contentBottomMm - contentTopMm : USABLE_HEIGHT_MM;
+
+            // Bottom limit that applies only to the *final* piece of content, so signature +
+            // footer land on the same page as the content they close. Without this the last
+            // table row could sit 5mm above the bottom margin and shunt the whole closing block
+            // onto a page of its own. If the closing block is somehow taller than a whole page,
+            // reserving for it is hopeless -- fall back to the normal limit.
+            const closingReserveMm = closingHeightMm > 0 ? closingHeightMm + BLOCK_GAP_MM : 0;
+            const closingFitsOnAPage = closingReserveMm > 0 && closingReserveMm < usableContentHeightMm;
+            const finalContentBottomMm = closingFitsOnAPage ? contentBottomMm - closingReserveMm : contentBottomMm;
+            // Too little room left even for the header row plus a few table results: start the
+            // table on the next page instead of stranding a sliver. Shared with
+            // KEEP_WITH_NEXT_MIN_FOLLOW_MM below so the two checks can't drift apart.
+            const MIN_TABLE_START_MM = 30;
+            // A heading (or any keep-with-next block) must be followed by at least this much of
+            // the next block on the same page, otherwise it is an orphan and we break before it.
+            // Must be >= MIN_TABLE_START_MM + BLOCK_GAP_MM: placing the heading only checks
+            // "heading height + this reserve fits", then *advances* currentY by the heading's
+            // height plus BLOCK_GAP_MM -- so the space actually left for the next block is this
+            // reserve minus BLOCK_GAP_MM. A smaller reserve here than the table's own start
+            // threshold let the heading's check pass while the table's stricter check then bumped
+            // the whole table to a fresh page anyway, orphaning the heading it was meant to protect.
+            const KEEP_WITH_NEXT_MIN_FOLLOW_MM = MIN_TABLE_START_MM + BLOCK_GAP_MM;
 
             let currentPageNumber = 1;
             const contentPages = new Set<number>();
@@ -1032,11 +1998,18 @@ const CommonReportView2 = ({
                 hasContentOnPage = false;
             };
 
-            const placeCanvasWithPagination = (canvas: HTMLCanvasElement) => {
+            // bottomLimitMm lets a caller shrink the page for one particular block -- used to
+            // reserve room for the closing block under the last piece of content. reserveAfterMm
+            // additionally demands that some of the *next* block fits too (keep-with-next).
+            const placeCanvasWithPagination = (
+                canvas: HTMLCanvasElement,
+                bottomLimitMm: number = contentBottomMm,
+                reserveAfterMm = 0
+            ) => {
                 const { widthMm, heightMm } = canvasToMm(canvas, PAGE_WIDTH_MM);
-                const remainingMm = contentBottomMm - currentY;
+                const remainingMm = bottomLimitMm - currentY;
 
-                if (heightMm <= remainingMm) {
+                if (heightMm + reserveAfterMm <= remainingMm) {
                     addCanvasAtCursor(pdf, canvas, MARGIN_X_MM, currentY, widthMm, heightMm);
                     currentY += heightMm + BLOCK_GAP_MM;
                     hasContentOnPage = true;
@@ -1044,6 +2017,9 @@ const CommonReportView2 = ({
                     return;
                 }
 
+                // Doesn't fit here but fits on a page of its own: move the whole block rather
+                // than splitting it. This is what "never split a card down the middle" means in
+                // a canvas pipeline -- CSS break-inside has no effect on an html2canvas capture.
                 if (heightMm <= usableContentHeightMm) {
                     if (hasContentOnPage) {
                         startNewPage();
@@ -1055,6 +2031,8 @@ const CommonReportView2 = ({
                     return;
                 }
 
+                // Last resort: a single block taller than a whole page (a very long AI note, a
+                // huge findings list). Nothing can keep it intact, so slice the bitmap.
                 const pxPerMm = canvas.height / heightMm;
                 const maxSliceHeightPx = Math.max(1, Math.floor(usableContentHeightMm * pxPerMm));
                 const slices = sliceCanvasByHeight(canvas, maxSliceHeightPx);
@@ -1132,23 +2110,33 @@ const CommonReportView2 = ({
                 const topLevelBlocks = blocks.filter((block) => !block.parentElement?.closest("[data-print-block]"));
                 const contentBlocks = topLevelBlocks.filter((block) => {
                     const role = block.getAttribute("data-print-role");
-                    return role !== "header" && role !== "signature" && role !== "footer";
+                    return role !== "header" && role !== "closing";
                 });
                 const nodesToRender = contentBlocks.length > 0 ? contentBlocks : [sectionClone];
                 nodesToRender.forEach(stripBlockMargins);
 
-                for (const node of nodesToRender) {
-                    const isTableBlock = node.getAttribute("data-print-table") === "true";
+                for (let nodeIndex = 0; nodeIndex < nodesToRender.length; nodeIndex += 1) {
+                    const node = nodesToRender[nodeIndex];
+                    const isTableBlock = isRowChunkableTableBlock(node);
+                    const isLastContentNode = nodeIndex === nodesToRender.length - 1;
+                    // Only the final piece of content has to leave room for the closing block.
+                    const nodeBottomMm = isLastContentNode ? finalContentBottomMm : contentBottomMm;
+                    const keepWithNext =
+                        node.getAttribute("data-print-keep-with-next") === "true" && !isLastContentNode;
 
                     if (!isTableBlock) {
                         const canvas = await renderNodeToCanvas(node, renderScale);
-                        placeCanvasWithPagination(canvas);
+                        placeCanvasWithPagination(
+                            canvas,
+                            nodeBottomMm,
+                            keepWithNext ? KEEP_WITH_NEXT_MIN_FOLLOW_MM : 0
+                        );
                         continue;
                     }
 
                     const fullCanvas = await renderNodeToCanvas(node, renderScale);
                     const fullDims = canvasToMm(fullCanvas, PAGE_WIDTH_MM);
-                    const remainingMm = contentBottomMm - currentY;
+                    const remainingMm = nodeBottomMm - currentY;
 
                     if (fullDims.heightMm <= remainingMm) {
                         addCanvasAtCursor(pdf, fullCanvas, MARGIN_X_MM, currentY, fullDims.widthMm, fullDims.heightMm);
@@ -1158,28 +2146,77 @@ const CommonReportView2 = ({
                         continue;
                     }
 
-                    if (fullDims.heightMm <= usableContentHeightMm) {
+                    // The table doesn't fit in what's left of the page. Don't move it wholesale
+                    // to a fresh page (that stranded a huge blank gap under the results heading)
+                    // -- split it by rows so the first chunk fills the remaining space and the
+                    // rest flows onto the following pages.
+                    // The chunker measures offsetHeight in CSS pixels, so convert the print-mm
+                    // budgets via the node's CSS width; the previous canvas-based ratio was
+                    // inflated by renderScale, producing page-overflowing chunks that fell back
+                    // to slicing the canvas mid-row.
+                    const cssPxPerMm = node.offsetWidth > 0 ? node.offsetWidth / PAGE_WIDTH_MM : 96 / 25.4;
+                    const maxChunkHeightPx = Math.max(1, Math.floor(usableContentHeightMm * cssPxPerMm));
+
+                    // Chunks are budgeted against the real page bottom, NOT nodeBottomMm. The
+                    // results table is the last content block, so nodeBottomMm carries the
+                    // closing-block reserve -- and charging that reserve to the chunk the table
+                    // STARTS on left a footer-sized band of white above the page break, on a page
+                    // the footer is never drawn on. Only the chunk that ends the table owes the
+                    // footer room, which is what finalChunkLimitPx settles below.
+                    const pageRemainingMm = contentBottomMm - currentY;
+
+                    let firstChunkMm = pageRemainingMm;
+                    if (pageRemainingMm < MIN_TABLE_START_MM) {
                         if (hasContentOnPage) {
                             startNewPage();
                         }
-                        addCanvasAtCursor(pdf, fullCanvas, MARGIN_X_MM, currentY, fullDims.widthMm, fullDims.heightMm);
-                        currentY += fullDims.heightMm + BLOCK_GAP_MM;
-                        hasContentOnPage = true;
-                        contentPages.add(currentPageNumber);
-                        continue;
+                        firstChunkMm = usableContentHeightMm;
                     }
+                    // Shave 1mm off the budgets so rounding can't push a chunk past the measured
+                    // space and onto a new page anyway.
+                    const firstChunkHeightPx = Math.max(1, Math.floor((firstChunkMm - 1) * cssPxPerMm));
 
-                    const pxPerMm = fullCanvas.height / fullDims.heightMm;
-                    const maxChunkHeightPx = Math.max(1, Math.floor(usableContentHeightMm * pxPerMm));
-                    const chunkNodes = chunkTableElementByRows(node, maxChunkHeightPx);
+                    // Height the final chunk may take for the closing block to still land beneath
+                    // it. A table that packs into a single chunk has not left the current page, so
+                    // it measures down from currentY; any later chunk starts a fresh page at
+                    // contentTopMm. Never squeeze that chunk below the minimum worth printing --
+                    // a page whose leftovers are thinner than that keeps its rows and lets the
+                    // footer take the next page rather than emitting a one-row chunk.
+                    const finalChunkLimitPx =
+                        isLastContentNode && closingFitsOnAPage
+                            ? (chunkCount: number) => {
+                                  const availableMm =
+                                      chunkCount === 1
+                                          ? finalContentBottomMm - currentY
+                                          : usableContentHeightMm - closingReserveMm;
+                                  return Math.floor((Math.max(availableMm, MIN_TABLE_START_MM) - 1) * cssPxPerMm);
+                              }
+                            : undefined;
 
-                    for (const chunkNode of chunkNodes) {
+                    const chunkNodes = chunkTableElementByRows(
+                        node,
+                        maxChunkHeightPx,
+                        firstChunkHeightPx,
+                        finalChunkLimitPx
+                    );
+
+                    for (let chunkIndex = 0; chunkIndex < chunkNodes.length; chunkIndex += 1) {
+                        const chunkNode = chunkNodes[chunkIndex];
                         tempContainer.appendChild(chunkNode);
                         const chunkCanvas = await renderNodeToCanvas(chunkNode, renderScale);
                         tempContainer.removeChild(chunkNode);
 
                         const chunkDims = canvasToMm(chunkCanvas, PAGE_WIDTH_MM);
-                        const chunkRemainingMm = contentBottomMm - currentY;
+                        // The final chunk of the final block is the one the closing block has to
+                        // follow, so it -- and only it -- honours the reserved bottom limit.
+                        // Reserving on the intermediate chunks too would cost ~1 closing block of
+                        // blank space on every page the table spans.
+                        const isFinalChunk = isLastContentNode && chunkIndex === chunkNodes.length - 1;
+                        const chunkBottomMm =
+                            isFinalChunk && chunkDims.heightMm + closingReserveMm <= usableContentHeightMm
+                                ? finalContentBottomMm
+                                : contentBottomMm;
+                        const chunkRemainingMm = chunkBottomMm - currentY;
                         if (chunkDims.heightMm > chunkRemainingMm && hasContentOnPage) {
                             startNewPage();
                         }
@@ -1211,14 +2248,11 @@ const CommonReportView2 = ({
                 tempContainer.removeChild(sectionClone);
             }
 
-            // Signature and footer are just the last two blocks in the flow: they land right after
-            // the content on the same page when there's room (the Figma single-page case), and only
-            // push to a new page if they genuinely don't fit.
-            if (signatureCanvas && signatureHeightMm > 0) {
-                placeCanvasWithPagination(signatureCanvas);
-            }
-            if (footerCanvas && footerHeightMm > 0) {
-                placeCanvasWithPagination(footerCanvas);
+            // Signature + footer are one atomic block at the end of the flow. The last content
+            // block already reserved room for it (finalContentBottomMm), so in practice it lands
+            // directly under the content rather than on a page of its own.
+            if (closingCanvas && closingHeightMm > 0) {
+                placeCanvasWithPagination(closingCanvas);
             }
 
             const pagesToStamp = Array.from(contentPages).sort((a, b) => a - b);
@@ -1257,6 +2291,13 @@ const CommonReportView2 = ({
 
     const displayDoctorName = doctorName || "N/A";
     const primaryReport = sortedReports[0];
+    // When the report was finished = when its LAST test was reported, so this is the max
+    // across the visit's reports rather than primaryReport's own timestamp. sortedReports
+    // is ordered by row count then test name (see its useMemo), which has nothing to do
+    // with time -- on a visit whose tests were reported over an hour, primaryReport's
+    // createdDateTime is whichever test sorted first, not when the report was done.
+    // Registered/Sample Collected need no equivalent: they are visit-level, so every
+    // report of the visit carries the same value.
     const latestReportDateTime = sortedReports.reduce<string | undefined>((latest, r) => {
         if (!r.createdDateTime) return latest;
         if (!latest) return r.createdDateTime;
@@ -1299,16 +2340,20 @@ const CommonReportView2 = ({
         return { date, time };
     };
 
+    // The header carries a visit's three moments -- registered, samples collected, report
+    // generated -- on one row so they read as a timeline. A value the backend has no
+    // record of renders as the placeholder dashes rather than being hidden: an absent
+    // collection time is information, and silently dropping the field would make the row
+    // shift under the reader.
+    const headerDateTime = (dateTimeString?: string) => {
+        const { date, time } = formatReportDateTime(dateTimeString);
+        return `${date} ${time}`;
+    };
+
     const isDetailedReportEntry = (report: ConsolidatedReport) => {
         if (report.reportJson) return true;
         const rows = report.testRows && report.testRows.length > 0 ? report.testRows : [];
         return rows.some((row) => (row.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
-    };
-
-    const estimateReportWeight = (report: ConsolidatedReport) => {
-        const rowCount = report.testRows && report.testRows.length > 0 ? report.testRows.length : 1;
-        const isCBC = (report.testName || '').toUpperCase().includes('CBC');
-        return 1 + rowCount + (isCBC ? 1 : 0);
     };
 
     // Status icon uses the pre-colored assets in public/report: green tick for
@@ -1329,25 +2374,27 @@ const CommonReportView2 = ({
 
     // Explicit pixel widths (not just Tailwind width classes) so the numeric columns
     // reserve real space and never get squeezed into the wrapped parameter text.
-    const RESULT_COL_WIDTHS = { parameter: undefined, result: 50, reference: 90, units: 70, status: 34 } as const;
+    const RESULT_COL_WIDTHS = { parameter: undefined, result: 62, reference: 102, units: 82, status: 46 } as const;
     const RESULT_TABLE_ROW_BORDER = `1px solid ${REPORT_COLORS.secondary100}`;
     const RESULT_CELL_VALIGN: CSSProperties = { verticalAlign: "top" };
 
     const renderResultTableHeaderRow = () => (
         <tr style={{ backgroundColor: REPORT_COLORS.secondary200 }}>
-            <th className="px-3 py-3 text-left text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, ...RESULT_CELL_VALIGN }}>Test Parameter</th>
-            <th className="px-1 py-3 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.result, ...RESULT_CELL_VALIGN }}>Result</th>
-            <th className="px-1 py-3 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.reference, ...RESULT_CELL_VALIGN }}>Reference Range</th>
-            <th className="px-1 py-3 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.units, ...RESULT_CELL_VALIGN }}>Units</th>
-            <th className="px-1 py-3 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.status, ...RESULT_CELL_VALIGN }}>Status</th>
+            <th className="px-2 py-1.5 text-left text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, ...RESULT_CELL_VALIGN }}>Test Parameter</th>
+            <th className="px-1 py-1.5 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.result, ...RESULT_CELL_VALIGN }}>Result</th>
+            <th className="px-1 py-1.5 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.reference, ...RESULT_CELL_VALIGN }}>Reference Range</th>
+            <th className="px-1 py-1.5 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.units, ...RESULT_CELL_VALIGN }}>Units</th>
+            <th className="px-1 py-1.5 text-center text-[10px] font-bold" style={{ color: REPORT_COLORS.neutral800, width: RESULT_COL_WIDTHS.status, ...RESULT_CELL_VALIGN }}>Status</th>
         </tr>
     );
 
     const renderSectionTitleRow = (key: string | number, label: string) => (
-        <tr key={`section-${key}`}>
+        // data-section-title-row lets the PDF row-chunker keep a title band attached to
+        // the rows below it instead of stranding it as the last line of a page.
+        <tr key={`section-${key}`} data-section-title-row="true">
             <td
                 colSpan={5}
-                className="px-3 py-1.5 text-[10px] font-bold uppercase"
+                className="px-2 py-1 text-[10px] font-bold uppercase"
                 style={{ backgroundColor: REPORT_COLORS.secondary50, color: REPORT_COLORS.neutral800 }}
             >
                 {label}
@@ -1378,7 +2425,7 @@ const CommonReportView2 = ({
         if (rows.length === 0) {
             return [
                 <tr key={`no-quant-${reportId}`}>
-                    <td colSpan={5} className="px-3 py-3 text-center text-xs" style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER }}>
+                    <td colSpan={5} className="px-2 py-2 text-center text-xs" style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER }}>
                         {emptyMessage}
                     </td>
                 </tr>,
@@ -1397,11 +2444,13 @@ const CommonReportView2 = ({
             const row = entry.row;
             const parameterLabel = isCBCTest ? (row.testParameter || "").toUpperCase() : row.testParameter;
             const status = getStatusIndicator(row.enteredValue, row.normalRange);
+            const rowScore = scoreValue(row.enteredValue, row.normalRange);
+            const isOutOfRange = rowScore.kind === "borderline" || rowScore.kind === "critical";
 
             elements.push(
                 <tr key={`${reportId}-${idx}`}>
                     <td
-                        className="px-3 py-2 text-xs font-normal"
+                        className="px-2 py-1 text-xs font-normal"
                         style={{
                             color: REPORT_COLORS.neutral900,
                             borderBottom: RESULT_TABLE_ROW_BORDER,
@@ -1412,25 +2461,25 @@ const CommonReportView2 = ({
                         {parameterLabel}
                     </td>
                     <td
-                        className="px-1 py-2 text-center text-xs font-semibold"
+                        className={`px-1 py-1 text-center text-xs ${isOutOfRange ? "font-bold" : "font-normal"}`}
                         style={{ color: REPORT_COLORS.neutral900, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.result, whiteSpace: "nowrap", ...RESULT_CELL_VALIGN }}
                     >
                         {row.enteredValue || "N/A"}
                     </td>
                     <td
-                        className="px-1 py-2 text-center text-xs font-normal"
+                        className="px-1 py-1 text-center text-xs font-normal"
                         style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.reference, whiteSpace: "nowrap", ...RESULT_CELL_VALIGN }}
                     >
                         {row.normalRange || "N/A"}
                     </td>
                     <td
-                        className="px-1 py-2 text-center text-xs font-normal"
+                        className="px-1 py-1 text-center text-xs font-normal"
                         style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.units, whiteSpace: "nowrap", ...RESULT_CELL_VALIGN }}
                     >
                         {row.unit || "N/A"}
                     </td>
                     <td
-                        className="px-1 py-2 text-center"
+                        className="px-1 py-1 text-center"
                         style={{ borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.status, ...RESULT_CELL_VALIGN }}
                     >
                         <img
@@ -1448,23 +2497,77 @@ const CommonReportView2 = ({
         return elements;
     };
 
-    // A report can be folded into the shared multi-test table only if every row is a
-    // plain numeric/qualitative-range result -- reports with free-text qualitative rows
-    // or a full JSON "detailed report" keep their own standalone card instead.
-    const isPureQuantitativeReport = (report: ConsolidatedReport) => {
-        if (isDetailedReportEntry(report)) return false;
-        const rows =
-            report.testRows && report.testRows.length > 0
-                ? report.testRows
-                : [
-                    {
-                        testParameter: report.referenceDescription || report.testName,
-                        normalRange: report.referenceRange || "N/A",
-                        enteredValue: report.enteredValue || "N/A",
-                        unit: report.unit || "N/A",
-                    },
-                ];
-        return !rows.some((row) => isExcludedQualitativeRow(row));
+    // Qualitative rows (Blood Group, a lone dropdown value, a free-text description) don't
+    // fit the numeric Result/Reference Range/Units columns, but they still render as rows of
+    // the SAME <table> as their neighbouring quantitative tests -- not a separate <table> --
+    // so a qualitative test sitting between two quantitative ones no longer forces the shared
+    // header to close and reopen. Short discrete values (a dropdown result) get a normal row
+    // with the numeric columns dashed out; free-text description rows span the full width.
+    const buildQualitativeInlineRows = (
+        reportId: number,
+        rows: TestRow[],
+        testName: string
+    ): JSX.Element[] => {
+        const descriptionRows = rows.filter((row) => shouldShowQualitativeDescriptionRow(row));
+        const otherRows = rows.filter((row) => !shouldShowQualitativeDescriptionRow(row));
+        const elements: JSX.Element[] = [];
+
+        otherRows.forEach((row, idx) => {
+            elements.push(
+                <tr key={`${reportId}-qual-${idx}`}>
+                    <td
+                        className="px-2 py-1 text-xs font-normal"
+                        style={{ color: REPORT_COLORS.neutral900, borderBottom: RESULT_TABLE_ROW_BORDER, wordBreak: "break-word", ...RESULT_CELL_VALIGN }}
+                    >
+                        {getQualitativeDisplayName(row, testName)}
+                    </td>
+                    <td
+                        className="px-1 py-1 text-center text-xs font-semibold"
+                        style={{ color: REPORT_COLORS.neutral900, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.result, whiteSpace: "nowrap", ...RESULT_CELL_VALIGN }}
+                    >
+                        {row.enteredValue || "N/A"}
+                    </td>
+                    <td
+                        className="px-1 py-1 text-center text-xs font-normal"
+                        style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.reference, ...RESULT_CELL_VALIGN }}
+                    >
+                        —
+                    </td>
+                    <td
+                        className="px-1 py-1 text-center text-xs font-normal"
+                        style={{ color: REPORT_COLORS.neutral600, borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.units, ...RESULT_CELL_VALIGN }}
+                    >
+                        —
+                    </td>
+                    <td
+                        className="px-1 py-1 text-center"
+                        style={{ borderBottom: RESULT_TABLE_ROW_BORDER, width: RESULT_COL_WIDTHS.status, ...RESULT_CELL_VALIGN }}
+                    />
+                </tr>
+            );
+        });
+
+        descriptionRows.forEach((row, idx) => {
+            const resultValue = row.enteredValue || "N/A";
+            const normalizedResult = resultValue.toString().trim().toLowerCase();
+            const normalizedDescription = (row.description || "").toString().trim().toLowerCase();
+            const showDescription = !!row.description && normalizedDescription !== normalizedResult;
+
+            elements.push(
+                <tr key={`${reportId}-qual-desc-${idx}`}>
+                    <td
+                        colSpan={5}
+                        className="px-2 py-1 text-xs"
+                        style={{ color: REPORT_COLORS.neutral900, borderBottom: RESULT_TABLE_ROW_BORDER, ...RESULT_CELL_VALIGN }}
+                    >
+                        <p className="font-semibold whitespace-pre-wrap">{resultValue}</p>
+                        {showDescription && <p className="mt-0.5">{row.description}</p>}
+                    </td>
+                </tr>
+            );
+        });
+
+        return elements;
     };
 
     const renderTestCardBody = (report: ConsolidatedReport, index: number) => {
@@ -1504,7 +2607,7 @@ const CommonReportView2 = ({
             : [];
 
         return (
-            <div key={report.reportId} data-report-id={report.reportId} data-print-block data-print-table="true" className="mb-3">
+            <div key={report.reportId} data-report-id={report.reportId} data-print-block data-print-table="true" className="mb-2">
                 {!detailedEntry && !shouldHideResultTable && (
                     <table className="w-full table-fixed text-[12px] border-collapse">
                         <thead>{renderResultTableHeaderRow()}</thead>
@@ -1538,13 +2641,6 @@ const CommonReportView2 = ({
                     {!detailedEntry && qualitativeRows.length > 0 && (
                         <div className="mt-2 space-y-2">
                             {(() => {
-                                const getQualitativeDisplayName = (row: TestRow) => {
-                                    const candidate = row.testParameter || row.referenceDescription || "";
-                                    if (!candidate) return report.testName || "Test";
-                                    return doesRowMatchFieldType(row, EXCLUDED_FIELD_TYPES)
-                                        ? (report.testName || candidate)
-                                        : candidate;
-                                };
                                 const descriptionRows = qualitativeRows.filter((row) =>
                                     shouldShowQualitativeDescriptionRow(row)
                                 );
@@ -1566,7 +2662,7 @@ const CommonReportView2 = ({
                                                     {otherQualitativeRows.map((row, idx) => (
                                                         <tr key={`qual-row-${report.reportId}-${idx}`} className="border-t border-black">
                                                             <td className="p-2 text-black w-2/3">
-                                                                {getQualitativeDisplayName(row)}
+                                                                {getQualitativeDisplayName(row, report.testName)}
                                                             </td>
                                                             <td className="p-2 text-black font-semibold text-center w-1/3">
                                                                 {row.enteredValue || "N/A"}
@@ -1607,16 +2703,22 @@ const CommonReportView2 = ({
         );
     };
 
-    const highPriorityFindings = clinicalSummary.findings.filter((f) => f.kind === "critical");
-    const moderatePriorityFindings = clinicalSummary.findings.filter((f) => f.kind === "borderline");
-    const moderatePriorityNames = Array.from(
-        new Set(moderatePriorityFindings.map((f) => f.row.testParameter || f.report.testName))
-    );
+    // Clinical Attention Required section is currently disabled -- kept for reference.
+    // const highPriorityFindings = clinicalSummary.findings.filter((f) => f.kind === "critical");
+    // const moderatePriorityFindings = clinicalSummary.findings.filter((f) => f.kind === "borderline");
+    // const moderatePriorityNames = Array.from(
+    //     new Set(moderatePriorityFindings.map((f) => f.row.testParameter || f.report.testName))
+    // );
 
     // Block the whole report (including the print/PDF button) behind a loader until AI
     // insights have either arrived, failed, or aren't applicable -- otherwise a PDF could be
     // generated mid-generation with "Generating..." baked into it instead of real insights.
-    const aiReady = healthSnapshotFetched && (aiTestFindings.length === 0 || aiInsights !== null || aiInsightsError !== null);
+    // Deliberately NOT gated on healthSnapshotFetched: that only matters on the generation
+    // path, which waits for it separately, and holding every reopened report behind a
+    // snapshot round trip is exactly what made a second open feel slow. When the saved
+    // observation is reusable, aiInsights is already populated on this first render and the
+    // report paints immediately; the trend card carries its own inline loading state.
+    const aiReady = !showAiInsights || aiTestFindings.length === 0 || aiInsights !== null || aiInsightsError !== null;
     if (!aiReady) {
         return (
             <div className="flex h-64 items-center justify-center">
@@ -1638,7 +2740,10 @@ const CommonReportView2 = ({
                     </div>
                     <button
                         onClick={printReports}
-                        disabled={printing || selectedCount === 0}
+                        // The report itself no longer waits on the Health Snapshot, so hold
+                        // just the print button until it lands -- otherwise a PDF captured in
+                        // that window would bake in the trend card's inline loading state.
+                        disabled={printing || selectedCount === 0 || healthSnapshotLoading}
                         className="inline-flex items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {printing ? (
@@ -1702,11 +2807,14 @@ const CommonReportView2 = ({
                 </div>
             )}
 
+            {/* Fluid on screen (shrinks with the viewport); the PDF pipeline clones the
+                shell into an off-screen 210mm container, so print output is unaffected. */}
             <div
                 ref={reportRef}
-                className="bg-white p-8"
+                className="bg-white p-3 sm:p-6"
                 style={{
-                    width: "210mm",
+                    width: "100%",
+                    maxWidth: "210mm",
                     margin: "0 auto",
                     boxSizing: "border-box",
                 }}
@@ -1714,32 +2822,26 @@ const CommonReportView2 = ({
                 <section data-report-shell className="flex flex-col">
                     {/* ================= HEADER ================= */}
                     <div className="bg-white" data-print-block data-print-role="header">
-                        <div className="flex flex-row items-center justify-between gap-4 mb-4">
-                            <div className="flex flex-row items-center gap-3">
+                        <div className="flex flex-row items-start mb-2">
+                            <div className="flex flex-row items-center">
                                 <img
                                     src="/report/image%201.png"
                                     alt="Lab Logo"
-                                    className="w-28 h-16 object-contain"
+                                    className="w-20 h-12 object-contain mr-3 flex-shrink-0"
                                     crossOrigin="anonymous"
                                     data-print-logo="true"
                                 />
                                 <div
-                                    className="flex flex-col justify-center gap-0.5 pl-4"
+                                    className="flex flex-col justify-center pl-4"
                                     style={{ borderLeft: `1px solid ${REPORT_COLORS.neutral100}` }}
                                 >
-                                    <h1 className="text-base font-bold leading-tight" style={{ color: REPORT_COLORS.neutral900 }}>{currentLab?.name}</h1>
-                                    <p className="text-[9px] leading-tight w-44" style={{ color: REPORT_COLORS.neutral600 }}>
+                                    <h1 className="text-base font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>{currentLab?.name}</h1>
+                                    <p className="text-[9px] leading-tight w-44 mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>
                                         {[currentLab?.address, currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
                                         {currentLab?.labPhone && ` PHONE: ${currentLab.labPhone}`}
                                     </p>
                                 </div>
                             </div>
-                            <img
-                                src="/report/Logo.png"
-                                alt="Tiamed Logo"
-                                className="w-28 h-9 object-contain flex-shrink-0"
-                                crossOrigin="anonymous"
-                            />
                         </div>
 
                         {/* Patient Details Card */}
@@ -1752,319 +2854,165 @@ const CommonReportView2 = ({
                             values are allowed to wrap rather than being clipped.
                         */}
                         <div
-                            className="w-full rounded-xl p-3"
+                            className="w-full rounded-xl p-2"
                             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
                         >
-                            {[
-                                [
-                                    { icon: "/report/user.png", label: "Patient Name", value: patientData?.patientname || 'N/A', noWrap: false },
-                                    { icon: "/report/users.png", label: "Age / Sex", value: `${formatAgeForDisplay(patientData?.dateOfBirth || '')} / ${patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}`, noWrap: true },
-                                    {
-                                        icon: "/report/calendar.png", label: "Date & Time", value: (() => {
-                                            const { date, time } = formatReportDateTime(primaryReport?.createdDateTime);
-                                            return `${date} ${time}`;
-                                        })(), noWrap: true
-                                    },
-                                    { icon: "/report/id-card.png", label: "Patient No.", value: primaryReport?.patientCode || "N/A", noWrap: true },
-                                ],
-                                [
-                                    { icon: "/report/stethoscope.png", label: "Referred By", value: displayDoctorName, noWrap: false },
-                                    { icon: "/report/file-text.png", label: "Lab No.", value: currentLab?.id || 'N/A', noWrap: true },
-                                    { icon: "/report/clipboard.png", label: "Report No.", value: primaryReport?.reportCode || "N/A", noWrap: true },
-                                    { icon: "/report/map-pin.png", label: "Visit No.", value: primaryReport?.visitCode || "N/A", noWrap: true },
-                                ],
-                            ].map((row, rowIdx) => (
-                                <div key={rowIdx} className="flex items-start" style={{ marginTop: rowIdx > 0 ? "0.4rem" : 0 }}>
-                                    {row.map((field, fieldIdx) => (
-                                        <div
-                                            key={field.label}
-                                            className="flex-1 flex items-center"
-                                            style={{ marginLeft: fieldIdx > 0 ? "0.75rem" : 0, minWidth: 0 }}
-                                        >
+                            <div className="flex flex-row items-start">
+                                <div className="flex-1" style={{ minWidth: 0 }}>
+                                    {[
+                                        [
+                                            { icon: "/report/user.png", label: "Patient Name", value: patientData?.patientname || 'N/A', noWrap: false },
+                                            { icon: "/report/users.png", label: "Age / Sex", value: `${formatAgeForDisplay(patientData?.dateOfBirth || '')} / ${patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}`, noWrap: true },
+                                            { icon: "/report/id-card.png", label: "Patient No.", value: primaryReport?.patientCode || "N/A", noWrap: true },
+                                            { icon: "/report/clipboard-check.png", label: "Patient Type", value: patientData?.visitType || "N/A", noWrap: true },
+                                        ],
+                                        [
+                                            { icon: "/report/stethoscope.png", label: "Referred By", value: displayDoctorName, noWrap: false },
+                                            { icon: "/report/file-text.png", label: "Lab No.", value: currentLab?.id || 'N/A', noWrap: true },
+                                            { icon: "/report/clipboard.png", label: "Report No.", value: primaryReport?.reportCode || "N/A", noWrap: true },
+                                            { icon: "/report/map-pin.png", label: "Visit No.", value: primaryReport?.visitCode || "N/A", noWrap: true },
+                                        ],
+                                    ].map((row, rowIdx) => (
+                                        <div key={rowIdx} className="flex flex-nowrap items-start" style={{ marginTop: rowIdx > 0 ? "0.25rem" : 0 }}>
+                                            {row.map((field, fieldIdx) => (
+                                                <div
+                                                    key={field.label}
+                                                    className="flex-1 flex items-center"
+                                                    style={{ marginLeft: fieldIdx > 0 ? "0.5rem" : 0, minWidth: "110px" }}
+                                                >
+                                                    <div
+                                                        className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+                                                        style={{ backgroundColor: REPORT_COLORS.secondary100, marginRight: "0.5rem" }}
+                                                    >
+                                                        <img src={field.icon} alt="" className="w-3 h-3" crossOrigin="anonymous" />
+                                                    </div>
+                                                    <div className="flex-1" style={{ minWidth: 0 }}>
+                                                        <div
+                                                            className="text-[8px] font-semibold uppercase"
+                                                            style={{ color: REPORT_COLORS.neutral600, lineHeight: 1.3 }}
+                                                        >
+                                                            {field.label}
+                                                        </div>
+                                                        <div
+                                                            className="text-[11px] font-bold"
+                                                            style={{
+                                                                color: REPORT_COLORS.neutral900,
+                                                                lineHeight: 1.35,
+                                                                marginTop: "1px",
+                                                                overflow: "visible",
+                                                                whiteSpace: field.noWrap ? "nowrap" : "normal",
+                                                                wordBreak: "break-word",
+                                                            }}
+                                                        >
+                                                            {field.value}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Visit timeline, right corner of the box: registered -> collected ->
+                                    reported, stacked vertically in chronological order so the turnaround
+                                    reads at a glance without competing with the two-row grid on the left.
+                                    No icons here (unlike the fields above) -- keeps this column narrow
+                                    enough that the left grid still fits on one line per row. */}
+                                <div
+                                    className="flex flex-col flex-shrink-0"
+                                    style={{
+                                        marginLeft: "0.5rem",
+                                        paddingLeft: "0.5rem",
+                                        borderLeft: `1px solid ${REPORT_COLORS.neutral100}`,
+                                    }}
+                                >
+                                    {[
+                                        { label: "Registered", value: headerDateTime(primaryReport?.registeredDateTime) },
+                                        { label: "Sample Collected", value: headerDateTime(primaryReport?.sampleCollectedDateTime) },
+                                        { label: "Report Generated", value: headerDateTime(latestReportDateTime) },
+                                    ].map((entry, entryIdx) => (
+                                        <div key={entry.label} style={{ marginTop: entryIdx > 0 ? "3px" : 0, minWidth: "92px" }}>
                                             <div
-                                                className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
-                                                style={{ backgroundColor: REPORT_COLORS.secondary100, marginRight: "0.5rem" }}
+                                                className="text-[6.5px] font-semibold uppercase"
+                                                style={{ color: REPORT_COLORS.neutral600, lineHeight: 1.2, whiteSpace: "nowrap" }}
                                             >
-                                                <img src={field.icon} alt="" className="w-3 h-3" crossOrigin="anonymous" />
+                                                {entry.label}
                                             </div>
-                                            <div className="flex-1" style={{ minWidth: 0 }}>
-                                                <div
-                                                    className="text-[8px] font-semibold uppercase"
-                                                    style={{ color: REPORT_COLORS.neutral600, lineHeight: 1.3 }}
-                                                >
-                                                    {field.label}
-                                                </div>
-                                                <div
-                                                    className="text-[11px] font-bold"
-                                                    style={{
-                                                        color: REPORT_COLORS.neutral900,
-                                                        lineHeight: 1.35,
-                                                        marginTop: "1px",
-                                                        overflow: "visible",
-                                                        whiteSpace: field.noWrap ? "nowrap" : "normal",
-                                                        wordBreak: "break-word",
-                                                    }}
-                                                >
-                                                    {field.value}
-                                                </div>
+                                            <div
+                                                className="text-[8.5px] font-bold"
+                                                style={{ color: REPORT_COLORS.neutral900, lineHeight: 1.3, marginTop: "1px", whiteSpace: "nowrap" }}
+                                            >
+                                                {entry.value}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ================= SUMMARY REGION =================
+                        Which cards exist, which are promoted to full-width bands, and which
+                        column each one lands in is decided per patient by planSummaryLayout
+                        from the actual content volume -- not hardcoded.
+
+                        The row is exactly as tall as its taller column. Cards are atomic, so the
+                        two columns can never total the same height, and the shorter one's
+                        leftover used to surface as a naked white notch between the last card and
+                        the results table -- resized by every patient's content, which is why the
+                        gap looked arbitrary. It cannot be deleted, only relocated: the columns
+                        stretch to the row, and the trailing card of the short column takes the
+                        slack as its own bottom padding (flex-1, content still top-aligned). The
+                        region therefore always ends flush and the table follows at one BLOCK_GAP.
+                        planSummaryLayout keeps that slack at its minimum by scoring imbalance,
+                        so no card is ever inflated the way items-stretch used to inflate them.
+
+                        Each band and the column row is its own print block, so pagination can
+                        break between them instead of shunting the whole region to a new page. */}
+                    {summaryLayout && (
+                        <div className="mt-2 flex flex-col gap-2">
+                            {summaryLayout.bands.map((id) => (
+                                <div key={id} data-print-block>
+                                    {renderSummaryCard(id)}
+                                </div>
                             ))}
-                        </div>
-                    </div>
-
-                    {/* ================= CLINICAL ALERT SUMMARY + KEY FINDINGS ================= */}
-                    <div className="mt-3 flex items-stretch gap-4" data-print-block>
-                        <div
-                            className="w-[46%] rounded-xl p-2.5 flex flex-col gap-2"
-                            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                        >
-                            <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Clinical Alert Summary</h3>
-                            <div className="flex items-stretch gap-2">
-                                {[
-                                    { label: "Critical", sub: "Abnormality", icon: "/report/exclamation-triangle/red.jpg", color: REPORT_COLORS.danger600, value: clinicalSummary.critical },
-                                    { label: "Borderline", sub: "Abnormalities", icon: "/report/exclamation-triangle/outline.png", color: REPORT_COLORS.warning500, value: clinicalSummary.borderline },
-                                    { label: "Normal", sub: "Parameters", icon: "/report/check-circle/solid.png", color: REPORT_COLORS.success600, value: clinicalSummary.normal },
-                                ].map((item) => (
-                                    <div
-                                        key={item.label}
-                                        className="flex-1 p-2 rounded-lg flex flex-col items-center gap-0.5 text-center"
-                                        style={{ border: `1px solid ${item.color}` }}
-                                    >
-                                        <img src={item.icon} alt="" className="w-5 h-5" crossOrigin="anonymous" />
-                                        <p className="text-xl font-extrabold" style={{ color: REPORT_COLORS.neutral900 }}>{item.value}</p>
-                                        <p className="text-[9px] font-bold uppercase" style={{ color: item.color }}>{item.label}</p>
-                                        <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>{item.sub}</p>
-                                    </div>
-                                ))}
-                                <div
-                                    className="flex-1 p-2 rounded-lg flex flex-col items-center gap-0.5 text-center"
-                                    style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                                >
-                                    <img src="/report/Purpose.png" alt="" className="w-5 h-5" crossOrigin="anonymous" />
-                                    <p className="text-sm font-extrabold text-center" style={{ color: REPORT_COLORS.secondary800 }}>{clinicalSummary.overallRisk || "—"}</p>
-                                    <p className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>Overall Risk Score</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div
-                            className="flex-1 rounded-xl p-2.5 flex flex-col gap-1.5"
-                            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                        >
-                            <h3 className="text-xs font-bold uppercase px-1" style={{ color: REPORT_COLORS.secondary800 }}>Key Findings for Doctor</h3>
-                            <div className="p-1.5 flex flex-col gap-1.5">
-                                {clinicalSummary.findings.length === 0 ? (
-                                    <p className="text-[10px] italic" style={{ color: REPORT_COLORS.neutral600 }}>No abnormal findings to flag.</p>
-                                ) : (
-                                    <>
-                                        {clinicalSummary.findings.slice(0, 6).map((finding, idx) => {
-                                            const badge = getFindingBadge(finding);
-                                            const paramLabel = finding.row.testParameter || finding.report.testName;
-                                            const valueLabel = `${finding.row.enteredValue || "N/A"}${finding.row.unit ? ` ${finding.row.unit}` : ""}`;
-                                            return (
-                                                <div key={`${finding.report.reportId}-${idx}`} className="flex items-start justify-between gap-2">
-                                                    <div className="flex items-start gap-2">
-                                                        <span className="mt-1 w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: badge.color }} />
-                                                        <div>
-                                                            <p className="text-xs" style={{ color: REPORT_COLORS.neutral900 }}>
-                                                                <span className="font-bold">{paramLabel} : </span>
-                                                                <span className="font-extrabold">{valueLabel}</span>
-                                                            </p>
-                                                            <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>Reference : {finding.row.normalRange || "N/A"}</p>
-                                                        </div>
-                                                    </div>
-                                                    <span
-                                                        className="px-2 py-1 rounded text-[9px] font-extrabold flex-shrink-0"
-                                                        style={{ backgroundColor: badge.color, color: REPORT_COLORS.white }}
+                            {(summaryLayout.left.length > 0 || summaryLayout.right.length > 0) && (
+                                <div className="flex flex-wrap items-stretch gap-2" data-print-block>
+                                    {[summaryLayout.left, summaryLayout.right]
+                                        .filter((column) => column.length > 0)
+                                        .map((column) => (
+                                            <div key={column.join("-")} className="flex-1 min-w-[260px] flex flex-col gap-2">
+                                                {column.map((id, index) => (
+                                                    <div
+                                                        key={id}
+                                                        className={index === column.length - 1 ? "flex-1 flex" : undefined}
                                                     >
-                                                        {badge.label}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                        {clinicalSummary.findings.length > 6 && (
-                                            <p className="text-[10px] italic" style={{ color: REPORT_COLORS.neutral600 }}>
-                                                +{clinicalSummary.findings.length - 6} more abnormal result{clinicalSummary.findings.length - 6 === 1 ? "" : "s"} in Detailed Lab Results below.
-                                            </p>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap items-start gap-3" data-print-block>
-                        <div className="flex-1 min-w-[260px] flex flex-col gap-3">
-                            <div
-                                className="rounded-xl p-2.5 flex flex-col gap-1.5"
-                                style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
-                                        <img src="/report/reddit.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
-                                    </span>
-                                    <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>AI Clinical Observations</h3>
-                                </div>
-                                {aiInsightsLoading ? (
-                                    <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Generating AI observations...</p>
-                                ) : aiInsightsError ? (
-                                    <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>AI observations unavailable for this report.</p>
-                                ) : aiInsights ? (
-                                    <div className="flex flex-col gap-1.5 px-1">
-                                        {[
-                                            { label: "Provisional Diagnosis", value: aiInsights.provisionalDiagnosis },
-                                            { label: "Patient Interpretation", value: aiInsights.patientInterpretation },
-                                            { label: "Clinical Interpretation", value: aiInsights.clinicalInterpretation },
-                                            { label: "Tips", value: aiInsights.tips },
-                                        ].filter((field) => field.value && field.value.length > 0).map((field) => (
-                                            <div key={field.label}>
-                                                <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>{field.label}</p>
-                                                <ul className="flex flex-col gap-0.5">
-                                                    {field.value!.map((line, idx) => (
-                                                        <li key={idx} className="text-[11px] leading-tight flex gap-1" style={{ color: REPORT_COLORS.neutral800 }}>
-                                                            <span aria-hidden="true">&bull;</span>
-                                                            <span>{line}</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
+                                                        {renderSummaryCard(id)}
+                                                    </div>
+                                                ))}
                                             </div>
                                         ))}
-                                        {aiInsights.doctorToVisit && (
-                                            <div>
-                                                <p className="text-[10px] font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>Doctor to Visit</p>
-                                                <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>{aiInsights.doctorToVisit}</p>
-                                            </div>
-                                        )}
-                                        <p className="text-[9px] mt-0.5" style={{ color: REPORT_COLORS.secondary800 }}>
-                                            <span className="font-semibold">Note: </span>
-                                            <span className="font-normal">This is an AI generated observation based on lab values only. Not a diagnosis.</span>
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>No AI observations available yet.</p>
-                                )}
-                            </div>
-                            <div
-                                className="rounded-xl p-2.5 flex flex-col gap-1.5"
-                                style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
-                                        <img src="/report/Purpose.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
-                                    </span>
-                                    <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>Clinical Attention Required</h3>
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                    <div className="flex flex-col gap-0.5">
-                                        <p className="text-[11px] font-extrabold" style={{ color: REPORT_COLORS.warning500 }}>HIGH PRIORITY</p>
-                                        {highPriorityFindings.length === 0 ? (
-                                            <p className="text-[11px] italic" style={{ color: REPORT_COLORS.neutral600 }}>No critical abnormalities detected.</p>
-                                        ) : (
-                                            <div className="flex flex-col gap-0.5">
-                                                {highPriorityFindings.slice(0, 2).map((finding, idx) => (
-                                                    <p key={idx} className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
-                                                        {(finding.row.testParameter || finding.report.testName)} {finding.direction === "high" ? "elevated" : "reduced"} ({finding.row.enteredValue}). Requires clinical correlation.
-                                                    </p>
-                                                ))}
-                                                {highPriorityFindings.length > 2 && (
-                                                    <p className="text-[10px] italic" style={{ color: REPORT_COLORS.neutral600 }}>
-                                                        +{highPriorityFindings.length - 2} more critical result{highPriorityFindings.length - 2 === 1 ? "" : "s"}.
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col gap-0.5" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}`, paddingTop: "0.25rem" }}>
-                                        <p className="text-[11px] font-extrabold" style={{ color: REPORT_COLORS.danger500 }}>MODERATE PRIORITY</p>
-                                        {moderatePriorityNames.length === 0 ? (
-                                            <p className="text-[11px] italic" style={{ color: REPORT_COLORS.neutral600 }}>No borderline deviations noted.</p>
-                                        ) : (
-                                            <p className="text-[11px] leading-tight" style={{ color: REPORT_COLORS.neutral800 }}>
-                                                {moderatePriorityNames.slice(0, 3).join(", ")}
-                                                {moderatePriorityNames.length > 3 ? ` +${moderatePriorityNames.length - 3} more` : ""} show borderline deviations. Review if clinically indicated.
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col gap-0.5" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}`, paddingTop: "0.25rem" }}>
-                                        <p className="text-[11px] font-extrabold" style={{ color: REPORT_COLORS.success700 }}>LOW PRIORITY</p>
-                                        {clinicalSummary.normalReportNames.length === 0 ? (
-                                            <p className="text-[11px] italic" style={{ color: REPORT_COLORS.neutral600 }}>No data available.</p>
-                                        ) : (
-                                            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                                                {clinicalSummary.normalReportNames.map((name) => (
-                                                    <p key={name} className="text-[11px]" style={{ color: REPORT_COLORS.neutral800 }}>{name} normal.</p>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                            )}
                         </div>
-                        <div
-                            className="flex-[0_1_340px] min-w-[220px] w-full sm:w-auto rounded-xl p-2.5 flex flex-col gap-2"
-                            style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
-                        >
-                            <div className="flex items-center gap-2">
-                                <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: REPORT_COLORS.secondary100 }}>
-                                    <img src="/report/chart-bar/solid.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
-                                </span>
-                                <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.neutral800 }}>Health Snapshot</h3>
-                            </div>
-                            {healthSnapshotLoading ? (
-                                <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>Loading history...</p>
-                            ) : (() => {
-                                const trendTests = (healthSnapshot?.tests || []).filter((t) => t.totalVisits > 1);
-                                if (trendTests.length === 0) {
-                                    return (
-                                        <p className="text-[11px] italic px-1" style={{ color: REPORT_COLORS.neutral600 }}>
-                                            {healthSnapshot ? "No prior visit history for these tests yet." : "Trend data will appear here once available."}
-                                        </p>
-                                    );
-                                }
-                                return (
-                                    <div className="flex flex-col gap-2 px-1">
-                                        {trendTests.map((test: HealthSnapshotTest) => {
-                                            const sparkline = buildTestSparkline(test);
-                                            return (
-                                                <div key={test.testName} className="flex items-center gap-2">
-                                                    <p className="text-[10px] font-extrabold leading-tight flex-[0_0_42%] min-w-0" style={{ color: REPORT_COLORS.neutral800 }}>{test.testName}</p>
-                                                    {sparkline ? (
-                                                        <svg className="flex-1 min-w-0" height="24" viewBox={`0 0 ${sparkline.width} ${sparkline.height}`} preserveAspectRatio="none">
-                                                            <polyline
-                                                                points={sparkline.pointsAttr}
-                                                                fill="none"
-                                                                stroke={sparkline.color}
-                                                                strokeWidth="2"
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                            />
-                                                            {sparkline.points.map((p, i) => (
-                                                                <circle key={i} cx={p.x} cy={p.y} r="2.5" fill={sparkline.color} />
-                                                            ))}
-                                                        </svg>
-                                                    ) : (
-                                                        <span className="flex-1 flex justify-center">
-                                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: REPORT_COLORS.neutral600 }} />
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                );
-                            })()}
-                        </div>
-                    </div>
+                    )}
 
                     {/* ================= DETAILED LAB RESULTS ================= */}
-                    <div className="mt-4">
-                        <div className="flex items-center justify-between mb-3" data-print-block>
-                            <div className="flex items-center gap-2">
-                                <img src="/report/microscope.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
-                                <h2 className="text-sm font-extrabold uppercase" style={{ color: REPORT_COLORS.secondary700 }}>Detailed Lab Results</h2>
+                    <div className="mt-2">
+                        {/* keep-with-next: a heading stranded at the foot of a page with its
+                            table overleaf is the classic orphan. The paginator will break
+                            before this block unless a meaningful slice of the table follows it
+                            on the same page. */}
+                        <div
+                            className="flex flex-wrap items-center justify-between gap-y-1 mb-2"
+                            data-print-block
+                            data-print-keep-with-next="true"
+                        >
+                            <div className="flex items-center">
+                                <img src="/report/microscope.png" alt="" className="w-4 h-4 mr-2 flex-shrink-0" crossOrigin="anonymous" />
+                                <h2 className="text-sm font-extrabold uppercase leading-normal pb-0.5" style={{ color: REPORT_COLORS.secondary700 }}>Detailed Lab Results</h2>
                             </div>
+                            {/* ================= LEGEND (disabled) =================
                             <div className="flex items-center gap-3 text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>
                                 <span className="font-semibold" style={{ color: REPORT_COLORS.neutral800 }}>LEGEND:</span>
                                 <span className="inline-flex items-center gap-1">
@@ -2080,90 +3028,65 @@ const CommonReportView2 = ({
                                     <img src="/report/Ellipse-6.png" alt="" className="w-2 h-2" crossOrigin="anonymous" /> Critical
                                 </span>
                             </div>
+                            */}
                         </div>
                         {(() => {
                             const numberByReportId = new Map(sortedReports.map((r, i) => [r.reportId, i + 1]));
                             const detailedReports = sortedReports.filter(isDetailedReportEntry);
                             const simpleReports = sortedReports.filter((r) => !isDetailedReportEntry(r));
 
-                            // Balance tests across two columns by estimated content weight (header + row
-                            // count), assigning each test to whichever column is currently shorter. This
-                            // keeps the layout looking like the Figma masonry regardless of how many tests
-                            // are selected -- including a single test, which simply fills one full-width column.
-                            const columns: ConsolidatedReport[][] = [[], []];
-                            const columnWeights = [0, 0];
-                            simpleReports.forEach((report) => {
-                                const col = columnWeights[0] <= columnWeights[1] ? 0 : 1;
-                                columns[col].push(report);
-                                columnWeights[col] += estimateReportWeight(report);
-                            });
-                            const nonEmptyColumns = columns.filter((col) => col.length > 0);
-
-                            // Figma groups consecutive plain-numeric tests under one continuous table with
-                            // a single shared header instead of repeating the header per test -- only
-                            // reports with qualitative rows or a full JSON detailed report break the run.
-                            const renderColumnBlocks = (col: ConsolidatedReport[]) => {
-                                const blocks: JSX.Element[] = [];
-                                let run: ConsolidatedReport[] = [];
-
-                                const flushRun = () => {
-                                    if (run.length === 0) return;
-                                    const runItems = run;
-                                    blocks.push(
-                                        <div
-                                            key={`table-${runItems[0].reportId}`}
-                                            className="mb-3"
-                                            data-print-block
-                                            data-print-table="true"
-                                        >
-                                            <table className="w-full table-fixed text-[12px] border-collapse">
-                                                <thead>{renderResultTableHeaderRow()}</thead>
-                                                {runItems.map((r) => {
-                                                    const rows =
-                                                        r.testRows && r.testRows.length > 0
-                                                            ? r.testRows
-                                                            : [
-                                                                {
-                                                                    testParameter: r.referenceDescription || r.testName,
-                                                                    normalRange: r.referenceRange || "N/A",
-                                                                    enteredValue: r.enteredValue || "N/A",
-                                                                    unit: r.unit || "N/A",
-                                                                },
-                                                            ];
-                                                    const isCBCTest = (r.testName || "").toUpperCase().includes("CBC");
-                                                    return (
-                                                        <tbody key={r.reportId} data-report-id={r.reportId}>
-                                                            {renderSectionTitleRow(r.reportId, `${numberByReportId.get(r.reportId)}. ${r.testName}`)}
-                                                            {buildResultTableRows(r.reportId, rows, isCBCTest)}
-                                                        </tbody>
-                                                    );
-                                                })}
-                                            </table>
-                                        </div>
-                                    );
-                                    run = [];
-                                };
-
-                                col.forEach((report) => {
-                                    if (isPureQuantitativeReport(report)) {
-                                        run.push(report);
-                                    } else {
-                                        flushRun();
-                                        blocks.push(
-                                            <div key={report.reportId}>
-                                                {renderTestCardBody(report, numberByReportId.get(report.reportId)!)}
-                                            </div>
-                                        );
-                                    }
-                                });
-                                flushRun();
-                                return blocks;
+                            // Figma groups every non-detailed-JSON test under one continuous table with a
+                            // single shared header instead of repeating the header per test. A qualitative
+                            // test (Blood Group, a lone dropdown, a free-text description) still renders as
+                            // rows of this SAME <table> -- see buildQualitativeInlineRows -- instead of
+                            // breaking out into its own card, so mixing quantitative and qualitative tests
+                            // in one visit no longer closes and reopens the header mid-list. Only a full
+                            // JSON "detailed report" (already filtered into detailedReports before this is
+                            // called) needs its own card, because its content is several tables/paragraphs
+                            // wide, not a handful of rows.
+                            const renderReportBlocks = (col: ConsolidatedReport[]) => {
+                                if (col.length === 0) return [];
+                                return [
+                                    <div
+                                        key={`table-${col[0].reportId}`}
+                                        className="mb-2"
+                                        data-print-block
+                                        data-print-table="true"
+                                    >
+                                        <table className="w-full table-fixed text-[12px] border-collapse">
+                                            <thead>{renderResultTableHeaderRow()}</thead>
+                                            {col.map((r) => {
+                                                const rows =
+                                                    r.testRows && r.testRows.length > 0
+                                                        ? r.testRows
+                                                        : [
+                                                            {
+                                                                testParameter: r.referenceDescription || r.testName,
+                                                                normalRange: r.referenceRange || "N/A",
+                                                                enteredValue: r.enteredValue || "N/A",
+                                                                unit: r.unit || "N/A",
+                                                            },
+                                                        ];
+                                                const isCBCTest = (r.testName || "").toUpperCase().includes("CBC");
+                                                const quantitativeRows = rows.filter((row) => !isExcludedQualitativeRow(row));
+                                                const qualitativeRows = rows.filter((row) => isExcludedQualitativeRow(row));
+                                                return (
+                                                    <tbody key={r.reportId} data-report-id={r.reportId}>
+                                                        {renderSectionTitleRow(r.reportId, `${numberByReportId.get(r.reportId)}. ${r.testName}`)}
+                                                        {quantitativeRows.length > 0 && buildResultTableRows(r.reportId, quantitativeRows, isCBCTest)}
+                                                        {qualitativeRows.length > 0 && buildQualitativeInlineRows(r.reportId, qualitativeRows, r.testName)}
+                                                    </tbody>
+                                                );
+                                            })}
+                                        </table>
+                                    </div>,
+                                ];
                             };
 
                             return (
                                 <>
                                     {detailedReports.length > 0 && (
-                                        <div className="flex flex-col gap-3 mb-3" data-detailed-results>
+                                        <div className="flex flex-col gap-2 mb-2" data-detailed-results>
                                             {detailedReports.map((report) => (
                                                 <div key={report.reportId}>
                                                     {renderTestCardBody(report, numberByReportId.get(report.reportId)!)}
@@ -2171,13 +3094,14 @@ const CommonReportView2 = ({
                                             ))}
                                         </div>
                                     )}
-                                    {nonEmptyColumns.length > 0 && (
-                                        <div className="flex items-start gap-6" data-results-grid data-print-block>
-                                            {nonEmptyColumns.map((col, colIdx) => (
-                                                <div key={colIdx} className="flex-1">
-                                                    {renderColumnBlocks(col)}
-                                                </div>
-                                            ))}
+                                    {simpleReports.length > 0 && (
+                                        // Single full-width flow (horizontal tables) instead of the old
+                                        // two-vertical-column masonry. Each table run is its own print block
+                                        // so pagination can chunk it row-by-row instead of slicing the canvas.
+                                        <div data-results-grid>
+                                            <div className="w-full">
+                                                {renderReportBlocks(simpleReports)}
+                                            </div>
                                         </div>
                                     )}
                                 </>
@@ -2185,14 +3109,23 @@ const CommonReportView2 = ({
                         })()}
                     </div>
 
-                    {/* ================= DOCTOR REVIEW / NOTES / APPROVAL ================= */}
+                    {/* ================= SIGNATURE =================
+                        A normal flow block (not bundled into the "closing" role below): the
+                        AI Clinical Observations section now has to sit between this and the
+                        footer, and "closing" is always rendered dead last by the paginator
+                        regardless of DOM order, so anything that must appear *before* AI can't
+                        be part of that bundle. No keep-with-next here on purpose -- unlike the
+                        Detailed Lab Results heading, a signature ending one page while AI starts
+                        the next is a normal, unremarkable break. Forcing them together instead
+                        left a large blank gap under the results table on any page too short for
+                        the whole signature+AI+footer run, when the small signature block alone
+                        would have fit there. */}
+                    <div data-print-block>
                     <div
-                        className="mt-6 pt-6 flex items-start gap-6"
+                        className="mt-3 pt-2 flex flex-wrap items-start gap-3"
                         style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }}
-                        data-print-block
-                        data-print-role="signature"
                     >
-                        <div className="w-96 flex-shrink-0">
+                        {/* <div className="w-96 max-w-full">
                             <div className="flex items-center gap-2 mb-2">
                                 <img src="/report/clipboard-check.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
                                 <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Doctor Review Checklist</h3>
@@ -2212,9 +3145,9 @@ const CommonReportView2 = ({
                                     </div>
                                 ))}
                             </div>
-                        </div>
+                        </div> */}
 
-                        <div className="flex-1 min-w-[160px]">
+                        {/* <div className="flex-1 min-w-[160px]">
                             <div className="flex items-center gap-2 mb-2 whitespace-nowrap">
                                 <img src="/report/edit.png" alt="" className="w-4 h-4" crossOrigin="anonymous" />
                                 <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Doctor Notes</h3>
@@ -2224,47 +3157,72 @@ const CommonReportView2 = ({
                                 <div className="h-0" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }} />
                                 <div className="h-0" style={{ borderTop: `1px solid ${REPORT_COLORS.neutral100}` }} />
                             </div>
-                        </div>
+                        </div> */}
 
-                        <div className="w-48 flex-shrink-0 ml-auto flex flex-col items-center gap-3 text-center">
-                            <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Lab Approval</h3>
-                            <img
-                                src="/signature.png"
-                                alt="Authorized Pathologist Signature"
-                                className="h-10 w-auto object-contain"
-                                crossOrigin="anonymous"
-                            />
-                            <div className="flex flex-col items-center gap-1">
-                                <p className="text-xs font-bold" style={{ color: REPORT_COLORS.neutral900 }}>Dr. Sini Arjun</p>
-                                <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>MBBS, MD (Pathology)</p>
-                                <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>Consultant Pathologist</p>
+                        <div className="w-full flex items-end justify-around text-center pb-1">
+                            <div className="flex flex-col items-center pb-4">
+                                <div className="h-8" />
+                                <p className="text-[10px] font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>Lab Technician</p>
                             </div>
-                            <p className="text-[9px] font-bold" style={{ color: REPORT_COLORS.neutral600 }}>Lab Technician</p>
+
+                            <div className="flex flex-col items-center">
+                                {/* <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Lab Approval</h3> */}
+                                <img
+                                    src="/signature.png"
+                                    alt="Authorized Pathologist Signature"
+                                    className="h-9 w-auto object-contain mb-0.5"
+                                    crossOrigin="anonymous"
+                                />
+                                <p className="text-xs font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>Dr. Sini Arjun</p>
+                                <p className="text-[10px] leading-normal mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>MBBS, MD (Pathology)</p>
+                                <p className="text-[10px] leading-normal mt-0.5 pb-0.5" style={{ color: REPORT_COLORS.neutral600 }}>Consultant Pathologist</p>
+                            </div>
                         </div>
                     </div>
+                    </div>
 
-                    {/* ================= FOOTER ================= */}
-                    <div data-print-block data-print-role="footer">
+                    {/* ================= AI CLINICAL OBSERVATIONS =================
+                        Rendered after Detailed Lab Results but above the Disclaimer/footer,
+                        instead of inside the summary region above: it reads as an appendix to
+                        the report rather than competing with Clinical Alert Summary / Key
+                        Findings / Health Snapshot for column space, and its own grid (see
+                        renderAiObservationsCard) flows fields two-up so it stays short.
+                        Omitted entirely while any test in the order is still pending --
+                        no card, no placeholder, no generation call. */}
+                    {showAiInsights && (
+                        <div className="mt-2" data-print-block>
+                            {renderAiObservationsCard()}
+                        </div>
+                    )}
+
+                    {/* ================= FOOTER (CLOSING) =================
+                        The only block left in the "closing" role now that AI Clinical
+                        Observations has to render between Signature and this: a footer this
+                        size (a short disclaimer paragraph + a thank-you line) is always small
+                        enough to fit the reservation math below, which is what broke when the
+                        much longer AI card used to live inside this same bundle -- see the
+                        Signature block's comment above. */}
+                    <div data-print-block data-print-role="closing">
                         <div
-                            className="mt-3 rounded-xl p-3 flex items-center"
+                            className="mt-2 rounded-xl p-2 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0"
                             style={{ border: `1px solid ${REPORT_COLORS.secondary200}` }}
                         >
-                            <div className="flex-[1.4] pr-3">
+                            <div className="flex-[1.4] sm:pr-3">
                                 <h4 className="text-[10px] font-bold mb-0.5" style={{ color: REPORT_COLORS.danger600 }}>Disclaimer</h4>
-                                <p className="text-[9px] leading-tight" style={{ color: REPORT_COLORS.neutral600 }}>
+                                <p className="text-[8px] leading-tight" style={{ color: REPORT_COLORS.neutral600 }}>
                                     *This laboratory report is intended for clinical correlation only. Results should be interpreted by a qualified medical professional. Laboratory values may vary based on methodology and biological variance. The diagnostic center is not responsible for misinterpretation or misuse of results. This is an electronically generated report. No physical signature required.
                                 </p>
                             </div>
 
-                            <div className="self-stretch flex-shrink-0" style={{ borderLeft: `1px solid ${REPORT_COLORS.secondary200}` }} />
+                            <div className="self-stretch flex-shrink-0 hidden sm:block" style={{ borderLeft: `1px solid ${REPORT_COLORS.secondary200}` }} />
 
-                            <div className="flex-1 flex items-center gap-2 px-3">
-                                <img
+                            <div className="flex-1 flex items-center gap-2 sm:px-3">
+                                {/* <img
                                     src="/report/Rectangle.png"
                                     alt="QR Code"
-                                    className="h-10 w-10 object-contain flex-shrink-0"
+                                    className="h-9 w-9 object-contain flex-shrink-0"
                                     crossOrigin="anonymous"
-                                />
+                                /> */}
                                 <div>
                                     <p className="text-xs font-bold text-black">
                                         Thank you for choosing {currentLab?.name || "Our Lab"}
@@ -2273,17 +3231,17 @@ const CommonReportView2 = ({
                                         <img
                                             src="/tiamed1.svg"
                                             alt="Tiamed Logo"
-                                            className="max-h-3.5 w-auto mr-1 opacity-80 object-contain"
+                                            className="h-3.5 w-auto mr-1 opacity-80 object-contain flex-shrink-0"
                                             crossOrigin="anonymous"
                                         />
-                                        <span className="text-[9px]" style={{ color: REPORT_COLORS.neutral600 }}>
+                                        <span className="text-[9px] leading-normal" style={{ color: REPORT_COLORS.neutral600 }}>
                                             Powered by Tiameds Technologies Pvt.Ltd
                                         </span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="self-stretch flex-shrink-0" style={{ borderLeft: `1px solid ${REPORT_COLORS.secondary200}` }} />
+                            {/* <div className="self-stretch flex-shrink-0" style={{ borderLeft: `1px solid ${REPORT_COLORS.secondary200}` }} />
 
                             <div className="flex-shrink-0 pl-3 text-right">
                                 <p className="text-[10px]" style={{ color: REPORT_COLORS.neutral600 }}>Generated on:</p>
@@ -2291,7 +3249,7 @@ const CommonReportView2 = ({
                                     const { date, time } = formatReportDateTime(latestReportDateTime);
                                     return `${date} at ${time}`;
                                 })()}</p>
-                            </div>
+                            </div> */}
                         </div>
                     </div>
                 </section>

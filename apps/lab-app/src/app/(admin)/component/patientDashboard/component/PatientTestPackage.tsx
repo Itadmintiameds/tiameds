@@ -1,7 +1,13 @@
 import { TestList } from '@/types/test/testlist';
-import { useState, KeyboardEvent, useEffect, useRef } from 'react';
+import { useState, KeyboardEvent, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { FaBoxOpen, FaFlask, FaSearch, FaTimes } from 'react-icons/fa';
 import { Package as PackageType } from '@/types/package/package';
+
+// Hover tooltip is portalled to <body> and positioned against the hovered card,
+// so it can't be clipped by the card grid or offset by a positioned ancestor.
+const TOOLTIP_WIDTH = 288; // matches w-72
+const TOOLTIP_GAP = 8;
 
 interface PatientTestPackageProps {
   categories: string[];
@@ -21,6 +27,10 @@ interface PatientTestPackageProps {
   removeTest: (testId: string) => void;
   removePackage: (packageId: string) => void;
   handleTestDiscountChange: (testId: number, field: 'percent' | 'amount', value: number) => void;
+  // Add Patient already shows the picked tests in its right-hand Billing Summary, so it
+  // hides this in-component "Selected (N)" list to avoid duplicating it. Edit Patient has
+  // no such side panel, so it keeps the default (shown).
+  showSelectedSummary?: boolean;
 }
 
 const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
@@ -39,12 +49,15 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
   removeTest,
   removePackage,
   // handleTestDiscountChange,
+  showSelectedSummary = true,
 }) => {
   // State management
   const [, setShowTestList] = useState(true);
   const [, setShowPackageList] = useState(true);
   const [searchPackageTerm, setSearchPackageTerm] = useState('');
   const [hoveredPackage, setHoveredPackage] = useState<PackageType | null>(null);
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const [highlightedTestIndex, setHighlightedTestIndex] = useState(-1);
   const [highlightedPackageIndex, setHighlightedPackageIndex] = useState(-1);
 
@@ -54,6 +67,11 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
   const testSearchRef = useRef<HTMLInputElement>(null);
   const packageSearchRef = useRef<HTMLInputElement>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const anchorElRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => setIsMounted(true), []);
 
   // Filter packages based on search term - only show packages that start with the typed characters
   const filteredPackages = searchPackageTerm
@@ -175,21 +193,55 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
     }
   };
 
-  // Package hover with delay
-  const handlePackageHover = (pkg: PackageType) => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
+  // Place the tooltip just below the hovered card, flipping above / clamping
+  // horizontally when it would otherwise leave the viewport.
+  const positionTooltip = useCallback(() => {
+    const anchor = anchorElRef.current;
+    if (!anchor) return;
+
+    const rect = anchor.getBoundingClientRect();
+    const height = tooltipRef.current?.offsetHeight ?? 0;
+    const { innerWidth: viewportWidth, innerHeight: viewportHeight } = window;
+
+    let left = rect.left;
+    if (left + TOOLTIP_WIDTH > viewportWidth - TOOLTIP_GAP) {
+      left = viewportWidth - TOOLTIP_WIDTH - TOOLTIP_GAP;
     }
+    left = Math.max(TOOLTIP_GAP, left);
+
+    let top = rect.bottom + TOOLTIP_GAP;
+    if (top + height > viewportHeight - TOOLTIP_GAP) {
+      const above = rect.top - height - TOOLTIP_GAP;
+      top = above >= TOOLTIP_GAP ? above : Math.max(TOOLTIP_GAP, viewportHeight - height - TOOLTIP_GAP);
+    }
+
+    setTooltipStyle({ top, left });
+  }, []);
+
+  // Package hover with delay
+  const handlePackageHover = (pkg: PackageType, event: React.MouseEvent<HTMLDivElement>) => {
+    const anchor = event.currentTarget;
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
     hoverTimeoutRef.current = setTimeout(() => {
+      anchorElRef.current = anchor;
+      setTooltipStyle(null);
       setHoveredPackage(pkg);
     }, 200);
   };
 
   const handlePackageLeave = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-    setHoveredPackage(null);
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    // Small grace period so the pointer can travel into the tooltip itself.
+    closeTimeoutRef.current = setTimeout(() => {
+      anchorElRef.current = null;
+      setHoveredPackage(null);
+    }, 150);
+  };
+
+  const keepTooltipOpen = () => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
   };
 
   // Effects for managing highlighted items
@@ -211,11 +263,32 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
     }
   }, [filteredPackages, searchPackageTerm, setShowPackageList, setHighlightedPackageIndex]);
 
-  // Cleanup timeout on unmount
+  // Measure + place the tooltip once it has rendered, and keep it glued to its
+  // card while the page scrolls or resizes.
+  useEffect(() => {
+    if (!hoveredPackage) {
+      setTooltipStyle(null);
+      return;
+    }
+
+    positionTooltip();
+    const reposition = () => positionTooltip();
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [hoveredPackage, positionTooltip]);
+
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
+      }
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
       }
     };
   }, []);
@@ -357,7 +430,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
                     key={pkg.id}
                     data-item
                     onClick={() => handlePackageSelectionWithClear(pkg)}
-                    onMouseEnter={() => handlePackageHover(pkg)}
+                    onMouseEnter={(e) => handlePackageHover(pkg, e)}
                     onMouseLeave={handlePackageLeave}
                     className={`relative rounded-xl border-2 p-4 cursor-pointer transition-all ${isSelected ? 'border-purple-500 bg-purple-50' : isHighlighted ? 'border-purple-300 bg-purple-50/40' : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'}`}
                   >
@@ -387,7 +460,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
       </div>
 
       {/* ── Selected Items Summary ── */}
-      {(selectedTests.length > 0 || selectedPackages.length > 0) && (
+      {showSelectedSummary && (selectedTests.length > 0 || selectedPackages.length > 0) && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">
             Selected ({selectedTests.length + selectedPackages.length})
@@ -422,7 +495,7 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
               <div
                 key={pkg.id}
                 className="flex items-center justify-between py-2 px-3 rounded-lg bg-purple-50"
-                onMouseEnter={() => handlePackageHover(pkg)}
+                onMouseEnter={(e) => handlePackageHover(pkg, e)}
                 onMouseLeave={handlePackageLeave}
               >
                 <div className="flex-1 min-w-0 mr-3">
@@ -445,12 +518,13 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
         </div>
       )}
 
-      {/* Package hover tooltip */}
-      {hoveredPackage && (
+      {/* Package hover tooltip — portalled to body, anchored to the hovered card */}
+      {isMounted && hoveredPackage && createPortal(
         <div
-          className="absolute z-20 w-72 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden"
-          style={{ top: '50%', left: '60%', transform: 'translateY(-50%)' }}
-          onMouseEnter={() => setHoveredPackage(hoveredPackage)}
+          ref={tooltipRef}
+          className="fixed z-[9999] w-72 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden"
+          style={tooltipStyle ?? { top: 0, left: 0, visibility: 'hidden' }}
+          onMouseEnter={keepTooltipOpen}
           onMouseLeave={handlePackageLeave}
         >
           <div className="p-3 bg-purple-50 border-b border-purple-100">
@@ -471,7 +545,8 @@ const PatientTestPackage: React.FC<PatientTestPackageProps> = ({
               </div>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

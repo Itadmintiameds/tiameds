@@ -3,6 +3,18 @@
 
 @import "tailwindcss";
 
+/* html2canvas (PDF/print capture) measures font baselines by appending a hidden
+   1x1 GIF <img> to <body> and reading its offset against a text sample. Tailwind
+   preflight's `img { display: block }` knocks that image out of the text line,
+   inflating every measured baseline by ~one line-height — text in generated PDFs
+   paints too low and gets clipped (e.g. report badge pills). Restore inline
+   display for that specific measurement image (matched by html2canvas's fixed
+   data-URI). Scoped to direct children of body so real content images keep the
+   preflight behaviour. */
+body > div > img[src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"] {
+  display: inline !important;
+}
+
 
 /* =========================
    ROOT VARIABLES
@@ -384,11 +396,11 @@
      SPACING
   ========================= */
 
+  /* Do not define --spacing-sm/-md/-lg here: Tailwind v4 resolves sizing
+     utilities through --spacing-* before --container-*, so they would turn
+     max-w-sm/md/lg (used across the app) into 12-20px widths. */
   --spacing-xxsm: 4px;
   --spacing-xsm: 8px;
-  --spacing-sm: 12px;
-  --spacing-md: 16px;
-  --spacing-lg: 20px;
   --spacing-xlg: 24px;
   --spacing-xxlg: 28px;
   --spacing-hg: 32px;
@@ -815,25 +827,25 @@
 } */
 
 /* Shared styling for detailed report HTML (tables, etc.) */
-/* .report-html table {
+.report-html table {
   width: 100%;
   border-collapse: collapse;
   border: 1px solid #d1d5db; /* gray-300 */
-/* } */ 
+}
 
-/* .report-html th,
+.report-html th,
 .report-html td {
   border: 1px solid #d1d5db;
   padding: 2px 4px; /* more compact */
-  /* font-size: 11px; /* slightly smaller text */
-  /* line-height: 1.2;
-  vertical-align: top; */ 
-/* } */
+  font-size: 11px; /* slightly smaller text */
+  line-height: 1.2;
+  vertical-align: top;
+}
 
-/* .report-html thead th { */
-  /* background-color: #f3f4f6; /* gray-100 */
-  /* font-weight: 600; */ 
-/* } */
+.report-html thead th {
+  background-color: #f3f4f6; /* gray-100 */
+  font-weight: 600;
+}
 
 /* @media print {
   .description-print-block,

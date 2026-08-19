@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       history: body.history || [],
     });
 
-    const model = process.env.AI_MODEL || "gpt-5";
+    const model = process.env.AI_MODEL || "gpt-5-mini";
     const temperature = process.env.AI_TEMPERATURE ? parseFloat(process.env.AI_TEMPERATURE) : 1.0;
     const topP = process.env.AI_TOP_P ? parseFloat(process.env.AI_TOP_P) : 1;
 

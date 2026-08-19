@@ -29,7 +29,7 @@ const Page = () => {
   }
 
   return (
-    <div className="w-full bg-info-50">
+    <div className="w-full bg-secondary-50">
       <div className="p-6">
         <Suspense fallback={<div>Loading...</div>}>
           <PendingSamplesContent />

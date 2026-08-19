@@ -4,6 +4,7 @@ import {
   ReportSettingsPayload,
   ReportSettingsResponse,
 } from '@/types/reportSettings';
+import { AiClinicalObservation } from '@/types/aiInsights';
 
 interface Report {
   reportId: number;
@@ -302,6 +303,95 @@ export const updateReportSettings = async (
     return response.data.data;
   } catch (error) {
     let errorMessage = 'An error occurred while updating report settings.';
+
+    if (error && (error as AxiosError).isAxiosError) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+// ─── AI Clinical Observations ───────────────────────────────────────────────────
+
+/**
+ * AiClinicalObservationController#getObservations answers with *every* row it holds for
+ * the visit, because its POST appends a new row instead of replacing the existing one.
+ * Take the most recent -- that is the text the report was last generated from. A bare
+ * object is accepted too, so this keeps working unchanged once the backend upserts into
+ * a single record and returns it directly.
+ */
+const pickLatestObservation = (payload: unknown): AiClinicalObservation | null => {
+  if (!payload || typeof payload !== 'object') return null;
+  if (!Array.isArray(payload)) return payload as AiClinicalObservation;
+
+  const rows = payload.filter(
+    (row): row is AiClinicalObservation & { createdAt?: string } => !!row && typeof row === 'object'
+  );
+  if (rows.length === 0) return null;
+
+  // Rows are appended, so insertion order is already newest-last; createdAt only has to
+  // break the tie when the backend returns them in some other order. `>=` keeps the
+  // later element on equal timestamps, preserving that insertion order.
+  const createdAtMs = (row: { createdAt?: string }) => new Date(row.createdAt ?? 0).getTime() || 0;
+  return rows.reduce((latest, row) => (createdAtMs(row) >= createdAtMs(latest) ? row : latest));
+};
+
+/**
+ * Read the AI Clinical Observations stored against a visit, or null when none have
+ * been generated yet. This is what makes the observations universal: whichever device
+ * generates them first writes them here, and every later open — on any device, by any
+ * user — reads that same text back instead of paying for another model call.
+ */
+export const getAiClinicalObservation = async (
+  labId: number | string,
+  visitId: number | string
+): Promise<AiClinicalObservation | null> => {
+  try {
+    const response = await api.get(`/lab/${labId}/visit/${visitId}/ai-clinical-observation`);
+
+    // The backend wraps payloads in {data, message, status}; unwrap that, but fall back
+    // to a bare body so this keeps working either way. An empty list (the no-record
+    // case, which this controller answers with 200 rather than 404) yields null.
+    const body = response.data as { data?: unknown } | null;
+    const payload = body && typeof body === 'object' && 'data' in body ? body.data : body;
+    return pickLatestObservation(payload);
+  } catch (error) {
+    // No record yet is the normal first-open case, not a failure.
+    if (error && (error as AxiosError).isAxiosError && (error as AxiosError).response?.status === 404) {
+      return null;
+    }
+
+    let errorMessage = 'An error occurred while fetching AI clinical observations.';
+
+    if (error && (error as AxiosError).isAxiosError) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message;
+      }
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+/** Persist freshly generated AI Clinical Observations against a visit. */
+export const saveAiClinicalObservation = async (
+  labId: number | string,
+  visitId: number | string,
+  payload: AiClinicalObservation
+): Promise<void> => {
+  try {
+    await api.post(`/lab/${labId}/visit/${visitId}/ai-clinical-observation`, payload);
+  } catch (error) {
+    let errorMessage = 'An error occurred while saving AI clinical observations.';
 
     if (error && (error as AxiosError).isAxiosError) {
       const axiosError = error as AxiosError<{ message?: string }>;

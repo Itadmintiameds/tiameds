@@ -1,4 +1,4 @@
-import { FiCalendar, FiChevronDown, FiPower, FiUser } from "react-icons/fi";
+import { FiCalendar, FiChevronDown, FiMenu, FiPower, FiUser } from "react-icons/fi";
 import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
 import Button from "../common/Button";
 import CurrentTime from "../common/CurrentTime";
@@ -28,14 +28,26 @@ interface TopNavProps {
   labs: Lab[];
   currentLab: Lab | null;
   handleChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+  // Opens the sidebar drawer on small screens (where it is off-canvas by default).
+  onMenuToggle?: () => void;
 }
 
-const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange }) => {
+const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange, onMenuToggle }) => {
 
   return (
-    <nav className="flex items-center justify-between py-3 px-6 border-b border-gray-200 bg-white shadow-sm">
+    <nav className="flex items-center justify-between py-4 px-6 border-b border-gray-200 bg-white shadow-sm">
       {/* User Information */}
-      <div className="flex items-center space-x-4 min-w-0">
+      <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
+        {onMenuToggle && (
+          <button
+            type="button"
+            onClick={onMenuToggle}
+            className="lg:hidden -ml-1 p-2 rounded-md text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
+            aria-label="Toggle navigation menu"
+          >
+            <FiMenu className="h-5 w-5" />
+          </button>
+        )}
         <div className="flex-shrink-0">
           <span
             className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white text-sm font-medium shadow-sm transition-all hover:from-purple-600 hover:to-indigo-700"
@@ -84,8 +96,8 @@ const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange })
       </div>
 
       {/* Actions and Controls */}
-      <div className="flex items-center space-x-4">
-        <div className="flex items-center space-x-2 text-xs bg-gradient-to-r from-green-50 to-emerald-50 text-gray-700 px-3 py-1.5 rounded-md border border-green-100 hover:from-green-100 hover:to-emerald-100 transition-colors">
+      <div className="flex items-center space-x-2 sm:space-x-4">
+        <div className="hidden md:flex items-center space-x-2 text-xs bg-gradient-to-r from-green-50 to-emerald-50 text-gray-700 px-3 py-1.5 rounded-md border border-green-100 hover:from-green-100 hover:to-emerald-100 transition-colors">
           <FiCalendar className="h-3.5 w-3.5 text-emerald-600" />
           <span className="font-medium">
             {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}

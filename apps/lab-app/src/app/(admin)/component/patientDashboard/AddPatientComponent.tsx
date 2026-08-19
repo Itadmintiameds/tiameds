@@ -670,12 +670,6 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         }
       }
 
-      // Validate UPI ID for UPI-related payment methods
-      if ((paymentMethod === PaymentMethod.UPI || paymentMethod === PaymentMethod.UPI_CASH) && !newPatient.visit?.billing?.upi_id?.trim()) {
-        toast.error("UPI ID is required for UPI payment methods");
-        return;
-      }
-
       if (missingFields.length > 0) {
         toast.error(`Please fill the required payment fields: ${missingFields.join(', ')}`);
         return;
@@ -733,7 +727,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         payment_method: billing.paymentMethod || PaymentMethod.CASH,
         received_amount: receivedAmount,
         date: paymentDate,
-        upi_id: billing.upi_id || '',
+        upi_id: billing.upi_id?.trim() || 'N/A',
         card_amount: cardAmount,
         cash_amount: cashAmount,
         upi_amount: upiAmount,
@@ -990,6 +984,7 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
               removePackage={removePackage}
               categories={categories}
               handleTestDiscountChange={handleTestDiscountChange}
+              showSelectedSummary={false}
             />
           </div>
           <div className="w-72 flex-shrink-0">
@@ -1145,14 +1140,24 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
                   <span className="font-semibold text-gray-800">{searchTerm || newPatient.phone || '—'}</span>
                 </div>
                 {(selectedTests.length > 0 || selectedPackages.length > 0) && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-gray-500 flex-shrink-0">Tests Ordered</span>
-                    <span className="font-semibold text-gray-800 text-right">
-                      {[
-                        ...selectedTests.map(t => t.name),
-                        ...selectedPackages.map(p => p.packageName),
-                      ].join(', ')}
+                  <div className="pt-1">
+                    <span className="text-gray-500">
+                      Tests Ordered ({selectedTests.length + selectedPackages.length})
                     </span>
+                    <ul className="mt-1.5 space-y-1">
+                      {selectedTests.map((t) => (
+                        <li key={`ordered-test-${t.id}`} className="flex items-start gap-1.5">
+                          <span className="mt-[6px] w-1 h-1 rounded-full bg-purple-400 flex-shrink-0" />
+                          <span className="font-medium text-gray-800 leading-snug">{t.name}</span>
+                        </li>
+                      ))}
+                      {selectedPackages.map((p) => (
+                        <li key={`ordered-pkg-${p.id}`} className="flex items-start gap-1.5">
+                          <span className="mt-[6px] w-1 h-1 rounded-full bg-purple-400 flex-shrink-0" />
+                          <span className="font-medium text-gray-800 leading-snug">{p.packageName}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>

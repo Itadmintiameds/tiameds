@@ -2,13 +2,13 @@ import React from 'react';
 import { Patient, VisitType } from '@/types/patient/patient';
 import { Doctor } from '@/types/doctor/doctor';
 import { FaCalendarAlt, FaUserPlus } from 'react-icons/fa';
-import Modal from '../../common/Model';
-import AddDoctor from './AddDoctor';
+import NewModal from '@/app/(admin)/dashboard/newcommoncomponent/NewModal';
 import { createDoctor } from '../../../../../../services/doctorServices';
 import { useLabs } from '@/context/LabContext';
 import { useState } from 'react';
 import { FaUserDoctor } from 'react-icons/fa6';
 import { toast } from 'react-toastify';
+import AddDoctorForPatientReg from '../../doctor/AddDoctorForPatientReg';
 
 interface PatientVisitProps {
     newPatient: Patient;
@@ -20,61 +20,24 @@ interface PatientVisitProps {
 const PatientVisit = ({ newPatient, handleChange, doctors, mode = 'full' }: PatientVisitProps) => {
     const { currentLab, refreshDocterList, setRefreshDocterList } = useLabs();
     const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
-    const [isDoctorAddedLoading, setIsDoctorAddedLoading] = useState(false);
-    const [doctor, setDoctor] = useState<Doctor>({
-        id: undefined,
-        name: '',
-        email: '',
-        speciality: '',
-        qualification: '',
-        hospitalAffiliation: '',
-        licenseNumber: '',
-        phone: 0,
-        address: '',
-        city: '',
-        state: '',
-        country: '',
-    });
-    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const handleAddDoctor = async (doctor: Doctor) => {
-        setIsDoctorAddedLoading(true);
-        try {
-            if (currentLab?.id) {
-                const res = await createDoctor(currentLab.id, doctor);
+        if (!currentLab?.id) {
+            toast.error('No lab selected!');
+            return;
+        }
 
-                if (res?.status === 'success') {
-                    setRefreshDocterList(!refreshDocterList);
-                    toast.success('Doctor added successfully!');
-                } else {
-                    toast.error('Failed to add doctor!');
-                }
+        try {
+            const res = await createDoctor(currentLab.id, doctor);
+            if (res?.status === 'success') {
+                setRefreshDocterList(!refreshDocterList);
+                toast.success('Doctor added successfully!');
+                setIsDoctorModalOpen(false);
             } else {
-                toast.error('No lab selected!');
+                throw new Error('Failed to add doctor!');
             }
         } catch (error) {
-            // Handle doctor add error
-            toast.error('Doctor already exists!', { autoClose: 1000 });
-
-        } finally {
-            setIsDoctorModalOpen(false);
-            setErrors({});
-            setIsDoctorAddedLoading(false);
-            setRefreshDocterList(!refreshDocterList);
-            setDoctor({
-                id: undefined,
-                name: '',
-                email: '',
-                speciality: '',
-                qualification: '',
-                hospitalAffiliation: '',
-                licenseNumber: '',
-                phone: 0,
-                address: '',
-                city: '',
-                state: '',
-                country: '',
-            });
+            toast.error(error instanceof Error ? error.message : 'Doctor already exists!', { autoClose: 1500 });
         }
     };
 
@@ -94,7 +57,7 @@ const PatientVisit = ({ newPatient, handleChange, doctors, mode = 'full' }: Pati
                                 return (
                                     <label
                                         key={type}
-                                        className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                        className={`flex items-center gap-3 p-3 rounded-full border-2 cursor-pointer transition-all ${
                                             isSelected
                                                 ? 'border-purple-500 bg-purple-50'
                                                 : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
@@ -145,7 +108,7 @@ const PatientVisit = ({ newPatient, handleChange, doctors, mode = 'full' }: Pati
                                 name="visit.doctorId"
                                 value={newPatient.visit?.doctorId || ""}
                                 onChange={handleChange}
-                                className="w-full border rounded-xl border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 bg-white appearance-none"
+                                className="w-full border rounded-full border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 bg-white appearance-none"
                             >
                                 <option value="">Select doctor</option>
                                 {doctors.map((doctor) => (
@@ -160,36 +123,16 @@ const PatientVisit = ({ newPatient, handleChange, doctors, mode = 'full' }: Pati
                 )}
             </div>
             {isDoctorModalOpen && (
-                <Modal
+                <NewModal
                     isOpen={isDoctorModalOpen}
-                    onClose={() => {
-                        setIsDoctorModalOpen(false);
-                        setDoctor({
-                            id: undefined,
-                            name: '',
-                            email: '',
-                            speciality: '',
-                            qualification: '',
-                            hospitalAffiliation: '',
-                            licenseNumber: '',
-                            phone: 0,
-                            address: '',
-                            city: '',
-                            state: '',
-                            country: '',
-                        });
-                    }}
-                    modalClassName='max-w-xs'
-                    title="Add Doctor">
-                    <AddDoctor
+                    onClose={() => setIsDoctorModalOpen(false)}
+                    modalClassName='max-w-2xl'
+                    title="Register New Doctor">
+                    <AddDoctorForPatientReg
                         handleAddDoctor={handleAddDoctor}
-                        errors={errors}
-                        doctor={doctor}
-                        setDoctor={setDoctor}
-                        isDoctorAddedLoading={isDoctorAddedLoading}
+                        closeModal={() => setIsDoctorModalOpen(false)}
                     />
-
-                </Modal>
+                </NewModal>
             )}
         </section>
     );

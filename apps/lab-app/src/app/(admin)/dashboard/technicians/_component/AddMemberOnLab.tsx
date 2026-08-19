@@ -527,7 +527,7 @@ const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
 
     return (
         <>
-            <div className="w-full bg-gray-50">
+            <div className="w-full bg-secondary-50">
                 <div className="max-w-9xl mx-auto">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
                         <div>

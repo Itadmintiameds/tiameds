@@ -164,7 +164,7 @@ const TestReferanceList = () => {
 
 
   return (
-    <div className="w-full bg-gray-50 p-6 rounded-xl">
+    <div className="w-full bg-secondary-50 p-4 rounded-xl">
       <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200 flex items-start gap-3">
         <FaInfoCircle className="text-blue-500 mt-1 flex-shrink-0" />
         <div>

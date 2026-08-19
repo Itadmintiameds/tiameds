@@ -10,17 +10,10 @@ import { TestList, TestReferancePoint } from '@/types/test/testlist';
 import { calculateAgeObject } from '@/utils/ageUtils';
 import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  // TbInfoCircle,
-  TbReportMedical,
-  // TbArrowDownCircle,
-  // TbArrowUpCircle,
-  // TbSquareRoundedCheck,
-  TbChevronLeft,
-  // TbX
-} from "react-icons/tb";
+import { TbReportMedical, TbChevronLeft,} from "react-icons/tb";
 import { toast } from 'react-toastify';
 import AutoCalculation from './AutoCalculation';
+import DetailedReportEditor from './DetailedReportEditor';
 import NewModal from "../../../newcommoncomponent/NewModal";
 import { FaChevronDown } from "react-icons/fa";
 import { createPortal } from "react-dom";
@@ -119,7 +112,6 @@ const DropdownInput = ({
   );
 };
 
-// Combobox Component for Percentage Input with Dropdown
 // Combobox Component for Percentage Input with Dropdown
 const PercentageCombobox = ({
   value,
@@ -367,13 +359,6 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const isModalManuallyClosed = React.useRef(false);
 
-  // const patientForInfo: PatientData = useMemo(() => ({
-  //   ...(editPatient as PatientData),
-  //   gender: editPatient.gender ?? '',
-  //   contactNumber: editPatient.contactNumber ?? '',
-  //   email: editPatient.email ?? '',
-  // }), [editPatient]);
-
   const filterReferenceData = useCallback((referenceData: Record<string, TestReferancePoint[]>) => {
     const filteredData: Record<string, TestReferancePoint[]> = {};
 
@@ -542,35 +527,6 @@ mappedReportData.forEach((reportItem) => {
     }
   }
 });
-
-      // mappedReportData.forEach((reportItem) => {
-      //   const reportKey = normalizeKey(reportItem.referenceDescription);
-      //   const pointIndex = refPoints.findIndex(
-      //     point => normalizeKey(point.testDescription) === reportKey
-      //   );
-
-      //   if (pointIndex >= 0) {
-      //     if (!initialInputValues[selectedTest.name]) {
-      //       initialInputValues[selectedTest.name] = {};
-      //     }
-
-      //     const descriptionKey = `${pointIndex}_description`;
-      //     const descriptionUpper = normalizeKey(refPoints[pointIndex]?.testDescription);
-      //     if (descriptionUpper === 'DESCRIPTION') {
-      //       initialInputValues[selectedTest.name][pointIndex] = reportItem.description || reportItem.enteredValue || '';
-      //     } else if (
-      //       descriptionUpper === 'DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE' ||
-      //       descriptionUpper === 'DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT'
-      //     ) {
-      //       initialInputValues[selectedTest.name][pointIndex] = reportItem.enteredValue || '';
-      //       if (reportItem.description) {
-      //         initialInputValues[selectedTest.name][descriptionKey] = reportItem.description;
-      //       }
-      //     } else {
-      //       initialInputValues[selectedTest.name][pointIndex] = reportItem.enteredValue || '';
-      //     }
-      //   }
-      // });
 
       setInputValues(initialInputValues);
       setValidationErrors({});
@@ -882,6 +838,8 @@ mappedReportData.forEach((reportItem) => {
 
   // Get the reference data for the current test
   const currentTestRefs = referencePoints[selectedTest?.name] || [];
+  const detailedReportPoint = currentTestRefs.find(point => point.testDescription === "DETAILED REPORT");
+  const hasNonDetailedReportParams = currentTestRefs.some(point => point.testDescription !== "DETAILED REPORT");
 
   // If no reference data is available, show a message
   if (!loading && currentTestRefs.length === 0 && selectedTest) {
@@ -912,44 +870,6 @@ mappedReportData.forEach((reportItem) => {
 
   return (
     <div className="w-full">
-      {/* Differential Count Validation Alert - Only for CBC */}
-      {/* {differentialValidation && (
-        <div className={`mb-4 rounded-2xl border p-4 ${
-          differentialValidation.type === 'error'
-            ? 'bg-red-50 border-red-300'
-            : 'bg-green-50 border-green-300'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              {differentialValidation.type === 'error' ? (
-                <TbX className="text-red-500 mr-3" size={24} />
-              ) : (
-                <TbSquareRoundedCheck className="text-green-500 mr-3" size={24} />
-              )}
-              <div>
-                <span className={`text-base font-semibold ${
-                  differentialValidation.type === 'error' ? 'text-red-800' : 'text-green-800'
-                }`}>
-                  {differentialValidation.message}
-                </span>
-                <p className={`text-sm mt-1 ${
-                  differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {differentialValidation.type === 'error' ?
-                    'Please check your differential count values' :
-                    'Differential count is correctly balanced'
-                  }
-                </p>
-              </div>
-            </div>
-            <div className={`text-lg font-bold ${
-              differentialValidation.type === 'error' ? 'text-red-600' : 'text-green-600'
-            }`}>
-              Total: {differentialValidation.total}
-            </div>
-          </div>
-        </div>
-      )} */}
 
       {/* Differential Count Validation Modal */}
       {differentialResult && (
@@ -1059,6 +979,7 @@ mappedReportData.forEach((reportItem) => {
           </div>
 
           {/* Test Table Card */}
+          {hasNonDetailedReportParams && (
           <div className="overflow-hidden rounded-xl border border-pneutral-200 bg-white">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[750px]">
@@ -1082,13 +1003,16 @@ mappedReportData.forEach((reportItem) => {
                     const dropdownItems = dropdownResult.data;
 
                     // Check if this is RANDOM URINE SUGAR test
-                    const isRandomUrineSugar = selectedTest?.name?.toUpperCase().includes('RANDOM URINE SUGAR') || 
+                    const isRandomUrineSugar = selectedTest?.name?.toUpperCase().includes('RANDOM URINE SUGAR') ||
                                               selectedTest?.name?.toUpperCase().includes('RUS');
 
                     // For RANDOM URINE SUGAR with DROPDOWN-PERCENTAGE, use combobox with dropdown
-                    const isPercentageTest = isRandomUrineSugar && 
-                      (point.testDescription?.toUpperCase().includes('DROPDOWN-PERCENTAGE') || 
+                    const isPercentageTest = isRandomUrineSugar &&
+                      (point.testDescription?.toUpperCase().includes('DROPDOWN-PERCENTAGE') ||
                        point.testDescription?.toUpperCase().includes('PERCENTAGE'));
+
+                    // WIDAL test results are titre ratios (e.g. "1:80"), not plain numbers
+                    const isWidalTest = selectedTest?.name?.toUpperCase().includes('WIDAL');
 
                     // Override isDropdown for percentage tests
                     const isDropdown = !isPercentageTest && (hasApiDropdown || 
@@ -1218,6 +1142,20 @@ mappedReportData.forEach((reportItem) => {
                               }
                               placeholder=""
                             />
+                          ) : isWidalTest ? (
+                            // WIDAL titres are ratios like "1:80" — needs a text input so ":" can be typed
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={currentValue}
+                                placeholder="e.g. 1:80"
+                                onChange={(e) =>
+                                  handleInputChange(selectedTest?.name, index, e.target.value)
+                                }
+                                className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(status)}`}
+                                disabled={isAutoCalculated}
+                              />
+                            </div>
                           ) : (
                             <div className="flex items-center gap-2">
                               <input
@@ -1267,6 +1205,24 @@ mappedReportData.forEach((reportItem) => {
               </table>
             </div>
           </div>
+          )}
+
+          {/* Detailed Report Editor (table-based report sections, e.g. Complete Urine Analysis) */}
+          {detailedReportPoint && (
+            <div className="rounded-xl border border-pneutral-200 bg-white p-4">
+              <DetailedReportEditor
+                point={detailedReportPoint}
+                onReportJsonChange={(reportJson) => {
+                  setReferencePoints(prev => ({
+                    ...prev,
+                    [selectedTest.name]: (prev[selectedTest.name] || []).map(p =>
+                      p.testDescription === "DETAILED REPORT" ? { ...p, reportJson } : p
+                    )
+                  }));
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Right Sidebar - Patient Details */}
@@ -1341,7 +1297,10 @@ export default PatientReportDataEdit;
 
 
 
-// code without input and dropdown percenatge bug dated 03.07.2026..................
+
+
+
+// code dated 29.07.2026......without column{:} in data field..........
 
 // /* eslint-disable @typescript-eslint/no-explicit-any */
 // "use client";
@@ -1354,19 +1313,14 @@ export default PatientReportDataEdit;
 // import { TestList, TestReferancePoint } from '@/types/test/testlist';
 // import { calculateAgeObject } from '@/utils/ageUtils';
 // import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
-// import React, { useCallback, useEffect, useState } from 'react';
-// import {
-//   // TbInfoCircle,
-//   TbReportMedical,
-//   // TbArrowDownCircle,
-//   // TbArrowUpCircle,
-//   TbSquareRoundedCheck,
-//   TbChevronLeft,
-//   TbX
-// } from "react-icons/tb";
+// import React, { useCallback, useEffect, useRef, useState } from 'react';
+// import { TbReportMedical, TbChevronLeft,} from "react-icons/tb";
 // import { toast } from 'react-toastify';
 // import AutoCalculation from './AutoCalculation';
+// import DetailedReportEditor from './DetailedReportEditor';
 // import NewModal from "../../../newcommoncomponent/NewModal";
+// import { FaChevronDown } from "react-icons/fa";
+// import { createPortal } from "react-dom";
 
 // export interface Patient {
 //   visitId: number;
@@ -1420,6 +1374,17 @@ export default PatientReportDataEdit;
 //   );
 // };
 
+// // Get dynamic step for number input
+// const getDynamicStep = (value: string) => {
+//   if (!value || !value.includes(".")) {
+//     return 1;
+//   }
+
+//   const decimalPart = value.split(".")[1];
+
+//   return Math.pow(10, -decimalPart.length);
+// };
+
 // // Dropdown Component with NEW UI styling
 // const DropdownInput = ({ 
 //   value, 
@@ -1448,6 +1413,162 @@ export default PatientReportDataEdit;
 //         </option>
 //       ))}
 //     </select>
+//   );
+// };
+
+// // Combobox Component for Percentage Input with Dropdown
+// // Combobox Component for Percentage Input with Dropdown
+// const PercentageCombobox = ({
+//   value,
+//   onChange,
+//   placeholder = "",
+//   disabled = false,
+//   className = ""
+// }: {
+//   value: string;
+//   onChange: (value: string) => void;
+//   placeholder?: string;
+//   disabled?: boolean;
+//   className?: string;
+// }) => {
+//   const [isOpen, setIsOpen] = useState(false);
+//   const [inputValue, setInputValue] = useState(value);
+//   const containerRef = useRef<HTMLDivElement>(null);
+//   const [dropdownStyle, setDropdownStyle] = useState({
+//     top: 0,
+//     left: 0,
+//     width: 0,
+//   });
+//   const dropdownRef = useRef<HTMLDivElement>(null);
+
+//   // Generate percentage options from 0% to 100% in increments of 10
+//   const percentageOptions = Array.from({ length: 11 }, (_, i) => ({
+//     label: `${i * 10}%`,
+//     value: String(i * 10)
+//   }));
+
+//   // Update input value when prop changes - FIXED: Now properly updates when value prop changes
+//   useEffect(() => {
+//     setInputValue(value);
+//   }, [value]);
+
+//   // Update dropdown position when open
+//   useEffect(() => {
+//     if (isOpen && containerRef.current) {
+//       const rect = containerRef.current.getBoundingClientRect();
+//       setDropdownStyle({
+//         top: rect.bottom + window.scrollY + 4,
+//         left: rect.left + window.scrollX,
+//         width: Math.max(rect.width, 120),
+//       });
+//     }
+//   }, [isOpen]);
+
+//   // Close dropdown when clicking outside
+//   useEffect(() => {
+//     const handleClickOutside = (event: MouseEvent) => {
+//       const target = event.target as Node;
+
+//       if (
+//         containerRef.current?.contains(target) ||
+//         dropdownRef.current?.contains(target)
+//       ) {
+//         return;
+//       }
+
+//       setIsOpen(false);
+//     };
+
+//     document.addEventListener("mousedown", handleClickOutside);
+
+//     return () =>
+//       document.removeEventListener("mousedown", handleClickOutside);
+//   }, []);
+
+//   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     const newValue = e.target.value;
+//     setInputValue(newValue);
+//     onChange(newValue);
+//   };
+
+//   const handleOptionSelect = (selectedValue: string) => {
+//     setInputValue(selectedValue);
+//     onChange(selectedValue);
+//     setIsOpen(false);
+//   };
+
+//   const handleInputFocus = () => {
+//     setIsOpen(true);
+//   };
+
+//   const toggleDropdown = () => {
+//     const newState = !isOpen;
+//     setIsOpen(newState);
+//   };
+
+//   return (
+//     <div ref={containerRef} className="relative inline-block">
+//       <div className="relative">
+//         <input
+//           type="number"
+//           value={inputValue}
+//           placeholder={placeholder}
+//           onChange={handleInputChange}
+//           onFocus={handleInputFocus}
+//           disabled={disabled}
+//           className={`h-9 w-32 rounded-full border border-info-500 bg-white pl-3 pr-3 text-p3 outline-none transition focus:border-secondary-700 disabled:opacity-60 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${className}`}
+//           step={getDynamicStep(inputValue)}
+//           min="0"
+//           max="100"
+//         />
+//         {/* % symbol positioned to the right of the input but before the spinner buttons */}
+//         <span className="absolute right-8 top-1/2 -translate-y-1/2 text-p3 text-pneutral-600 pointer-events-none select-none">
+//           %
+//         </span>
+//         {/* Dropdown toggle button */}
+//         <button
+//           type="button"
+//           onClick={toggleDropdown}
+//           disabled={disabled}
+//           className="absolute right-2 top-1/2 -translate-y-1/2 text-pneutral-400 hover:text-pneutral-600 focus:outline-none p-1"
+//         >
+//           <FaChevronDown size={12} />
+//         </button>
+//       </div>
+
+//       {/* Dropdown rendered via portal */}
+//       {isOpen && !disabled && createPortal(
+//         <div
+//           ref={dropdownRef}
+//           style={{
+//             position: "absolute",
+//             top: dropdownStyle.top,
+//             left: dropdownStyle.left,
+//             width: dropdownStyle.width,
+//             zIndex: 999999,
+//           }}
+//           className="max-h-52 overflow-y-auto rounded-lg border border-pneutral-200 bg-white shadow-xl"
+//         >
+//           <div className="py-1">
+//             {percentageOptions.map((option) => (
+//               <button
+//                 key={option.value}
+//                 type="button"
+//                 onClick={() => handleOptionSelect(option.value)}
+//                 className={`w-full px-4 py-2 text-left text-p3 hover:bg-info-50 transition-colors ${
+//                   inputValue === option.value
+//                     ? "bg-info-100 text-secondary-700"
+//                     : "text-pneutral-900"
+//                 }`}
+//               >
+//                 {option.label}
+//               </button>
+//             ))}
+//           </div>
+//         </div>,
+//         document.body
+//       )}
+//     </div>
 //   );
 // };
 
@@ -1675,34 +1796,78 @@ export default PatientReportDataEdit;
 //       const initialInputValues: Record<string, Record<string | number, string>> = {};
 //       const refPoints = filteredData[selectedTest.name] || [];
 
-//       mappedReportData.forEach((reportItem) => {
-//         const reportKey = normalizeKey(reportItem.referenceDescription);
-//         const pointIndex = refPoints.findIndex(
-//           point => normalizeKey(point.testDescription) === reportKey
-//         );
+//       // In the fetchReferenceData function, when setting initial input values:
+// mappedReportData.forEach((reportItem) => {
+//   const reportKey = normalizeKey(reportItem.referenceDescription);
+//   const pointIndex = refPoints.findIndex(
+//     point => normalizeKey(point.testDescription) === reportKey
+//   );
 
-//         if (pointIndex >= 0) {
-//           if (!initialInputValues[selectedTest.name]) {
-//             initialInputValues[selectedTest.name] = {};
-//           }
+//   if (pointIndex >= 0) {
+//     if (!initialInputValues[selectedTest.name]) {
+//       initialInputValues[selectedTest.name] = {};
+//     }
 
-//           const descriptionKey = `${pointIndex}_description`;
-//           const descriptionUpper = normalizeKey(refPoints[pointIndex]?.testDescription);
-//           if (descriptionUpper === 'DESCRIPTION') {
-//             initialInputValues[selectedTest.name][pointIndex] = reportItem.description || reportItem.enteredValue || '';
-//           } else if (
-//             descriptionUpper === 'DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE' ||
-//             descriptionUpper === 'DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT'
-//           ) {
-//             initialInputValues[selectedTest.name][pointIndex] = reportItem.enteredValue || '';
-//             if (reportItem.description) {
-//               initialInputValues[selectedTest.name][descriptionKey] = reportItem.description;
-//             }
-//           } else {
-//             initialInputValues[selectedTest.name][pointIndex] = reportItem.enteredValue || '';
-//           }
-//         }
-//       });
+//     const descriptionKey = `${pointIndex}_description`;
+//     const descriptionUpper = normalizeKey(refPoints[pointIndex]?.testDescription);
+    
+//     // Check if this is a percentage test
+//     const isRandomUrineSugar = selectedTest.name?.toUpperCase().includes('RANDOM URINE SUGAR') || 
+//                               selectedTest.name?.toUpperCase().includes('RUS');
+//     const isPercentageTest = isRandomUrineSugar && 
+//       (refPoints[pointIndex]?.testDescription?.toUpperCase().includes('DROPDOWN-PERCENTAGE') || 
+//        refPoints[pointIndex]?.testDescription?.toUpperCase().includes('PERCENTAGE'));
+
+//     if (descriptionUpper === 'DESCRIPTION') {
+//       initialInputValues[selectedTest.name][pointIndex] = reportItem.description || reportItem.enteredValue || '';
+//     } else if (
+//       descriptionUpper === 'DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE' ||
+//       descriptionUpper === 'DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT'
+//     ) {
+//       initialInputValues[selectedTest.name][pointIndex] = reportItem.enteredValue || '';
+//       if (reportItem.description) {
+//         initialInputValues[selectedTest.name][descriptionKey] = reportItem.description;
+//       }
+//     } else if (isPercentageTest) {
+//       // For percentage tests, extract just the number without the % symbol
+//       const enteredValue = reportItem.enteredValue || '';
+//       // Remove % symbol if present
+//       const numericValue = enteredValue.replace('%', '').trim();
+//       initialInputValues[selectedTest.name][pointIndex] = numericValue || '';
+//     } else {
+//       initialInputValues[selectedTest.name][pointIndex] = reportItem.enteredValue || '';
+//     }
+//   }
+// });
+
+//       // mappedReportData.forEach((reportItem) => {
+//       //   const reportKey = normalizeKey(reportItem.referenceDescription);
+//       //   const pointIndex = refPoints.findIndex(
+//       //     point => normalizeKey(point.testDescription) === reportKey
+//       //   );
+
+//       //   if (pointIndex >= 0) {
+//       //     if (!initialInputValues[selectedTest.name]) {
+//       //       initialInputValues[selectedTest.name] = {};
+//       //     }
+
+//       //     const descriptionKey = `${pointIndex}_description`;
+//       //     const descriptionUpper = normalizeKey(refPoints[pointIndex]?.testDescription);
+//       //     if (descriptionUpper === 'DESCRIPTION') {
+//       //       initialInputValues[selectedTest.name][pointIndex] = reportItem.description || reportItem.enteredValue || '';
+//       //     } else if (
+//       //       descriptionUpper === 'DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE' ||
+//       //       descriptionUpper === 'DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT'
+//       //     ) {
+//       //       initialInputValues[selectedTest.name][pointIndex] = reportItem.enteredValue || '';
+//       //       if (reportItem.description) {
+//       //         initialInputValues[selectedTest.name][descriptionKey] = reportItem.description;
+//       //       }
+//       //     } else {
+//       //       initialInputValues[selectedTest.name][pointIndex] = reportItem.enteredValue || '';
+//       //     }
+//       //   }
+//       // });
 
 //       setInputValues(initialInputValues);
 //       setValidationErrors({});
@@ -1926,6 +2091,14 @@ export default PatientReportDataEdit;
 //             let unit = "N/A";
 //             let referenceRange = "N/A";
 
+//             // Check if this is Random Urine Sugar test
+//             const isRandomUrineSugarTest = selectedTest.name?.toUpperCase().includes('RANDOM URINE SUGAR') || 
+//                                           selectedTest.name?.toUpperCase().includes('RUS');
+
+//             const isPercentageTest = isRandomUrineSugarTest && 
+//               (point.testDescription?.toUpperCase().includes('DROPDOWN-PERCENTAGE') || 
+//                point.testDescription?.toUpperCase().includes('PERCENTAGE'));
+
 //             if (
 //               descriptionUpper === "DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE" ||
 //               descriptionUpper === "DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT"
@@ -1933,6 +2106,12 @@ export default PatientReportDataEdit;
 //               unit = point.units || "N/A";
 //               description = hasDescription ? testInputs[descriptionKey] : "N/A";
 //               finalValue = testInputs[index] || "N/A";
+//               referenceRange = resolvedReferenceRange;
+//             } else if (isPercentageTest) {
+//               // For Random Urine Sugar percentage test, append % to the value
+//               unit = " ";
+//               description = "N/A";
+//               finalValue = testInputs[index] ? `${testInputs[index]}%` : "N/A";
 //               referenceRange = resolvedReferenceRange;
 //             } else if (
 //               hasApiDropdown ||
@@ -2000,6 +2179,8 @@ export default PatientReportDataEdit;
 
 //   // Get the reference data for the current test
 //   const currentTestRefs = referencePoints[selectedTest?.name] || [];
+//   const detailedReportPoint = currentTestRefs.find(point => point.testDescription === "DETAILED REPORT");
+//   const hasNonDetailedReportParams = currentTestRefs.some(point => point.testDescription !== "DETAILED REPORT");
 
 //   // If no reference data is available, show a message
 //   if (!loading && currentTestRefs.length === 0 && selectedTest) {
@@ -2031,7 +2212,7 @@ export default PatientReportDataEdit;
 //   return (
 //     <div className="w-full">
 //       {/* Differential Count Validation Alert - Only for CBC */}
-//       {differentialValidation && (
+//       {/* {differentialValidation && (
 //         <div className={`mb-4 rounded-2xl border p-4 ${
 //           differentialValidation.type === 'error'
 //             ? 'bg-red-50 border-red-300'
@@ -2067,7 +2248,7 @@ export default PatientReportDataEdit;
 //             </div>
 //           </div>
 //         </div>
-//       )}
+//       )} */}
 
 //       {/* Differential Count Validation Modal */}
 //       {differentialResult && (
@@ -2177,6 +2358,7 @@ export default PatientReportDataEdit;
 //           </div>
 
 //           {/* Test Table Card */}
+//           {hasNonDetailedReportParams && (
 //           <div className="overflow-hidden rounded-xl border border-pneutral-200 bg-white">
 //             <div className="overflow-x-auto">
 //               <table className="w-full min-w-[750px]">
@@ -2203,7 +2385,7 @@ export default PatientReportDataEdit;
 //                     const isRandomUrineSugar = selectedTest?.name?.toUpperCase().includes('RANDOM URINE SUGAR') || 
 //                                               selectedTest?.name?.toUpperCase().includes('RUS');
 
-//                     // For RANDOM URINE SUGAR with DROPDOWN-PERCENTAGE, use numeric input instead of dropdown
+//                     // For RANDOM URINE SUGAR with DROPDOWN-PERCENTAGE, use combobox with dropdown
 //                     const isPercentageTest = isRandomUrineSugar && 
 //                       (point.testDescription?.toUpperCase().includes('DROPDOWN-PERCENTAGE') || 
 //                        point.testDescription?.toUpperCase().includes('PERCENTAGE'));
@@ -2327,6 +2509,15 @@ export default PatientReportDataEdit;
 //                               options={dropdownOptions}
 //                               placeholder="Select value"
 //                             />
+//                           ) : isPercentageTest ? (
+//                             // For Random Urine Sugar: Use Combobox with inline % and dropdown
+//                             <PercentageCombobox
+//                               value={currentValue}
+//                               onChange={(value) =>
+//                                 handleInputChange(selectedTest?.name, index, value)
+//                               }
+//                               placeholder=""
+//                             />
 //                           ) : (
 //                             <div className="flex items-center gap-2">
 //                               <input
@@ -2338,12 +2529,9 @@ export default PatientReportDataEdit;
 //                                 }
 //                                 className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(status)}`}
 //                                 disabled={isAutoCalculated}
-//                                 step="any"
+//                                 step={getDynamicStep(currentValue)}
+//                                 min={isAutoCalculated ? undefined : 0}
 //                               />
-//                               {/* Show % symbol for RANDOM URINE SUGAR test with percentage unit */}
-//                               {isPercentageTest && point.units?.toUpperCase() === '%' && (
-//                                 <span className="text-p3 text-pneutral-600 font-medium">%</span>
-//                               )}
 //                             </div>
 //                           )}
 //                         </td>
@@ -2358,7 +2546,7 @@ export default PatientReportDataEdit;
 //                         ) : (
 //                           <>
 //                             <td className="px-4 py-3 text-p3 text-pneutral-900">
-//                               {isDescription || isDropdown || isDropdownWithDescription ? '-' : (point.units || 'N/A')}
+//                               {isDescription || isDropdown || isDropdownWithDescription ? '-' : (isPercentageTest ? '%' : (point.units || 'N/A'))}
 //                             </td>
 //                             <td className="px-4 py-3 text-p3 text-sneutral-500">
 //                               {isDescription || isDropdown || isDropdownWithDescription ? '-' : (
@@ -2379,6 +2567,24 @@ export default PatientReportDataEdit;
 //               </table>
 //             </div>
 //           </div>
+//           )}
+
+//           {/* Detailed Report Editor (table-based report sections, e.g. Complete Urine Analysis) */}
+//           {detailedReportPoint && (
+//             <div className="rounded-xl border border-pneutral-200 bg-white p-4">
+//               <DetailedReportEditor
+//                 point={detailedReportPoint}
+//                 onReportJsonChange={(reportJson) => {
+//                   setReferencePoints(prev => ({
+//                     ...prev,
+//                     [selectedTest.name]: (prev[selectedTest.name] || []).map(p =>
+//                       p.testDescription === "DETAILED REPORT" ? { ...p, reportJson } : p
+//                     )
+//                   }));
+//                 }}
+//               />
+//             </div>
+//           )}
 //         </div>
 
 //         {/* Right Sidebar - Patient Details */}
@@ -2399,11 +2605,11 @@ export default PatientReportDataEdit;
 //               />
 //               <InfoRow
 //                 label="Doctor"
-//                 value={editPatient.doctorName || 'Dr. R. Mehta'}
+//                 value={editPatient.doctorName || 'N/A'}
 //               />
 //               <InfoRow 
 //                 label="Visit Type" 
-//                 value={editPatient.visitType || 'OPD'} 
+//                 value={editPatient.visitType || 'N/A'} 
 //               />
 //               <InfoRow
 //                 label="Contact"
@@ -2438,20 +2644,6 @@ export default PatientReportDataEdit;
 // };
 
 // export default PatientReportDataEdit;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -169,23 +169,38 @@ export class AutoCalculation {
     const totalBilirubinRaw = inputs[totalBilirubinIdx] || '';
     const directBilirubinRaw = inputs[directBilirubinIdx] || '';
 
-    // Calculate Globulin = Total Protein - Albumin
+    // Calculate Globulin = Total Protein - Albumin.
+    // Keep the freshly computed value in a local so A/G Ratio (below) divides by THIS
+    // globulin instead of the stale one still sitting in `inputs` from the previous
+    // keystroke. Globulin is auto-calculated, so the user never re-types it; reading it
+    // back from `inputs` made A/G Ratio lag a keystroke behind, and when Albumin was
+    // entered last it never computed at all and was saved as N/A.
+    let globulin: number | null = null;
     if (globulinIdx >= 0 && totalProteinIdx >= 0 && albuminIdx >= 0) {
       const totalProtein = this.getNumericValue(inputs, totalProteinIdx);
       const albumin = this.getNumericValue(inputs, albuminIdx);
       if (totalProtein !== null && albumin !== null && totalProteinRaw !== '' && albuminRaw !== '') {
-        const globulin = totalProtein - albumin;
+        globulin = totalProtein - albumin;
         this.setValue(updatedInputs, globulinIdx, globulin.toFixed(2));
+      } else if (updatedInputs[globulinIdx]) {
+        // Source values incomplete -- clear any previously derived globulin so a stale
+        // value can't linger and feed A/G Ratio.
+        this.setValue(updatedInputs, globulinIdx, '');
       }
     }
 
-    // Calculate A/G Ratio = Albumin / Globulin
+    // Calculate A/G Ratio = Albumin / Globulin, using the globulin just computed above.
+    // Any non-zero globulin yields a ratio; a negative globulin means invalid data entry
+    // (albumin > total protein), but surfacing the resulting value is clearer than a blank
+    // N/A. Only a zero globulin is skipped, to avoid a divide-by-zero.
     if (agRatioIdx >= 0 && albuminIdx >= 0 && globulinIdx >= 0) {
       const albumin = this.getNumericValue(inputs, albuminIdx);
-      const globulin = this.getNumericValue(inputs, globulinIdx);
-      if (albumin !== null && globulin !== null && globulin > 0 && totalProteinRaw !== '' && albuminRaw !== '') {
+      if (albumin !== null && globulin !== null && globulin !== 0 && totalProteinRaw !== '' && albuminRaw !== '') {
         const agRatio = albumin / globulin;
         this.setValue(updatedInputs, agRatioIdx, agRatio.toFixed(2));
+      } else if (updatedInputs[agRatioIdx]) {
+        // Operands incomplete or globulin is zero -- clear any stale ratio.
+        this.setValue(updatedInputs, agRatioIdx, '');
       }
     }
 

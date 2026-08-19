@@ -570,12 +570,6 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
         }
       }
 
-      // Validate UPI ID for UPI-related payment methods
-      if ((paymentMethod === PaymentMethod.UPI || paymentMethod === PaymentMethod.UPI_CASH) && !editedPatient.visit?.billing?.upi_id?.trim()) {
-        toast.error("UPI ID is required for UPI payment methods");
-        return;
-      }
-
       if (missingFields.length > 0) {
         toast.error(`Please fill the required payment fields: ${missingFields.join(', ')}`);
         return;
@@ -672,7 +666,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
           payment_method: transactionPaymentMethod,
           received_amount: receivedAmount,
           date: paymentDate,
-          upi_id: billing.upi_id || '',
+          upi_id: billing.upi_id?.trim() || 'N/A',
           card_amount: cardAmount,
           cash_amount: cashAmount,
           upi_amount: upiAmount,
@@ -910,12 +904,7 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
                   <div key={test.id} className="flex justify-between items-center text-xs">
                     <span className="text-gray-700">{test.name}</span>
                     <span className="text-gray-900 font-medium">
-                      ₹{test.discountedPrice || test.price}
-                      {(test.discountAmount || test.discountPercent) && (
-                        <span className="text-green-600 ml-1">
-                          (Disc: ₹{test.discountAmount || (test.price * (test.discountPercent || 0) / 100).toFixed(2)})
-                        </span>
-                      )}
+                      ₹{test.price}
                     </span>
                   </div>
                 ))}
