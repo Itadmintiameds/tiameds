@@ -145,7 +145,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         // Fetch tests
         if (patient?.visit?.testIds?.length && currentLab?.id) {
           const testPromises = patient.visit.testIds.map((id: number) =>
-            id !== undefined ? getTestById(currentLab.id.toString(), id) : Promise.resolve(null)
+            id !== undefined ? getTestById(currentLab.id.toString(), id, patient.visit.visitId) : Promise.resolve(null)
           );
           const testResults = await Promise.all(testPromises);
           setTests(testResults.filter((test) => test !== null) as TestList[]);

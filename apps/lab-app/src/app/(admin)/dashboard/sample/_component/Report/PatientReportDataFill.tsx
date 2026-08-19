@@ -431,7 +431,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
 
     setLoading(true);
     try {
-      const response = await getTestReferanceRangeByTestName(currentLab.id.toString(), selectedTest.name);
+      const response = await getTestReferanceRangeByTestName(currentLab.id.toString(), selectedTest.id);
 
       if (response) {
         const responseArray = Array.isArray(response) ? response : [response];

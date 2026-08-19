@@ -116,7 +116,7 @@ const Page = () => {
       try {
         if (patientDetails?.visit?.testIds?.length && currentLab?.id) {
           const testPromises = patientDetails.visit.testIds.map((id) =>
-            id !== undefined ? getTestById(currentLab.id.toString(), id) : Promise.resolve(null)
+            id !== undefined ? getTestById(currentLab.id.toString(), id, patientDetails.visit.visitId) : Promise.resolve(null)
           );
           const testResults = await Promise.all(testPromises);
           setTests(testResults.filter((test) => test !== null) as TestList[]);
