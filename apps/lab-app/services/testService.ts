@@ -191,10 +191,13 @@ export const downloadTestCsvExcel = async (labId: string): Promise<string> => {
 };
 
 //get test by id
-export const getTestById = async (labId: string, testId: Number): Promise<TestList> => {
+export const getTestById = async (labId: string, testId: Number, visitId?: number | string): Promise<TestList> => {
   try {
-    // admin/lab/2/test/6
-    const response = await api.get<{ data: TestList; message: string; status: string }>(`admin/lab/${labId}/test/${testId}`);
+    // admin/lab/2/test/6?visitId=133
+    const url = visitId !== undefined
+      ? `admin/lab/${labId}/test/${testId}?visitId=${visitId}`
+      : `admin/lab/${labId}/test/${testId}`;
+    const response = await api.get<{ data: TestList; message: string; status: string }>(url);
     return response.data.data; // Extract the test object from the response
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while fetching test details.';
@@ -433,14 +436,11 @@ export const uploadTestReferanceRangeCsv = async (labId: string, file: File): Pr
 
 export const getTestReferanceRangeByTestName = async (
   labId: string,
-  testName: string
+  testId: number
 ): Promise<TestReferancePoint> => {
   try {
-    // Encode testName to handle spaces, & and other special characters
-    const encodedTestName = encodeURIComponent(testName);
-    
     const response = await api.get<{ data: TestReferancePoint; message: string; status: string }>(
-      `lab/test-reference/${labId}/test?testName=${encodedTestName}`
+      `lab/test-reference/${labId}/test?id=${testId}`
     );
 
     return response.data.data;

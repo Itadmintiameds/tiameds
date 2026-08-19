@@ -462,7 +462,7 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
 
       setExistingReportData(mappedReportData);
 
-      const response = await getTestReferanceRangeByTestName(currentLab.id.toString(), selectedTest.name);
+      const response = await getTestReferanceRangeByTestName(currentLab.id.toString(), selectedTest.id);
       const refPointsRaw = Array.isArray(response) ? response : [response];
       const filteredData = filterReferenceData({ [selectedTest.name]: refPointsRaw });
       if ((filteredData[selectedTest.name] || []).length === 0) {

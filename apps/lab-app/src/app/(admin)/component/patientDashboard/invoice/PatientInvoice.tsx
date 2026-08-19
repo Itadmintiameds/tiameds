@@ -53,8 +53,8 @@ const PatientInvoice = ({ viewPatientDetails }: PatientDetails) => {
       try {
         // Fetch tests
         if (viewPatientDetails?.visitDetailDto?.testIds?.length && currentLab?.id) {
-          const testPromises = viewPatientDetails.visitDetailDto.testIds.map(id => 
-            getTestById(currentLab.id.toString(), id)
+          const testPromises = viewPatientDetails.visitDetailDto.testIds.map(id =>
+            getTestById(currentLab.id.toString(), id, viewPatientDetails.visitDetailDto.visitId)
           );
           const testResults = await Promise.all(testPromises);
           setTests(testResults.filter(test => test !== null) as TestList[]);

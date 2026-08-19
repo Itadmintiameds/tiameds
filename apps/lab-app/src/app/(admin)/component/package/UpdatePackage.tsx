@@ -257,9 +257,9 @@ const UpdatePackage = ({
       </div>
 
       {/* Included Tests */}
-      <div className="bg-danger-100 rounded-lg p-4 space-y-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="font-semibold text-warning-800 text-p3">
+          <h4 className="text-sm font-semibold text-gray-700">
             Included Tests ({packageDetails.tests.length})
           </h4>
           <button
@@ -306,7 +306,7 @@ const UpdatePackage = ({
           </div>
         )}
 
-        <div className="divide-y divide-danger-300">
+        <div className="divide-y divide-gray-100">
           {packageDetails.tests.length > 0 ? (
             packageDetails.tests.map(test => (
               <div
@@ -344,7 +344,7 @@ const UpdatePackage = ({
           </div>
           <div className="flex justify-between text-p3">
             <span className="text-pneutral-500">Discount ({packageDetails.discount}%):</span>
-            <span className="text-warning-600 font-medium">
+            <span className="text-green-600 font-medium">
               -₹{(subtotal * packageDetails.discount / 100).toFixed(2)}
             </span>
           </div>

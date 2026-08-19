@@ -321,6 +321,13 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
     });
   };
 
+  const formatCurrency = (amount: number) => {
+    return amount.toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   const columns: Column<Patient>[] = [
     {
       header: 'Visit Code',
@@ -353,6 +360,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
     {
       header: 'Visit Type',
       accessor: 'visitType',
+      align: 'center',
       render: (row: Patient) => {
         const visitType = row?.visit?.visitType;
         let pillClass = 'bg-pneutral-100 text-pneutral-700';
@@ -384,13 +392,14 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
     {
       header: 'Report Status',
       accessor: 'reportStatus',
+      align: 'center',
       render: (row: Patient) => {
         const visitStatus = row?.visit?.visitStatus;
 
         // If visit is cancelled, show cancelled status
         if (visitStatus?.toUpperCase() === 'CANCELLED') {
           return (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col items-center gap-1">
               <span className="inline-flex items-center rounded-full bg-warning-50 px-3 py-1 text-p2 font-medium text-warning-700 w-fit">
                 Cancelled
               </span>
@@ -399,7 +408,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
                   setPatientDetails(row);
                   setCancellationDetailsModal(true);
                 }}
-                className="text-p2 text-warning-600 hover:text-warning-800 hover:underline text-left"
+                className="text-p2 text-warning-600 hover:text-warning-800 hover:underline"
                 title="View cancellation details"
               >
                 View Details
@@ -425,13 +434,13 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
           // If there are multiple tests and all are completed, show "All Completed"
           const statusText = totalTests === 1 ? 'Completed' : 'All Completed';
           return (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col items-center gap-1">
               <span className="inline-flex items-center rounded-full bg-success-50 px-3 py-1 text-p2 font-medium text-success-700 w-fit">
                 {statusText}
               </span>
               <button
                 onClick={handleViewViewReport(row)}
-                className="text-p2 text-success-600 hover:text-success-800 hover:underline text-left"
+                className="text-p2 text-success-600 hover:text-success-800 hover:underline"
                 title="View report"
               >
                 View Report
@@ -441,13 +450,13 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
         } else if (completedTests > 0) {
           // Show partial completion
           return (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col items-center gap-1">
               <span className="inline-flex items-center rounded-full bg-info-50 px-3 py-1 text-p2 font-medium text-info-700 w-fit">
                 {completedTests}/{totalTests} Completed
               </span>
               <button
                 onClick={handleViewViewReport(row)}
-                className="text-p2 text-info-600 hover:text-info-800 hover:underline text-left"
+                className="text-p2 text-info-600 hover:text-info-800 hover:underline"
                 title="View report"
               >
                 View Report
@@ -467,6 +476,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
     {
       header: 'Payment Status',
       accessor: 'paymentStatus',
+      align: 'center',
       render: (row: Patient) => {
         const dueAmount = Number(row?.visit?.billing?.due_amount || 0);
         const isPaid = dueAmount === 0;
@@ -477,9 +487,9 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
           : 'bg-warning-50 text-warning-700';
 
         return (
-          <div className="flex flex-col">
+          <div className="flex flex-col items-center">
             <span className={`inline-flex items-center w-fit rounded-full px-3 py-1 text-p2 font-medium ${badgeClass}`}>
-              {isPaid ? 'PAID' : `DUE (₹${dueAmount.toFixed(2)})`}
+              {isPaid ? 'PAID' : `DUE (₹${formatCurrency(dueAmount)})`}
             </span>
             {!isPaid && dueAmount > 0 && (
               isCancelled ? (
@@ -495,7 +505,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
                     setPatientDetails(row);
                     setDuePaymentModal(true);
                   }}
-                  className="mt-1 text-p2 text-info-600 hover:text-info-800 hover:underline text-left"
+                  className="mt-1 text-p2 text-info-600 hover:text-info-800 hover:underline"
                 >
                   Collect Due
                 </button>
@@ -510,13 +520,14 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
       accessor: 'netAmount',
       render: (row: Patient) => (
         <span className="font-semibold text-p3 text-success-900 whitespace-nowrap">
-          ₹{row?.visit?.billing?.netAmount?.toFixed(2) || '0.00'}
+          ₹{formatCurrency(row?.visit?.billing?.netAmount || 0)}
         </span>
       ),
     },
     {
       header: 'Bill Invoice',
       accessor: 'billInvoice',
+      align: 'center',
       render: (row: Patient) => {
         const isCancelled = row?.visit?.visitStatus?.toUpperCase() === 'CANCELLED';
 
@@ -531,7 +542,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
         return (
           <button
             onClick={handleView(row)}
-            className="flex h-[28px] w-[28px] items-center border border-secondary-500 justify-center rounded-full text-secondary-600 hover:bg-secondary-50 transition-colors"
+            className="inline-flex h-[28px] w-[28px] items-center border border-secondary-500 justify-center rounded-full text-secondary-600 hover:bg-secondary-50 transition-colors"
             title="View Bill Invoice"
           >
             <LiaFileInvoiceSolid size={13} />
@@ -542,13 +553,14 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
     {
       header: 'Actions',
       accessor: 'actions',
+      align: 'center',
       render: (row: Patient) => {
         const isCancelled = row?.visit?.visitStatus?.toUpperCase() === 'CANCELLED';
         const hasTestResults = row?.visit?.testResult && row.visit.testResult.length > 0;
         const isReportPending = !hasTestResults || (row?.visit?.testResult && row.visit.testResult.every(tr => tr.reportStatus === 'Pending'));
 
         return (
-          <div className="flex items-center gap-2">
+          <div className="inline-flex items-center gap-2">
             {!isCancelled && isReportPending && (
               <>
                 <button

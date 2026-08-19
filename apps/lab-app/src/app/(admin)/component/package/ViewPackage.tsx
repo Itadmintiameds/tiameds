@@ -36,21 +36,21 @@ const ViewPackage = ({ packageData }: ViewPackageProps) => {
       </div>
 
       {/* Included Tests */}
-      <div className="bg-danger-100 rounded-lg p-4 space-y-2">
-        <h4 className="font-semibold text-warning-800 text-p3">
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-2">
+        <h4 className="text-sm font-semibold text-gray-700 mb-2">
           Included Tests ({packageData.tests.length})
         </h4>
 
-        <div className="divide-y divide-danger-300">
+        <div className="divide-y divide-gray-100">
           {packageData.tests.length > 0 ? (
             packageData.tests.map(test => (
               <div key={test.id} className="flex justify-between items-center py-2.5">
-                <span className="text-p3 font-medium text-pneutral-900">{test.name}</span>
-                <span className="text-p3 text-pneutral-700">₹{Number(test.price).toFixed(2)}</span>
+                <span className="text-sm font-medium text-gray-800">{test.name}</span>
+                <span className="text-sm text-gray-800">₹{Number(test.price).toFixed(2)}</span>
               </div>
             ))
           ) : (
-            <p className="text-center text-p3 text-pneutral-500 py-4">No tests in this package</p>
+            <p className="text-center text-sm text-gray-400 py-8">No tests in this package</p>
           )}
         </div>
       </div>
@@ -67,7 +67,7 @@ const ViewPackage = ({ packageData }: ViewPackageProps) => {
           </div>
           <div className="flex justify-between text-p3">
             <span className="text-pneutral-500">Discount ({packageData.discount}%):</span>
-            <span className="text-warning-600 font-medium">-₹{discountAmount.toFixed(2)}</span>
+            <span className="text-green-600 font-medium">-₹{discountAmount.toFixed(2)}</span>
           </div>
           <div className="border-t border-info-200 pt-2 mt-2 flex justify-between">
             <span className="text-p3 font-bold text-pneutral-900">Total</span>

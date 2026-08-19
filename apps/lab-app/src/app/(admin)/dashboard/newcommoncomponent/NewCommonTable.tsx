@@ -7,7 +7,14 @@ export interface Column<T> {
   header: string;
   accessor: keyof T | string;
   render?: (row: T) => ReactNode;
+  align?: "left" | "center" | "right";
 }
+
+const ALIGN_CLASS: Record<"left" | "center" | "right", string> = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
+};
 
 interface NewCommonTableProps<T> {
   columns: Column<T>[];
@@ -54,15 +61,7 @@ useEffect(() => {
               {columns.map((column) => (
                 <th
                   key={column.header}
-                  className="
-                          px-5
-                          text-left
-                          font-heading
-                           font-semibold
-                           text-label-l3
-                           text-pneutral-900
-                           align-middle
-                             "
+                  className={`px-5 font-heading font-semibold text-label-l3 text-pneutral-900 align-middle ${ALIGN_CLASS[column.align ?? "left"]}`}
                 >
                   {column.header}
                 </th>
@@ -74,12 +73,12 @@ useEffect(() => {
             {paginatedData.map((row, rowIndex) => (
               <tr
                 key={rowIndex}
-                className="border-b border-pneutral-200 last:border-none"
+                className="border-b border-pneutral-200 last:border-none hover:bg-pneutral-50 transition-colors"
               >
                 {columns.map((column) => (
                   <td
                     key={column.header}
-                    className="px-5 py-3.5"
+                    className={`px-5 py-3.5 align-top ${ALIGN_CLASS[column.align ?? "left"]}`}
                   >
                     {column.render
                       ? column.render(row)
