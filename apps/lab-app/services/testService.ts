@@ -436,11 +436,14 @@ export const uploadTestReferanceRangeCsv = async (labId: string, file: File): Pr
 
 export const getTestReferanceRangeByTestName = async (
   labId: string,
-  testId: number
+  testName: string
 ): Promise<TestReferancePoint> => {
   try {
+    // Encode testName to handle spaces, & and other special characters
+    const encodedTestName = encodeURIComponent(testName);
+    
     const response = await api.get<{ data: TestReferancePoint; message: string; status: string }>(
-      `lab/test-reference/${labId}/test?id=${testId}`
+      `lab/test-reference/${labId}/test?testName=${encodedTestName}`
     );
 
     return response.data.data;
