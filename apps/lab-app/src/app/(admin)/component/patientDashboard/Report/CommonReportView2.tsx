@@ -65,10 +65,20 @@ const MARGIN_X_MM = 10;
 // without stranding the near-edge whitespace a 2mm gutter used to leave.
 const TOP_MARGIN_MM = 8;
 const BOTTOM_MARGIN_MM = 8;
+
+// Print-safe margins for the new CURE+ Hospitals letterhead artwork (the "Final
+// Letterheads_Martalli new.pdf" proof, A4): the lavender header band runs ~30mm from the
+// top edge and the footer band starts ~14mm from the bottom edge. Read off the artwork
+// proof, not a physical printout -- verify with one test print and nudge if anything
+// overlaps. Only used when printType is "letterhead"; the header's lab-identity row
+// (logo + lab name/address) is suppressed in that mode since the paper already carries
+// it, but the reserved top margin covers the pre-printed band regardless of what's
+// actually drawn under it.
+const LETTERHEAD_TOP_MARGIN_MM = 30;
+const LETTERHEAD_BOTTOM_MARGIN_MM = 14;
 // Extra buffer to avoid edge clipping when html2canvas output is placed into jsPDF.
 const CONTENT_SAFETY_MM = 1;
 const BLOCK_GAP_MM = 2;
-const USABLE_HEIGHT_MM = PAGE_HEIGHT_MM - TOP_MARGIN_MM - BOTTOM_MARGIN_MM;
 
 const normalizeFieldKey = (value?: string) =>
     (value || "")
@@ -830,6 +840,7 @@ const CommonReportView2 = ({
     const { currentLab } = useLabs();
     const reportRef = useRef<HTMLDivElement>(null);
     const [printing, setPrinting] = useState(false);
+    const [printType, setPrintType] = useState<'plain' | 'letterhead'>('plain');
     const [selectedReports, setSelectedReports] = useState<Record<number, boolean>>({});
     const [healthSnapshot, setHealthSnapshot] = useState<HealthSnapshot | null>(null);
     const [healthSnapshotLoading, setHealthSnapshotLoading] = useState(false);
@@ -1905,6 +1916,8 @@ const CommonReportView2 = ({
                 format: "a4",
                 compress: true,
             });
+            const topMarginMm = printType === "letterhead" ? LETTERHEAD_TOP_MARGIN_MM : TOP_MARGIN_MM;
+            const bottomMarginMm = printType === "letterhead" ? LETTERHEAD_BOTTOM_MARGIN_MM : BOTTOM_MARGIN_MM;
             const selectedSet = new Set(selectedReportIds);
             const shell = reportRef.current.querySelector("[data-report-shell]") as HTMLElement | null;
             const sections = shell ? [shell] : [];
@@ -1956,13 +1969,15 @@ const CommonReportView2 = ({
             }
             tempContainer.removeChild(pageTemplateSection);
 
-            const contentTopMm = TOP_MARGIN_MM + (headerHeightMm > 0 ? headerHeightMm + BLOCK_GAP_MM : 0);
+            const contentTopMm = topMarginMm + (headerHeightMm > 0 ? headerHeightMm + BLOCK_GAP_MM : 0);
             // The closing block isn't reserved on every page -- it's appended to the normal
             // content flow after the last block, so a report that fits on one page actually
             // stays on one page instead of leaving a permanent blank gap sized for a footer
             // that only ever gets drawn on the final page.
-            const contentBottomMm = PAGE_HEIGHT_MM - BOTTOM_MARGIN_MM - CONTENT_SAFETY_MM;
-            const usableContentHeightMm = contentBottomMm - contentTopMm > 0 ? contentBottomMm - contentTopMm : USABLE_HEIGHT_MM;
+            const contentBottomMm = PAGE_HEIGHT_MM - bottomMarginMm - CONTENT_SAFETY_MM;
+            const usableContentHeightMm = contentBottomMm - contentTopMm > 0
+                ? contentBottomMm - contentTopMm
+                : PAGE_HEIGHT_MM - topMarginMm - bottomMarginMm;
 
             // Bottom limit that applies only to the *final* piece of content, so signature +
             // footer land on the same page as the content they close. Without this the last
@@ -2259,7 +2274,7 @@ const CommonReportView2 = ({
             pagesToStamp.forEach((pageNo) => {
                 pdf.setPage(pageNo);
                 if (headerCanvas && headerHeightMm > 0) {
-                    addCanvasAtCursor(pdf, headerCanvas, MARGIN_X_MM, TOP_MARGIN_MM, PAGE_WIDTH_MM, headerHeightMm);
+                    addCanvasAtCursor(pdf, headerCanvas, MARGIN_X_MM, topMarginMm, PAGE_WIDTH_MM, headerHeightMm);
                 }
             });
 
@@ -2738,31 +2753,45 @@ const CommonReportView2 = ({
                         <p className="text-sm font-medium text-black">{totalReports} tests found</p>
                         <p className="text-xs text-black">{selectedCount} selected</p>
                     </div>
-                    <button
-                        onClick={printReports}
-                        // The report itself no longer waits on the Health Snapshot, so hold
-                        // just the print button until it lands -- otherwise a PDF captured in
-                        // that window would bake in the trend card's inline loading state.
-                        disabled={printing || selectedCount === 0 || healthSnapshotLoading}
-                        className="inline-flex items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        {printing ? (
-                            <>
-                                <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 105 7.75l-1.5-.87A6 6 0 114 12z"></path>
-                                </svg>
-                                Generating...
-                            </>
-                        ) : (
-                            <>
-                                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                </svg>
-                                Print Selected
-                            </>
-                        )}
-                    </button>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-medium text-black whitespace-nowrap">Print Type:</label>
+                            <select
+                                value={printType}
+                                onChange={(e) => setPrintType(e.target.value as 'plain' | 'letterhead')}
+                                disabled={printing}
+                                className="border rounded px-2 py-1 text-xs"
+                            >
+                                <option value="plain">Plain Paper</option>
+                                <option value="letterhead">Letterhead</option>
+                            </select>
+                        </div>
+                        <button
+                            onClick={printReports}
+                            // The report itself no longer waits on the Health Snapshot, so hold
+                            // just the print button until it lands -- otherwise a PDF captured in
+                            // that window would bake in the trend card's inline loading state.
+                            disabled={printing || selectedCount === 0 || healthSnapshotLoading}
+                            className="inline-flex items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {printing ? (
+                                <>
+                                    <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 105 7.75l-1.5-.87A6 6 0 114 12z"></path>
+                                    </svg>
+                                    Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print Selected
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -2822,27 +2851,33 @@ const CommonReportView2 = ({
                 <section data-report-shell className="flex flex-col">
                     {/* ================= HEADER ================= */}
                     <div className="bg-white" data-print-block data-print-role="header">
-                        <div className="flex flex-row items-start mb-2">
-                            <div className="flex flex-row items-center">
-                                <img
-                                    src="/report/image%201.png"
-                                    alt="Lab Logo"
-                                    className="w-20 h-12 object-contain mr-3 flex-shrink-0"
-                                    crossOrigin="anonymous"
-                                    data-print-logo="true"
-                                />
-                                <div
-                                    className="flex flex-col justify-center pl-4"
-                                    style={{ borderLeft: `1px solid ${REPORT_COLORS.neutral100}` }}
-                                >
-                                    <h1 className="text-base font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>{currentLab?.name}</h1>
-                                    <p className="text-[9px] leading-tight w-44 mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>
-                                        {[currentLab?.address, currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
-                                        {currentLab?.labPhone && ` PHONE: ${currentLab.labPhone}`}
-                                    </p>
+                        {printType !== 'letterhead' && (
+                            // Plain-paper only: on letterhead this identity block is already
+                            // pre-printed on the physical stationery, so it's left out here
+                            // rather than drawn over it. The reserved top margin (see
+                            // LETTERHEAD_TOP_MARGIN_MM) covers that band instead.
+                            <div className="flex flex-row items-start mb-2">
+                                <div className="flex flex-row items-center">
+                                    <img
+                                        src="/report/image%201.png"
+                                        alt="Lab Logo"
+                                        className="w-20 h-12 object-contain mr-3 flex-shrink-0"
+                                        crossOrigin="anonymous"
+                                        data-print-logo="true"
+                                    />
+                                    <div
+                                        className="flex flex-col justify-center pl-4"
+                                        style={{ borderLeft: `1px solid ${REPORT_COLORS.neutral100}` }}
+                                    >
+                                        <h1 className="text-base font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>{currentLab?.name}</h1>
+                                        <p className="text-[9px] leading-tight w-44 mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>
+                                            {[currentLab?.address, currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
+                                            {currentLab?.labPhone && ` PHONE: ${currentLab.labPhone}`}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Patient Details Card */}
                         {/*

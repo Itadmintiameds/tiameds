@@ -25,23 +25,28 @@ const A4_WIDTH = 210; // mm
 // this exact markup (not estimated), then rounded up slightly as a safety margin.
 // Pagination is driven by these so a page holds as much as physically fits and no more
 // — a small invoice stays on one page, a large one splits only where it genuinely must.
-const LETTERHEAD_PAGE_PADDING_MM = 76;       // 56 top + 20 bottom (see LETTERHEAD_MARGINS)
+const LETTERHEAD_PAGE_PADDING_MM = 44;       // 30 top + 14 bottom (see LETTERHEAD_MARGINS)
 const PLAIN_PAGE_PADDING_MM = 10.6;          // 20px top + 20px bottom
-const HEADER_PATIENT_MM = 56;                // invoice-no box + patient/visit/reference box.
+const HEADER_PATIENT_MM = 60;                // gradient title bar + patient/visit info card.
                                              // Covers both header variants: letterhead
-                                             // (logo suppressed, 53.9mm) and plain paper
-                                             // (logo + lab name block, 55.5mm).
+                                             // (logo suppressed) and plain paper (logo +
+                                             // lab name block). Bumped +4mm over the plain
+                                             // black/white header for the colorful redesign's
+                                             // gradient bar chrome -- re-verify against a
+                                             // real render if pages start breaking oddly.
 const FOOTER_MM = 28;                        // disclaimer + signatory + "powered by" strip
-const TESTS_CHROME_MM = 19;                  // "Tests Conducted" heading + table header row
+const TESTS_CHROME_MM = 23;                  // colored section band + gradient table header row
 const TEST_ROW_MM = 7.5;                     // a single-line test row
-const PACKAGES_CHROME_MM = 19;               // "Health Packages" heading + table header row
+const PACKAGES_CHROME_MM = 23;               // colored section band + gradient table header row
 const PACKAGE_ROW_MM = 7.5;                  // a package's own single-line name/price row
 const PACKAGE_INCLUDES_MM = 8;               // the "Includes:" label + surrounding cell padding
 const PACKAGE_CHIP_ROW_MM = 6.2;             // each row of up to 3 included-test chips
 const TRANSACTIONS_CHROME_MM = 41;           // heading + header row + the 2 totals rows
 const TRANSACTIONS_CHROME_NO_TOTALS_MM = 18; // per-transaction mode omits the totals rows
 const TRANSACTION_ROW_MM = 7.2;              // a single-line transaction row
-const PAYMENT_SUMMARY_MM = 51;
+const PAYMENT_SUMMARY_MM = 64;               // 3-card summary row + "Amount in Words" strip
+                                             // (was 51 for the old 2-column plain summary;
+                                             // re-verify against a real render if needed).
 
 // Long values wrap onto extra lines and make their row taller — the single biggest
 // source of drift, since lab test names and payment remarks are free-form. Each extra
@@ -56,34 +61,49 @@ const TXN_REMARK_CHARS_PER_LINE = 12;   // "Remarks" column is narrow — 10 col
 // A page's rendered height must stay under this or the export clips. generatePDF()
 // draws each page with addImage(..., 10, 10, A4_WIDTH - 20, ...), i.e. scaled by 190/210
 // and offset 10mm down, so a virtual height H lands at real 10 + H*(19/21). Staying
-// under this keeps content both on the physical page (needs H <= 317.2) and clear of
-// the letterhead's pre-printed bottom band, which starts 20mm up from the page edge
-// (needs H <= 315). The gap below 315 is deliberate headroom for text that wraps a
-// line more than the estimates above predict.
+// under this keeps content on the physical page (needs H <= 317.2) with headroom below
+// that for text that wraps a line more than the estimates above predict -- headroom that
+// also comfortably clears the letterhead's pre-printed bottom band, whichever of the two
+// letterhead designs this file has been calibrated against (see LETTERHEAD_MARGINS).
 const SAFE_BUDGET_MM = 308;
 
 // Plain hex values (not Tailwind color-* classes) on purpose: Tailwind v4 generates
 // its color palette via oklch()/color-mix(), which html2canvas cannot parse and will
 // throw ("unsupported color function oklch") mid-PDF-capture, producing a blank page.
 // Inline hex keeps the invoice visually identical while staying safe for html2canvas.
-// Same convention as CommonReportView.tsx / CommonReportView2.tsx.
+// Same convention as CommonReportView.tsx / CommonReportView2.tsx -- the secondary/
+// neutral/status swatches below are copied verbatim from that file's REPORT_COLORS so
+// the invoice reads as the same visual system as the lab report.
 const INVOICE_COLORS = {
-  black: '#000000',
   white: '#FFFFFF',
-  gray600: '#4B5563',
-  gray400: '#9CA3AF',
-  gray300: '#D1D5DB',
+  neutral900: '#101828',
+  neutral800: '#1D2939',
+  neutral600: '#475467',
+  neutral100: '#F2F4F7',
+  secondary50: '#F8F6FD',
+  secondary100: '#F1EDFB',
+  secondary200: '#E4DEF7',
+  secondary700: '#6941C6',
+  secondary800: '#53389E',
+  warning500: '#F79009',
+  danger600: '#D92D20',
+  success700: '#067647',
 };
 
-// Measured off the CURE+ Hospitals pre-printed letterhead stock (A4): the purple
-// header band runs ~56mm from the top edge, the footer band starts ~20mm from the
-// bottom edge, and the white printable area is inset ~16mm from the left/right edges
-// of the purple frame. Content on "Letterhead" print types must stay inside that box.
+const INVOICE_FONT_FAMILY = 'var(--font-inter), "Inter", "Helvetica Neue", Arial, sans-serif';
+
+// Estimated from the new CURE+ Hospitals letterhead artwork (the "Final Letterheads_
+// Martalli new.pdf" proof, A4): a thin lavender header band spans the full width and
+// runs ~30mm from the top edge, a thinner lavender footer band starts ~14mm from the
+// bottom edge, and -- unlike the earlier full-frame letterhead this file used to target
+// (56/20/16mm, purple side border) -- there is no colored side frame, so left/right just
+// get a plain print-safe margin. These numbers were read off the artwork proof, not a
+// physical printout, so verify with one test print and nudge them if anything overlaps.
 const LETTERHEAD_MARGINS = {
-  top: '56mm',
-  bottom: '20mm',
-  left: '16mm',
-  right: '16mm',
+  top: '30mm',
+  bottom: '14mm',
+  left: '10mm',
+  right: '10mm',
 };
 const PLAIN_PAGE_PADDING = '20px';
 
@@ -122,6 +142,53 @@ const packageHeightMm = (pkg: Packages): number => {
   return PACKAGE_ROW_MM
     + wrapExtraMm(pkg.packageName, PACKAGE_NAME_CHARS_PER_LINE)
     + (testCount > 0 ? PACKAGE_INCLUDES_MM + Math.ceil(testCount / 3) * PACKAGE_CHIP_ROW_MM : 0);
+};
+
+// Amount-in-words, Indian numbering system (thousand / lakh / crore) -- how a printed
+// Indian invoice states its total in words, e.g. "Rupees Sixty Thousand Five Hundred
+// Fifty Seven Only".
+const WORDS_ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+  'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+const WORDS_TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+const twoDigitsToWords = (n: number): string => {
+  if (n < 20) return WORDS_ONES[n];
+  const tens = Math.floor(n / 10);
+  const ones = n % 10;
+  return `${WORDS_TENS[tens]}${ones ? ' ' + WORDS_ONES[ones] : ''}`;
+};
+
+const threeDigitsToWords = (n: number): string => {
+  const hundreds = Math.floor(n / 100);
+  const rest = n % 100;
+  const parts: string[] = [];
+  if (hundreds) parts.push(`${WORDS_ONES[hundreds]} Hundred`);
+  if (rest) parts.push(twoDigitsToWords(rest));
+  return parts.join(' ');
+};
+
+const integerToIndianWords = (value: number): string => {
+  const n = Math.floor(Math.abs(value));
+  if (n === 0) return 'Zero';
+  const crore = Math.floor(n / 1e7);
+  const lakh = Math.floor((n % 1e7) / 1e5);
+  const thousand = Math.floor((n % 1e5) / 1e3);
+  const rest = n % 1e3;
+  const parts: string[] = [];
+  if (crore) parts.push(`${threeDigitsToWords(crore)} Crore`);
+  if (lakh) parts.push(`${twoDigitsToWords(lakh)} Lakh`);
+  if (thousand) parts.push(`${twoDigitsToWords(thousand)} Thousand`);
+  if (rest) parts.push(threeDigitsToWords(rest));
+  return parts.join(' ');
+};
+
+const amountInWords = (amount: number): string => {
+  const rupees = Math.floor(Math.abs(amount));
+  const paise = Math.round((Math.abs(amount) - rupees) * 100);
+  const rupeeWords = `Rupees ${integerToIndianWords(rupees)}`;
+  return paise > 0
+    ? `${rupeeWords} and ${integerToIndianWords(paise)} Paise Only`
+    : `${rupeeWords} Only`;
 };
 
 const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit }) => {
@@ -342,27 +409,27 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
     const remainingDue = Number(patient?.visit?.billing?.due_amount || 0);
 
     const c = INVOICE_COLORS;
-    const thStyle = { borderColor: c.gray600, color: c.black };
-    const tdStyle = { borderColor: c.gray400, color: c.black };
-    const footTdStyle = { borderColor: c.gray600, color: c.black };
+    const thStyle = { color: c.secondary800 };
+    const tdStyle = { borderColor: c.secondary100, color: c.neutral800 };
+    const footTdStyle = { borderColor: c.secondary200, color: c.secondary800 };
 
     return (
-      <div className="mt-4 pt-2 border-t print:mt-3 print:pt-1.5" style={{ borderColor: c.gray600 }}>
-        <h3 className="font-bold mb-1.5 text-xs print:mb-1 border-b pb-0.5 uppercase" style={{ color: c.black, borderColor: c.gray600 }}>Payment Transactions</h3>
-        <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full text-xs border-collapse border print:table-fixed print:w-full" style={{ borderColor: c.gray600 }}>
+      <div className="mt-3 print:mt-3">
+        <div className="px-3 py-1.5 mb-1.5 rounded-lg text-[10px] font-bold uppercase" style={{ backgroundColor: c.secondary50, color: c.neutral800 }}>Payment Transactions</div>
+        <div className="overflow-x-auto print:overflow-visible rounded-lg" style={{ border: `1px solid ${c.secondary200}` }}>
+          <table className="w-full text-xs border-collapse print:table-fixed print:w-full">
             <thead>
-              <tr style={{ backgroundColor: c.white }}>
-                <th className="p-1.5 font-semibold text-left border" style={thStyle}>Txn Code</th>
-                <th className="p-1.5 font-semibold text-left border" style={thStyle}>Method</th>
-                <th className="p-1.5 font-semibold text-right border" style={thStyle}>UPI</th>
-                <th className="p-1.5 font-semibold text-right border" style={thStyle}>Card</th>
-                <th className="p-1.5 font-semibold text-right border" style={thStyle}>Cash</th>
-                <th className="p-1.5 font-semibold text-right border" style={thStyle}>Received</th>
-                <th className="p-1.5 font-semibold text-right border" style={thStyle}>Due</th>
-                <th className="p-1.5 font-semibold text-left border" style={thStyle}>Date/Time</th>
-                <th className="p-1.5 font-semibold text-left border" style={thStyle}>By</th>
-                <th className="p-1.5 font-semibold text-left border" style={thStyle}>Remarks</th>
+              <tr style={{ backgroundColor: c.secondary100 }}>
+                <th className="p-1.5 font-bold text-left uppercase" style={thStyle}>Txn Code</th>
+                <th className="p-1.5 font-bold text-left uppercase" style={thStyle}>Method</th>
+                <th className="p-1.5 font-bold text-right uppercase" style={thStyle}>UPI</th>
+                <th className="p-1.5 font-bold text-right uppercase" style={thStyle}>Card</th>
+                <th className="p-1.5 font-bold text-right uppercase" style={thStyle}>Cash</th>
+                <th className="p-1.5 font-bold text-right uppercase" style={thStyle}>Received</th>
+                <th className="p-1.5 font-bold text-right uppercase" style={thStyle}>Due</th>
+                <th className="p-1.5 font-bold text-left uppercase" style={thStyle}>Date/Time</th>
+                <th className="p-1.5 font-bold text-left uppercase" style={thStyle}>By</th>
+                <th className="p-1.5 font-bold text-left uppercase" style={thStyle}>Remarks</th>
               </tr>
             </thead>
             <tbody>
@@ -372,36 +439,36 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                   return (
                     <tr
                       key={`txn-${idx}`}
-                      style={{ backgroundColor: c.white }}
+                      style={{ backgroundColor: idx % 2 === 0 ? c.white : c.secondary50 }}
                     >
-                      <td className="p-1.5 border align-top leading-tight" style={tdStyle}>
+                      <td className="p-1.5 border-t align-top leading-tight" style={tdStyle}>
                         {txn.transactionCode || txn.id || '-'}
                       </td>
-                      <td className="p-1.5 border font-medium align-top leading-tight" style={tdStyle}>
+                      <td className="p-1.5 border-t font-medium align-top leading-tight" style={tdStyle}>
                         {formatPaymentMethod(txn.payment_method)}
                       </td>
-                      <td className="p-1.5 border align-top text-right leading-tight" style={tdStyle}>
+                      <td className="p-1.5 border-t align-top text-right leading-tight" style={tdStyle}>
                         {Number(txn.upi_amount ?? 0) > 0 ? `₹${Number(txn.upi_amount ?? 0).toFixed(2)}` : '-'}
                       </td>
-                      <td className="p-1.5 border align-top text-right leading-tight" style={tdStyle}>
+                      <td className="p-1.5 border-t align-top text-right leading-tight" style={tdStyle}>
                         {Number(txn.card_amount ?? 0) > 0 ? `₹${Number(txn.card_amount ?? 0).toFixed(2)}` : '-'}
                       </td>
-                      <td className="p-1.5 border align-top text-right leading-tight" style={tdStyle}>
+                      <td className="p-1.5 border-t align-top text-right leading-tight" style={tdStyle}>
                         {Number(txn.cash_amount ?? 0) > 0 ? `₹${Number(txn.cash_amount ?? 0).toFixed(2)}` : '-'}
                       </td>
-                      <td className="p-1.5 border font-bold align-top text-right leading-tight" style={tdStyle}>
+                      <td className="p-1.5 border-t font-bold align-top text-right leading-tight" style={{ ...tdStyle, color: c.neutral900 }}>
                         ₹{Number(txn.received_amount || 0).toFixed(2)}
                       </td>
-                      <td className="p-1.5 border align-top text-right leading-tight" style={tdStyle}>
+                      <td className="p-1.5 border-t align-top text-right leading-tight" style={Number(txn.due_amount ?? 0) > 0 ? { ...tdStyle, color: c.danger600 } : tdStyle}>
                         {Number(txn.due_amount ?? 0) > 0 ? `₹${Number(txn.due_amount ?? 0).toFixed(2)}` : '-'}
                       </td>
-                      <td className="p-1.5 border whitespace-nowrap align-top leading-tight text-xs" style={tdStyle}>
+                      <td className="p-1.5 border-t whitespace-nowrap align-top leading-tight text-xs" style={tdStyle}>
                         {formatDateTime(txn.created_at || '')}
                       </td>
-                      <td className="p-1.5 border align-top leading-tight" style={tdStyle}>
+                      <td className="p-1.5 border-t align-top leading-tight" style={tdStyle}>
                         {txn.createdBy || '-'}
                       </td>
-                      <td className="p-1.5 border align-top leading-tight" style={tdStyle}>
+                      <td className="p-1.5 border-t align-top leading-tight" style={tdStyle}>
                         {txn.remarks || '-'}
                       </td>
                     </tr>
@@ -411,36 +478,36 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
             {!transaction && showTotals && (
               <tfoot>
-                <tr className="font-semibold" style={{ backgroundColor: c.white }}>
-                  <td colSpan={2} className="p-1.5 border align-top" style={footTdStyle}>Total:</td>
-                  <td className="p-1.5 border align-top text-right" style={footTdStyle}>
+                <tr className="font-semibold" style={{ backgroundColor: c.secondary50 }}>
+                  <td colSpan={2} className="p-1.5 border-t align-top" style={footTdStyle}>Total:</td>
+                  <td className="p-1.5 border-t align-top text-right" style={footTdStyle}>
                     ₹{allTransactions
                       .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.upi_amount || 0), 0)
                       .toFixed(2)}
                   </td>
-                  <td className="p-1.5 border align-top text-right" style={footTdStyle}>
+                  <td className="p-1.5 border-t align-top text-right" style={footTdStyle}>
                     ₹{allTransactions
                       .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.card_amount || 0), 0)
                       .toFixed(2)}
                   </td>
-                  <td className="p-1.5 border align-top text-right" style={footTdStyle}>
+                  <td className="p-1.5 border-t align-top text-right" style={footTdStyle}>
                     ₹{allTransactions
                       .reduce((sum: number, txn: BillingTransaction) => sum + Number(txn.cash_amount || 0), 0)
                       .toFixed(2)}
                   </td>
-                  <td className="p-1.5 border font-bold align-top text-right" style={footTdStyle}>
+                  <td className="p-1.5 border-t font-bold align-top text-right" style={footTdStyle}>
                     ₹{totalReceived.toFixed(2)}
                   </td>
-                  <td className="p-1.5 border font-bold align-top text-right" style={footTdStyle}>
+                  <td className="p-1.5 border-t font-bold align-top text-right" style={footTdStyle}>
                     ₹{remainingDue.toFixed(2)}
                   </td>
-                  <td className="p-1.5 border align-top" style={footTdStyle}></td>
-                  <td className="p-1.5 border align-top" style={footTdStyle}></td>
-                  <td className="p-1.5 border align-top" style={footTdStyle}></td>
+                  <td className="p-1.5 border-t align-top" style={footTdStyle}></td>
+                  <td className="p-1.5 border-t align-top" style={footTdStyle}></td>
+                  <td className="p-1.5 border-t align-top" style={footTdStyle}></td>
                 </tr>
-                <tr className="font-bold" style={{ backgroundColor: c.white }}>
-                  <td colSpan={9} className="p-1.5 border align-top text-right" style={footTdStyle}>Net Amount:</td>
-                  <td className="p-1.5 border font-bold align-top text-right" style={footTdStyle} colSpan={1}>
+                <tr className="font-bold" style={{ backgroundColor: c.secondary50 }}>
+                  <td colSpan={9} className="p-1.5 border-t align-top text-right" style={footTdStyle}>Net Amount:</td>
+                  <td className="p-1.5 border-t font-bold align-top text-right" style={footTdStyle} colSpan={1}>
                     ₹{Number(patient?.visit?.billing?.netAmount || 0).toFixed(2)}
                   </td>
                 </tr>
@@ -492,88 +559,100 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
           paddingLeft: isLetterhead ? LETTERHEAD_MARGINS.left : PLAIN_PAGE_PADDING,
           paddingRight: isLetterhead ? LETTERHEAD_MARGINS.right : PLAIN_PAGE_PADDING,
           pageBreakAfter: pageNumber < totalPages ? 'always' : 'auto',
-          backgroundColor: c.white
+          backgroundColor: c.white,
+          fontFamily: INVOICE_FONT_FAMILY
         }}
       >
-        {/* Header Section - Compact */}
-        <div className="flex justify-between items-start mb-4 border-b pb-2" style={{ borderColor: c.gray600 }}>
-          {isLetterhead ? (
-            // Letterhead mode: physical stationery already has the lab's branding
-            // pre-printed in the top ~56mm band, so leave that space empty instead of
-            // drawing over it. The page's own top padding (above) reserves the space;
-            // this empty node just keeps the flex row's two-item split intact so the
-            // invoice no./date box on the right stays right-aligned.
-            <div />
-          ) : (
-            <div className="flex items-center gap-3">
-              <div>
+        {/* Header Section - light lavender band, matching the printed letterhead's own
+            restrained palette (pale band + dark text + a purple accent) rather than a
+            saturated fill. */}
+        <div
+          className="mb-3 rounded-lg print:mb-2"
+          style={{ backgroundColor: c.secondary50, borderBottom: `2px solid ${c.secondary200}` }}
+        >
+          <div className="flex justify-between items-center px-3 py-2">
+            {isLetterhead ? (
+              // Letterhead mode: physical stationery already has the lab's logo/name
+              // pre-printed in the top ~30mm band, so only the invoice title is drawn
+              // here rather than repeating the branding over it.
+              <h1 className="text-sm font-bold uppercase tracking-wide leading-tight" style={{ color: c.secondary800 }}>Tax Invoice</h1>
+            ) : (
+              <div className="flex items-center gap-2.5 min-w-0">
                 <Image src={currentLab?.labLogo || currentLab?.logo || FALLBACK_LAB_LOGO_SRC}
-                  alt="Lab Logo" width={70} height={44}
-                  className="h-11 w-auto" priority loading="eager"
+                  alt="Lab Logo" width={40} height={28}
+                  className="h-7 w-auto object-contain flex-shrink-0" priority loading="eager"
                   unoptimized crossOrigin="anonymous" data-print-logo="true"
                   quality={100}
                 />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold uppercase tracking-tight leading-tight" style={{ color: c.black }}>{currentLab?.name || 'DIAGNOSTIC CENTER'}</h1>
-                <p className="text-xs leading-tight" style={{ color: c.black }}>{currentLab?.address || ''}</p>
-                {(currentLab?.city || currentLab?.state) && (
-                  <p className="text-xs leading-tight" style={{ color: c.black }}>
-                    {[currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
+                <div className="min-w-0">
+                  <h1 className="text-sm font-bold leading-tight" style={{ color: c.secondary800 }}>{currentLab?.name || 'DIAGNOSTIC CENTER'}</h1>
+                  <p className="text-[8px] leading-tight" style={{ color: c.neutral600 }}>
+                    {[currentLab?.address, currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
+                    {currentLab?.labPhone ? ` • Phone: ${currentLab.labPhone}` : ''}
                   </p>
-                )}
-                {currentLab?.labPhone && (
-                  <p className="text-xs leading-tight" style={{ color: c.black }}>Phone: {currentLab.labPhone}</p>
-                )}
+                </div>
               </div>
-            </div>
-          )}
-          <div className="text-right border px-3 py-1.5" style={{ borderColor: c.gray600, backgroundColor: c.white }}>
-            <p className="text-xs font-bold mb-0.5" style={{ color: c.black }}>INVOICE</p>
-            <p className="text-xs leading-tight" style={{ color: c.black }}><span className="font-semibold">No:</span> {patient?.visit?.billing?.billingCode || patient?.visit?.billing?.billingId || 'N/A'}</p>
-            <p className="text-xs leading-tight" style={{ color: c.black }}><span className="font-semibold">Date:</span> {invoiceDateTime}</p>
-          </div>
-        </div>
-
-        {/* Patient & Visit Info Section - Ultra Compact */}
-        <div className="mb-4 border p-2" style={{ borderColor: c.gray600 }}>
-          <div className="grid grid-cols-3 gap-3 text-xs">
-            <div>
-              <p className="font-semibold mb-1 border-b pb-0.5" style={{ color: c.black, borderColor: c.gray400 }}>Patient</p>
-              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Name:</span> {patient?.firstName || ''} {patient?.lastName || ''}</p>
-              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Age/Sex:</span> {formatAgeForDisplay(patient?.dateOfBirth || '')} / {patient?.gender || 'N/A'}</p>
-              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Contact:</span> {patient?.phone || 'N/A'}</p>
-              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Code:</span> {patient?.patientCode || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="font-semibold mb-1 border-b pb-0.5" style={{ color: c.black, borderColor: c.gray400 }}>Visit</p>
-              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Date:</span> {patient?.visit?.visitDate ? new Date(patient.visit.visitDate).toLocaleDateString('en-IN') : 'N/A'}</p>
-              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Code:</span> {patient?.visit?.visitCode || 'N/A'}</p>
-              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">ID:</span> {patient?.visit?.visitId || 'N/A'}</p>
-              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Billing:</span> {patient?.visit?.billing?.billingCode || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="font-semibold mb-1 border-b pb-0.5" style={{ color: c.black, borderColor: c.gray400 }}>Reference</p>
-              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Referred By:</span> {doctor?.name || 'N/A'}</p>
-              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Patient Type:</span> {patient?.visit?.visitType || 'N/A'}</p>
+            )}
+            <div className="text-right flex-shrink-0 pl-3">
+              <p className="text-[8px] font-bold uppercase tracking-wide" style={{ color: c.secondary700 }}>
+                {isLetterhead ? (currentLab?.name || 'Invoice') : 'Tax Invoice'}
+              </p>
+              <p className="text-[11px] font-bold leading-tight" style={{ color: c.neutral900 }}>
+                No: {patient?.visit?.billing?.billingCode || patient?.visit?.billing?.billingId || 'N/A'}
+              </p>
+              <p className="text-[9px] leading-tight" style={{ color: c.neutral600 }}>{invoiceDateTime}</p>
             </div>
           </div>
         </div>
 
-        {/* Tests Table - Compact */}
+        {/* Patient & Visit Info Section - report-style icon fields (same convention as
+            CommonReportView2.tsx's patient details card: secondary200 border, secondary100
+            icon chips, neutral600 uppercase labels, neutral900 bold values). */}
+        <div className="mb-3 rounded-xl p-2" style={{ border: `1px solid ${c.secondary200}` }}>
+          {[
+            [
+              { icon: '/report/user.png', label: 'Patient Name', value: `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'N/A' },
+              { icon: '/report/users.png', label: 'Age / Sex', value: `${formatAgeForDisplay(patient?.dateOfBirth || '')} / ${patient?.gender || 'N/A'}` },
+              { icon: '/report/id-card.png', label: 'Patient Code', value: patient?.patientCode || 'N/A' },
+              { icon: '/report/clipboard-check.png', label: 'Patient Type', value: patient?.visit?.visitType || 'N/A' },
+            ],
+            [
+              { icon: '/report/stethoscope.png', label: 'Referred By', value: doctor?.name || 'Self' },
+              { icon: '/report/calendar.png', label: 'Visit Date', value: patient?.visit?.visitDate ? new Date(patient.visit.visitDate).toLocaleDateString('en-IN') : 'N/A' },
+              { icon: '/report/clipboard.png', label: 'Visit Code', value: patient?.visit?.visitCode || 'N/A' },
+              { icon: '/report/file-text.png', label: 'Contact', value: patient?.phone || 'N/A' },
+            ],
+          ].map((row, rowIdx) => (
+            <div key={rowIdx} className="grid grid-cols-4 gap-2" style={{ marginTop: rowIdx > 0 ? '6px' : 0 }}>
+              {row.map((field) => (
+                <div key={field.label} className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: c.secondary100 }}>
+                    <img src={field.icon} alt="" className="w-2.5 h-2.5" crossOrigin="anonymous" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[7px] font-semibold uppercase leading-tight" style={{ color: c.neutral600 }}>{field.label}</p>
+                    <p className="text-[10px] font-bold leading-tight" style={{ color: c.neutral900 }}>{field.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        {/* Tests Table - light section band, matching the letterhead's restrained tone */}
         {pageTests.length > 0 && (
-          <div className="mb-4">
-            <h2 className="text-xs font-bold mb-1.5 border-b pb-0.5 uppercase" style={{ color: c.black, borderColor: c.gray600 }}>
+          <div className="mb-3 rounded-lg overflow-hidden" style={{ border: `1px solid ${c.secondary200}` }}>
+            <div className="px-3 py-1.5 text-[10px] font-bold uppercase" style={{ backgroundColor: c.secondary50, color: c.neutral800 }}>
               Tests Conducted{departmentName ? ` — Department: ${departmentName}` : ''}
-            </h2>
-            <table className="w-full border-collapse border text-xs" style={{ borderColor: c.gray600 }}>
+            </div>
+            <table className="w-full border-collapse text-[10px]">
               <thead>
-                <tr style={{ backgroundColor: c.white }}>
-                  <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Test Name</th>
-                  <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Category</th>
-                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Price</th>
-                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Discount</th>
-                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Amount</th>
+                <tr style={{ backgroundColor: c.secondary100 }}>
+                  <th className="text-left p-1.5 font-bold uppercase" style={{ color: c.secondary800 }}>Test Name</th>
+                  <th className="text-left p-1.5 font-bold uppercase" style={{ color: c.secondary800 }}>Category</th>
+                  <th className="text-right p-1.5 font-bold uppercase" style={{ color: c.secondary800 }}>Price</th>
+                  <th className="text-right p-1.5 font-bold uppercase" style={{ color: c.secondary800 }}>Discount</th>
+                  <th className="text-right p-1.5 font-bold uppercase" style={{ color: c.secondary800 }}>Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -582,14 +661,14 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                   const originalPrice = discountInfo ? discountInfo.finalPrice + discountInfo.discountAmount : test.price;
                   const finalAmount = discountInfo ? discountInfo.finalPrice : test.price;
                   return (
-                    <tr key={`test-${idx}`} style={{ backgroundColor: c.white }}>
-                      <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{test.name}</td>
-                      <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{test.category || 'General'}</td>
-                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{originalPrice.toFixed(2)}</td>
-                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>
+                    <tr key={`test-${idx}`} style={{ backgroundColor: idx % 2 === 0 ? c.white : c.secondary50 }}>
+                      <td className="p-1.5 leading-tight font-semibold" style={{ color: c.neutral900 }}>{test.name}</td>
+                      <td className="p-1.5 leading-tight" style={{ color: c.neutral600 }}>{test.category || 'General'}</td>
+                      <td className="p-1.5 text-right leading-tight" style={{ color: c.neutral800 }}>₹{originalPrice.toFixed(2)}</td>
+                      <td className="p-1.5 text-right leading-tight" style={{ color: discountInfo && discountInfo.discountAmount > 0 ? c.danger600 : c.neutral600 }}>
                         {discountInfo && discountInfo.discountAmount > 0 ? `-₹${discountInfo.discountAmount.toFixed(2)}` : '₹0.00'}
                       </td>
-                      <td className="p-1.5 text-right border font-semibold leading-tight" style={{ borderColor: c.gray400, color: c.black }}>
+                      <td className="p-1.5 text-right font-bold leading-tight" style={{ color: c.neutral900 }}>
                         ₹{finalAmount.toFixed(2)}
                       </td>
                     </tr>
@@ -600,17 +679,17 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
           </div>
         )}
 
-        {/* Packages Section (only on the page(s) this fix assigns them to) - Compact */}
+        {/* Packages Section (only on the page(s) this fix assigns them to) */}
         {page.packages.length > 0 && (
-          <div className="mb-4">
-            <h2 className="text-xs font-bold mb-1.5 border-b pb-0.5 uppercase" style={{ color: c.black, borderColor: c.gray600 }}>Health Packages</h2>
-            <table className="w-full border-collapse border text-xs" style={{ borderColor: c.gray600 }}>
+          <div className="mb-3 rounded-lg overflow-hidden" style={{ border: `1px solid ${c.secondary200}` }}>
+            <div className="px-3 py-1.5 text-[10px] font-bold uppercase" style={{ backgroundColor: c.secondary50, color: c.neutral800 }}>Health Packages</div>
+            <table className="w-full border-collapse text-[10px]">
               <thead>
-                <tr style={{ backgroundColor: c.white }}>
-                  <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Package Name</th>
-                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Price</th>
-                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Discount</th>
-                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Amount</th>
+                <tr style={{ backgroundColor: c.secondary100 }}>
+                  <th className="text-left p-1.5 font-bold uppercase" style={{ color: c.secondary800 }}>Package Name</th>
+                  <th className="text-right p-1.5 font-bold uppercase" style={{ color: c.secondary800 }}>Price</th>
+                  <th className="text-right p-1.5 font-bold uppercase" style={{ color: c.secondary800 }}>Discount</th>
+                  <th className="text-right p-1.5 font-bold uppercase" style={{ color: c.secondary800 }}>Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -619,20 +698,20 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                   const discountAmount = (grossPrice * pkg.discount) / 100;
                   return (
                   <React.Fragment key={`pkg-${idx}`}>
-                    <tr style={{ backgroundColor: c.white }}>
-                      <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{pkg.packageName}</td>
-                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{grossPrice.toFixed(2)}</td>
-                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>-₹{discountAmount.toFixed(2)}</td>
-                      <td className="p-1.5 text-right border font-semibold leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{(grossPrice - discountAmount).toFixed(2)}</td>
+                    <tr style={{ backgroundColor: idx % 2 === 0 ? c.white : c.secondary50 }}>
+                      <td className="p-1.5 leading-tight font-semibold" style={{ color: c.neutral900 }}>{pkg.packageName}</td>
+                      <td className="p-1.5 text-right leading-tight" style={{ color: c.neutral800 }}>₹{grossPrice.toFixed(2)}</td>
+                      <td className="p-1.5 text-right leading-tight" style={{ color: c.danger600 }}>-₹{discountAmount.toFixed(2)}</td>
+                      <td className="p-1.5 text-right font-bold leading-tight" style={{ color: c.neutral900 }}>₹{(grossPrice - discountAmount).toFixed(2)}</td>
                     </tr>
                     {pkg.tests && pkg.tests.length > 0 && (
-                      <tr style={{ backgroundColor: c.white }}>
-                        <td colSpan={4} className="p-1.5 border" style={{ borderColor: c.gray400 }}>
+                      <tr style={{ backgroundColor: idx % 2 === 0 ? c.white : c.secondary50 }}>
+                        <td colSpan={4} className="p-1.5" style={{ borderTop: `1px solid ${c.secondary100}` }}>
                           <div className="pl-1">
-                            <p className="text-xs font-semibold mb-0.5" style={{ color: c.black }}>Includes:</p>
-                            <div className="grid grid-cols-3 gap-0.5">
+                            <p className="text-[9px] font-bold uppercase mb-0.5" style={{ color: c.secondary700 }}>Includes:</p>
+                            <div className="grid grid-cols-3 gap-1">
                               {pkg.tests.map((test, testIdx) => (
-                                <div key={testIdx} className="text-xs p-0.5 border leading-tight" style={{ backgroundColor: c.white, borderColor: c.gray300, color: c.black }}>
+                                <div key={testIdx} className="text-[9px] px-1 py-0.5 rounded leading-tight font-medium" style={{ backgroundColor: c.secondary100, color: c.secondary800 }}>
                                   {test.name}
                                 </div>
                               ))}
@@ -649,7 +728,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
           </div>
         )}
 
-        {/* Payment Summary Section */}
+        {/* Payment Summary Section - 3-card layout + amount in words */}
         {page.showSummary && (() => {
           const summaryTxn = transaction ? transaction : undefined;
           const totalDue = summaryTxn
@@ -657,58 +736,89 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
             : Number(patient?.visit?.billing?.due_amount || 0);
           const dueAmount = Number(patient?.visit?.billing?.due_amount || 0);
           const isPaid = dueAmount === 0;
+          const testsTotal = tests.reduce((sum, test) => {
+            const discountInfo = getTestDiscount(test.id);
+            return sum + (discountInfo ? discountInfo.finalPrice : test.price);
+          }, 0);
+          const packagesTotal = (healthPackage || []).reduce((sum, pkg) => {
+            const grossPrice = pkg.tests?.reduce((s, t) => s + t.price, 0) ?? pkg.price;
+            return sum + (grossPrice - (grossPrice * pkg.discount) / 100);
+          }, 0);
+          const subtotal = calculateTotal();
+          const discountAmount = Number(patient?.visit?.billing?.discount || 0);
+          const netAmount = Number(patient?.visit?.billing?.netAmount || subtotal);
 
           return (
-            <div className="border-t pt-2" style={{ borderColor: c.gray600 }}>
-              <h2 className="text-xs font-bold mb-1.5 border-b pb-0.5 uppercase" style={{ color: c.black, borderColor: c.gray600 }}>Payment Summary</h2>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="flex justify-between py-1 border-b" style={{ borderColor: c.gray400 }}>
-                  <span className="font-semibold" style={{ color: c.black }}>Tests Total:</span>
-                  <span style={{ color: c.black }}>₹{tests.reduce((sum, test) => {
-                    const discountInfo = getTestDiscount(test.id);
-                    return sum + (discountInfo ? discountInfo.finalPrice : test.price);
-                  }, 0).toFixed(2)}</span>
-                </div>
-                {healthPackage && healthPackage.length > 0 && (
-                  <div className="flex justify-between py-1 border-b" style={{ borderColor: c.gray400 }}>
-                    <span className="font-semibold" style={{ color: c.black }}>Packages Total:</span>
-                    <span style={{ color: c.black }}>₹{healthPackage.reduce((sum, pkg) => {
-                      const grossPrice = pkg.tests?.reduce((s, t) => s + t.price, 0) ?? pkg.price;
-                      return sum + (grossPrice - (grossPrice * pkg.discount) / 100);
-                    }, 0).toFixed(2)}</span>
+            <div className="pt-1">
+              <div className="px-3 py-1.5 mb-2 rounded-lg text-[10px] font-bold uppercase" style={{ backgroundColor: c.secondary50, color: c.neutral800 }}>Payment Summary</div>
+              <div className="grid grid-cols-3 gap-2 text-[10px]">
+                {/* Charges breakdown */}
+                <div className="rounded-xl p-2" style={{ border: `1px solid ${c.secondary200}` }}>
+                  <p className="text-[9px] font-bold uppercase mb-1" style={{ color: c.secondary800 }}>Charges</p>
+                  <div className="flex justify-between py-0.5" style={{ color: c.neutral800 }}>
+                    <span>Tests Total</span><span className="font-semibold">₹{testsTotal.toFixed(2)}</span>
                   </div>
-                )}
-                <div className="flex justify-between py-1 border-b font-bold" style={{ borderColor: c.gray400 }}>
-                  <span style={{ color: c.black }}>Subtotal:</span>
-                  <span style={{ color: c.black }}>₹{calculateTotal().toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b" style={{ borderColor: c.gray400 }}>
-                  <span style={{ color: c.black }}>Discount:</span>
-                  <span style={{ color: c.black }}>-₹{Number(patient?.visit?.billing?.discount || 0).toFixed(2)}</span>
-                </div>
-                <div className="col-span-2 flex justify-between py-2 font-bold border px-2 mt-1" style={{ backgroundColor: c.white, borderColor: c.gray600, color: c.black }}>
-                  <span>TOTAL AMOUNT:</span>
-                  <span>
-                    ₹{Number(patient?.visit?.billing?.netAmount || calculateTotal()).toFixed(2)}
-                    {totalDue > 0 && (
-                      <span className="ml-2 text-xs">(Due: ₹{totalDue.toFixed(2)})</span>
-                    )}
-                  </span>
-                </div>
-                <div className="col-span-2 grid grid-cols-3 gap-2 mt-1.5 pt-1.5 border-t text-xs" style={{ borderColor: c.gray400 }}>
-                  <div>
-                    <span className="font-semibold" style={{ color: c.black }}>Status:</span>
-                    <span className="ml-1 font-bold" style={{ color: c.black }}>{isPaid ? 'PAID' : (patient?.visit?.billing?.paymentStatus || 'DUE')}</span>
+                  {healthPackage && healthPackage.length > 0 && (
+                    <div className="flex justify-between py-0.5" style={{ color: c.neutral800 }}>
+                      <span>Packages Total</span><span className="font-semibold">₹{packagesTotal.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between py-0.5 mt-0.5 font-bold" style={{ color: c.neutral900, borderTop: `1px solid ${c.secondary100}` }}>
+                    <span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span>
                   </div>
-                  <div>
-                    <span className="font-semibold" style={{ color: c.black }}>Method:</span>
-                    <span className="ml-1" style={{ color: c.black }}>{formatPaymentMethod(summaryTxn ? summaryTxn.payment_method : (patient?.visit?.billing?.paymentMethod || 'N/A'))}</span>
-                  </div>
-                  <div>
-                    <span className="font-semibold" style={{ color: c.black }}>Date:</span>
-                    <span className="ml-1" style={{ color: c.black }}>{invoiceDateTime}</span>
+                  <div className="flex justify-between py-0.5" style={{ color: c.danger600 }}>
+                    <span>Discount</span><span>-₹{discountAmount.toFixed(2)}</span>
                   </div>
                 </div>
+
+                {/* Item / payment status */}
+                <div className="rounded-xl p-2" style={{ border: `1px solid ${c.secondary200}` }}>
+                  <p className="text-[9px] font-bold uppercase mb-1" style={{ color: c.secondary800 }}>Summary</p>
+                  <div className="flex justify-between items-center py-0.5" style={{ color: c.neutral800 }}>
+                    <span>Tests</span>
+                    <span className="px-1.5 rounded-full font-bold" style={{ backgroundColor: c.secondary100, color: c.secondary800 }}>{tests.length}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5" style={{ color: c.neutral800 }}>
+                    <span>Packages</span>
+                    <span className="px-1.5 rounded-full font-bold" style={{ backgroundColor: c.secondary100, color: c.secondary800 }}>{healthPackage?.length || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5" style={{ color: c.neutral800 }}>
+                    <span>Method</span><span className="font-semibold">{formatPaymentMethod(summaryTxn ? summaryTxn.payment_method : (patient?.visit?.billing?.paymentMethod || 'N/A'))}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5" style={{ color: c.neutral800 }}>
+                    <span>Status</span>
+                    <span className="font-bold" style={{ color: isPaid ? c.success700 : c.danger600 }}>
+                      {isPaid ? 'PAID' : (patient?.visit?.billing?.paymentStatus || 'DUE')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Amount payable */}
+                <div className="rounded-xl p-2" style={{ border: `1px solid ${c.secondary200}` }}>
+                  <p className="text-[9px] font-bold uppercase mb-1" style={{ color: c.secondary800 }}>Amount Payable</p>
+                  <div className="flex justify-between py-0.5" style={{ color: c.neutral800 }}>
+                    <span>Gross</span><span>₹{subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between py-0.5" style={{ color: c.danger600 }}>
+                    <span>Discount</span><span>-₹{discountAmount.toFixed(2)}</span>
+                  </div>
+                  <div
+                    className="flex justify-between items-center mt-1 pt-1 font-bold"
+                    style={{ color: c.neutral900, borderTop: `1px solid ${c.secondary200}` }}
+                  >
+                    <span className="text-[9px] uppercase" style={{ color: c.secondary800 }}>Net Payable</span>
+                    <span className="text-xs">₹{netAmount.toFixed(2)}</span>
+                  </div>
+                  {totalDue > 0 && (
+                    <p className="text-right mt-0.5 font-bold" style={{ color: c.danger600 }}>Due: ₹{totalDue.toFixed(2)}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Amount in Words */}
+              <div className="mt-2 rounded-lg px-3 py-1.5" style={{ backgroundColor: c.secondary50, border: `1px solid ${c.secondary200}` }}>
+                <span className="text-[8px] font-bold uppercase mr-1.5" style={{ color: c.secondary700 }}>Amount in Words:</span>
+                <span className="text-[10px] font-bold" style={{ color: c.neutral900 }}>{amountInWords(netAmount)}</span>
               </div>
             </div>
           );
@@ -746,20 +856,20 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
           </div>
         )}
 
-        {/* Footer - Compact */}
-        <div className="mt-4 pt-2 border-t text-center text-xs" style={{ borderColor: c.gray600 }}>
-          <p className="mb-1 leading-tight" style={{ color: c.black }}>This is an electronically generated invoice. No signature required.</p>
-          <p className="mb-2 leading-tight" style={{ color: c.black }}>For queries, contact: {currentLab?.name || 'N/A'}</p>
-          <div className="mt-2 flex justify-between items-center border-t pt-1.5" style={{ borderColor: c.gray400 }}>
+        {/* Footer */}
+        <div className="mt-4 pt-2 text-center text-xs" style={{ borderTop: `1px solid ${c.secondary200}` }}>
+          <p className="mb-1 leading-tight" style={{ color: c.neutral600 }}>This is an electronically generated invoice. No signature required.</p>
+          <p className="mb-2 leading-tight" style={{ color: c.neutral600 }}>For queries, contact: {currentLab?.name || 'N/A'}</p>
+          <div className="mt-2 flex justify-between items-center pt-1.5" style={{ borderTop: `1px solid ${c.secondary100}` }}>
             <div className="flex items-center gap-1">
-              <FaSignature className="text-xs" style={{ color: c.black }} />
-              <span className="font-semibold text-xs" style={{ color: c.black }}>Authorized Signatory</span>
+              <FaSignature className="text-xs" style={{ color: c.secondary700 }} />
+              <span className="font-semibold text-xs" style={{ color: c.neutral800 }}>Authorized Signatory</span>
             </div>
-            <p className="text-xs" style={{ color: c.black }}><span className="font-semibold">Generated:</span> {invoiceDateTime}</p>
+            <p className="text-xs" style={{ color: c.neutral800 }}><span className="font-semibold">Generated:</span> {invoiceDateTime}</p>
           </div>
-          <div className="mt-2 flex justify-center items-center pt-1.5 border-t" style={{ borderColor: c.gray400 }}>
-            <Image src="/tiamed1.svg" alt="TiaMeds Logo" width={14} height={14} className="h-3.5 mr-1.5" style={{ filter: 'grayscale(100%)' }} />
-            <span className="text-xs font-medium" style={{ color: c.black }}>Powered by TiaMeds Technologies Pvt.Ltd</span>
+          <div className="mt-2 flex justify-center items-center pt-1.5" style={{ borderTop: `1px solid ${c.secondary100}` }}>
+            <Image src="/tiamed1.svg" alt="TiaMeds Logo" width={14} height={14} className="h-3.5 mr-1.5" />
+            <span className="text-xs font-medium" style={{ color: c.neutral600 }}>Powered by TiaMeds Technologies Pvt.Ltd</span>
           </div>
         </div>
       </div>
