@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CiMedicalClipboard } from "react-icons/ci";
 import Numeric from "./Numeric";
-import Dropdown from "./Dropdown";
+import Dropdown, { DropdownOption } from "./Dropdown";
 import PositiveNegative from "./PositiveNegative";
 import YesNo from "./YesNo";
 import SetRange from "./SetRange";
@@ -46,11 +46,15 @@ const resultTypes = [
 interface ResultProps {
   selectedResultType: ResultType | null;
   onSelectResultType: (value: ResultType) => void;
+  dropdownOptions: DropdownOption[];
+  onDropdownOptionsChange: (options: DropdownOption[]) => void;
 }
 
 const Result = ({
   selectedResultType,
   onSelectResultType,
+  dropdownOptions,
+  onDropdownOptionsChange,
 }: ResultProps) => {
   const [form, setForm] = useState<NumericForm>({
     normalMin: "",
@@ -161,7 +165,10 @@ const Result = ({
 )}
 
 {selectedResultType === "Dropdown/Select" && (
-  <Dropdown />
+  <Dropdown
+    options={dropdownOptions}
+    onOptionsChange={onDropdownOptionsChange}
+  />
 )}
 
 {selectedResultType === "Text" && (

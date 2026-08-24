@@ -6,12 +6,17 @@ import {
   X,
   CheckCircle2,
 } from "lucide-react";
+import { toast } from "react-toastify";
 import Result, { ResultType } from "./Result";
 import LivePreview from "./LivePreview";
 import ApplicableCriteria from "./ApplicableCriteria";
-import TestRNR from "./TestRNR";
+import TestRNR, { ReferenceRange, defaultReferenceRows } from "./TestRNR";
 import ReportDisplay from "./ReportDisplay";
+import { DropdownOption, defaultDropdownOptions } from "./Dropdown";
 import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
+import { useLabs } from "@/context/LabContext";
+import { addTest, addTestReferanceRange } from "@/../services/testService";
+import { TestList, TestReferancePoint } from "@/types/test/testlist";
 
 interface TestForm {
   category: string;
@@ -25,10 +30,37 @@ interface AddTestProps {
   setUpdateList: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
+const genderToCode = (gender?: string): string => {
+  if (gender === "Male") return "M";
+  if (gender === "Female") return "F";
+  return "MF";
+};
+
+const toAgeUnit = (value?: string): string => {
+  if (value === "Months") return "MONTHS";
+  if (value === "Days") return "DAYS";
+  return "YEARS";
+};
+
+const getTestDescription = (resultType: ResultType | null): string => {
+  switch (resultType) {
+    case "Dropdown/Select":
+      return "DROPDOWN";
+    case "Positive / Negative":
+      return "DROPDOWN-POSITIVE/NEGATIVE";
+    case "Yes / No":
+      return "DROPDOWN-YES/NO";
+    default:
+      return "DESCRIPTION";
+  }
+};
+
 const AddTest = ({
   closeModal,
   setUpdateList,
 }: AddTestProps) => {
+  const { currentLab } = useLabs();
+
   const [formData, setFormData] = useState<TestForm>({
     category: "",
     testName: "",
@@ -38,6 +70,12 @@ const AddTest = ({
   const [showResult, setShowResult] = useState(false);
   const [selectedResultType, setSelectedResultType] =
     useState<ResultType | null>(null);
+  const [referenceRows, setReferenceRows] =
+    useState<ReferenceRange[]>(defaultReferenceRows);
+  const [dropdownOptions, setDropdownOptions] =
+    useState<DropdownOption[]>(defaultDropdownOptions);
+  const [isSavingTest, setIsSavingTest] = useState(false);
+  const [isSavingReference, setIsSavingReference] = useState(false);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -62,33 +100,114 @@ const AddTest = ({
     }));
   };
 
-  const handleContinue = () => {
-    setShowResult(true);
+  const handleContinue = async () => {
+    if (!currentLab) {
+      toast.error("Select a lab before adding a test.");
+      return;
+    }
+
+    setIsSavingTest(true);
+    try {
+      await addTest(currentLab.id.toString(), {
+        id: 0,
+        category: formData.category,
+        name: formData.testName,
+        price: Number(formData.price),
+      } as TestList);
+
+      toast.success("Test created. Configure the result & reference ranges below.");
+      setShowResult(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create test.");
+    } finally {
+      setIsSavingTest(false);
+    }
   };
 
- const handleCancel = () => {
-  setFormData({
-    category: "",
-    testName: "",
-    price: "",
-  });
+  const handleCancel = () => {
+    setFormData({
+      category: "",
+      testName: "",
+      price: "",
+    });
 
-  setShowResult(false);
+    setShowResult(false);
+    setSelectedResultType(null);
+    setReferenceRows(defaultReferenceRows);
+    setDropdownOptions(defaultDropdownOptions);
 
-  closeModal();
-};
+    closeModal();
+  };
 
-const handleSave = () => {
-  console.log("Saving test:", formData);
+  const buildReferencePayload = (): TestReferancePoint => {
+    const primaryRow = referenceRows[0];
 
-  // Refresh TestList
-  setUpdateList((prev) => !prev);
+    const referenceRangesJson = referenceRows.length
+      ? JSON.stringify(
+          referenceRows
+            .filter((row) => row.min || row.max)
+            .map((row) => ({
+              Gender: genderToCode(row.gender),
+              AgeMin: row.ageFrom === "" ? "" : Number(row.ageFrom),
+              AgeMinUnit: toAgeUnit(row.ageFromType),
+              AgeMax: row.ageTo === "" ? "" : Number(row.ageTo),
+              AgeMaxUnit: toAgeUnit(row.ageToType),
+              ReferenceRange:
+                [row.min, row.max].filter(Boolean).join(" - ") +
+                (row.unit ? ` ${row.unit}` : ""),
+            }))
+        )
+      : undefined;
 
-  // Close AddTest page
-  closeModal();
+    const dropdownJson =
+      selectedResultType === "Dropdown/Select"
+        ? JSON.stringify(
+            dropdownOptions.map((option) => ({
+              value: option.value,
+              label: option.label,
+            }))
+          )
+        : undefined;
 
-  alert("Test saved successfully!");
-};
+    return {
+      id: 0,
+      category: formData.category,
+      testName: formData.testName,
+      testDescription: getTestDescription(selectedResultType),
+      units: primaryRow?.unit || "",
+      gender: genderToCode(primaryRow?.gender),
+      minReferenceRange: primaryRow?.min ? Number(primaryRow.min) : 0,
+      maxReferenceRange: primaryRow?.max ? Number(primaryRow.max) : 0,
+      ageMin: primaryRow?.ageFrom ? Number(primaryRow.ageFrom) : 0,
+      ageMax: primaryRow?.ageTo ? Number(primaryRow.ageTo) : undefined,
+      minAgeUnit: toAgeUnit(primaryRow?.ageFromType),
+      maxAgeUnit: toAgeUnit(primaryRow?.ageToType),
+      referenceRanges: referenceRangesJson,
+      dropdown: dropdownJson,
+    } as TestReferancePoint;
+  };
+
+  const handleSave = async () => {
+    if (!currentLab) {
+      toast.error("Select a lab before saving.");
+      return;
+    }
+
+    setIsSavingReference(true);
+    try {
+      await addTestReferanceRange(currentLab.id.toString(), buildReferencePayload());
+
+      // Refresh TestList
+      setUpdateList((prev) => !prev);
+
+      toast.success("Test reference range saved successfully!");
+      handleCancel();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save reference range.");
+    } finally {
+      setIsSavingReference(false);
+    }
+  };
 
   const isValid =
     formData.category &&
@@ -193,10 +312,10 @@ const handleSave = () => {
                 <div className="flex items-end">
                   <button
                     onClick={handleContinue}
-                    disabled={!isValid || showResult}
+                    disabled={!isValid || showResult || isSavingTest}
                     className={`flex h-12 w-full items-center justify-center gap-2 rounded-full border text-base font-semibold transition
                     ${
-                      isValid && !showResult
+                      isValid && !showResult && !isSavingTest
                         ? "border-secondary-600 bg-secondary-50 text-secondary-700"
                         : "cursor-not-allowed border-secondary-600 bg-secondary-50 text-secondary-700 opacity-50"
                     }`}
@@ -215,6 +334,8 @@ const handleSave = () => {
           <Result
             selectedResultType={selectedResultType}
             onSelectResultType={setSelectedResultType}
+            dropdownOptions={dropdownOptions}
+            onDropdownOptionsChange={setDropdownOptions}
           />
         )}
 
@@ -222,7 +343,9 @@ const handleSave = () => {
         {showResult && <ApplicableCriteria />}
 
         {/* Test RNR Component */}
-        {showResult && <TestRNR />}
+        {showResult && (
+          <TestRNR rows={referenceRows} onRowsChange={setReferenceRows} />
+        )}
 
         {/* Report Display Component */}
         {showResult && <ReportDisplay />}
@@ -232,7 +355,8 @@ const handleSave = () => {
           <div className="flex items-center border rounded-xl bg-white border-pneutral-200 justify-between gap-4 p-4">
             <button
               onClick={handleCancel}
-              className="flex h-9 items-center justify-center gap-2 rounded-full border border-pneutral-300 px-4 text-label-l3 font-semibold text-pneutral-600"
+              disabled={isSavingReference}
+              className="flex h-9 items-center justify-center gap-2 rounded-full border border-pneutral-300 px-4 text-label-l3 font-semibold text-pneutral-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <X size={16} />
               Cancel
@@ -240,10 +364,11 @@ const handleSave = () => {
 
             <button
               onClick={handleSave}
-              className="flex h-9 items-center justify-center gap-2 rounded-full bg-secondary-700 px-8 text-base font-semibold text-pneutral-50 shadow-lg"
+              disabled={isSavingReference}
+              className="flex h-9 items-center justify-center gap-2 rounded-full bg-secondary-700 px-8 text-base font-semibold text-pneutral-50 shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CheckCircle2 size={16} />
-              Save Test
+              {isSavingReference ? "Saving..." : "Save Test"}
             </button>
           </div>
         )}

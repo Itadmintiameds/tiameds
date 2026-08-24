@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   FlaskConical,
   Plus,
@@ -9,7 +8,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-interface ReferenceRange {
+export interface ReferenceRange {
   id: number;
   rangeName: string;
   gender: string;
@@ -25,6 +24,39 @@ interface ReferenceRange {
   interpretation: string;
 }
 
+export const defaultReferenceRows: ReferenceRange[] = [
+  {
+    id: 1,
+    rangeName: "Adult Male",
+    gender: "Male",
+    ageFrom: "18",
+    ageFromType: "Yrs",
+    ageTo: "18",
+    ageToType: "Yrs",
+    unit: "g/dL",
+    min: "13.5",
+    max: "17.0",
+    criticalLow: "7.0",
+    criticalHigh: "20.0",
+    interpretation: "Normal",
+  },
+  {
+    id: 2,
+    rangeName: "Adult Male",
+    gender: "Female",
+    ageFrom: "18",
+    ageFromType: "Yrs",
+    ageTo: "18",
+    ageToType: "Yrs",
+    unit: "g/dL",
+    min: "12.0",
+    max: "16.0",
+    criticalLow: "6.0",
+    criticalHigh: "20.0",
+    interpretation: "Normal",
+  },
+];
+
 const inputClass =
   "h-9 w-full rounded-md border border-pneutral-300 bg-white px-3 text-sm text-pneutral-900 outline-none transition focus:border-secondary-700";
 
@@ -34,47 +66,19 @@ const greenInput =
 const redInput =
   "h-9 w-full rounded-md border border-warning-500 bg-white text-center text-sm outline-none focus:border-warning-600";
 
-const TestRNR = () => {
-  const [rows, setRows] = useState<ReferenceRange[]>([
-    {
-      id: 1,
-      rangeName: "Adult Male",
-      gender: "Male",
-      ageFrom: "18",
-      ageFromType: "Yrs",
-      ageTo: "18",
-      ageToType: "Yrs",
-      unit: "g/dL",
-      min: "13.5",
-      max: "17.0",
-      criticalLow: "7.0",
-      criticalHigh: "20.0",
-      interpretation: "Normal",
-    },
-    {
-      id: 2,
-      rangeName: "Adult Male",
-      gender: "Female",
-      ageFrom: "18",
-      ageFromType: "Yrs",
-      ageTo: "18",
-      ageToType: "Yrs",
-      unit: "g/dL",
-      min: "12.0",
-      max: "16.0",
-      criticalLow: "6.0",
-      criticalHigh: "20.0",
-      interpretation: "Normal",
-    },
-  ]);
+interface TestRNRProps {
+  rows: ReferenceRange[];
+  onRowsChange: (rows: ReferenceRange[]) => void;
+}
 
+const TestRNR = ({ rows, onRowsChange }: TestRNRProps) => {
   const handleChange = (
     id: number,
     field: keyof ReferenceRange,
     value: string
   ) => {
-    setRows((prev) =>
-      prev.map((row) =>
+    onRowsChange(
+      rows.map((row) =>
         row.id === id
           ? {
               ...row,
@@ -86,8 +90,8 @@ const TestRNR = () => {
   };
 
   const addReference = () => {
-    setRows((prev) => [
-      ...prev,
+    onRowsChange([
+      ...rows,
       {
         id: Date.now(),
         rangeName: "",
@@ -107,7 +111,7 @@ const TestRNR = () => {
   };
 
   const removeReference = (id: number) => {
-    setRows((prev) => prev.filter((r) => r.id !== id));
+    onRowsChange(rows.filter((r) => r.id !== id));
   };
 
   const Input = ({

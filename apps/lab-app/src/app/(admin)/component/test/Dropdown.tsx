@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { HiOutlineDotsVertical } from "react-icons/hi";
 
 type StatusType = "Normal" | "Borderline" | "Critical";
 
-interface DropdownOption {
+export interface DropdownOption {
   id: number;
   label: string;
   value: string;
@@ -14,51 +13,56 @@ interface DropdownOption {
   isDefault: boolean;
 }
 
-const Dropdown = () => {
-  const [options, setOptions] = useState<DropdownOption[]>([
-    {
-      id: 1,
-      label: "Reactive",
-      value: "reactive",
-      status: "Normal",
-      interpretation:
-        "Positive result — further confirmation required",
-      isDefault: true,
-    },
-    {
-      id: 2,
-      label: "Non-Reactive",
-      value: "non_reactive",
-      status: "Borderline",
-      interpretation: "Pathogen / antigen detected",
-      isDefault: false,
-    },
-    {
-      id: 3,
-      label: "Negative",
-      value: "negative",
-      status: "Normal",
-      interpretation:
-        "Positive result — further confirmation required",
-      isDefault: false,
-    },
-  ]);
+export const defaultDropdownOptions: DropdownOption[] = [
+  {
+    id: 1,
+    label: "Reactive",
+    value: "reactive",
+    status: "Normal",
+    interpretation:
+      "Positive result — further confirmation required",
+    isDefault: true,
+  },
+  {
+    id: 2,
+    label: "Non-Reactive",
+    value: "non_reactive",
+    status: "Borderline",
+    interpretation: "Pathogen / antigen detected",
+    isDefault: false,
+  },
+  {
+    id: 3,
+    label: "Negative",
+    value: "negative",
+    status: "Normal",
+    interpretation:
+      "Positive result — further confirmation required",
+    isDefault: false,
+  },
+];
 
+interface DropdownProps {
+  options: DropdownOption[];
+  onOptionsChange: (options: DropdownOption[]) => void;
+}
+
+const Dropdown = ({ options, onOptionsChange }: DropdownProps) => {
   const handleChange = (
     id: number,
     field: keyof DropdownOption,
     value: string
   ) => {
-    setOptions((prev) =>
-      prev.map((item) =>
+    onOptionsChange(
+      options.map((item) =>
         item.id === id ? { ...item, [field]: value } : item
       )
     );
   };
 
   const handleSetDefault = (id: number) => {
-    setOptions((prev) =>
-      prev.map((item) => ({
+    onOptionsChange(
+      options.map((item) => ({
         ...item,
         isDefault: item.id === id,
       }))
@@ -66,8 +70,8 @@ const Dropdown = () => {
   };
 
   const addOption = () => {
-    setOptions((prev) => [
-      ...prev,
+    onOptionsChange([
+      ...options,
       {
         id: Date.now(),
         label: "",
