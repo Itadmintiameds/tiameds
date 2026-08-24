@@ -81,10 +81,9 @@ const DashboardContent = () => {
     // ADMIN and SUPERADMIN now only get the Analytics Dashboard tab here —
     // Patient Management and Sample Management moved to the sidebar nav.
     if (isAdmin || isSuperAdmin) return tab.id === 'dashboard';
-    // If user has both DESKROLE and TECHNICIAN roles, show both tabs
-    if (isDeskRole && isTechnician) {
-      return tab.id === 'patient' || tab.id === 'technician';
-    }
+    // DESKROLE and TECHNICIAN both have sidebar links to their respective
+    // management pages now, so no tabs are needed here for the combo role either.
+    if (isDeskRole && isTechnician) return false;
     if (isTechnician) return tab.id === 'technician'; // TECHNICIAN only gets technician tab
     if (isDeskRole) return tab.id === 'patient'; // DESKROLE only gets patient tab
     return false;
@@ -116,14 +115,9 @@ const DashboardContent = () => {
     if (isAdmin || isSuperAdmin) {
       return <Statistics />;
     }
-    // If user has both DESKROLE and TECHNICIAN roles, allow switching between tabs
-    if (isDeskRole && isTechnician) {
-      switch (selectedTab) {
-        case 'patient': return patientDashboard;
-        case 'technician': return <Technacian />;
-        default: return patientDashboard;
-      }
-    }
+    // DESKROLE and TECHNICIAN both get their own sidebar links now, so the combo
+    // role just lands on the patient dashboard here instead of switching tabs.
+    if (isDeskRole && isTechnician) return patientDashboard;
     if (isTechnician) return <Technacian />;
     if (isDeskRole) return patientDashboard;
     return null;

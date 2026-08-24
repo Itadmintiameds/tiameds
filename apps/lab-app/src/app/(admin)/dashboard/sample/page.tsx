@@ -8,9 +8,9 @@ const Page = () => {
   const { user: loginedUser } = useAuthStore();
 
   const roles = loginedUser?.roles || [];
-  const isAllowed = ['ADMIN', 'TECHNICIAN', 'SUPERADMIN'].some(role => roles.includes(role)) && !roles.includes('DESKROLE');
+  const isAllowed = ['ADMIN', 'TECHNICIAN', 'SUPERADMIN'].some(role => roles.includes(role));
 
-  if (!isAllowed) {
+  if (!isAllowed) { 
     return (
       <Unauthorised
         username={loginedUser?.username || ''}

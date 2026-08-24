@@ -17,8 +17,8 @@ const Page = () => {
   const isTechnician = roles.includes('TECHNICIAN');
   const isDeskRole = roles.includes('DESKROLE');
 
-  // Authorization for Desk Role
-  if (isDeskRole) {
+  // Authorization for Desk Role (unless they also hold a higher role)
+  if (isDeskRole && !isAdmin && !isTechnician && !isSuperAdmin) {
     return (
       <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
         <Unauthorised
