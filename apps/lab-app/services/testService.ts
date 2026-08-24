@@ -191,10 +191,13 @@ export const downloadTestCsvExcel = async (labId: string): Promise<string> => {
 };
 
 //get test by id
-export const getTestById = async (labId: string, testId: Number): Promise<TestList> => {
+export const getTestById = async (labId: string, testId: Number, visitId?: number | string): Promise<TestList> => {
   try {
-    // admin/lab/2/test/6
-    const response = await api.get<{ data: TestList; message: string; status: string }>(`admin/lab/${labId}/test/${testId}`);
+    // admin/lab/2/test/6?visitId=133
+    const url = visitId !== undefined
+      ? `admin/lab/${labId}/test/${testId}?visitId=${visitId}`
+      : `admin/lab/${labId}/test/${testId}`;
+    const response = await api.get<{ data: TestList; message: string; status: string }>(url);
     return response.data.data; // Extract the test object from the response
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while fetching test details.';

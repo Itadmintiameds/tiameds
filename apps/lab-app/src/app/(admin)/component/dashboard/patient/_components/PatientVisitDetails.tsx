@@ -37,7 +37,7 @@ const PatientVisitDetails = ({ patinetVisitDetails }: PatientVisitDetailsProps) 
             try {
                 if (patinetVisitDetails?.visit?.testIds?.length && currentLab?.id) {
                     const testPromises = patinetVisitDetails.visit.testIds.map((id) =>
-                        id !== undefined ? getTestById(currentLab.id.toString(), id) : Promise.resolve(null)
+                        id !== undefined ? getTestById(currentLab.id.toString(), id, patinetVisitDetails.visit.visitId) : Promise.resolve(null)
                     );
                     const testResults = await Promise.all(testPromises);
                     setTests(testResults.filter((test) => test !== null) as TestList[]);

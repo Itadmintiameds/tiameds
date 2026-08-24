@@ -145,7 +145,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         // Fetch tests
         if (patient?.visit?.testIds?.length && currentLab?.id) {
           const testPromises = patient.visit.testIds.map((id: number) =>
-            id !== undefined ? getTestById(currentLab.id.toString(), id) : Promise.resolve(null)
+            id !== undefined ? getTestById(currentLab.id.toString(), id, patient.visit.visitId) : Promise.resolve(null)
           );
           const testResults = await Promise.all(testPromises);
           setTests(testResults.filter((test) => test !== null) as TestList[]);
@@ -182,17 +182,16 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
 
 
-  const getTestDiscount = (testId: number) => {
-    if (!patient?.visit?.listofeachtestdiscount) return { discountAmount: 0, finalPrice: 0 };
-    const discountInfo = patient.visit.listofeachtestdiscount.find((item: { id: number; discountAmount: number; finalPrice: number }) => item.id === testId);
-    return discountInfo || { discountAmount: 0, finalPrice: 0 };
+  const getTestDiscount = (testId: number): { discountAmount: number; finalPrice: number } | null => {
+    if (!patient?.visit?.listofeachtestdiscount) return null;
+    return patient.visit.listofeachtestdiscount.find((item: { id: number; discountAmount: number; finalPrice: number }) => item.id === testId) || null;
   };
 
   const calculateTotal = () => {
     let total = 0;
     tests.forEach(test => {
       const discountInfo = getTestDiscount(test.id);
-      total += discountInfo.finalPrice || test.price;
+      total += discountInfo ? discountInfo.finalPrice : test.price;
     });
     healthPackage?.forEach(pkg => {
       const grossPrice = pkg.tests?.reduce((sum, t) => sum + t.price, 0) ?? pkg.price;
@@ -580,17 +579,18 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
               <tbody>
                 {pageTests.map((test, idx) => {
                   const discountInfo = getTestDiscount(test.id);
-                  const hasDiscount = discountInfo.discountAmount > 0;
+                  const originalPrice = discountInfo ? discountInfo.finalPrice + discountInfo.discountAmount : test.price;
+                  const finalAmount = discountInfo ? discountInfo.finalPrice : test.price;
                   return (
                     <tr key={`test-${idx}`} style={{ backgroundColor: c.white }}>
                       <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{test.name}</td>
                       <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{test.category || 'General'}</td>
-                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{test.price.toFixed(2)}</td>
+                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{originalPrice.toFixed(2)}</td>
                       <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>
-                        {hasDiscount ? `-₹${discountInfo.discountAmount.toFixed(2)}` : '₹0.00'}
+                        {discountInfo && discountInfo.discountAmount > 0 ? `-₹${discountInfo.discountAmount.toFixed(2)}` : '₹0.00'}
                       </td>
                       <td className="p-1.5 text-right border font-semibold leading-tight" style={{ borderColor: c.gray400, color: c.black }}>
-                        ₹{hasDiscount ? discountInfo.finalPrice.toFixed(2) : test.price.toFixed(2)}
+                        ₹{finalAmount.toFixed(2)}
                       </td>
                     </tr>
                   );
@@ -664,7 +664,10 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="flex justify-between py-1 border-b" style={{ borderColor: c.gray400 }}>
                   <span className="font-semibold" style={{ color: c.black }}>Tests Total:</span>
-                  <span style={{ color: c.black }}>₹{tests.reduce((sum, test) => sum + (getTestDiscount(test.id).finalPrice || test.price), 0).toFixed(2)}</span>
+                  <span style={{ color: c.black }}>₹{tests.reduce((sum, test) => {
+                    const discountInfo = getTestDiscount(test.id);
+                    return sum + (discountInfo ? discountInfo.finalPrice : test.price);
+                  }, 0).toFixed(2)}</span>
                 </div>
                 {healthPackage && healthPackage.length > 0 && (
                   <div className="flex justify-between py-1 border-b" style={{ borderColor: c.gray400 }}>
