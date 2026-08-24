@@ -54,7 +54,7 @@ const Page = () => {
   };
 
   // Authorization logic
-  if (isDeskRole) {
+  if (isDeskRole && !isAdmin && !isTechnician && !isSuperAdmin) {
     return (
       <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
         <Unauthorised
