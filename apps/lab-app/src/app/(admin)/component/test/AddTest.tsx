@@ -2,6 +2,7 @@
 
 import React, { ChangeEvent, useState } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   X,
   CheckCircle2,
@@ -93,7 +94,15 @@ const AddTest = ({
       }
       return;
     }
-    
+
+    if (name === "category" || name === "testName") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value.toUpperCase(),
+      }));
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -215,9 +224,22 @@ const AddTest = ({
     formData.price;
 
   return (
-    <div className="flex gap-6 w-full">
-      {/* Left Column - 3/4 width */}
-      <div className="w-2/3 space-y-6">
+    <div className="w-full">
+      {/* Back Button */}
+      <div className="mb-4 flex justify-end">
+        <button
+          type="button"
+          onClick={closeModal}
+          className="flex items-center gap-1.5 rounded-lg border border-warning-500 bg-white px-3 py-1 text-p3 font-medium text-warning-500 transition hover:bg-warning-400 hover:text-white"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </button>
+      </div>
+
+      <div className="flex gap-6 w-full">
+        {/* Left Column - 3/4 width */}
+        <div className="w-2/3 space-y-6">
         {/* Add Test Section */}
         <div className="w-full">
           {/* Heading */}
@@ -374,12 +396,13 @@ const AddTest = ({
         )}
       </div>
 
-      {/* Right Column - 1/4 width */}
-      {showResult && (
-        <div className="w-1/3">
-          <LivePreview resultType={selectedResultType} />
-        </div>
-      )}
+        {/* Right Column - 1/4 width */}
+        {showResult && (
+          <div className="w-1/3">
+            <LivePreview resultType={selectedResultType} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
