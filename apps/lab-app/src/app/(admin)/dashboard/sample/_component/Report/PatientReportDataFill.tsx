@@ -506,10 +506,10 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   }, [differentialValidation, lastDifferentialValues]);
 
   const handleInputChange = (testName: string, index: number | string, value: string) => {
-    const numericValue = parseFloat(value);
-
-    // Prevent negative values for non-auto-calculated fields
-    if (value !== '' && !isNaN(numericValue) && numericValue < 0) {
+    // Prevent negative single values (e.g. "-3") for non-auto-calculated fields,
+    // but allow range values like "3-4" which aren't a negative number
+    const isNegativeNumber = /^-\d+(\.\d+)?$/.test(value.trim());
+    if (isNegativeNumber) {
         const referenceData = referencePoints[testName] || [];
         const point = referenceData[typeof index === 'number' ? index : 0];
         
@@ -1084,17 +1084,15 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
                           ) : (
                             <div className="flex items-center gap-2">
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 value={currentValue}
-                                placeholder="Enter value"
+                                placeholder="Enter value (e.g. 3 or 3-4)"
                                 onChange={(e) =>
                                   handleInputChange(selectedTest?.name, index, e.target.value)
                                 }
                                 className={`h-9 w-32 rounded-full border bg-white px-3 text-p3 outline-none transition ${getInputBorderColor(status)}`}
                                 disabled={isAutoCalculated}
-                                step={getDynamicStep(currentValue)}
-                                // min={0}
-                                min={isAutoCalculated ? undefined : 0}
                               />
                             </div>
                           )}
