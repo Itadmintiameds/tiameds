@@ -6,12 +6,13 @@ import dayjs from "dayjs";
 import {
   ArrowUp,
   ArrowDown,
-  Users, 
+  Users,
   Monitor,
   FlaskConical,
   UserRound,
   Clock3,
   FileText,
+  RefreshCw,
 } from "lucide-react";
 
 import {
@@ -432,6 +433,9 @@ const AdminStats = () => {
   // Package Performance (from API)
   const [packagePerformance, setPackagePerformance] = useState<PackagePerformance[]>([]);
 
+  // "Updated: hh:mm:ss" display is commented out for now (refresh button covers it) -
+  // keeping the state so it's a one-line uncomment to bring back.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Billing Report table - shows every row (no pagination), own filter, CSV export
@@ -764,13 +768,11 @@ const AdminStats = () => {
     fetchGridData();
   }, [fetchGridData]);
 
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchAllData(true);
-      fetchGridData(true);
-    }, 30000);
-    return () => clearInterval(interval);
+  // Manual refresh - replaces the old 30s auto-refresh, which was re-fetching every
+  // section (including the full Billing Grid Report) too often and spiking load.
+  const handleManualRefresh = useCallback(() => {
+    fetchAllData(true);
+    fetchGridData(true);
   }, [fetchAllData, fetchGridData]);
 
   // The grid table already holds the full filtered result set (no pagination), so the
@@ -1420,16 +1422,20 @@ const AdminStats = () => {
             <span className="rounded-full bg-secondary-100 px-4 py-1 text-label-l3 font-semibold text-secondary-700">
               {currentLab?.name || "This Lab"} Overview
             </span>
-            {refreshing && (
-              <span className="text-xs text-pneutral-400 animate-pulse">
-                Refreshing...
-              </span>
-            )}
-            {lastUpdated && (
-              <span className="text-xs text-pneutral-400 ml-2">
+            <button
+              type="button"
+              onClick={handleManualRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 rounded-lg border border-pneutral-100 bg-base-white px-3 py-1.5 text-p3 font-medium text-pneutral-700 shadow-xsm hover:bg-pneutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+              {refreshing ? "Refreshing..." : "Click here to refresh"}
+            </button>
+            {/* {lastUpdated && (
+              <span className="text-xs text-pneutral-400">
                 Updated: {dayjs(lastUpdated).format("hh:mm:ss A")}
               </span>
-            )}
+            )} */}
           </div>
         </div>
         <div className="flex gap-2">
