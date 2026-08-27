@@ -6,9 +6,16 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import type { ResultType } from "./Result";
+import type { DropdownOption } from "./Dropdown";
 
 interface LivePreviewProps {
   resultType: ResultType | null;
+  testName?: string;
+  unit?: string;
+  minValue?: string;
+  maxValue?: string;
+  referenceLabel?: string;
+  dropdownOptions?: DropdownOption[];
 }
 
 interface ReportPreset {
@@ -85,7 +92,15 @@ const multiParamSample = [
 const hasCriticalAlert = (resultType: ResultType | null) =>
   !!resultType && resultType !== "Text" && resultType !== "Textarea";
 
-const LivePreview = ({ resultType }: LivePreviewProps) => {
+const LivePreview = ({
+  resultType,
+  testName,
+  unit,
+  minValue,
+  maxValue,
+  referenceLabel,
+  dropdownOptions,
+}: LivePreviewProps) => {
   const renderResultEntry = () => {
     switch (resultType) {
       case "Numeric":
@@ -98,7 +113,7 @@ const LivePreview = ({ resultType }: LivePreviewProps) => {
                 className="h-12 flex-1 rounded-lg border border-pneutral-300 px-4 text-sm outline-none focus:border-secondary-600"
               />
               <div className="flex h-12 w-16 items-center justify-center rounded-lg border border-pneutral-300 bg-pneutral-50 text-pneutral-900 font-medium">
-                g/dL
+                {unit || "g/dL"}
               </div>
             </div>
 
@@ -114,9 +129,9 @@ const LivePreview = ({ resultType }: LivePreviewProps) => {
               </div>
               <div className="mt-2 grid grid-cols-5 text-center text-[10px] font-medium text-pneutral-400">
                 <span>Crit Low</span>
-                <span>Min</span>
+                <span>{minValue || "Min"}</span>
                 <span>Normal</span>
-                <span>Max</span>
+                <span>{maxValue || "Max"}</span>
                 <span>Crit High</span>
               </div>
             </div>
@@ -163,9 +178,17 @@ const LivePreview = ({ resultType }: LivePreviewProps) => {
               <option value="" disabled>
                 Select a result.....
               </option>
-              <option>Reactive</option>
-              <option>Non-Reactive</option>
-              <option>Negative</option>
+              {dropdownOptions && dropdownOptions.length > 0
+                ? dropdownOptions.map((option) => (
+                    <option key={option.id}>{option.label || "Untitled option"}</option>
+                  ))
+                : (
+                  <>
+                    <option>Reactive</option>
+                    <option>Non-Reactive</option>
+                    <option>Negative</option>
+                  </>
+                )}
             </select>
           </div>
         );
@@ -295,7 +318,18 @@ const LivePreview = ({ resultType }: LivePreviewProps) => {
       );
     }
 
-    const preset = reportPresets[resultType];
+    const staticPreset = reportPresets[resultType];
+    const preset: ReportPreset = {
+      ...staticPreset,
+      testName: testName || staticPreset.testName,
+      unit: unit ?? staticPreset.unit,
+      ref: referenceLabel || staticPreset.ref,
+      value:
+        resultType === "Dropdown/Select"
+          ? (dropdownOptions?.find((o) => o.isDefault) ?? dropdownOptions?.[0])?.label ||
+            staticPreset.value
+          : staticPreset.value,
+    };
 
     if (resultType === "Textarea") {
       return (

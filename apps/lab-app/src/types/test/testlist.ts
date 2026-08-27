@@ -17,6 +17,7 @@ export interface TestForm {
 
 export interface TestReferancePoint {
     id: number;
+    testId?: number;
     testReferenceCode?: string;
     category: string;
     testName: string;

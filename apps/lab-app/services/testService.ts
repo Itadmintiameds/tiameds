@@ -95,10 +95,11 @@ export const deleteTest = async (testId: string, labId: string): Promise<void> =
   }
 };
 
-//add test 
-export const addTest = async (labId: string, test: TestList): Promise<void> => {
+//add test
+export const addTest = async (labId: string, test: TestList): Promise<TestList> => {
   try {
-    await api.post(`/admin/lab/${labId}/add`, test);
+    const response = await api.post<{ data: TestList; message: string; status: string }>(`/admin/lab/${labId}/add`, test);
+    return response.data.data; // Extract the created test (with generated id/testCode) from the response
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while adding test.';
 

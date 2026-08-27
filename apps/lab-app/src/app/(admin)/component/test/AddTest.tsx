@@ -10,9 +10,15 @@ import {
 import { toast } from "react-toastify";
 import Result, { ResultType } from "./Result";
 import LivePreview from "./LivePreview";
-import ApplicableCriteria from "./ApplicableCriteria";
+import ApplicableCriteria, {
+  ApplicableCriteriaState,
+  defaultApplicableCriteria,
+} from "./ApplicableCriteria";
 import TestRNR, { ReferenceRange, defaultReferenceRows } from "./TestRNR";
-import ReportDisplay from "./ReportDisplay";
+import ReportDisplay, {
+  ReportDisplaySettings,
+  defaultReportDisplaySettings,
+} from "./ReportDisplay";
 import { DropdownOption, defaultDropdownOptions } from "./Dropdown";
 import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
 import { useLabs } from "@/context/LabContext";
@@ -77,6 +83,11 @@ const AddTest = ({
     useState<DropdownOption[]>(defaultDropdownOptions);
   const [isSavingTest, setIsSavingTest] = useState(false);
   const [isSavingReference, setIsSavingReference] = useState(false);
+  const [createdTest, setCreatedTest] = useState<TestList | null>(null);
+  const [applicableCriteria, setApplicableCriteria] =
+    useState<ApplicableCriteriaState>(defaultApplicableCriteria);
+  const [reportDisplaySettings, setReportDisplaySettings] =
+    useState<ReportDisplaySettings>(defaultReportDisplaySettings);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -117,12 +128,13 @@ const AddTest = ({
 
     setIsSavingTest(true);
     try {
-      await addTest(currentLab.id.toString(), {
+      const created = await addTest(currentLab.id.toString(), {
         id: 0,
         category: formData.category,
         name: formData.testName,
         price: Number(formData.price),
       } as TestList);
+      setCreatedTest(created);
 
       toast.success("Test created. Configure the result & reference ranges below.");
       setShowResult(true);
@@ -144,6 +156,9 @@ const AddTest = ({
     setSelectedResultType(null);
     setReferenceRows(defaultReferenceRows);
     setDropdownOptions(defaultDropdownOptions);
+    setCreatedTest(null);
+    setApplicableCriteria(defaultApplicableCriteria);
+    setReportDisplaySettings(defaultReportDisplaySettings);
 
     closeModal();
   };
@@ -164,6 +179,11 @@ const AddTest = ({
               ReferenceRange:
                 [row.min, row.max].filter(Boolean).join(" - ") +
                 (row.unit ? ` ${row.unit}` : ""),
+              // Additive fields (safe: existing readers only destructure the keys above)
+              RangeName: row.rangeName || undefined,
+              CriticalLow: row.criticalLow || undefined,
+              CriticalHigh: row.criticalHigh || undefined,
+              Interpretation: row.interpretation || undefined,
             }))
         )
       : undefined;
@@ -178,23 +198,43 @@ const AddTest = ({
           )
         : undefined;
 
+    // Applicable Criteria is the authoritative source for gender/age applicability
+    const effectiveAgeFrom = applicableCriteria.allAges ? "0" : applicableCriteria.ageFrom;
+    const effectiveAgeTo = applicableCriteria.allAges ? "120" : applicableCriteria.ageTo;
+    const effectiveAgeUnit = toAgeUnit(applicableCriteria.ageType);
+
     return {
       id: 0,
+      testId: createdTest?.id,
       category: formData.category,
       testName: formData.testName,
       testDescription: getTestDescription(selectedResultType),
       units: primaryRow?.unit || "",
-      gender: genderToCode(primaryRow?.gender),
+      gender: genderToCode(applicableCriteria.gender),
       minReferenceRange: primaryRow?.min ? Number(primaryRow.min) : 0,
       maxReferenceRange: primaryRow?.max ? Number(primaryRow.max) : 0,
-      ageMin: primaryRow?.ageFrom ? Number(primaryRow.ageFrom) : 0,
-      ageMax: primaryRow?.ageTo ? Number(primaryRow.ageTo) : undefined,
-      minAgeUnit: toAgeUnit(primaryRow?.ageFromType),
-      maxAgeUnit: toAgeUnit(primaryRow?.ageToType),
+      ageMin: effectiveAgeFrom === "" ? 0 : Number(effectiveAgeFrom),
+      ageMax: effectiveAgeTo === "" ? undefined : Number(effectiveAgeTo),
+      minAgeUnit: effectiveAgeUnit,
+      maxAgeUnit: effectiveAgeUnit,
       referenceRanges: referenceRangesJson,
       dropdown: dropdownJson,
     } as TestReferancePoint;
   };
+
+  const referenceLabel = (() => {
+    const primaryRow = referenceRows[0];
+    const rangeText = primaryRow ? [primaryRow.min, primaryRow.max].filter(Boolean).join(" - ") : "";
+    if (!rangeText) return undefined;
+
+    const unitText = primaryRow?.unit ? ` ${primaryRow.unit}` : "";
+    const demographic = applicableCriteria.allAges
+      ? "All ages"
+      : `${applicableCriteria.gender}, ${applicableCriteria.ageFrom}-${applicableCriteria.ageTo} ${applicableCriteria.ageType}`;
+    const rangeNamePart = primaryRow?.rangeName ? `${primaryRow.rangeName} · ` : "";
+
+    return `Ref: ${rangeText}${unitText} (${rangeNamePart}${demographic})`;
+  })();
 
   const handleSave = async () => {
     if (!currentLab) {
@@ -362,7 +402,12 @@ const AddTest = ({
         )}
 
         {/* Applicable Criteria Component */}
-        {showResult && <ApplicableCriteria />}
+        {showResult && (
+          <ApplicableCriteria
+            value={applicableCriteria}
+            onChange={setApplicableCriteria}
+          />
+        )}
 
         {/* Test RNR Component */}
         {showResult && (
@@ -370,7 +415,12 @@ const AddTest = ({
         )}
 
         {/* Report Display Component */}
-        {showResult && <ReportDisplay />}
+        {showResult && (
+          <ReportDisplay
+            settings={reportDisplaySettings}
+            onSettingsChange={setReportDisplaySettings}
+          />
+        )}
 
         {/* Cancel and Save Buttons */}
         {showResult && (
@@ -399,7 +449,15 @@ const AddTest = ({
         {/* Right Column - 1/4 width */}
         {showResult && (
           <div className="w-1/3">
-            <LivePreview resultType={selectedResultType} />
+            <LivePreview
+              resultType={selectedResultType}
+              testName={formData.testName}
+              unit={referenceRows[0]?.unit}
+              minValue={referenceRows[0]?.min}
+              maxValue={referenceRows[0]?.max}
+              referenceLabel={referenceLabel}
+              dropdownOptions={dropdownOptions}
+            />
           </div>
         )}
       </div>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Info,
   ChevronDown,
@@ -8,33 +7,44 @@ import {
   X,
 } from "lucide-react";
 
+export interface ApplicableCriteriaState {
+  gender: string;
+  ageType: string;
+  ageFrom: string;
+  ageTo: string;
+  allAges: boolean;
+  pregnancyApplicable: boolean;
+  tags: string[];
+}
 
-const ApplicableCriteria = () => {
-  const [gender, setGender] = useState("All");
-  const [ageType, setAgeType] = useState("Years");
-  const [ageFrom, setAgeFrom] = useState("0");
-  const [ageTo, setAgeTo] = useState("120");
+export const defaultApplicableCriteria: ApplicableCriteriaState = {
+  gender: "All",
+  ageType: "Years",
+  ageFrom: "0",
+  ageTo: "120",
+  allAges: true,
+  pregnancyApplicable: false,
+  tags: ["Pediatric", "Pediatric", "Geriatric"],
+};
 
-  const [allAges, setAllAges] = useState(true);
-  const [pregnancyApplicable, setPregnancyApplicable] =
-    useState(false);
+interface ApplicableCriteriaProps {
+  value: ApplicableCriteriaState;
+  onChange: (value: ApplicableCriteriaState) => void;
+}
 
-  const [tags, setTags] = useState([
-    "Pediatric",
-    "Pediatric",
-    "Geriatric",
-  ]);
+const ApplicableCriteria = ({ value, onChange }: ApplicableCriteriaProps) => {
+  const { gender, ageType, ageFrom, ageTo, allAges, pregnancyApplicable, tags } = value;
 
   const addTag = () => {
-    const value = prompt("Enter Tag");
+    const tagValue = prompt("Enter Tag");
 
-    if (!value) return;
+    if (!tagValue) return;
 
-    setTags([...tags, value]);
+    onChange({ ...value, tags: [...tags, tagValue] });
   };
 
   const removeTag = (index: number) => {
-    setTags(tags.filter((_, i) => i !== index));
+    onChange({ ...value, tags: tags.filter((_, i) => i !== index) });
   };
 
   return (
@@ -92,7 +102,7 @@ const ApplicableCriteria = () => {
               <select
                 value={gender}
                 onChange={(e) =>
-                  setGender(e.target.value)
+                  onChange({ ...value, gender: e.target.value })
                 }
                 className="h-9 w-full appearance-none rounded-md border border-pneutral-300 bg-white px-3 pr-5 outline-none focus:border-secondary-500"
               >
@@ -123,7 +133,7 @@ const ApplicableCriteria = () => {
               <select
                 value={ageType}
                 onChange={(e) =>
-                  setAgeType(e.target.value)
+                  onChange({ ...value, ageType: e.target.value })
                 }
                 className="h-9 w-full appearance-none rounded-md border border-pneutral-300 bg-white px-3 pr-5 outline-none focus:border-secondary-500"
               >
@@ -152,7 +162,7 @@ const ApplicableCriteria = () => {
             <input
               value={ageFrom}
               onChange={(e) =>
-                setAgeFrom(e.target.value)
+                onChange({ ...value, ageFrom: e.target.value })
               }
               className="h-9 w-full appearance-none rounded-md border border-pneutral-300 bg-white px-3 pr-5 outline-none focus:border-secondary-500"
             />
@@ -170,7 +180,7 @@ const ApplicableCriteria = () => {
             <input
               value={ageTo}
               onChange={(e) =>
-                setAgeTo(e.target.value)
+                onChange({ ...value, ageTo: e.target.value })
               }
               className="h-9 w-full appearance-none rounded-md border border-pneutral-300 bg-white px-3 pr-5 outline-none focus:border-secondary-500"
             />
@@ -187,7 +197,7 @@ const ApplicableCriteria = () => {
 
             <button
               onClick={() =>
-                setAllAges(!allAges)
+                onChange({ ...value, allAges: !allAges })
               }
               className={`relative h-6 w-12 rounded-full transition
 
@@ -220,9 +230,7 @@ const ApplicableCriteria = () => {
 
             <button
               onClick={() =>
-                setPregnancyApplicable(
-                  !pregnancyApplicable
-                )
+                onChange({ ...value, pregnancyApplicable: !pregnancyApplicable })
               }
               className={`relative h-6 w-12 rounded-full transition
 
