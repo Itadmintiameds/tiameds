@@ -271,84 +271,86 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
 
   return (
     <div className="space-y-4">
-      {/* Patient Info Header */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800 flex items-center">
-              <FaUser className="mr-2 text-blue-600" />
-              {patient.firstName} {patient.lastName}
-            </h2>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3 text-sm">
-              <div className="flex items-center text-gray-600">
-                <FaIdCard className="mr-2 text-gray-400" />
-                <span>ID: {patient?.visit?.visitId}</span>
-              </div>
-              <div className="flex items-center text-gray-600">
-                <FaPhoneAlt className="mr-2 text-gray-400" />
-                <span>{patient.phone}</span>
-              </div>
-              <div className="flex items-center text-gray-600">
-                <FaCity className="mr-2 text-gray-400" />
-                <span>{patient.city}</span>
-              </div>
-              <div className="flex items-center text-gray-600">
-                <FaVenusMars className="mr-2 text-gray-400" />
-                <span>{patient.gender}</span>
-              </div>
-              <div className="flex items-center text-gray-600">
-                <FaCalendarAlt className="mr-2 text-gray-400" />
-                <span>{patient.age}</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+        {/* Patient Info Header */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+                <FaUser className="mr-2 text-blue-600" />
+                {patient.firstName} {patient.lastName}
+              </h2>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3 text-sm">
+                <div className="flex items-center text-gray-600">
+                  <FaIdCard className="mr-2 text-gray-400" />
+                  <span>ID: {patient?.visit?.visitId}</span>
+                </div>
+                <div className="flex items-center text-gray-600">
+                  <FaPhoneAlt className="mr-2 text-gray-400" />
+                  <span>{patient.phone}</span>
+                </div>
+                <div className="flex items-center text-gray-600">
+                  <FaCity className="mr-2 text-gray-400" />
+                  <span>{patient.city}</span>
+                </div>
+                <div className="flex items-center text-gray-600">
+                  <FaVenusMars className="mr-2 text-gray-400" />
+                  <span>{patient.gender}</span>
+                </div>
+                <div className="flex items-center text-gray-600">
+                  <FaCalendarAlt className="mr-2 text-gray-400" />
+                  <span>{patient.age}</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="bg-blue-50 px-3 py-2 rounded-md border border-blue-100">
-            <div className="text-sm text-blue-700 mt-1">
-              {formatDate(patient.visit.visitDate)} • {patient.visit.visitType}
-            </div>
-            <div className={`text-xs mt-1 px-2 py-1 rounded-full inline-block ${patient.visit.visitStatus === 'Pending' ? 'bg-amber-100 text-amber-800' :
-              patient.visit.visitStatus === 'Completed' ? 'bg-green-100 text-green-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-              {patient.visit.visitStatus}
+            <div className="bg-blue-50 px-3 py-2 rounded-md border border-blue-100">
+              <div className="text-sm text-blue-700 mt-1">
+                {formatDate(patient.visit.visitDate)} • {patient.visit.visitType}
+              </div>
+              <div className={`text-xs mt-1 px-2 py-1 rounded-full inline-block ${patient.visit.visitStatus === 'Pending' ? 'bg-amber-100 text-amber-800' :
+                patient.visit.visitStatus === 'Completed' ? 'bg-green-100 text-green-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                {patient.visit.visitStatus}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Billing Summary Card */}
-      <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-        <h3 className="font-semibold text-gray-800 mb-2 flex items-center text-sm">
-          <FaRupeeSign className="mr-1.5 text-green-600 text-sm" />
-          Billing Summary
-        </h3>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Total:</span>
-            <span className="font-medium">₹{totalAmount.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600 flex items-center">
-              Discount
-              {billing.discountReason && (
-                <span className="text-xs ml-1 bg-gray-100 px-1.5 py-0.5 rounded-full flex items-center">
-                  <FiInfo className="mr-0.5" /> {billing.discountReason}
-                </span>
-              )}
-            </span>
-            <span className="text-red-600">-₹{discountAmount.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between border-t border-gray-100 pt-1.5">
-            <span className="text-gray-700 font-medium">Net:</span>
-            <span className="font-medium">₹{netAmount.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Paid:</span>
-            <span className="text-green-600">₹{getSafeDecimal(billing?.received_amount || 0).toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between border-t border-gray-100 pt-1.5">
-            <span className="text-gray-700 font-medium">Due:</span>
-            <span className="text-amber-600 font-medium">₹{dueAmount.toFixed(2)}</span>
+        {/* Billing Summary Card */}
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="font-semibold text-gray-800 mb-2 flex items-center text-sm">
+            <FaRupeeSign className="mr-1.5 text-green-600 text-sm" />
+            Billing Summary
+          </h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Total:</span>
+              <span className="font-medium">₹{totalAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600 flex items-center">
+                Discount
+                {billing.discountReason && (
+                  <span className="text-xs ml-1 bg-gray-100 px-1.5 py-0.5 rounded-full flex items-center">
+                    <FiInfo className="mr-0.5" /> {billing.discountReason}
+                  </span>
+                )}
+              </span>
+              <span className="text-red-600">-₹{discountAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between border-t border-gray-100 pt-1.5">
+              <span className="text-gray-700 font-medium">Net:</span>
+              <span className="font-medium">₹{netAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Paid:</span>
+              <span className="text-green-600">₹{getSafeDecimal(billing?.received_amount || 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between border-t border-gray-100 pt-1.5">
+              <span className="text-gray-700 font-medium">Due:</span>
+              <span className="text-amber-600 font-medium">₹{dueAmount.toFixed(2)}</span>
+            </div>
           </div>
         </div>
       </div>

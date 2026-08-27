@@ -814,7 +814,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
         isOpen={viewPatientModal}
         onClose={() => setViewPatientModal(false)}
         title="Invoice Details"
-        modalClassName="max-w-4xl"
+        modalClassName="max-w-[92vw] md:max-w-3xl lg:max-w-4xl"
       >
         {patientDetails && <PatientDetailsViewComponent patient={patientDetails} />}
       </NewModal>
@@ -889,7 +889,8 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
         isOpen={duePaymentModal}
         onClose={() => setDuePaymentModal(false)}
         title="Due Payment"
-        modalClassName="max-w-4xl"
+        modalClassName="max-w-6xl"
+        maxHeight="95vh"
       >
         {patientDetails && (
           <DuePayment

@@ -107,6 +107,27 @@ const LETTERHEAD_MARGINS = {
 };
 const PLAIN_PAGE_PADDING = '20px';
 
+// generatePDF()'s capture pass rasterises this whole 210mm-wide page and then places it
+// via addImage(..., 10, 10, A4_WIDTH - 20, ...) -- a 190/210 shrink plus a flat 10mm
+// offset (see the SAFE_BUDGET_MM comment above). Left as plain LETTERHEAD_MARGINS, that
+// transform lands the real printed margins at ~37mm top / ~19mm left+right instead of
+// the intended 30mm/10mm -- safe (it only ever adds clearance) but visibly misaligned
+// against CommonReportView2's report, which places its margins literally with no such
+// transform. These values are solved so the REAL margin after that same transform comes
+// out to LETTERHEAD_MARGINS' intent: real = 10 + css*(190/210), so css = (real-10)*(210/190)
+// for top, and css = 0 for left/right since the flat 10mm offset alone already supplies
+// the target 10mm there. Bottom is left unchanged -- it isn't anchored the same way (there
+// is no equivalent flat offset at the page's bottom edge), and is already conservative.
+// Used ONLY for the off-screen capture pass (see renderInvoicePage's forCapture param);
+// the on-screen preview keeps LETTERHEAD_MARGINS' true values so what the user sees
+// matches the letterhead artwork, not this compositing workaround.
+const LETTERHEAD_CAPTURE_MARGINS = {
+  top: '22.1mm',
+  bottom: LETTERHEAD_MARGINS.bottom,
+  left: '0mm',
+  right: '0mm',
+};
+
 // The invoice header logo used to be this static file, hardcoded. It now prefers the
 // lab's own uploaded logo (labLogo/logo, set from the lab settings screen) and falls
 // back to this so labs that have never uploaded one keep the header they had before
@@ -533,7 +554,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
     });
   };
 
-  const renderInvoicePage = (page: InvoicePageData, pageNumber: number, totalPages: number, transaction?: BillingTransaction, hideButtons: boolean = false) => {
+  const renderInvoicePage = (page: InvoicePageData, pageNumber: number, totalPages: number, transaction?: BillingTransaction, hideButtons: boolean = false, forCapture: boolean = false) => {
     const { tests: pageTests, departmentName } = page;
     // Get invoice date/time from API - use billing createdAt or updatedAt or paymentDate
     const billing = patient?.visit?.billing;
@@ -546,18 +567,19 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
           : formatInvoiceDateTime(new Date().toISOString())));
 
     const c = INVOICE_COLORS;
+    const letterheadMargins = forCapture ? LETTERHEAD_CAPTURE_MARGINS : LETTERHEAD_MARGINS;
 
     return (
       <div
         key={`page-${pageNumber}${transaction ? `-txn-${transaction.id}` : ''}`}
-        className="mb-6 font-sans"
+        className="mb-6 mx-auto font-sans"
         style={{
           width: '210mm',
-          minHeight: '297mm',
-          paddingTop: isLetterhead ? LETTERHEAD_MARGINS.top : PLAIN_PAGE_PADDING,
-          paddingBottom: isLetterhead ? LETTERHEAD_MARGINS.bottom : PLAIN_PAGE_PADDING,
-          paddingLeft: isLetterhead ? LETTERHEAD_MARGINS.left : PLAIN_PAGE_PADDING,
-          paddingRight: isLetterhead ? LETTERHEAD_MARGINS.right : PLAIN_PAGE_PADDING,
+          minHeight: forCapture ? '297mm' : undefined,
+          paddingTop: isLetterhead ? letterheadMargins.top : PLAIN_PAGE_PADDING,
+          paddingBottom: isLetterhead ? letterheadMargins.bottom : PLAIN_PAGE_PADDING,
+          paddingLeft: isLetterhead ? letterheadMargins.left : PLAIN_PAGE_PADDING,
+          paddingRight: isLetterhead ? letterheadMargins.right : PLAIN_PAGE_PADDING,
           pageBreakAfter: pageNumber < totalPages ? 'always' : 'auto',
           backgroundColor: c.white,
           fontFamily: INVOICE_FONT_FAMILY
@@ -776,11 +798,11 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                   <p className="text-[9px] font-bold uppercase mb-1" style={{ color: c.secondary800 }}>Summary</p>
                   <div className="flex justify-between items-center py-0.5" style={{ color: c.neutral800 }}>
                     <span>Tests</span>
-                    <span className="px-1.5 rounded-full font-bold" style={{ backgroundColor: c.secondary100, color: c.secondary800 }}>{tests.length}</span>
+                    <span className="font-bold" style={{ color: c.secondary800 }}>{tests.length}</span>
                   </div>
                   <div className="flex justify-between items-center py-0.5" style={{ color: c.neutral800 }}>
                     <span>Packages</span>
-                    <span className="px-1.5 rounded-full font-bold" style={{ backgroundColor: c.secondary100, color: c.secondary800 }}>{healthPackage?.length || 0}</span>
+                    <span className="font-bold" style={{ color: c.secondary800 }}>{healthPackage?.length || 0}</span>
                   </div>
                   <div className="flex justify-between items-center py-0.5" style={{ color: c.neutral800 }}>
                     <span>Method</span><span className="font-semibold">{formatPaymentMethod(summaryTxn ? summaryTxn.payment_method : (patient?.visit?.billing?.paymentMethod || 'N/A'))}</span>
@@ -891,7 +913,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         // If specific transaction is provided, generate only for that transaction
         if (specificTransaction) {
           return pages.map((page, index) =>
-            renderInvoicePage(page, index + 1, pages.length, specificTransaction, true)
+            renderInvoicePage(page, index + 1, pages.length, specificTransaction, true, true)
           );
         }
 
@@ -899,14 +921,14 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
           // Generate one invoice per transaction
           return transactions.flatMap((txn: BillingTransaction) => {
             return pages.map((page, index) =>
-              renderInvoicePage(page, index + 1, pages.length, txn, true)
+              renderInvoicePage(page, index + 1, pages.length, txn, true, true)
             );
           });
         } else {
           // 'no-transaction' or 'all' (the latter's transactions are already assigned
           // per-page inside `pages` by generateInvoicePages())
           return pages.map((page, index) =>
-            renderInvoicePage(page, index + 1, pages.length, undefined, true)
+            renderInvoicePage(page, index + 1, pages.length, undefined, true, true)
           );
         }
       };
@@ -1018,15 +1040,15 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
   return (
     <>
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 print:hidden gap-4">
+        <div className="flex flex-col sm:flex-row flex-wrap justify-between items-start sm:items-center mb-4 print:hidden gap-4">
           <div className="text-sm text-black flex items-center gap-2">
             <FaFileInvoiceDollar />
             <span>Invoice for Visit Code: {patient?.visit?.visitCode || patient?.visit?.visitId || 'N/A'}</span>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4 w-full sm:w-auto">
             <div className="flex gap-3 items-center">
               <label className="text-sm font-medium whitespace-nowrap">Print Type:</label>
               <select

@@ -12,6 +12,7 @@ interface NewModalProps {
     title?: string;
     footer?: React.ReactNode;
     modalClassName?: string;
+    maxHeight?: string;
 }
 
 const NewModal = ({
@@ -21,6 +22,7 @@ const NewModal = ({
     title,
     footer,
     modalClassName,
+    maxHeight = "85vh",
 }: NewModalProps) => {
     return (
         <AnimatePresence>
@@ -66,12 +68,12 @@ const NewModal = ({
                             duration: 0.2,
                             ease: "easeOut",
                         }}
+                        style={{ maxHeight }}
                         className={`
               relative
               z-10
               flex
               w-full
-              max-h-[85vh]
               flex-col
               bg-white
               rounded-2xl
