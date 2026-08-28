@@ -59,7 +59,7 @@ const PatientBilling = ({ newPatient, handleChange }: PatientBillingProps) => {
         <div className="flex flex-col">
           <label htmlFor="paymentStatus" className="text-xs font-medium text-gray-700">Payment Status</label>
           <select
-            name="visit.billing.paymentStatus" // Nested path for paymentStatus
+            name="visit.billing.paymentStatus" // Nested path for paymentStat
             value={newPatient.visit?.billing?.paymentStatus ?? ''}
             onChange={handleChange}
             className="w-full border border-gray-300 p-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
