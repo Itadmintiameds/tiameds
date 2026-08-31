@@ -69,7 +69,7 @@ const AddDoctorForPatientReg = ({ handleAddDoctor, closeModal }: AddDoctorForPat
                 return '';
 
             case 'phone':
-                if (value === undefined || value === null || value === '') return '';
+                if (value === undefined || value === null || value === '') return 'Phone number is required';
                 if (typeof value === 'number') {
                     if (value.toString().length !== 10) return 'Phone number must be exactly 10 digits';
                     return '';
@@ -219,7 +219,7 @@ const AddDoctorForPatientReg = ({ handleAddDoctor, closeModal }: AddDoctorForPat
                     </div>
                     <div>
                         <label htmlFor="phone" className={labelClass}>
-                            Phone Number
+                            Phone Number <span className="text-warning-500">*</span>
                         </label>
                         <div className="relative">
                             <FaPhone className="absolute top-1/2 -translate-y-1/2 left-3 text-pneutral-400" size={14} />
@@ -231,6 +231,7 @@ const AddDoctorForPatientReg = ({ handleAddDoctor, closeModal }: AddDoctorForPat
                                 value={doctor.phone?.toString() || ''}
                                 onChange={handleChange}
                                 onBlur={handleBlur}
+                                required
                                 inputMode="numeric"
                                 pattern="[0-9]*"
                                 maxLength={10}
