@@ -837,7 +837,8 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
         isOpen={viewReportModal}
         onClose={() => setViewReportModal(false)}
         title="Report"
-        modalClassName="max-w-4xl"
+        modalClassName="w-full max-w-6xl"
+        modalHeightClassName="max-h-[92vh]"
       >
         {viewReportDetails && (
           <ReportView
