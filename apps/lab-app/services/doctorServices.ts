@@ -13,7 +13,9 @@ export const createDoctor = async (labId: number, DoctorData: Doctor) => {
         const response = await api.post(`/admin/lab/${labId}/doctors`, DoctorData);
         return response.data;
     } catch (error: unknown) {
-        if (error instanceof Error) {
+        if (error instanceof AxiosError) {
+            throw new Error(error.response?.data?.message || 'Error creating doctor');
+        } else if (error instanceof Error) {
             throw new Error(`Error creating doctor: ${error.message}`);
         } else {
             throw new Error('An unknown error occurred while creating doctor.');
