@@ -2873,7 +2873,7 @@ const CommonReportView2 = ({
                                             { icon: "/report/map-pin.png", label: "Visit No.", value: primaryReport?.visitCode || "N/A", noWrap: true },
                                         ],
                                     ].map((row, rowIdx) => (
-                                        <div key={rowIdx} className="flex flex-nowrap items-start" style={{ marginTop: rowIdx > 0 ? "0.25rem" : 0 }}>
+                                        <div key={rowIdx} className="flex flex-nowrap items-start" style={{ marginTop: rowIdx > 0 ? "0.5rem" : 0 }}>
                                             {row.map((field, fieldIdx) => (
                                                 <div
                                                     key={field.label}
@@ -2888,13 +2888,13 @@ const CommonReportView2 = ({
                                                     </div>
                                                     <div className="flex-1" style={{ minWidth: 0 }}>
                                                         <div
-                                                            className="text-[8px] font-semibold uppercase"
+                                                            className="text-[9px] font-semibold uppercase"
                                                             style={{ color: REPORT_COLORS.neutral600, lineHeight: 1.3 }}
                                                         >
                                                             {field.label}
                                                         </div>
                                                         <div
-                                                            className="text-[11px] font-bold"
+                                                            className="text-[12px] font-bold"
                                                             style={{
                                                                 color: REPORT_COLORS.neutral900,
                                                                 lineHeight: 1.35,
@@ -2933,13 +2933,13 @@ const CommonReportView2 = ({
                                     ].map((entry, entryIdx) => (
                                         <div key={entry.label} style={{ marginTop: entryIdx > 0 ? "3px" : 0, minWidth: "92px" }}>
                                             <div
-                                                className="text-[6.5px] font-semibold uppercase"
+                                                className="text-[7.5px] font-semibold uppercase"
                                                 style={{ color: REPORT_COLORS.neutral600, lineHeight: 1.2, whiteSpace: "nowrap" }}
                                             >
                                                 {entry.label}
                                             </div>
                                             <div
-                                                className="text-[8.5px] font-bold"
+                                                className="text-[9.5px] font-bold"
                                                 style={{ color: REPORT_COLORS.neutral900, lineHeight: 1.3, marginTop: "1px", whiteSpace: "nowrap" }}
                                             >
                                                 {entry.value}
