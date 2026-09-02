@@ -357,10 +357,8 @@ const getRevenueAxisConfig = (maxValue: number) => {
 const CATEGORY_COLORS = ["#4F6BED", "#55D400", "#8B5CF6", "#FDBA12", "#F75A5A", "#4C0FAE", "#6D28D9", "#38B000"];
 const PACKAGE_COLORS = ["#4F6BED", "#55D400", "#8B5CF6", "#FDBA12", "#F75A5A", "#4C0FAE"];
 
-// Billing Grid Report shows every row with no pagination in the UI, but the backend
-// endpoint itself is still paginated - this is the page size used internally to pull
-// every page and stitch them into one full row list.
-const GRID_FETCH_PAGE_SIZE = 200;
+// Billing Grid Report page size - shows 50 rows per page with prev/next navigation.
+const GRID_PAGE_SIZE = 50;
 
 // Defaults for the nested pieces of DetailedBilling before the first fetch resolves.
 const emptyPaymentMode = { cash: 0, upi: 0, card: 0 };
@@ -464,13 +462,9 @@ const SuperAdminStats = () => {
   // the date or lab filters (the backend endpoint backing it takes no such params).
   const [totalLabs, setTotalLabs] = useState<number>(0);
 
-  // Admins/technicians/desk roles: scoped to the selected lab (or all labs), but
-  // deliberately NOT re-fetched when the date filter changes - see the dedicated
-  // effect below that calls getAllStats without startDate/endDate.
   const [totalAdmins, setTotalAdmins] = useState<number>(0);
   const [totalTechnicians, setTotalTechnicians] = useState<number>(0);
   const [totalDeskRoles, setTotalDeskRoles] = useState<number>(0);
-  const [roleKpisLoading, setRoleKpisLoading] = useState<boolean>(true);
 
   // Remaining KPIs come from getAllStats().kpis, scoped by the global filter + selected lab.
   const [totalTests, setTotalTests] = useState<number>(0);
@@ -508,10 +502,12 @@ const SuperAdminStats = () => {
   const [packageSummary, setPackageSummary] = useState<DetailedBilling["packageSummary"]>(emptyPackageSummary);
   const [packages, setPackages] = useState<DetailedBilling["packages"]>([]);
 
-  // Billing Grid Report table - shows every row (no pagination), own filter, CSV export
+  // Billing Grid Report table - paginated display, own filter, CSV export
   const emptyGridData: GridReportResponse = { page: 0, size: 0, totalRecords: 0, totalPages: 0, rows: [] };
   const [gridData, setGridData] = useState<GridReportResponse>(emptyGridData);
   const [gridLoading, setGridLoading] = useState<boolean>(true);
+  const [gridPage, setGridPage] = useState(0);
+  const [csvDownloading, setCsvDownloading] = useState(false);
 
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   // "Updated: hh:mm:ss" display is commented out for now (refresh button covers it) -
@@ -551,254 +547,115 @@ const SuperAdminStats = () => {
     [selectedLabId]
   );
 
-  // Total Labs / Admins / Technicians / Desk Roles KPIs: re-fetched only when the
-  // selected lab changes, deliberately independent of every date filter (global or
-  // per-section) - always calls getAllStats with no startDate/endDate. totalLabs comes
-  // back as 1 when a specific lab is selected (backend scopes it), or the full count
-  // owned by the super admin when "All Labs" is selected.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setRoleKpisLoading(true);
-      try {
-        const stats = await fetchStats(undefined, undefined);
-        if (cancelled) return;
-        setTotalLabs(stats.kpis?.totalLabs || 0);
-        setTotalAdmins(extractRoleCount(stats.kpis?.totalAdmins));
-        setTotalTechnicians(extractRoleCount(stats.kpis?.totalTechnicians));
-        setTotalDeskRoles(extractRoleCount(stats.kpis?.totalDeskRoles));
-      } catch (error) {
-        console.error("Error fetching role KPIs:", error);
-        if (!cancelled) {
-          setTotalLabs(0);
-          setTotalAdmins(0);
-          setTotalTechnicians(0);
-          setTotalDeskRoles(0);
-        }
-      } finally {
-        if (!cancelled) setRoleKpisLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchStats]);
-
-  // Fetch function
-  // Every section hits the same consolidated getAllStats endpoint but with its own date
-  // range, and none of the sections depend on another section's result - so they're all
-  // fired together via Promise.allSettled instead of one after another. This also drops
-  // the old duplicate call for "earnings by category": it used the exact same date range
-  // as "tests by category", so a single fetchStats call now backs both.
+  // Single consolidated fetch: one API call populates every section.
+  // Revenue chart bars are derived by aggregating the backend's daily trend data
+  // on the frontend — no extra per-bucket API calls needed.
   const fetchAllData = useCallback(async (silent = false) => {
-    if (!silent) {
-      setLoading(true);
-    } else {
-      setRefreshing(true);
-    }
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
 
     try {
       const globalRange = getDateRange(globalFilter, globalCustomRange);
-      const revenueRange = getDateRange(revenueFilter, revenueCustomRange);
-      const topLabsRange = getDateRange(topLabsFilter, topLabsCustomRange);
-      const packagesRange = getDateRange(packagesFilter, packagesCustomRange);
-      const categoryRange = getDateRange(categoryFilter, categoryCustomRange);
-      const performanceRange = getDateRange(performanceFilter, performanceCustomRange);
-      const doctorsRange = getDateRange(doctorsFilter, doctorsCustomRange);
+      const stats = await fetchStats(globalRange.startDate, globalRange.endDate);
 
-      await Promise.allSettled([
-        // 1. Remaining KPIs + Billing Summary card, scoped by the GLOBAL filter + selected lab
-        (async () => {
-          try {
-            const globalStats = await fetchStats(globalRange.startDate, globalRange.endDate);
-            setTotalTests(globalStats.kpis?.totalTests || 0);
-            setTotalRevenue(globalStats.kpis?.totalRevenue || 0);
-            setReportsGenerated(globalStats.kpis?.reportsGenerated || 0);
-            setPendingSamples(globalStats.kpis?.pendingSamples || 0);
-            setBillingSummary(globalStats.detailedBilling?.summary || emptyBillingSummary);
-          } catch (error) {
-            console.error("Error fetching global stats:", error);
-            setTotalTests(0);
-            setTotalRevenue(0);
-            setReportsGenerated(0);
-            setPendingSamples(0);
-            setBillingSummary(emptyBillingSummary);
-          }
-        })(),
+      // KPIs (all roles + totals from the single response)
+      setTotalLabs(stats.kpis?.totalLabs || 0);
+      setTotalAdmins(extractRoleCount(stats.kpis?.totalAdmins));
+      setTotalTechnicians(extractRoleCount(stats.kpis?.totalTechnicians));
+      setTotalDeskRoles(extractRoleCount(stats.kpis?.totalDeskRoles));
+      setTotalTests(stats.kpis?.totalTests || 0);
+      setTotalRevenue(stats.kpis?.totalRevenue || 0);
+      setReportsGenerated(stats.kpis?.reportsGenerated || 0);
+      setPendingSamples(stats.kpis?.pendingSamples || 0);
+      setBillingSummary(stats.detailedBilling?.summary || emptyBillingSummary);
 
-        // 2. Revenue trend with its OWN filter. The header total comes from the full-range
-        // call; each chart bar comes from re-querying getAllStats for just that bucket's
-        // range, same bucketing scheme (day/week/month, by filter type) as before. The
-        // total and the per-bucket fetches are independent, so they run together too.
-        (async () => {
-          if (revenueRange.startDate && revenueRange.endDate) {
-            const buckets = getRevenueBuckets(revenueFilter, revenueCustomRange);
-            const [totalSettled, bucketsSettled] = await Promise.allSettled([
-              fetchStats(revenueRange.startDate, revenueRange.endDate),
-              Promise.all(
-                buckets.map(async (bucket) => {
-                  try {
-                    const bucketStats = await fetchStats(bucket.start, bucket.end);
-                    return { label: bucket.label, revenue: bucketStats.revenueTrend?.totalRevenue || 0 };
-                  } catch (error) {
-                    console.error(`Error fetching revenue bucket ${bucket.label}:`, error);
-                    return { label: bucket.label, revenue: 0 };
-                  }
-                })
-              ),
-            ]);
+      // Revenue chart: aggregate the backend's per-day trend into display buckets
+      // (e.g. weeks for "month" filter, months for FY) — no extra API calls.
+      const dailyTrend: { date: string; revenue: number }[] = stats.revenueTrend?.trend || [];
+      setRevenueTrendTotal(stats.revenueTrend?.totalRevenue || 0);
+      if (globalRange.startDate && globalRange.endDate) {
+        const buckets = getRevenueBuckets(globalFilter, globalCustomRange);
+        setRevenueChartData(
+          buckets.map((bucket) => ({
+            label: bucket.label,
+            revenue: dailyTrend
+              .filter((d) => d.date >= bucket.start && d.date <= bucket.end)
+              .reduce((sum, d) => sum + (Number(d.revenue) || 0), 0),
+          }))
+        );
+      } else {
+        setRevenueChartData([]);
+      }
 
-            if (totalSettled.status === "fulfilled") {
-              setRevenueTrendTotal(totalSettled.value.revenueTrend?.totalRevenue || 0);
-            } else {
-              console.error("Error fetching revenue section total:", totalSettled.reason);
-              setRevenueTrendTotal(0);
-            }
+      // Revenue by lab (top 5)
+      const allLabsRevenue = stats.revenueByLab || [];
+      setTotalLabsForRevenue(allLabsRevenue.length);
+      setRevenueByLab(allLabsRevenue.slice(0, 5));
 
-            if (bucketsSettled.status === "fulfilled") {
-              setRevenueChartData(bucketsSettled.value);
-            } else {
-              console.error("Error fetching revenue chart data:", bucketsSettled.reason);
-              setRevenueChartData([]);
-            }
-          } else {
-            setRevenueTrendTotal(0);
-            setRevenueChartData([]);
-          }
-        })(),
+      // Packages
+      setPackageSummary(stats.detailedBilling?.packageSummary || emptyPackageSummary);
+      setPackages(stats.detailedBilling?.packages || []);
 
-        // 3. Revenue by lab (top 5) with its OWN filter
-        (async () => {
-          try {
-            const topLabsStats = await fetchStats(topLabsRange.startDate, topLabsRange.endDate);
-            const allLabsRevenue = topLabsStats.revenueByLab || [];
-            setTotalLabsForRevenue(allLabsRevenue.length);
-            setRevenueByLab(allLabsRevenue.slice(0, 5));
-          } catch (error) {
-            console.error("Error fetching revenue by lab:", error);
-            setTotalLabsForRevenue(0);
-            setRevenueByLab([]);
-          }
-        })(),
+      // Test categories + earnings by category
+      setTestCategories(stats.detailedBilling?.testCategories || []);
+      setTestCategoriesSummary(stats.detailedBilling?.testsSummary || emptyTestsSummary);
+      const earnings = stats.earningsByCategory || {
+        summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 },
+        categories: [],
+      };
+      setEarningsData(earnings);
+      if (earnings.categories && earnings.categories.length > 0) {
+        const sorted = [...earnings.categories].sort((a, b) => (b.totalTests || 0) - (a.totalTests || 0));
+        setSelectedCategory(sorted[0].category);
+      }
 
-        // 4. Packages summary with its OWN filter
-        (async () => {
-          try {
-            const packagesStats = await fetchStats(packagesRange.startDate, packagesRange.endDate);
-            setPackageSummary(packagesStats.detailedBilling?.packageSummary || emptyPackageSummary);
-            setPackages(packagesStats.detailedBilling?.packages || []);
-          } catch (error) {
-            console.error("Error fetching packages:", error);
-            setPackageSummary(emptyPackageSummary);
-            setPackages([]);
-          }
-        })(),
-
-        // 5. Tests by category + earnings by category with the section's OWN filter -
-        // both come off the same getAllStats response since they share categoryRange.
-        (async () => {
-          try {
-            const categoryStats = await fetchStats(categoryRange.startDate, categoryRange.endDate);
-            setTestCategories(categoryStats.detailedBilling?.testCategories || []);
-            setTestCategoriesSummary(categoryStats.detailedBilling?.testsSummary || emptyTestsSummary);
-
-            const earnings = categoryStats.earningsByCategory || { summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] };
-            setEarningsData(earnings);
-
-            // Default selected category to the one with the highest test count
-            if (earnings.categories && earnings.categories.length > 0) {
-              const sorted = [...earnings.categories].sort((a, b) => (b.totalTests || 0) - (a.totalTests || 0));
-              setSelectedCategory(sorted[0].category);
-            }
-          } catch (error) {
-            console.error("Error fetching tests/earnings by category:", error);
-            setTestCategories([]);
-            setTestCategoriesSummary(emptyTestsSummary);
-            setEarningsData({ summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] });
-          }
-        })(),
-
-        // 6. Lab performance with its OWN filter
-        (async () => {
-          try {
-            const performanceStats = await fetchStats(performanceRange.startDate, performanceRange.endDate);
-            setLabPerformance((performanceStats.labPerformance || []).slice(0, 6));
-          } catch (error) {
-            console.error("Error fetching lab performance:", error);
-            setLabPerformance([]);
-          }
-        })(),
-
-        // 7. Top doctors with its OWN filter
-        (async () => {
-          try {
-            const doctorsStats = await fetchStats(doctorsRange.startDate, doctorsRange.endDate);
-            setTopDoctors((doctorsStats.topReferringDoctors || []).slice(0, 5));
-          } catch (error) {
-            console.error("Error fetching top doctors:", error);
-            setTopDoctors([]);
-          }
-        })(),
-      ]);
+      // Lab performance (top 6) + top referring doctors (top 5)
+      setLabPerformance((stats.labPerformance || []).slice(0, 6));
+      setTopDoctors((stats.topReferringDoctors || []).slice(0, 5));
 
       setLastUpdated(new Date());
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
+      setTotalLabs(0);
+      setTotalAdmins(0);
+      setTotalTechnicians(0);
+      setTotalDeskRoles(0);
+      setTotalTests(0);
+      setTotalRevenue(0);
+      setReportsGenerated(0);
+      setPendingSamples(0);
+      setBillingSummary(emptyBillingSummary);
+      setRevenueTrendTotal(0);
+      setRevenueChartData([]);
+      setTotalLabsForRevenue(0);
+      setRevenueByLab([]);
+      setPackageSummary(emptyPackageSummary);
+      setPackages([]);
+      setTestCategories([]);
+      setTestCategoriesSummary(emptyTestsSummary);
+      setEarningsData({ summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] });
+      setLabPerformance([]);
+      setTopDoctors([]);
     } finally {
-      if (!silent) {
-        setLoading(false);
-      } else {
-        setRefreshing(false);
-      }
+      if (!silent) setLoading(false);
+      else setRefreshing(false);
     }
-  }, [
-    fetchStats,
-    globalFilter, globalCustomRange,
-    revenueFilter, revenueCustomRange,
-    topLabsFilter, topLabsCustomRange,
-    categoryFilter, categoryCustomRange,
-    packagesFilter, packagesCustomRange,
-    performanceFilter, performanceCustomRange,
-    doctorsFilter, doctorsCustomRange,
-  ]);
+  }, [fetchStats, globalFilter, globalCustomRange]);
 
   // Initial load + reload whenever the lab filter changes (fetchStats depends on selectedLabId)
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
 
-  // Billing Grid Report: the UI shows every matching row with no pagination, so this
-  // pulls every page from the (paginated) backend endpoint and stitches them into one
-  // full row list. `silent` mirrors fetchAllData's silent refresh - used by the 30s
-  // auto-refresh below so the table doesn't flash back to a "Loading..." state.
+  // Billing Grid Report: fetches a single page (GRID_PAGE_SIZE rows) from the backend.
   const fetchGridData = useCallback(
     async (silent = false) => {
       if (!silent) setGridLoading(true);
       try {
         const range = getDateRange(gridFilter, gridCustomRange);
         const labIdParam = selectedLabId === "all" ? undefined : selectedLabId;
-
-        const firstPage = await getGridReport(labIdParam, range.startDate, range.endDate, 0, GRID_FETCH_PAGE_SIZE);
-        let allRows: GridReportRow[] = [...firstPage.rows];
-
-        if (firstPage.totalPages > 1) {
-          const remainingPages = await Promise.all(
-            Array.from({ length: firstPage.totalPages - 1 }, (_, i) =>
-              getGridReport(labIdParam, range.startDate, range.endDate, i + 1, GRID_FETCH_PAGE_SIZE)
-            )
-          );
-          remainingPages.forEach((p) => {
-            allRows = allRows.concat(p.rows);
-          });
-        }
-
-        setGridData({
-          page: 0,
-          size: allRows.length,
-          totalRecords: firstPage.totalRecords,
-          totalPages: 1,
-          rows: allRows,
-        });
+        const result = await getGridReport(labIdParam, range.startDate, range.endDate, gridPage, GRID_PAGE_SIZE);
+        setGridData(result);
       } catch (error) {
         console.error("Error fetching billing grid report:", error);
         if (!silent) setGridData({ page: 0, size: 0, totalRecords: 0, totalPages: 0, rows: [] });
@@ -806,10 +663,15 @@ const SuperAdminStats = () => {
         if (!silent) setGridLoading(false);
       }
     },
-    [selectedLabId, gridFilter, gridCustomRange]
+    [selectedLabId, gridFilter, gridCustomRange, gridPage]
   );
 
-  // Initial load + reload whenever the lab or the section's own date filter changes.
+  // Reset to page 0 when the lab or date filter changes so stale page offsets don't persist.
+  useEffect(() => {
+    setGridPage(0);
+  }, [selectedLabId, gridFilter, gridCustomRange]);
+
+  // Initial load + reload whenever the lab, filter, or page changes.
   useEffect(() => {
     fetchGridData();
   }, [fetchGridData]);
@@ -821,12 +683,30 @@ const SuperAdminStats = () => {
     fetchGridData(true);
   }, [fetchAllData, fetchGridData]);
 
-  // The grid table already holds the full filtered result set (no pagination), so the
-  // CSV export just converts what's already loaded - no extra fetch needed.
-  const handleDownloadGridCsv = () => {
-    if (gridData.rows.length === 0) return;
-    const csv = buildGridReportCsv(gridData.rows);
-    downloadCSV(csv, generateCSVFilename("billing-grid-report"));
+  // CSV export fetches all pages sequentially to avoid concurrent load, then downloads.
+  const handleDownloadGridCsv = async () => {
+    if (gridData.totalRecords === 0) return;
+    setCsvDownloading(true);
+    try {
+      const range = getDateRange(gridFilter, gridCustomRange);
+      const labIdParam = selectedLabId === "all" ? undefined : selectedLabId;
+      const DOWNLOAD_PAGE_SIZE = 200;
+
+      const firstPage = await getGridReport(labIdParam, range.startDate, range.endDate, 0, DOWNLOAD_PAGE_SIZE);
+      let allRows: GridReportRow[] = [...firstPage.rows];
+
+      for (let i = 1; i < firstPage.totalPages; i++) {
+        const page = await getGridReport(labIdParam, range.startDate, range.endDate, i, DOWNLOAD_PAGE_SIZE);
+        allRows = allRows.concat(page.rows);
+      }
+
+      const csv = buildGridReportCsv(allRows);
+      downloadCSV(csv, generateCSVFilename("billing-grid-report"));
+    } catch (error) {
+      console.error("Error downloading billing grid CSV:", error);
+    } finally {
+      setCsvDownloading(false);
+    }
   };
 
   // Format data for category pie chart
@@ -1004,21 +884,21 @@ const SuperAdminStats = () => {
     {
       id: 2,
       title: "Total Admins",
-      value: roleKpisLoading ? "..." : String(totalAdmins),
+      value: loading ? "..." : String(totalAdmins),
       color: "text-secondary-700",
       icon: HiOutlineUserGroup,
     },
     {
       id: 3,
       title: "Total Desk Users",
-      value: roleKpisLoading ? "..." : String(totalDeskRoles),
+      value: loading ? "..." : String(totalDeskRoles),
       color: "text-secondary-700",
       icon: HiOutlineUsers,
     },
     {
       id: 4,
       title: "Total Technicians",
-      value: roleKpisLoading ? "..." : String(totalTechnicians),
+      value: loading ? "..." : String(totalTechnicians),
       color: "text-secondary-700",
       icon: PiGraduationCapThin,
     },
@@ -1840,10 +1720,10 @@ const SuperAdminStats = () => {
             <button
               type="button"
               onClick={handleDownloadGridCsv}
-              disabled={gridLoading || gridData.rows.length === 0}
+              disabled={gridLoading || csvDownloading || gridData.totalRecords === 0}
               className="rounded-lg border border-success-500 bg-[#55D400] px-4 py-2 text-p3 font-medium text-pneutral-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Download as CSV
+              {csvDownloading ? "Exporting..." : "Download as CSV"}
             </button>
             {renderFilterDropdown(
               gridFilter,
@@ -1888,7 +1768,7 @@ const SuperAdminStats = () => {
                 gridData.rows.map((row, index) => (
                   <tr key={row.billingId ?? index} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">
-                      {index + 1}
+                      {gridPage * GRID_PAGE_SIZE + index + 1}
                     </td>
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.visitCode}</td>
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.patientName}</td>
@@ -1930,10 +1810,35 @@ const SuperAdminStats = () => {
             </tbody>
           </table>
         </div>
-        <div className="mt-3 px-1">
+        <div className="mt-3 px-1 flex items-center justify-between gap-4">
           <p className="text-p3 text-pneutral-500">
-            {gridData.totalRecords > 0 ? `${gridData.totalRecords} records` : "0 records"}
+            {gridData.totalRecords > 0
+              ? `${gridPage * GRID_PAGE_SIZE + 1}–${Math.min((gridPage + 1) * GRID_PAGE_SIZE, gridData.totalRecords)} of ${gridData.totalRecords} records`
+              : "0 records"}
           </p>
+          {gridData.totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setGridPage((p) => Math.max(0, p - 1))}
+                disabled={gridLoading || gridPage === 0}
+                className="rounded-lg border border-pneutral-200 bg-base-white px-3 py-1 text-p3 text-pneutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-pneutral-50"
+              >
+                Prev
+              </button>
+              <span className="text-p3 text-pneutral-500">
+                Page {gridPage + 1} of {gridData.totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setGridPage((p) => Math.min(gridData.totalPages - 1, p + 1))}
+                disabled={gridLoading || gridPage >= gridData.totalPages - 1}
+                className="rounded-lg border border-pneutral-200 bg-base-white px-3 py-1 text-p3 text-pneutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-pneutral-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -2943,21 +2848,21 @@ export default SuperAdminStats;
 //     {
 //       id: 2,
 //       title: "Total Admins",
-//       value: roleKpisLoading ? "..." : String(totalAdmins),
+//       value: loading ? "..." : String(totalAdmins),
 //       color: "text-secondary-700",
 //       icon: HiOutlineUserGroup,
 //     },
 //     {
 //       id: 3,
 //       title: "Total Desk Users",
-//       value: roleKpisLoading ? "..." : String(totalDeskRoles),
+//       value: loading ? "..." : String(totalDeskRoles),
 //       color: "text-secondary-700",
 //       icon: HiOutlineUsers,
 //     },
 //     {
 //       id: 4,
 //       title: "Total Technicians",
-//       value: roleKpisLoading ? "..." : String(totalTechnicians),
+//       value: loading ? "..." : String(totalTechnicians),
 //       color: "text-secondary-700",
 //       icon: PiGraduationCapThin,
 //     },

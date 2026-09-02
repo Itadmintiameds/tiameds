@@ -18,6 +18,9 @@ import { AxiosError } from 'axios'
 import { ZodError } from 'zod'
 import useAuthStore from '@/context/userStore';
 
+// TEMPORARY: set to false to re-enable the login attempt block/rate-limit UI
+const ENABLE_LOGIN_BLOCK = false;
+
 const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState<LoginData>({
     username: '',
@@ -36,6 +39,10 @@ const LoginPage: React.FC = () => {
 
   // Check for existing block on mount
   useEffect(() => {
+    if (!ENABLE_LOGIN_BLOCK) {
+      localStorage.removeItem('login_block_until');
+      return;
+    }
     const storedBlock = localStorage.getItem('login_block_until');
     if (storedBlock) {
       const blockTime = parseInt(storedBlock, 10);
@@ -51,7 +58,7 @@ const LoginPage: React.FC = () => {
 
   // Block countdown timer
   useEffect(() => {
-    if (blockedUntil && blockedUntil > Date.now()) {
+    if (ENABLE_LOGIN_BLOCK && blockedUntil && blockedUntil > Date.now()) {
       const timer = setInterval(() => {
         const remaining = blockedUntil - Date.now();
         if (remaining <= 0) {
@@ -119,7 +126,7 @@ const LoginPage: React.FC = () => {
         const message = responseData?.message || err.message || 'Login failed. Please try again.';
         
         // Handle rate limiting (429) - check both status code and message
-        if (status === 429 || message.toLowerCase().includes('too many login attempts')) {
+        if (ENABLE_LOGIN_BLOCK && (status === 429 || message.toLowerCase().includes('too many login attempts'))) {
           // Extract time from message (e.g., "after 10 minutes" or "after 5 minutes")
           const timeMatch = message.match(/(\d+)\s+minutes?/i);
           const minutes = timeMatch ? parseInt(timeMatch[1], 10) : 10;
@@ -136,7 +143,7 @@ const LoginPage: React.FC = () => {
       } else if (err instanceof Error) {
         // Handle case where message contains rate limit info
         const message = err.message;
-        if (message.toLowerCase().includes('too many login attempts')) {
+        if (ENABLE_LOGIN_BLOCK && message.toLowerCase().includes('too many login attempts')) {
           const timeMatch = message.match(/(\d+)\s+minutes?/i);
           const minutes = timeMatch ? parseInt(timeMatch[1], 10) : 10;
           const blockUntil = Date.now() + (minutes * 60 * 1000);
@@ -319,7 +326,7 @@ const LoginPage: React.FC = () => {
               className="space-y-5"
               noValidate
             >
-              {blockedUntil && blockedUntil > Date.now() && (
+              {ENABLE_LOGIN_BLOCK && blockedUntil && blockedUntil > Date.now() && (
                 <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg flex items-start gap-3">
                   <svg className="h-5 w-5 text-red-400 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -394,7 +401,7 @@ const LoginPage: React.FC = () => {
                 className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-lg text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? <><FiLoader className="animate-spin" /> Sending OTP...</>
-                  : blockedUntil && blockedUntil > Date.now() ? 'Account Blocked'
+                  : ENABLE_LOGIN_BLOCK && blockedUntil && blockedUntil > Date.now() ? 'Account Blocked'
                   : 'Continue'}
               </button>
             </form>
