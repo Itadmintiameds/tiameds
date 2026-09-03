@@ -32,10 +32,20 @@ import { PiDna, PiFlaskLight, PiGraduationCapThin } from "react-icons/pi";
 // Import services
 import { useLabs } from "@/context/LabContext";
 import {
-  getAllStats,
   getGridReport,
+  getKpis,
+  getDashboardSummary,
+  getTestsByCategory,
+  getRevenueTrend,
+  getRevenueByLab,
+  getLabPerformance,
+  getTopReferringDoctors,
+  getDetailedBilling,
+  getPackagesSummary,
+  getEarningsByCategory,
 } from "../../../../../../services/statisticsService";
 import {
+  DashboardSummary,
   DetailedBilling,
   EarningsByCategoryData,
   GridReportResponse,
@@ -46,6 +56,7 @@ import {
   TestCategoryRow,
   TopReferringDoctor,
 } from "@/types/statisticsData";
+import Loader from "../../common/Loader";
 import {
   downloadCSV,
   formatAmount as formatCsvAmount,
@@ -395,8 +406,42 @@ const SuperAdminStats = () => {
   const { labs } = useLabs();
 
   // Loading states
-  const [loading, setLoading] = useState(true);
+  // `refreshing` only drives the manual "Refresh" button spinner; each section below
+  // has its own independent loading flag so fast cards render while slow ones spin.
   const [refreshing, setRefreshing] = useState(false);
+
+  // Per-section loading/error state — every dashboard card fetches its own data from
+  // its own standalone endpoint (see services/statisticsService.ts), independently of
+  // every other card, so one slow/failing section never blocks the rest of the page.
+  const [kpisLoading, setKpisLoading] = useState(true);
+  const [kpisError, setKpisError] = useState<string | null>(null);
+
+  const [dashboardSummaryLoading, setDashboardSummaryLoading] = useState(true);
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
+
+  const [testCategoriesLoading, setTestCategoriesLoading] = useState(true);
+  const [testCategoriesError, setTestCategoriesError] = useState<string | null>(null);
+
+  const [earningsLoading, setEarningsLoading] = useState(true);
+  const [earningsError, setEarningsError] = useState<string | null>(null);
+
+  const [revenueTrendLoading, setRevenueTrendLoading] = useState(true);
+  const [revenueTrendError, setRevenueTrendError] = useState<string | null>(null);
+
+  const [revenueByLabLoading, setRevenueByLabLoading] = useState(true);
+  const [revenueByLabError, setRevenueByLabError] = useState<string | null>(null);
+
+  const [packagesSummaryLoading, setPackagesSummaryLoading] = useState(true);
+  const [packagesSummaryError, setPackagesSummaryError] = useState<string | null>(null);
+
+  const [detailedBillingLoading, setDetailedBillingLoading] = useState(true);
+  const [detailedBillingError, setDetailedBillingError] = useState<string | null>(null);
+
+  const [labPerformanceLoading, setLabPerformanceLoading] = useState(true);
+  const [labPerformanceError, setLabPerformanceError] = useState<string | null>(null);
+
+  const [topDoctorsLoading, setTopDoctorsLoading] = useState(true);
+  const [topDoctorsError, setTopDoctorsError] = useState<string | null>(null);
 
   // ========== LAB FILTER ==========
   // "all" = cumulative view across every lab the super admin owns; otherwise
@@ -539,83 +584,28 @@ const SuperAdminStats = () => {
     }
   }, [globalCustomRange, globalFilter]);
 
-  // Every section below hits the same consolidated endpoint, scoped to whichever
-  // lab is currently selected ("all" omits labId so the backend aggregates every lab).
-  const fetchStats = useCallback(
-    (startDate?: string, endDate?: string) =>
-      getAllStats(selectedLabId === "all" ? undefined : selectedLabId, startDate, endDate),
-    [selectedLabId]
-  );
+  // Every section below hits its OWN standalone endpoint, scoped to whichever lab is
+  // currently selected ("all" omits labId so the backend aggregates every lab). Each
+  // fetcher owns its own loading/error state and updates its own state slice the moment
+  // ITS OWN request resolves — independent of how long any other section takes.
+  const labIdParam = selectedLabId === "all" ? undefined : selectedLabId;
 
-  // Single consolidated fetch: one API call populates every section.
-  // Revenue chart bars are derived by aggregating the backend's daily trend data
-  // on the frontend — no extra per-bucket API calls needed.
-  const fetchAllData = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    else setRefreshing(true);
-
+  const fetchKpis = useCallback(async (startDate?: string, endDate?: string) => {
+    setKpisLoading(true);
+    setKpisError(null);
     try {
-      const globalRange = getDateRange(globalFilter, globalCustomRange);
-      const stats = await fetchStats(globalRange.startDate, globalRange.endDate);
-
-      // KPIs (all roles + totals from the single response)
-      setTotalLabs(stats.kpis?.totalLabs || 0);
-      setTotalAdmins(extractRoleCount(stats.kpis?.totalAdmins));
-      setTotalTechnicians(extractRoleCount(stats.kpis?.totalTechnicians));
-      setTotalDeskRoles(extractRoleCount(stats.kpis?.totalDeskRoles));
-      setTotalTests(stats.kpis?.totalTests || 0);
-      setTotalRevenue(stats.kpis?.totalRevenue || 0);
-      setReportsGenerated(stats.kpis?.reportsGenerated || 0);
-      setPendingSamples(stats.kpis?.pendingSamples || 0);
-      setBillingSummary(stats.detailedBilling?.summary || emptyBillingSummary);
-
-      // Revenue chart: aggregate the backend's per-day trend into display buckets
-      // (e.g. weeks for "month" filter, months for FY) — no extra API calls.
-      const dailyTrend: { date: string; revenue: number }[] = stats.revenueTrend?.trend || [];
-      setRevenueTrendTotal(stats.revenueTrend?.totalRevenue || 0);
-      if (globalRange.startDate && globalRange.endDate) {
-        const buckets = getRevenueBuckets(globalFilter, globalCustomRange);
-        setRevenueChartData(
-          buckets.map((bucket) => ({
-            label: bucket.label,
-            revenue: dailyTrend
-              .filter((d) => d.date >= bucket.start && d.date <= bucket.end)
-              .reduce((sum, d) => sum + (Number(d.revenue) || 0), 0),
-          }))
-        );
-      } else {
-        setRevenueChartData([]);
-      }
-
-      // Revenue by lab (top 5)
-      const allLabsRevenue = stats.revenueByLab || [];
-      setTotalLabsForRevenue(allLabsRevenue.length);
-      setRevenueByLab(allLabsRevenue.slice(0, 5));
-
-      // Packages
-      setPackageSummary(stats.detailedBilling?.packageSummary || emptyPackageSummary);
-      setPackages(stats.detailedBilling?.packages || []);
-
-      // Test categories + earnings by category
-      setTestCategories(stats.detailedBilling?.testCategories || []);
-      setTestCategoriesSummary(stats.detailedBilling?.testsSummary || emptyTestsSummary);
-      const earnings = stats.earningsByCategory || {
-        summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 },
-        categories: [],
-      };
-      setEarningsData(earnings);
-      if (earnings.categories && earnings.categories.length > 0) {
-        const sorted = [...earnings.categories].sort((a, b) => (b.totalTests || 0) - (a.totalTests || 0));
-        setSelectedCategory(sorted[0].category);
-      }
-
-      // Lab performance (top 6) + top referring doctors (top 5)
-      setLabPerformance((stats.labPerformance || []).slice(0, 6));
-      setTopDoctors((stats.topReferringDoctors || []).slice(0, 5));
-
-      setLastUpdated(new Date());
+      const kpis = await getKpis(labIdParam, startDate, endDate);
+      setTotalLabs(kpis?.totalLabs || 0);
+      setTotalAdmins(extractRoleCount(kpis?.totalAdmins));
+      setTotalTechnicians(extractRoleCount(kpis?.totalTechnicians));
+      setTotalDeskRoles(extractRoleCount(kpis?.totalDeskRoles));
+      setTotalTests(kpis?.totalTests || 0);
+      setTotalRevenue(kpis?.totalRevenue || 0);
+      setReportsGenerated(kpis?.reportsGenerated || 0);
+      setPendingSamples(kpis?.pendingSamples || 0);
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.error("Error fetching KPIs:", error);
+      setKpisError(error instanceof Error ? error.message : "Failed to load KPIs");
       setTotalLabs(0);
       setTotalAdmins(0);
       setTotalTechnicians(0);
@@ -624,25 +614,211 @@ const SuperAdminStats = () => {
       setTotalRevenue(0);
       setReportsGenerated(0);
       setPendingSamples(0);
-      setBillingSummary(emptyBillingSummary);
-      setRevenueTrendTotal(0);
-      setRevenueChartData([]);
-      setTotalLabsForRevenue(0);
-      setRevenueByLab([]);
-      setPackageSummary(emptyPackageSummary);
-      setPackages([]);
+    } finally {
+      setKpisLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchDashboardSummaryData = useCallback(async (startDate?: string, endDate?: string) => {
+    setDashboardSummaryLoading(true);
+    try {
+      const summary = await getDashboardSummary(labIdParam, startDate, endDate);
+      setDashboardSummary(summary || null);
+    } catch (error) {
+      console.error("Error fetching dashboard summary:", error);
+      setDashboardSummary(null);
+    } finally {
+      setDashboardSummaryLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchTestsByCategoryData = useCallback(async (startDate?: string, endDate?: string) => {
+    setTestCategoriesLoading(true);
+    setTestCategoriesError(null);
+    try {
+      const data = await getTestsByCategory(labIdParam, startDate, endDate);
+      setTestCategories(data?.categories || []);
+      setTestCategoriesSummary(data?.summary || emptyTestsSummary);
+    } catch (error) {
+      console.error("Error fetching tests by category:", error);
+      setTestCategoriesError(error instanceof Error ? error.message : "Failed to load test categories");
       setTestCategories([]);
       setTestCategoriesSummary(emptyTestsSummary);
+    } finally {
+      setTestCategoriesLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchEarningsByCategoryData = useCallback(async (startDate?: string, endDate?: string) => {
+    setEarningsLoading(true);
+    setEarningsError(null);
+    try {
+      const earnings = await getEarningsByCategory(labIdParam, startDate, endDate);
+      const safeEarnings = earnings || {
+        summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 },
+        categories: [],
+      };
+      setEarningsData(safeEarnings);
+      if (safeEarnings.categories && safeEarnings.categories.length > 0) {
+        const sorted = [...safeEarnings.categories].sort((a, b) => (b.totalTests || 0) - (a.totalTests || 0));
+        setSelectedCategory(sorted[0].category);
+      }
+    } catch (error) {
+      console.error("Error fetching earnings by category:", error);
+      setEarningsError(error instanceof Error ? error.message : "Failed to load earnings by category");
       setEarningsData({ summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] });
+    } finally {
+      setEarningsLoading(false);
+    }
+  }, [labIdParam]);
+
+  // Revenue chart bars are derived by aggregating the backend's daily trend data
+  // on the frontend — no extra per-bucket API calls needed.
+  const fetchRevenueTrendData = useCallback(async (startDate?: string, endDate?: string) => {
+    setRevenueTrendLoading(true);
+    setRevenueTrendError(null);
+    try {
+      if (!startDate || !endDate) {
+        setRevenueTrendTotal(0);
+        setRevenueChartData([]);
+        return;
+      }
+      const trend = await getRevenueTrend(labIdParam, startDate, endDate);
+      setRevenueTrendTotal(trend?.totalRevenue || 0);
+      const dailyTrend: { date: string; revenue: number }[] = trend?.trend || [];
+      const buckets = getRevenueBuckets(globalFilter, globalCustomRange);
+      setRevenueChartData(
+        buckets.map((bucket) => ({
+          label: bucket.label,
+          revenue: dailyTrend
+            .filter((d) => d.date >= bucket.start && d.date <= bucket.end)
+            .reduce((sum, d) => sum + (Number(d.revenue) || 0), 0),
+        }))
+      );
+    } catch (error) {
+      console.error("Error fetching revenue trend:", error);
+      setRevenueTrendError(error instanceof Error ? error.message : "Failed to load revenue trend");
+      setRevenueTrendTotal(0);
+      setRevenueChartData([]);
+    } finally {
+      setRevenueTrendLoading(false);
+    }
+  }, [labIdParam, globalFilter, globalCustomRange]);
+
+  const fetchRevenueByLabData = useCallback(async (startDate?: string, endDate?: string) => {
+    setRevenueByLabLoading(true);
+    setRevenueByLabError(null);
+    try {
+      const rows = await getRevenueByLab(labIdParam, startDate, endDate);
+      const allLabsRevenue = rows || [];
+      setTotalLabsForRevenue(allLabsRevenue.length);
+      setRevenueByLab(allLabsRevenue.slice(0, 5));
+    } catch (error) {
+      console.error("Error fetching revenue by lab:", error);
+      setRevenueByLabError(error instanceof Error ? error.message : "Failed to load revenue by lab");
+      setTotalLabsForRevenue(0);
+      setRevenueByLab([]);
+    } finally {
+      setRevenueByLabLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchPackagesSummaryData = useCallback(async (startDate?: string, endDate?: string) => {
+    setPackagesSummaryLoading(true);
+    setPackagesSummaryError(null);
+    try {
+      const data = await getPackagesSummary(labIdParam, startDate, endDate);
+      setPackages(data?.packages || []);
+      const s = data?.summary;
+      setPackageSummary({
+        totalPackages: s?.totalPackages || 0,
+        totalVisits: s?.totalVisits || 0,
+        grossBilled: s?.totalRevenue || 0,
+        discount: s?.totalDiscount || 0,
+        paid: s?.totalPaid || 0,
+        due: s?.totalDue || 0,
+        paymentMode: { cash: s?.totalCash || 0, upi: s?.totalUpi || 0, card: s?.totalCard || 0 },
+      });
+    } catch (error) {
+      console.error("Error fetching packages summary:", error);
+      setPackagesSummaryError(error instanceof Error ? error.message : "Failed to load packages summary");
+      setPackages([]);
+      setPackageSummary(emptyPackageSummary);
+    } finally {
+      setPackagesSummaryLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchDetailedBillingData = useCallback(async (startDate?: string, endDate?: string) => {
+    setDetailedBillingLoading(true);
+    setDetailedBillingError(null);
+    try {
+      const data = await getDetailedBilling(labIdParam, startDate, endDate);
+      setBillingSummary(data?.summary || emptyBillingSummary);
+    } catch (error) {
+      console.error("Error fetching detailed billing:", error);
+      setDetailedBillingError(error instanceof Error ? error.message : "Failed to load billing summary");
+      setBillingSummary(emptyBillingSummary);
+    } finally {
+      setDetailedBillingLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchLabPerformanceData = useCallback(async (startDate?: string, endDate?: string) => {
+    setLabPerformanceLoading(true);
+    setLabPerformanceError(null);
+    try {
+      const rows = await getLabPerformance(labIdParam, startDate, endDate);
+      setLabPerformance((rows || []).slice(0, 6));
+    } catch (error) {
+      console.error("Error fetching lab performance:", error);
+      setLabPerformanceError(error instanceof Error ? error.message : "Failed to load lab performance");
       setLabPerformance([]);
+    } finally {
+      setLabPerformanceLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchTopDoctorsData = useCallback(async (startDate?: string, endDate?: string) => {
+    setTopDoctorsLoading(true);
+    setTopDoctorsError(null);
+    try {
+      const rows = await getTopReferringDoctors(labIdParam, startDate, endDate);
+      setTopDoctors((rows || []).slice(0, 5));
+    } catch (error) {
+      console.error("Error fetching top referring doctors:", error);
+      setTopDoctorsError(error instanceof Error ? error.message : "Failed to load top referring doctors");
       setTopDoctors([]);
     } finally {
-      if (!silent) setLoading(false);
-      else setRefreshing(false);
+      setTopDoctorsLoading(false);
     }
-  }, [fetchStats, globalFilter, globalCustomRange]);
+  }, [labIdParam]);
 
-  // Initial load + reload whenever the lab filter changes (fetchStats depends on selectedLabId)
+  // Fires all ~10 section fetches together, but each updates its own state the moment
+  // IT resolves (no Promise.all/allSettled gating here) — fast cards render immediately,
+  // slow ones keep spinning independently, and one failing section doesn't block the rest.
+  const fetchAllData = useCallback(() => {
+    const globalRange = getDateRange(globalFilter, globalCustomRange);
+    fetchKpis(globalRange.startDate, globalRange.endDate);
+    fetchDashboardSummaryData(globalRange.startDate, globalRange.endDate);
+    fetchTestsByCategoryData(globalRange.startDate, globalRange.endDate);
+    fetchEarningsByCategoryData(globalRange.startDate, globalRange.endDate);
+    fetchRevenueTrendData(globalRange.startDate, globalRange.endDate);
+    fetchRevenueByLabData(globalRange.startDate, globalRange.endDate);
+    fetchPackagesSummaryData(globalRange.startDate, globalRange.endDate);
+    fetchDetailedBillingData(globalRange.startDate, globalRange.endDate);
+    fetchLabPerformanceData(globalRange.startDate, globalRange.endDate);
+    fetchTopDoctorsData(globalRange.startDate, globalRange.endDate);
+    setLastUpdated(new Date());
+  }, [
+    globalFilter, globalCustomRange,
+    fetchKpis, fetchDashboardSummaryData, fetchTestsByCategoryData, fetchEarningsByCategoryData,
+    fetchRevenueTrendData, fetchRevenueByLabData, fetchPackagesSummaryData, fetchDetailedBillingData,
+    fetchLabPerformanceData, fetchTopDoctorsData,
+  ]);
+
+  // Initial load + reload whenever the lab filter or global date range changes
+  // (mirrors the trigger the old single getAllStats() call used).
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
@@ -678,10 +854,31 @@ const SuperAdminStats = () => {
 
   // Manual refresh - replaces the old 30s auto-refresh, which was re-fetching every
   // section (including the full Billing Grid Report) too often and spiking load.
+  // `refreshing` only drives the button's spinner; it does NOT gate any section's own
+  // loading/data state, so each card still updates independently as its own call resolves.
   const handleManualRefresh = useCallback(() => {
-    fetchAllData(true);
-    fetchGridData(true);
-  }, [fetchAllData, fetchGridData]);
+    setRefreshing(true);
+    const globalRange = getDateRange(globalFilter, globalCustomRange);
+    Promise.allSettled([
+      fetchKpis(globalRange.startDate, globalRange.endDate),
+      fetchDashboardSummaryData(globalRange.startDate, globalRange.endDate),
+      fetchTestsByCategoryData(globalRange.startDate, globalRange.endDate),
+      fetchEarningsByCategoryData(globalRange.startDate, globalRange.endDate),
+      fetchRevenueTrendData(globalRange.startDate, globalRange.endDate),
+      fetchRevenueByLabData(globalRange.startDate, globalRange.endDate),
+      fetchPackagesSummaryData(globalRange.startDate, globalRange.endDate),
+      fetchDetailedBillingData(globalRange.startDate, globalRange.endDate),
+      fetchLabPerformanceData(globalRange.startDate, globalRange.endDate),
+      fetchTopDoctorsData(globalRange.startDate, globalRange.endDate),
+      fetchGridData(true),
+    ]).finally(() => setRefreshing(false));
+    setLastUpdated(new Date());
+  }, [
+    globalFilter, globalCustomRange, fetchGridData,
+    fetchKpis, fetchDashboardSummaryData, fetchTestsByCategoryData, fetchEarningsByCategoryData,
+    fetchRevenueTrendData, fetchRevenueByLabData, fetchPackagesSummaryData, fetchDetailedBillingData,
+    fetchLabPerformanceData, fetchTopDoctorsData,
+  ]);
 
   // CSV export fetches all pages sequentially to avoid concurrent load, then downloads.
   const handleDownloadGridCsv = async () => {
@@ -877,56 +1074,56 @@ const SuperAdminStats = () => {
     {
       id: 1,
       title: "Total Labs",
-      value: loading ? "..." : String(totalLabs),
+      value: kpisLoading ? "..." : String(totalLabs),
       color: "text-secondary-700",
       icon: Building2,
     },
     {
       id: 2,
       title: "Total Admins",
-      value: loading ? "..." : String(totalAdmins),
+      value: kpisLoading ? "..." : String(totalAdmins),
       color: "text-secondary-700",
       icon: HiOutlineUserGroup,
     },
     {
       id: 3,
       title: "Total Desk Users",
-      value: loading ? "..." : String(totalDeskRoles),
+      value: kpisLoading ? "..." : String(totalDeskRoles),
       color: "text-secondary-700",
       icon: HiOutlineUsers,
     },
     {
       id: 4,
       title: "Total Technicians",
-      value: loading ? "..." : String(totalTechnicians),
+      value: kpisLoading ? "..." : String(totalTechnicians),
       color: "text-secondary-700",
       icon: PiGraduationCapThin,
     },
     {
       id: 5,
       title: "Total Tests",
-      value: loading ? "..." : String(totalTests),
+      value: kpisLoading ? "..." : String(totalTests),
       color: "text-secondary-700",
       icon: PiFlaskLight,
     },
     {
       id: 6,
       title: "Pending Samples",
-      value: loading ? "..." : String(pendingSamples),
+      value: kpisLoading ? "..." : String(pendingSamples),
       color: "text-secondary-700",
       icon: PiDna,
     },
     {
       id: 7,
       title: "Reports Generated",
-      value: loading ? "..." : String(reportsGenerated),
+      value: kpisLoading ? "..." : String(reportsGenerated),
       color: "text-secondary-700",
       icon: ClipboardCheck,
     },
     {
       id: 8,
       title: "Total Revenue",
-      value: loading ? "..." : formatCurrency(totalRevenue),
+      value: kpisLoading ? "..." : formatCurrency(totalRevenue),
       color: "text-secondary-700",
       icon: HiOutlineBanknotes,
     }
@@ -1205,7 +1402,15 @@ const SuperAdminStats = () => {
             </div>
           </div>
           <div className="h-[200px]">
-            {revenueChartData.length > 0 ? (
+            {revenueTrendLoading ? (
+              <div className="flex h-full w-full items-center justify-center">
+                <Loader type="spinner" size="sm" text="" />
+              </div>
+            ) : revenueTrendError ? (
+              <div className="flex h-full w-full items-center justify-center text-p3 text-danger-500">
+                {revenueTrendError}
+              </div>
+            ) : revenueChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={revenueChartData}>
                   <defs>
@@ -1278,7 +1483,13 @@ const SuperAdminStats = () => {
             </div>
           </div>
           <div className="space-y-4">
-            {topLabs.length > 0 ? (
+            {revenueByLabLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader type="spinner" size="sm" text="" />
+              </div>
+            ) : revenueByLabError ? (
+              <div className="text-center py-8 text-danger-500">{revenueByLabError}</div>
+            ) : topLabs.length > 0 ? (
               topLabs.map((lab, index) => (
                 <div key={index} className="grid grid-cols-[1.2fr_2.5fr_64px] items-center gap-5">
                   <p className="truncate text-p3 font-medium text-pneutral-900">{lab.name}</p>
@@ -1336,7 +1547,13 @@ const SuperAdminStats = () => {
             )}
           </div>
           <div className="flex items-center justify-between">
-            {categoryChartData.length > 0 ? (
+            {testCategoriesLoading ? (
+              <div className="flex w-full items-center justify-center py-8">
+                <Loader type="spinner" size="sm" text="" />
+              </div>
+            ) : testCategoriesError ? (
+              <div className="w-full py-8 text-center text-danger-500">{testCategoriesError}</div>
+            ) : categoryChartData.length > 0 ? (
               <>
                 <div className="h-[270px] w-[270px]">
                   <ResponsiveContainer>
@@ -1416,7 +1633,13 @@ const SuperAdminStats = () => {
             </div>
           </div>
           <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-            {sortedTests.length > 0 ? (
+            {earningsLoading ? (
+              <div className="flex w-full items-center justify-center py-8">
+                <Loader type="spinner" size="sm" text="" />
+              </div>
+            ) : earningsError ? (
+              <div className="w-full py-8 text-center text-danger-500">{earningsError}</div>
+            ) : sortedTests.length > 0 ? (
               <table className="min-w-full">
                 <thead className="sticky top-0 bg-white z-10">
                   <tr className="border-b border-pneutral-100 bg-pneutral-50">
@@ -1483,7 +1706,13 @@ const SuperAdminStats = () => {
             )}
           </div>
           <div className="flex items-center justify-between">
-            {packagesChartData.length > 0 ? (
+            {packagesSummaryLoading ? (
+              <div className="flex w-full items-center justify-center py-8">
+                <Loader type="spinner" size="sm" text="" />
+              </div>
+            ) : packagesSummaryError ? (
+              <div className="w-full py-8 text-center text-danger-500">{packagesSummaryError}</div>
+            ) : packagesChartData.length > 0 ? (
               <>
                 <div className="h-[200px] w-[200px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1552,7 +1781,13 @@ const SuperAdminStats = () => {
             </h2>
           </div>
           <div className="flex items-center justify-between px-2 pb-2">
-            {alertsData.some(item => item.value > 0) ? (
+            {detailedBillingLoading ? (
+              <div className="flex w-full items-center justify-center py-8">
+                <Loader type="spinner" size="sm" text="" />
+              </div>
+            ) : detailedBillingError ? (
+              <div className="w-full py-8 text-center text-danger-500">{detailedBillingError}</div>
+            ) : alertsData.some(item => item.value > 0) ? (
               <>
                 <div className="h-[180px] w-[180px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1640,13 +1875,27 @@ const SuperAdminStats = () => {
                 </tr>
               </thead>
               <tbody>
-                {doctorsData.map((doctor) => (
-                  <tr key={doctor.id} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
-                    <td className="px-4 py-2 text-p3 text-pneutral-900">{doctor.srNo}</td>
-                    <td className="px-4 py-2 text-p3 font-medium text-pneutral-900">{doctor.doctorName}</td>
-                    <td className="px-4 py-2 text-p3 text-right font-medium text-pneutral-900">{doctor.revenue}</td>
+                {topDoctorsLoading ? (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-8 text-center">
+                      <div className="flex items-center justify-center">
+                        <Loader type="spinner" size="sm" text="" />
+                      </div>
+                    </td>
                   </tr>
-                ))}
+                ) : topDoctorsError ? (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-8 text-center text-danger-500">{topDoctorsError}</td>
+                  </tr>
+                ) : (
+                  doctorsData.map((doctor) => (
+                    <tr key={doctor.id} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
+                      <td className="px-4 py-2 text-p3 text-pneutral-900">{doctor.srNo}</td>
+                      <td className="px-4 py-2 text-p3 font-medium text-pneutral-900">{doctor.doctorName}</td>
+                      <td className="px-4 py-2 text-p3 text-right font-medium text-pneutral-900">{doctor.revenue}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -1683,28 +1932,42 @@ const SuperAdminStats = () => {
               </tr>
             </thead>
             <tbody>
-              {tableData.map((item) => (
-                <tr key={item.id} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
-                  <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.id}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 font-medium text-pneutral-900">{item.lab}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 font-medium text-pneutral-900">{item.revenue}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.tests}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.patients}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 font-medium text-danger-600">{item.pending}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.tat}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.reports}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2">
-                    <div
-                      className={`flex items-center gap-2 font-medium ${
-                        item.positive ? "text-success-600" : "text-warning-500"
-                      }`}
-                    >
-                      {item.positive ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
-                      {item.growth}
+              {labPerformanceLoading ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-8 text-center">
+                    <div className="flex items-center justify-center">
+                      <Loader type="spinner" size="sm" text="" />
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : labPerformanceError ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-8 text-center text-danger-500">{labPerformanceError}</td>
+                </tr>
+              ) : (
+                tableData.map((item) => (
+                  <tr key={item.id} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.id}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 font-medium text-pneutral-900">{item.lab}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 font-medium text-pneutral-900">{item.revenue}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.tests}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.patients}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 font-medium text-danger-600">{item.pending}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.tat}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.reports}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2">
+                      <div
+                        className={`flex items-center gap-2 font-medium ${
+                          item.positive ? "text-success-600" : "text-warning-500"
+                        }`}
+                      >
+                        {item.positive ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
+                        {item.growth}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
