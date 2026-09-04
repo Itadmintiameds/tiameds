@@ -2,6 +2,15 @@
 //
 // Response shapes for AdminStatsController (backend: /lab-admin/stats/**)
 
+// Response shape for CategoryStatsRollupAdminController
+// (backend: POST /lab-admin/stats/category-rollup/backfill)
+export interface CategoryRollupBackfillResult {
+    labId: number | null;
+    startDate: string;
+    endDate: string;
+    dayRowsProcessed: number;
+}
+
 export interface TotalAdmins {
     totalAdmins: number;
 }

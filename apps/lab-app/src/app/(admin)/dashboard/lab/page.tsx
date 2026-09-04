@@ -7,10 +7,12 @@ import { FaFlask } from "react-icons/fa6";
 import { GrDocumentTest } from "react-icons/gr";
 import { FaDownload } from "react-icons/fa";
 import { MdLibraryBooks } from "react-icons/md";
+import { MdSync } from "react-icons/md";
 import Lab from '../../component/lab/Lab';
 import LabList from '../../component/lab/LabList';
 import TestPriceList from '../../component/lab/TestPriceList';
 import TestReferanceList from '../../component/lab/TestReferanceList';
+import CategoryRollupBackfill from '../../component/lab/CategoryRollupBackfill';
 
 interface LabTab {
   id: string;
@@ -39,6 +41,11 @@ const allTabs: LabTab[] = [
     label: 'Test Reference',
     icon: <MdLibraryBooks className="text-xl" />,
   },
+  {
+    id: 'Category Rollup',
+    label: 'Category Rollup',
+    icon: <MdSync className="text-xl" />,
+  },
 ];
 
 const Page = () => {
@@ -53,7 +60,7 @@ const Page = () => {
   const filteredTabs = allTabs.filter(tab => {
     if (isSuperAdmin) return true;
     if (isAdmin)
-      return ['Download Test', 'Test Reference Parameters'].includes(tab.id);
+      return ['Download Test', 'Test Reference Parameters', 'Category Rollup'].includes(tab.id);
     return false;
   });
 
@@ -145,6 +152,11 @@ const Page = () => {
           {selectedTab === 'Test Reference Parameters' &&
             (isSuperAdmin || isAdmin) && (
               <TestReferanceList />
+            )}
+
+          {selectedTab === 'Category Rollup' &&
+            (isSuperAdmin || isAdmin) && (
+              <CategoryRollupBackfill />
             )}
         </div>
       </div>
