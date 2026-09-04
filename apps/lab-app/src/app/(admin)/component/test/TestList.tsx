@@ -19,7 +19,8 @@ import AddTest from './AddTest';
 import TestEditComponent from './TestEditComponent';
 import useAuthStore from '@/context/userStore';
 
-const ITEMS_PER_PAGE = 500;
+const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 350;
 
 const TestLists = () => {
   // Auth
@@ -35,10 +36,12 @@ const TestLists = () => {
   const [tests, setTests] = useState<TestList[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
 
   // Filter States
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('');
   const [sortOrder, setSortOrder] = useState<'low' | 'high' | ''>('');
@@ -48,6 +51,15 @@ const TestLists = () => {
   const [editPopup, setEditPopup] = useState(false);
   const [updateTest, setUpdateTest] = useState<TestList>();
   const [updateList, setUpdateList] = useState(false);
+
+  // Debounce the search box so we don't hit the server on every keystroke
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setSearchTerm(searchInput);
+      setCurrentPage(0);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
 
   // Use useMemo to create a reset key based on filter changes
   const resetPageKey = useMemo(
@@ -59,69 +71,42 @@ const TestLists = () => {
     [searchTerm, category, sortOrder]
   );
 
-  // Fetch Tests - Keep API pagination logic intact
-  const fetchTests = useCallback(async (page: number = 0, size: number = ITEMS_PER_PAGE) => {
+  // Fetch Tests - real server-side pagination, search, category filter and sort
+  const fetchTests = useCallback(async (page: number) => {
     if (currentLab?.id) {
       setLoading(true);
       try {
-        const response: PaginatedTestResponse = await getTestsPaginated(currentLab.id, page, size);
-        
-        const content = Array.isArray(response?.content) ? response.content : [];
-        const totalElements = response?.totalElements ?? 0;
-        
-        setTests(content);
-        setTotalElements(totalElements);
+        const response: PaginatedTestResponse = await getTestsPaginated(currentLab.id, page, PAGE_SIZE, {
+          search: searchTerm,
+          category,
+          sortOrder,
+        });
 
-        // Extract unique categories
-        const uniqueCategories = Array.from(new Set(content.map(test => test?.category).filter(Boolean)));
-        setCategories(uniqueCategories as string[]);
+        setTests(Array.isArray(response?.content) ? response.content : []);
+        setTotalElements(response?.totalElements ?? 0);
+        setTotalPages(response?.totalPages ?? 0);
+        setCategories(Array.isArray(response?.categories) ? response.categories : []);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An error occurred while fetching tests.';
         toast.error(errorMessage);
         setTests([]);
         setTotalElements(0);
+        setTotalPages(0);
         setCategories([]);
       } finally {
         setLoading(false);
       }
     }
-  }, [currentLab?.id]);
+  }, [currentLab?.id, searchTerm, category, sortOrder]);
 
-  // Fetch on page change, updateList change, or when filters change
+  // Fetch on page change, filter change, or when the list is externally invalidated
   useEffect(() => {
-    fetchTests(currentPage, ITEMS_PER_PAGE);
+    fetchTests(currentPage);
   }, [fetchTests, currentPage, updateList]);
 
-  // Filter and sort tests (client-side filtering on current page data)
-  const filteredTests = useMemo(() => {
-    const safeTests = Array.isArray(tests) ? tests : [];
-    let results = [...safeTests];
-    
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      results = results.filter(test => 
-        test?.name?.toLowerCase().includes(term) || 
-        test?.category?.toLowerCase().includes(term)
-      );
-    }
-
-    if (category) {
-      results = results.filter(test => test?.category === category);
-    }
-
-    if (sortOrder === 'low') {
-      results.sort((a, b) => (a?.price ?? 0) - (b?.price ?? 0));
-    } else if (sortOrder === 'high') {
-      results.sort((a, b) => (b?.price ?? 0) - (a?.price ?? 0));
-    }
-
-    return results;
-  }, [tests, searchTerm, category, sortOrder]);
-
-  // Handle Search Change - Reset to first page
+  // Handle Search Change - Reset to first page (debounced above)
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    setCurrentPage(0);
+    setSearchInput(e.target.value);
   };
 
   // Handle Category Change - Reset to first page
@@ -341,7 +326,7 @@ const TestLists = () => {
               Active Tests
             </h3>
             <p className="mt-4 text-3xl font-semibold text-danger-600">
-              {tests.length}
+              {totalElements}
             </p>
           </div>
         </div>
@@ -358,7 +343,7 @@ const TestLists = () => {
             <input
               type="text"
               placeholder="Search by test name or category..."
-              value={searchTerm}
+              value={searchInput}
               onChange={handleSearchChange}
               className="h-10 w-full rounded-lg border border-pneutral-200 pl-10 pr-4 text-sm outline-none focus:border-pneutral-500"
             />
@@ -397,9 +382,9 @@ const TestLists = () => {
         </div>
       </div>
 
-      {/* Table Section - NewCommonTable handles pagination internally */}
+      {/* Table Section - pagination is driven by the server */}
       <div className="relative">
-        {filteredTests.length === 0 ? (
+        {tests.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-pneutral-200 bg-white py-16">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -427,10 +412,15 @@ const TestLists = () => {
         ) : (
           <NewCommonTable
             columns={columns}
-            data={filteredTests}
-            pageSize={10}
+            data={tests}
+            pageSize={PAGE_SIZE}
             showPagination={true}
             resetPageKey={resetPageKey}
+            serverPagination={{
+              currentPage: currentPage + 1,
+              totalPages,
+              onPageChange: (page) => setCurrentPage(page - 1),
+            }}
           />
         )}
       </div>

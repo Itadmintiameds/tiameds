@@ -16,12 +16,21 @@ const ALIGN_CLASS: Record<"left" | "center" | "right", string> = {
   right: "text-right",
 };
 
+interface ServerPagination {
+  currentPage: number; // 1-based, to match this component's existing convention
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
+
 interface NewCommonTableProps<T> {
   columns: Column<T>[];
   data: T[];
   pageSize?: number;
   showPagination?: boolean;
   resetPageKey?: string | number;
+  /** When provided, `data` is treated as already the current page's rows and
+   * pagination is driven by the caller instead of being sliced client-side. */
+  serverPagination?: ServerPagination;
 }
 
 const NewCommonTable = <T extends object>({
@@ -30,26 +39,30 @@ const NewCommonTable = <T extends object>({
   pageSize = 10,
   showPagination = true,
   resetPageKey,
+  serverPagination,
 }: NewCommonTableProps<T>) => {
-  const [currentPage, setCurrentPage] = useState(1);
-   const totalPages = Math.ceil(data.length / pageSize);
+  const [internalPage, setInternalPage] = useState(1);
+  const internalTotalPages = Math.ceil(data.length / pageSize);
+
   useEffect(() => {
-  setCurrentPage(1);
-}, [resetPageKey]);
+    if (!serverPagination) setInternalPage(1);
+  }, [resetPageKey, serverPagination]);
 
-useEffect(() => {
-  if (currentPage > totalPages && totalPages > 0) {
-    setCurrentPage(totalPages);
-  }
-}, [currentPage, totalPages]);
+  useEffect(() => {
+    if (!serverPagination && internalPage > internalTotalPages && internalTotalPages > 0) {
+      setInternalPage(internalTotalPages);
+    }
+  }, [internalPage, internalTotalPages, serverPagination]);
 
- 
+  const currentPage = serverPagination ? serverPagination.currentPage : internalPage;
+  const totalPages = serverPagination ? serverPagination.totalPages : internalTotalPages;
+  const onPageChange = serverPagination ? serverPagination.onPageChange : setInternalPage;
 
   const paginatedData = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-
+    if (serverPagination) return data;
+    const start = (internalPage - 1) * pageSize;
     return data.slice(start, start + pageSize);
-  }, [currentPage, data, pageSize]);
+  }, [serverPagination, internalPage, data, pageSize]);
 
   return (
     <>
@@ -95,11 +108,11 @@ useEffect(() => {
         </table>
       </div>
     </div>
-    {showPagination && data.length > pageSize && (
+    {showPagination && (serverPagination ? totalPages > 1 : data.length > pageSize) && (
         <NewPagination
           currentPage={currentPage}
           totalPages={totalPages}
-          onPageChange={setCurrentPage}
+          onPageChange={onPageChange}
         />
       )}
       </>
