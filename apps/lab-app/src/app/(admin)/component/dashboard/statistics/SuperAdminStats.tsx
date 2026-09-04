@@ -371,6 +371,10 @@ const PACKAGE_COLORS = ["#4F6BED", "#55D400", "#8B5CF6", "#FDBA12", "#F75A5A", "
 // Billing Grid Report page size - shows 50 rows per page with prev/next navigation.
 const GRID_PAGE_SIZE = 50;
 
+// Revenue by Test table page size (client-side, since the full category test list is
+// already fetched in one call by getEarningsByCategory).
+const REVENUE_BY_TEST_PAGE_SIZE = 10;
+
 // Defaults for the nested pieces of DetailedBilling before the first fetch resolves.
 const emptyPaymentMode = { cash: 0, upi: 0, card: 0 };
 const emptyBillingSummary: DetailedBilling["summary"] = {
@@ -531,6 +535,7 @@ const SuperAdminStats = () => {
     categories: [],
   });
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [revenueByTestPage, setRevenueByTestPage] = useState(0);
 
   // Revenue Trend (All Labs) card - trend is pre-bucketed by day from the backend.
   const [revenueTrendTotal, setRevenueTrendTotal] = useState<number>(0);
@@ -560,29 +565,10 @@ const SuperAdminStats = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Sync individual filters with global filter when global changes
-  useEffect(() => {
-    setRevenueFilter(globalFilter);
-    setTopLabsFilter(globalFilter);
-    setCategoryFilter(globalFilter);
-    setPackagesFilter(globalFilter);
-    setPerformanceFilter(globalFilter);
-    setDoctorsFilter(globalFilter);
-    setGridFilter(globalFilter);
-  }, [globalFilter]);
-
-  // Sync custom ranges when global custom range changes
-  useEffect(() => {
-    if (globalFilter === "custom") {
-      setRevenueCustomRange(globalCustomRange);
-      setTopLabsCustomRange(globalCustomRange);
-      setCategoryCustomRange(globalCustomRange);
-      setPackagesCustomRange(globalCustomRange);
-      setPerformanceCustomRange(globalCustomRange);
-      setDoctorsCustomRange(globalCustomRange);
-      setGridCustomRange(globalCustomRange);
-    }
-  }, [globalCustomRange, globalFilter]);
+  // Each section below owns its filter independently once the user touches it —
+  // we intentionally do NOT re-sync individual filters from globalFilter after
+  // mount, since that silently overwrote a user's per-widget selection the next
+  // time they (or anything else) changed the global filter.
 
   // Every section below hits its OWN standalone endpoint, scoped to whichever lab is
   // currently selected ("all" omits labId so the backend aggregates every lab). Each
@@ -686,7 +672,7 @@ const SuperAdminStats = () => {
       const trend = await getRevenueTrend(labIdParam, startDate, endDate);
       setRevenueTrendTotal(trend?.totalRevenue || 0);
       const dailyTrend: { date: string; revenue: number }[] = trend?.trend || [];
-      const buckets = getRevenueBuckets(globalFilter, globalCustomRange);
+      const buckets = getRevenueBuckets(revenueFilter, revenueCustomRange);
       setRevenueChartData(
         buckets.map((bucket) => ({
           label: bucket.label,
@@ -703,7 +689,7 @@ const SuperAdminStats = () => {
     } finally {
       setRevenueTrendLoading(false);
     }
-  }, [labIdParam, globalFilter, globalCustomRange]);
+  }, [labIdParam, revenueFilter, revenueCustomRange]);
 
   const fetchRevenueByLabData = useCallback(async (startDate?: string, endDate?: string) => {
     setRevenueByLabLoading(true);
@@ -801,20 +787,12 @@ const SuperAdminStats = () => {
     const globalRange = getDateRange(globalFilter, globalCustomRange);
     fetchKpis(globalRange.startDate, globalRange.endDate);
     fetchDashboardSummaryData(globalRange.startDate, globalRange.endDate);
-    fetchTestsByCategoryData(globalRange.startDate, globalRange.endDate);
     fetchEarningsByCategoryData(globalRange.startDate, globalRange.endDate);
-    fetchRevenueTrendData(globalRange.startDate, globalRange.endDate);
-    fetchRevenueByLabData(globalRange.startDate, globalRange.endDate);
-    fetchPackagesSummaryData(globalRange.startDate, globalRange.endDate);
     fetchDetailedBillingData(globalRange.startDate, globalRange.endDate);
-    fetchLabPerformanceData(globalRange.startDate, globalRange.endDate);
-    fetchTopDoctorsData(globalRange.startDate, globalRange.endDate);
     setLastUpdated(new Date());
   }, [
     globalFilter, globalCustomRange,
-    fetchKpis, fetchDashboardSummaryData, fetchTestsByCategoryData, fetchEarningsByCategoryData,
-    fetchRevenueTrendData, fetchRevenueByLabData, fetchPackagesSummaryData, fetchDetailedBillingData,
-    fetchLabPerformanceData, fetchTopDoctorsData,
+    fetchKpis, fetchDashboardSummaryData, fetchEarningsByCategoryData, fetchDetailedBillingData,
   ]);
 
   // Initial load + reload whenever the lab filter or global date range changes
@@ -822,6 +800,39 @@ const SuperAdminStats = () => {
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
+
+  // Each KPI widget below re-fetches on ITS OWN filter/custom-range, independent
+  // of globalFilter and of every other widget — mirrors the working gridFilter
+  // pattern further down, which is the only section that had this wired correctly.
+  useEffect(() => {
+    const range = getDateRange(revenueFilter, revenueCustomRange);
+    fetchRevenueTrendData(range.startDate, range.endDate);
+  }, [revenueFilter, revenueCustomRange, fetchRevenueTrendData]);
+
+  useEffect(() => {
+    const range = getDateRange(topLabsFilter, topLabsCustomRange);
+    fetchRevenueByLabData(range.startDate, range.endDate);
+  }, [topLabsFilter, topLabsCustomRange, fetchRevenueByLabData]);
+
+  useEffect(() => {
+    const range = getDateRange(categoryFilter, categoryCustomRange);
+    fetchTestsByCategoryData(range.startDate, range.endDate);
+  }, [categoryFilter, categoryCustomRange, fetchTestsByCategoryData]);
+
+  useEffect(() => {
+    const range = getDateRange(packagesFilter, packagesCustomRange);
+    fetchPackagesSummaryData(range.startDate, range.endDate);
+  }, [packagesFilter, packagesCustomRange, fetchPackagesSummaryData]);
+
+  useEffect(() => {
+    const range = getDateRange(doctorsFilter, doctorsCustomRange);
+    fetchTopDoctorsData(range.startDate, range.endDate);
+  }, [doctorsFilter, doctorsCustomRange, fetchTopDoctorsData]);
+
+  useEffect(() => {
+    const range = getDateRange(performanceFilter, performanceCustomRange);
+    fetchLabPerformanceData(range.startDate, range.endDate);
+  }, [performanceFilter, performanceCustomRange, fetchLabPerformanceData]);
 
   // Billing Grid Report: fetches a single page (GRID_PAGE_SIZE rows) from the backend.
   const fetchGridData = useCallback(
@@ -847,6 +858,12 @@ const SuperAdminStats = () => {
     setGridPage(0);
   }, [selectedLabId, gridFilter, gridCustomRange]);
 
+  // Reset Revenue by Test pagination whenever the category, sort order, or underlying
+  // data changes so stale page offsets don't persist.
+  useEffect(() => {
+    setRevenueByTestPage(0);
+  }, [selectedCategory, sortOrder, earningsData]);
+
   // Initial load + reload whenever the lab, filter, or page changes.
   useEffect(() => {
     fetchGridData();
@@ -859,22 +876,31 @@ const SuperAdminStats = () => {
   const handleManualRefresh = useCallback(() => {
     setRefreshing(true);
     const globalRange = getDateRange(globalFilter, globalCustomRange);
+    const revenueRange = getDateRange(revenueFilter, revenueCustomRange);
+    const topLabsRange = getDateRange(topLabsFilter, topLabsCustomRange);
+    const categoryRange = getDateRange(categoryFilter, categoryCustomRange);
+    const packagesRange = getDateRange(packagesFilter, packagesCustomRange);
+    const doctorsRange = getDateRange(doctorsFilter, doctorsCustomRange);
+    const performanceRange = getDateRange(performanceFilter, performanceCustomRange);
     Promise.allSettled([
       fetchKpis(globalRange.startDate, globalRange.endDate),
       fetchDashboardSummaryData(globalRange.startDate, globalRange.endDate),
-      fetchTestsByCategoryData(globalRange.startDate, globalRange.endDate),
       fetchEarningsByCategoryData(globalRange.startDate, globalRange.endDate),
-      fetchRevenueTrendData(globalRange.startDate, globalRange.endDate),
-      fetchRevenueByLabData(globalRange.startDate, globalRange.endDate),
-      fetchPackagesSummaryData(globalRange.startDate, globalRange.endDate),
       fetchDetailedBillingData(globalRange.startDate, globalRange.endDate),
-      fetchLabPerformanceData(globalRange.startDate, globalRange.endDate),
-      fetchTopDoctorsData(globalRange.startDate, globalRange.endDate),
+      fetchTestsByCategoryData(categoryRange.startDate, categoryRange.endDate),
+      fetchRevenueTrendData(revenueRange.startDate, revenueRange.endDate),
+      fetchRevenueByLabData(topLabsRange.startDate, topLabsRange.endDate),
+      fetchPackagesSummaryData(packagesRange.startDate, packagesRange.endDate),
+      fetchLabPerformanceData(performanceRange.startDate, performanceRange.endDate),
+      fetchTopDoctorsData(doctorsRange.startDate, doctorsRange.endDate),
       fetchGridData(true),
     ]).finally(() => setRefreshing(false));
     setLastUpdated(new Date());
   }, [
     globalFilter, globalCustomRange, fetchGridData,
+    revenueFilter, revenueCustomRange, topLabsFilter, topLabsCustomRange,
+    categoryFilter, categoryCustomRange, packagesFilter, packagesCustomRange,
+    doctorsFilter, doctorsCustomRange, performanceFilter, performanceCustomRange,
     fetchKpis, fetchDashboardSummaryData, fetchTestsByCategoryData, fetchEarningsByCategoryData,
     fetchRevenueTrendData, fetchRevenueByLabData, fetchPackagesSummaryData, fetchDetailedBillingData,
     fetchLabPerformanceData, fetchTopDoctorsData,
@@ -1138,6 +1164,11 @@ const SuperAdminStats = () => {
   const categoryOptions = getCategoriesForDropdown();
   const sortedTests = [...earnings.tests].sort((a, b) =>
     sortOrder === "desc" ? (b.grossEarnings || 0) - (a.grossEarnings || 0) : (a.grossEarnings || 0) - (b.grossEarnings || 0)
+  );
+  const revenueByTestTotalPages = Math.max(1, Math.ceil(sortedTests.length / REVENUE_BY_TEST_PAGE_SIZE));
+  const paginatedTests = sortedTests.slice(
+    revenueByTestPage * REVENUE_BY_TEST_PAGE_SIZE,
+    (revenueByTestPage + 1) * REVENUE_BY_TEST_PAGE_SIZE
   );
 
   // Top labs data (revenue kept in raw currency units; formatted for display via getRevenueAxisConfig)
@@ -1612,7 +1643,7 @@ const SuperAdminStats = () => {
         </div>
 
         {/* Revenue by Test - Table */}
-        <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
+        <div className="flex flex-col rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
               Revenue by Test
@@ -1632,7 +1663,7 @@ const SuperAdminStats = () => {
               </select>
             </div>
           </div>
-          <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+          <div className="min-h-[300px] flex-1 overflow-x-auto overflow-y-auto">
             {earningsLoading ? (
               <div className="flex w-full items-center justify-center py-8">
                 <Loader type="spinner" size="sm" text="" />
@@ -1661,9 +1692,11 @@ const SuperAdminStats = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedTests.map((test, index) => (
+                  {paginatedTests.map((test, index) => (
                     <tr key={test.testId || index} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
-                      <td className="px-4 py-2 text-p3 text-pneutral-900">{index + 1}</td>
+                      <td className="px-4 py-2 text-p3 text-pneutral-900">
+                        {revenueByTestPage * REVENUE_BY_TEST_PAGE_SIZE + index + 1}
+                      </td>
                       <td className="px-4 py-2 text-p3 font-medium text-pneutral-900">
                         {test.testName || "Unknown"}
                       </td>
@@ -1685,6 +1718,39 @@ const SuperAdminStats = () => {
               </div>
             )}
           </div>
+          {sortedTests.length > 0 && (
+            <div className="mt-3 px-1 flex items-center justify-between gap-4">
+              <p className="text-p3 text-pneutral-500">
+                {`${revenueByTestPage * REVENUE_BY_TEST_PAGE_SIZE + 1}–${Math.min(
+                  (revenueByTestPage + 1) * REVENUE_BY_TEST_PAGE_SIZE,
+                  sortedTests.length
+                )} of ${sortedTests.length} tests`}
+              </p>
+              {revenueByTestTotalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRevenueByTestPage((p) => Math.max(0, p - 1))}
+                    disabled={revenueByTestPage === 0}
+                    className="rounded-lg border border-pneutral-200 bg-base-white px-3 py-1 text-p3 text-pneutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-pneutral-50"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-p3 text-pneutral-500">
+                    Page {revenueByTestPage + 1} of {revenueByTestTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setRevenueByTestPage((p) => Math.min(revenueByTestTotalPages - 1, p + 1))}
+                    disabled={revenueByTestPage >= revenueByTestTotalPages - 1}
+                    className="rounded-lg border border-pneutral-200 bg-base-white px-3 py-1 text-p3 text-pneutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-pneutral-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
