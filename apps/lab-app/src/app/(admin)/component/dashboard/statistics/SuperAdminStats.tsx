@@ -373,7 +373,7 @@ const GRID_PAGE_SIZE = 50;
 
 // Revenue by Test table page size (client-side, since the full category test list is
 // already fetched in one call by getEarningsByCategory).
-const REVENUE_BY_TEST_PAGE_SIZE = 10;
+const REVENUE_BY_TEST_PAGE_SIZE = 8;
 
 // Defaults for the nested pieces of DetailedBilling before the first fetch resolves.
 const emptyPaymentMode = { cash: 0, upi: 0, card: 0 };
@@ -418,9 +418,12 @@ const SuperAdminStats = () => {
   // its own standalone endpoint (see services/statisticsService.ts), independently of
   // every other card, so one slow/failing section never blocks the rest of the page.
   const [kpisLoading, setKpisLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [kpisError, setKpisError] = useState<string | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [dashboardSummaryLoading, setDashboardSummaryLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
 
   const [testCategoriesLoading, setTestCategoriesLoading] = useState(true);
@@ -1257,18 +1260,24 @@ const SuperAdminStats = () => {
 
   // Helper to render the lab filter dropdown (All Labs + every lab under this super admin)
   const renderLabFilterDropdown = () => (
-    <select
-      value={selectedLabId}
-      onChange={(e) => setSelectedLabId(e.target.value === "all" ? "all" : Number(e.target.value))}
-      className="min-w-40 rounded-lg border border-pneutral-100 bg-pneutral-100 px-4 py-2 text-p3 font-medium text-pneutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-500"
-    >
-      <option value="all">All Labs</option>
-      {labs.map((lab) => (
-        <option key={lab.id} value={lab.id}>
-          {lab.name}
-        </option>
-      ))}
-    </select>
+    <div className="relative min-w-40 max-w-50">
+      <select
+        value={selectedLabId}
+        onChange={(e) => setSelectedLabId(e.target.value === "all" ? "all" : Number(e.target.value))}
+        className="w-full appearance-none truncate rounded-lg border border-pneutral-100 bg-pneutral-100 py-2 pl-4 pr-8 text-p3 font-medium text-pneutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-500"
+      >
+        <option value="all">All Labs</option>
+        {labs.map((lab) => (
+          <option key={lab.id} value={lab.id} title={lab.name}>
+            {lab.name}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        size={16}
+        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-pneutral-500"
+      />
+    </div>
   );
 
   // Custom tooltip for category pie chart
@@ -1346,9 +1355,9 @@ const SuperAdminStats = () => {
             <h1 className="text-h3 font-heading font-bold text-pneutral-900">
               Cumulative Analytics
             </h1>
-            <span className="rounded-full bg-secondary-100 px-4 py-1 text-label-l3 font-semibold text-secondary-700">
+            {/* <span className="rounded-full bg-secondary-100 px-4 py-1 text-label-l3 font-semibold text-secondary-700">
               Level 1: ALL Labs Overview
-            </span>
+            </span> */}
             <button
               type="button"
               onClick={handleManualRefresh}
@@ -1567,7 +1576,7 @@ const SuperAdminStats = () => {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {/* Test By Category - Pie Chart */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between mb-8">
             <h2 className="text-p4 font-heading font-semibold text-pneutral-900">Test by Category</h2>
             {renderFilterDropdown(
               categoryFilter,
