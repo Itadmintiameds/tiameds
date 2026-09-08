@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import {
-  CartesianGrid,
+  CartesianGrid, 
   ResponsiveContainer,
   XAxis,
   YAxis,
