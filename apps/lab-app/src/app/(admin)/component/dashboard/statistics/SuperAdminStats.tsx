@@ -568,10 +568,33 @@ const SuperAdminStats = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Each section below owns its filter independently once the user touches it —
-  // we intentionally do NOT re-sync individual filters from globalFilter after
-  // mount, since that silently overwrote a user's per-widget selection the next
-  // time they (or anything else) changed the global filter.
+  // Changing the global filter re-syncs every individual section filter to match it
+  // (so "global changes -> all sections change"). Changing one section's own filter
+  // only updates that section's state directly, so it does not go through here and
+  // the other sections are left untouched ("individual change -> that stat only").
+  useEffect(() => {
+    setRevenueFilter(globalFilter);
+    setTopLabsFilter(globalFilter);
+    setCategoryFilter(globalFilter);
+    setPackagesFilter(globalFilter);
+    setPerformanceFilter(globalFilter);
+    setDoctorsFilter(globalFilter);
+    setGridFilter(globalFilter);
+  }, [globalFilter]);
+
+  // Custom date ranges are synced separately, only while the global filter is "custom" -
+  // picking global custom dates should push those dates to every section as well.
+  useEffect(() => {
+    if (globalFilter === "custom") {
+      setRevenueCustomRange(globalCustomRange);
+      setTopLabsCustomRange(globalCustomRange);
+      setCategoryCustomRange(globalCustomRange);
+      setPackagesCustomRange(globalCustomRange);
+      setPerformanceCustomRange(globalCustomRange);
+      setDoctorsCustomRange(globalCustomRange);
+      setGridCustomRange(globalCustomRange);
+    }
+  }, [globalCustomRange, globalFilter]);
 
   // Every section below hits its OWN standalone endpoint, scoped to whichever lab is
   // currently selected ("all" omits labId so the backend aggregates every lab). Each
