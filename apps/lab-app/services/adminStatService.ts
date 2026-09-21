@@ -24,6 +24,7 @@ import {
     TechnicianPerformance,
     GridReportResponse,
     PackagePerformance,
+    CategoryRollupBackfillResult,
 } from '@/types/adminStatsData';
 
 const adminStatsApi = axios.create({
@@ -78,6 +79,15 @@ type Envelope<T> = { data: T; message: string; status: string };
 async function get<T>(url: string, fallbackMessage: string): Promise<T> {
     try {
         const response = await adminStatsApi.get<Envelope<T>>(url);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error(extractErrorMessage(url, error, fallbackMessage));
+    }
+}
+
+async function post<T>(url: string, fallbackMessage: string): Promise<T> {
+    try {
+        const response = await adminStatsApi.post<Envelope<T>>(url);
         return response.data.data;
     } catch (error: unknown) {
         throw new Error(extractErrorMessage(url, error, fallbackMessage));
@@ -387,4 +397,27 @@ export const getPackagePerformance = async (
 
     const result = await get<PackagePerformance[]>(url, 'An error occurred while fetching package performance.');
     return result || [];
+};
+
+/**
+ * Trigger an on-demand backfill of the daily_lab_category_stats rollup table
+ * (backs the tests-by-category card) for one lab over a date range. Not run
+ * automatically — call after deploying the rollup, or again to re-sync a
+ * range if the numbers ever look stale.
+ */
+export const triggerCategoryRollupBackfill = async (
+    labId: number | string,
+    startDate: string,
+    endDate: string
+): Promise<CategoryRollupBackfillResult> => {
+    const params = new URLSearchParams();
+    params.append('labId', String(labId));
+    params.append('startDate', startDate);
+    params.append('endDate', endDate);
+    const url = `/category-rollup/backfill?${params.toString()}`;
+
+    return post<CategoryRollupBackfillResult>(
+        url,
+        'An error occurred while triggering the category rollup backfill.'
+    );
 };

@@ -9,6 +9,9 @@ import { ZodError } from 'zod';
 import { login, verifyOtp } from '../../../../services/authService';
 import useAuthStore from '@/context/userStore';
 
+// TEMPORARY: set to false to re-enable the login attempt block/rate-limit UI
+const ENABLE_LOGIN_BLOCK = false;
+
 const Login = () => {
   const [formData, setFormData] = useState<LoginData>({
     username: '',
@@ -27,6 +30,10 @@ const Login = () => {
 
   // Check for existing block on mount
   useEffect(() => {
+    if (!ENABLE_LOGIN_BLOCK) {
+      localStorage.removeItem('login_block_until');
+      return;
+    }
     const storedBlock = localStorage.getItem('login_block_until');
     if (storedBlock) {
       const blockTime = parseInt(storedBlock, 10);
@@ -42,7 +49,7 @@ const Login = () => {
 
   // Block countdown timer
   useEffect(() => {
-    if (blockedUntil && blockedUntil > Date.now()) {
+    if (ENABLE_LOGIN_BLOCK && blockedUntil && blockedUntil > Date.now()) {
       const timer = setInterval(() => {
         const remaining = blockedUntil - Date.now();
         if (remaining <= 0) {
@@ -110,16 +117,16 @@ const Login = () => {
         const message = responseData?.message || err.message || 'Login failed. Please try again.';
         
         // Handle rate limiting (429) - check both status code and message
-        if (status === 429 || message.toLowerCase().includes('too many login attempts')) {
+        if (ENABLE_LOGIN_BLOCK && (status === 429 || message.toLowerCase().includes('too many login attempts'))) {
           // Extract time from message (e.g., "after 10 minutes" or "after 5 minutes")
           const timeMatch = message.match(/(\d+)\s+minutes?/i);
           const minutes = timeMatch ? parseInt(timeMatch[1], 10) : 10;
           const blockUntil = Date.now() + (minutes * 60 * 1000);
-          
+
           setBlockedUntil(blockUntil);
           setBlockMessage(message);
           localStorage.setItem('login_block_until', blockUntil.toString());
-          
+
           toast.error(message, { autoClose: 5000 });
         } else {
           toast.error(message, { autoClose: 2000 });
@@ -127,7 +134,7 @@ const Login = () => {
       } else if (err instanceof Error) {
         // Handle case where message contains rate limit info
         const message = err.message;
-        if (message.toLowerCase().includes('too many login attempts')) {
+        if (ENABLE_LOGIN_BLOCK && message.toLowerCase().includes('too many login attempts')) {
           const timeMatch = message.match(/(\d+)\s+minutes?/i);
           const minutes = timeMatch ? parseInt(timeMatch[1], 10) : 10;
           const blockUntil = Date.now() + (minutes * 60 * 1000);
@@ -253,7 +260,7 @@ const Login = () => {
             className="mt-8 space-y-6"
             noValidate
           >
-            {blockedUntil && blockedUntil > Date.now() && (
+            {ENABLE_LOGIN_BLOCK && blockedUntil && blockedUntil > Date.now() && (
               <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
@@ -329,7 +336,7 @@ const Login = () => {
                 disabled={isSubmitting || (blockedUntil !== null && blockedUntil > Date.now())}
                 className={`w-full rounded-md bg-gradient-to-r from-purple-800 to-secondary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gradient-to-r hover:from-secondary hover:to-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${isSubmitting || (blockedUntil !== null && blockedUntil > Date.now()) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {isSubmitting ? 'Sending OTP...' : blockedUntil && blockedUntil > Date.now() ? 'Account Blocked' : 'Continue'}
+                {isSubmitting ? 'Sending OTP...' : ENABLE_LOGIN_BLOCK && blockedUntil && blockedUntil > Date.now() ? 'Account Blocked' : 'Continue'}
               </button>
             </div>
           </form>

@@ -58,9 +58,9 @@ function refreshAccessTokenDeduped(refreshToken: string): Promise<RefreshResult>
   return refreshInFlight;
 }
 
-async function callBackend(path: string, search: string, accessToken: string) {
+async function callBackend(path: string, search: string, accessToken: string, method: string) {
   return fetch(`${backendBaseUrl}/lab-admin/stats/${path}${search}`, {
-    method: "GET",
+    method,
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
@@ -69,7 +69,7 @@ async function callBackend(path: string, search: string, accessToken: string) {
   });
 }
 
-async function proxy(req: NextRequest, path: string[]) {
+async function proxy(req: NextRequest, path: string[], method: string) {
   const cookieStore = cookies();
   let accessToken = cookieStore.get("accessToken")?.value;
   const refreshToken = cookieStore.get("refreshToken")?.value;
@@ -96,7 +96,7 @@ async function proxy(req: NextRequest, path: string[]) {
   const search = req.nextUrl.search;
 
   try {
-    let backendRes = await callBackend(joinedPath, search, accessToken);
+    let backendRes = await callBackend(joinedPath, search, accessToken, method);
 
     // Access token was present but the backend rejected it as stale -
     // refresh once and retry, mirroring the reactive 401 handler in api.ts.
@@ -105,7 +105,7 @@ async function proxy(req: NextRequest, path: string[]) {
       if (result.accessToken) {
         accessToken = result.accessToken;
         refreshedCookies = result.setCookies;
-        backendRes = await callBackend(joinedPath, search, accessToken);
+        backendRes = await callBackend(joinedPath, search, accessToken, method);
       }
     }
 
@@ -123,5 +123,9 @@ async function proxy(req: NextRequest, path: string[]) {
 }
 
 export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {
-  return proxy(req, params.path);
+  return proxy(req, params.path, "GET");
+}
+
+export async function POST(req: NextRequest, { params }: { params: { path: string[] } }) {
+  return proxy(req, params.path, "POST");
 }

@@ -6,6 +6,16 @@ import {
     TotalTechnicians,
     TotalDeskRoles,
     AllStatsResponse,
+    AllStatsKpis,
+    DashboardSummary,
+    TestsByCategoryData,
+    RevenueTrendData,
+    RevenueByLabRow,
+    LabPerformanceRow,
+    TopReferringDoctor,
+    DetailedBilling,
+    PackagesSummaryData,
+    EarningsByCategoryData,
     GridReportResponse,
 } from '@/types/statisticsData';
 
@@ -199,6 +209,172 @@ export const getAllStats = async (
         return response.data.data;
     } catch (error: unknown) {
         throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching dashboard statistics.'));
+    }
+}
+
+/**
+ * Helper: build a query string from the labId/startDate/endDate/limit params shared
+ * by all the split (single-section) super-admin stats endpoints.
+ */
+const buildStatsQuery = (
+    labId?: number | string,
+    startDate?: string,
+    endDate?: string,
+    limit?: number
+): string => {
+    const params = new URLSearchParams();
+    if (labId !== undefined && labId !== null && labId !== '') params.append('labId', String(labId));
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (limit !== undefined) params.append('limit', String(limit));
+    return params.toString();
+}
+
+// ---- Split/standalone per-section endpoints ----
+// Each of these hits its own backend endpoint (GET /lab-super-admin/stats/<section>)
+// so the frontend can fetch every dashboard card independently, show its own loading
+// state, and let one section's failure/slowness not block the others. See getAllStats
+// above for the combined equivalent (kept for backward compatibility).
+
+export const getKpis = async (
+    labId?: number | string,
+    startDate?: string,
+    endDate?: string
+): Promise<AllStatsKpis> => {
+    const url = `/kpis?${buildStatsQuery(labId, startDate, endDate)}`;
+    try {
+        const response = await statsApi.get<{ data: AllStatsKpis; message: string; status: string }>(url);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching KPIs.'));
+    }
+}
+
+export const getDashboardSummary = async (
+    labId?: number | string,
+    startDate?: string,
+    endDate?: string
+): Promise<DashboardSummary> => {
+    const url = `/dashboard-summary?${buildStatsQuery(labId, startDate, endDate)}`;
+    try {
+        const response = await statsApi.get<{ data: DashboardSummary; message: string; status: string }>(url);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching the dashboard summary.'));
+    }
+}
+
+export const getTestsByCategory = async (
+    labId?: number | string,
+    startDate?: string,
+    endDate?: string
+): Promise<TestsByCategoryData> => {
+    const url = `/tests-by-category?${buildStatsQuery(labId, startDate, endDate)}`;
+    try {
+        const response = await statsApi.get<{ data: TestsByCategoryData; message: string; status: string }>(url);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching tests by category.'));
+    }
+}
+
+export const getRevenueTrend = async (
+    labId?: number | string,
+    startDate?: string,
+    endDate?: string
+): Promise<RevenueTrendData> => {
+    const url = `/revenue-trend?${buildStatsQuery(labId, startDate, endDate)}`;
+    try {
+        const response = await statsApi.get<{ data: RevenueTrendData; message: string; status: string }>(url);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching the revenue trend.'));
+    }
+}
+
+export const getRevenueByLab = async (
+    labId?: number | string,
+    startDate?: string,
+    endDate?: string
+): Promise<RevenueByLabRow[]> => {
+    const url = `/revenue-by-lab?${buildStatsQuery(labId, startDate, endDate)}`;
+    try {
+        const response = await statsApi.get<{ data: RevenueByLabRow[]; message: string; status: string }>(url);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching revenue by lab.'));
+    }
+}
+
+export const getLabPerformance = async (
+    labId?: number | string,
+    startDate?: string,
+    endDate?: string,
+    limit: number = 10
+): Promise<LabPerformanceRow[]> => {
+    const url = `/lab-performance?${buildStatsQuery(labId, startDate, endDate, limit)}`;
+    try {
+        const response = await statsApi.get<{ data: LabPerformanceRow[]; message: string; status: string }>(url);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching lab performance.'));
+    }
+}
+
+export const getTopReferringDoctors = async (
+    labId?: number | string,
+    startDate?: string,
+    endDate?: string,
+    limit: number = 10
+): Promise<TopReferringDoctor[]> => {
+    const url = `/top-referring-doctors?${buildStatsQuery(labId, startDate, endDate, limit)}`;
+    try {
+        const response = await statsApi.get<{ data: TopReferringDoctor[]; message: string; status: string }>(url);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching top referring doctors.'));
+    }
+}
+
+export const getDetailedBilling = async (
+    labId?: number | string,
+    startDate?: string,
+    endDate?: string
+): Promise<DetailedBilling> => {
+    const url = `/detailed-billing?${buildStatsQuery(labId, startDate, endDate)}`;
+    try {
+        const response = await statsApi.get<{ data: DetailedBilling; message: string; status: string }>(url);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching detailed billing.'));
+    }
+}
+
+export const getPackagesSummary = async (
+    labId?: number | string,
+    startDate?: string,
+    endDate?: string
+): Promise<PackagesSummaryData> => {
+    const url = `/packages-summary?${buildStatsQuery(labId, startDate, endDate)}`;
+    try {
+        const response = await statsApi.get<{ data: PackagesSummaryData; message: string; status: string }>(url);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching packages summary.'));
+    }
+}
+
+export const getEarningsByCategory = async (
+    labId?: number | string,
+    startDate?: string,
+    endDate?: string
+): Promise<EarningsByCategoryData> => {
+    const url = `/earnings-by-category?${buildStatsQuery(labId, startDate, endDate)}`;
+    try {
+        const response = await statsApi.get<{ data: EarningsByCategoryData; message: string; status: string }>(url);
+        return response.data.data;
+    } catch (error: unknown) {
+        throw new Error(extractErrorMessage(url, error, 'An error occurred while fetching earnings by category.'));
     }
 }
 

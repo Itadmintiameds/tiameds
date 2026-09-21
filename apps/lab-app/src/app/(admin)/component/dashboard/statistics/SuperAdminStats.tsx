@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import {
-  CartesianGrid,
+  CartesianGrid, 
   ResponsiveContainer,
   XAxis,
   YAxis,
@@ -32,10 +32,20 @@ import { PiDna, PiFlaskLight, PiGraduationCapThin } from "react-icons/pi";
 // Import services
 import { useLabs } from "@/context/LabContext";
 import {
-  getAllStats,
   getGridReport,
+  getKpis,
+  getDashboardSummary,
+  getTestsByCategory,
+  getRevenueTrend,
+  getRevenueByLab,
+  getLabPerformance,
+  getTopReferringDoctors,
+  getDetailedBilling,
+  getPackagesSummary,
+  getEarningsByCategory,
 } from "../../../../../../services/statisticsService";
 import {
+  DashboardSummary,
   DetailedBilling,
   EarningsByCategoryData,
   GridReportResponse,
@@ -46,6 +56,7 @@ import {
   TestCategoryRow,
   TopReferringDoctor,
 } from "@/types/statisticsData";
+import Loader from "../../common/Loader";
 import {
   downloadCSV,
   formatAmount as formatCsvAmount,
@@ -357,10 +368,12 @@ const getRevenueAxisConfig = (maxValue: number) => {
 const CATEGORY_COLORS = ["#4F6BED", "#55D400", "#8B5CF6", "#FDBA12", "#F75A5A", "#4C0FAE", "#6D28D9", "#38B000"];
 const PACKAGE_COLORS = ["#4F6BED", "#55D400", "#8B5CF6", "#FDBA12", "#F75A5A", "#4C0FAE"];
 
-// Billing Grid Report shows every row with no pagination in the UI, but the backend
-// endpoint itself is still paginated - this is the page size used internally to pull
-// every page and stitch them into one full row list.
-const GRID_FETCH_PAGE_SIZE = 200;
+// Billing Grid Report page size - shows 50 rows per page with prev/next navigation.
+const GRID_PAGE_SIZE = 50;
+
+// Revenue by Test table page size (client-side, since the full category test list is
+// already fetched in one call by getEarningsByCategory).
+const REVENUE_BY_TEST_PAGE_SIZE = 8;
 
 // Defaults for the nested pieces of DetailedBilling before the first fetch resolves.
 const emptyPaymentMode = { cash: 0, upi: 0, card: 0 };
@@ -397,8 +410,45 @@ const SuperAdminStats = () => {
   const { labs } = useLabs();
 
   // Loading states
-  const [loading, setLoading] = useState(true);
+  // `refreshing` only drives the manual "Refresh" button spinner; each section below
+  // has its own independent loading flag so fast cards render while slow ones spin.
   const [refreshing, setRefreshing] = useState(false);
+
+  // Per-section loading/error state — every dashboard card fetches its own data from
+  // its own standalone endpoint (see services/statisticsService.ts), independently of
+  // every other card, so one slow/failing section never blocks the rest of the page.
+  const [kpisLoading, setKpisLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [kpisError, setKpisError] = useState<string | null>(null);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [dashboardSummaryLoading, setDashboardSummaryLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
+
+  const [testCategoriesLoading, setTestCategoriesLoading] = useState(true);
+  const [testCategoriesError, setTestCategoriesError] = useState<string | null>(null);
+
+  const [earningsLoading, setEarningsLoading] = useState(true);
+  const [earningsError, setEarningsError] = useState<string | null>(null);
+
+  const [revenueTrendLoading, setRevenueTrendLoading] = useState(true);
+  const [revenueTrendError, setRevenueTrendError] = useState<string | null>(null);
+
+  const [revenueByLabLoading, setRevenueByLabLoading] = useState(true);
+  const [revenueByLabError, setRevenueByLabError] = useState<string | null>(null);
+
+  const [packagesSummaryLoading, setPackagesSummaryLoading] = useState(true);
+  const [packagesSummaryError, setPackagesSummaryError] = useState<string | null>(null);
+
+  const [detailedBillingLoading, setDetailedBillingLoading] = useState(true);
+  const [detailedBillingError, setDetailedBillingError] = useState<string | null>(null);
+
+  const [labPerformanceLoading, setLabPerformanceLoading] = useState(true);
+  const [labPerformanceError, setLabPerformanceError] = useState<string | null>(null);
+
+  const [topDoctorsLoading, setTopDoctorsLoading] = useState(true);
+  const [topDoctorsError, setTopDoctorsError] = useState<string | null>(null);
 
   // ========== LAB FILTER ==========
   // "all" = cumulative view across every lab the super admin owns; otherwise
@@ -464,13 +514,9 @@ const SuperAdminStats = () => {
   // the date or lab filters (the backend endpoint backing it takes no such params).
   const [totalLabs, setTotalLabs] = useState<number>(0);
 
-  // Admins/technicians/desk roles: scoped to the selected lab (or all labs), but
-  // deliberately NOT re-fetched when the date filter changes - see the dedicated
-  // effect below that calls getAllStats without startDate/endDate.
   const [totalAdmins, setTotalAdmins] = useState<number>(0);
   const [totalTechnicians, setTotalTechnicians] = useState<number>(0);
   const [totalDeskRoles, setTotalDeskRoles] = useState<number>(0);
-  const [roleKpisLoading, setRoleKpisLoading] = useState<boolean>(true);
 
   // Remaining KPIs come from getAllStats().kpis, scoped by the global filter + selected lab.
   const [totalTests, setTotalTests] = useState<number>(0);
@@ -492,6 +538,7 @@ const SuperAdminStats = () => {
     categories: [],
   });
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [revenueByTestPage, setRevenueByTestPage] = useState(0);
 
   // Revenue Trend (All Labs) card - trend is pre-bucketed by day from the backend.
   const [revenueTrendTotal, setRevenueTrendTotal] = useState<number>(0);
@@ -508,10 +555,12 @@ const SuperAdminStats = () => {
   const [packageSummary, setPackageSummary] = useState<DetailedBilling["packageSummary"]>(emptyPackageSummary);
   const [packages, setPackages] = useState<DetailedBilling["packages"]>([]);
 
-  // Billing Grid Report table - shows every row (no pagination), own filter, CSV export
+  // Billing Grid Report table - paginated display, own filter, CSV export
   const emptyGridData: GridReportResponse = { page: 0, size: 0, totalRecords: 0, totalPages: 0, rows: [] };
   const [gridData, setGridData] = useState<GridReportResponse>(emptyGridData);
   const [gridLoading, setGridLoading] = useState<boolean>(true);
+  const [gridPage, setGridPage] = useState(0);
+  const [csvDownloading, setCsvDownloading] = useState(false);
 
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   // "Updated: hh:mm:ss" display is commented out for now (refresh button covers it) -
@@ -519,7 +568,10 @@ const SuperAdminStats = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Sync individual filters with global filter when global changes
+  // Changing the global filter re-syncs every individual section filter to match it
+  // (so "global changes -> all sections change"). Changing one section's own filter
+  // only updates that section's state directly, so it does not go through here and
+  // the other sections are left untouched ("individual change -> that stat only").
   useEffect(() => {
     setRevenueFilter(globalFilter);
     setTopLabsFilter(globalFilter);
@@ -530,7 +582,8 @@ const SuperAdminStats = () => {
     setGridFilter(globalFilter);
   }, [globalFilter]);
 
-  // Sync custom ranges when global custom range changes
+  // Custom date ranges are synced separately, only while the global filter is "custom" -
+  // picking global custom dates should push those dates to every section as well.
   useEffect(() => {
     if (globalFilter === "custom") {
       setRevenueCustomRange(globalCustomRange);
@@ -543,262 +596,279 @@ const SuperAdminStats = () => {
     }
   }, [globalCustomRange, globalFilter]);
 
-  // Every section below hits the same consolidated endpoint, scoped to whichever
-  // lab is currently selected ("all" omits labId so the backend aggregates every lab).
-  const fetchStats = useCallback(
-    (startDate?: string, endDate?: string) =>
-      getAllStats(selectedLabId === "all" ? undefined : selectedLabId, startDate, endDate),
-    [selectedLabId]
-  );
+  // Every section below hits its OWN standalone endpoint, scoped to whichever lab is
+  // currently selected ("all" omits labId so the backend aggregates every lab). Each
+  // fetcher owns its own loading/error state and updates its own state slice the moment
+  // ITS OWN request resolves — independent of how long any other section takes.
+  const labIdParam = selectedLabId === "all" ? undefined : selectedLabId;
 
-  // Total Labs / Admins / Technicians / Desk Roles KPIs: re-fetched only when the
-  // selected lab changes, deliberately independent of every date filter (global or
-  // per-section) - always calls getAllStats with no startDate/endDate. totalLabs comes
-  // back as 1 when a specific lab is selected (backend scopes it), or the full count
-  // owned by the super admin when "All Labs" is selected.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setRoleKpisLoading(true);
-      try {
-        const stats = await fetchStats(undefined, undefined);
-        if (cancelled) return;
-        setTotalLabs(stats.kpis?.totalLabs || 0);
-        setTotalAdmins(extractRoleCount(stats.kpis?.totalAdmins));
-        setTotalTechnicians(extractRoleCount(stats.kpis?.totalTechnicians));
-        setTotalDeskRoles(extractRoleCount(stats.kpis?.totalDeskRoles));
-      } catch (error) {
-        console.error("Error fetching role KPIs:", error);
-        if (!cancelled) {
-          setTotalLabs(0);
-          setTotalAdmins(0);
-          setTotalTechnicians(0);
-          setTotalDeskRoles(0);
-        }
-      } finally {
-        if (!cancelled) setRoleKpisLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchStats]);
-
-  // Fetch function
-  // Every section hits the same consolidated getAllStats endpoint but with its own date
-  // range, and none of the sections depend on another section's result - so they're all
-  // fired together via Promise.allSettled instead of one after another. This also drops
-  // the old duplicate call for "earnings by category": it used the exact same date range
-  // as "tests by category", so a single fetchStats call now backs both.
-  const fetchAllData = useCallback(async (silent = false) => {
-    if (!silent) {
-      setLoading(true);
-    } else {
-      setRefreshing(true);
-    }
-
+  const fetchKpis = useCallback(async (startDate?: string, endDate?: string) => {
+    setKpisLoading(true);
+    setKpisError(null);
     try {
-      const globalRange = getDateRange(globalFilter, globalCustomRange);
-      const revenueRange = getDateRange(revenueFilter, revenueCustomRange);
-      const topLabsRange = getDateRange(topLabsFilter, topLabsCustomRange);
-      const packagesRange = getDateRange(packagesFilter, packagesCustomRange);
-      const categoryRange = getDateRange(categoryFilter, categoryCustomRange);
-      const performanceRange = getDateRange(performanceFilter, performanceCustomRange);
-      const doctorsRange = getDateRange(doctorsFilter, doctorsCustomRange);
-
-      await Promise.allSettled([
-        // 1. Remaining KPIs + Billing Summary card, scoped by the GLOBAL filter + selected lab
-        (async () => {
-          try {
-            const globalStats = await fetchStats(globalRange.startDate, globalRange.endDate);
-            setTotalTests(globalStats.kpis?.totalTests || 0);
-            setTotalRevenue(globalStats.kpis?.totalRevenue || 0);
-            setReportsGenerated(globalStats.kpis?.reportsGenerated || 0);
-            setPendingSamples(globalStats.kpis?.pendingSamples || 0);
-            setBillingSummary(globalStats.detailedBilling?.summary || emptyBillingSummary);
-          } catch (error) {
-            console.error("Error fetching global stats:", error);
-            setTotalTests(0);
-            setTotalRevenue(0);
-            setReportsGenerated(0);
-            setPendingSamples(0);
-            setBillingSummary(emptyBillingSummary);
-          }
-        })(),
-
-        // 2. Revenue trend with its OWN filter. The header total comes from the full-range
-        // call; each chart bar comes from re-querying getAllStats for just that bucket's
-        // range, same bucketing scheme (day/week/month, by filter type) as before. The
-        // total and the per-bucket fetches are independent, so they run together too.
-        (async () => {
-          if (revenueRange.startDate && revenueRange.endDate) {
-            const buckets = getRevenueBuckets(revenueFilter, revenueCustomRange);
-            const [totalSettled, bucketsSettled] = await Promise.allSettled([
-              fetchStats(revenueRange.startDate, revenueRange.endDate),
-              Promise.all(
-                buckets.map(async (bucket) => {
-                  try {
-                    const bucketStats = await fetchStats(bucket.start, bucket.end);
-                    return { label: bucket.label, revenue: bucketStats.revenueTrend?.totalRevenue || 0 };
-                  } catch (error) {
-                    console.error(`Error fetching revenue bucket ${bucket.label}:`, error);
-                    return { label: bucket.label, revenue: 0 };
-                  }
-                })
-              ),
-            ]);
-
-            if (totalSettled.status === "fulfilled") {
-              setRevenueTrendTotal(totalSettled.value.revenueTrend?.totalRevenue || 0);
-            } else {
-              console.error("Error fetching revenue section total:", totalSettled.reason);
-              setRevenueTrendTotal(0);
-            }
-
-            if (bucketsSettled.status === "fulfilled") {
-              setRevenueChartData(bucketsSettled.value);
-            } else {
-              console.error("Error fetching revenue chart data:", bucketsSettled.reason);
-              setRevenueChartData([]);
-            }
-          } else {
-            setRevenueTrendTotal(0);
-            setRevenueChartData([]);
-          }
-        })(),
-
-        // 3. Revenue by lab (top 5) with its OWN filter
-        (async () => {
-          try {
-            const topLabsStats = await fetchStats(topLabsRange.startDate, topLabsRange.endDate);
-            const allLabsRevenue = topLabsStats.revenueByLab || [];
-            setTotalLabsForRevenue(allLabsRevenue.length);
-            setRevenueByLab(allLabsRevenue.slice(0, 5));
-          } catch (error) {
-            console.error("Error fetching revenue by lab:", error);
-            setTotalLabsForRevenue(0);
-            setRevenueByLab([]);
-          }
-        })(),
-
-        // 4. Packages summary with its OWN filter
-        (async () => {
-          try {
-            const packagesStats = await fetchStats(packagesRange.startDate, packagesRange.endDate);
-            setPackageSummary(packagesStats.detailedBilling?.packageSummary || emptyPackageSummary);
-            setPackages(packagesStats.detailedBilling?.packages || []);
-          } catch (error) {
-            console.error("Error fetching packages:", error);
-            setPackageSummary(emptyPackageSummary);
-            setPackages([]);
-          }
-        })(),
-
-        // 5. Tests by category + earnings by category with the section's OWN filter -
-        // both come off the same getAllStats response since they share categoryRange.
-        (async () => {
-          try {
-            const categoryStats = await fetchStats(categoryRange.startDate, categoryRange.endDate);
-            setTestCategories(categoryStats.detailedBilling?.testCategories || []);
-            setTestCategoriesSummary(categoryStats.detailedBilling?.testsSummary || emptyTestsSummary);
-
-            const earnings = categoryStats.earningsByCategory || { summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] };
-            setEarningsData(earnings);
-
-            // Default selected category to the one with the highest test count
-            if (earnings.categories && earnings.categories.length > 0) {
-              const sorted = [...earnings.categories].sort((a, b) => (b.totalTests || 0) - (a.totalTests || 0));
-              setSelectedCategory(sorted[0].category);
-            }
-          } catch (error) {
-            console.error("Error fetching tests/earnings by category:", error);
-            setTestCategories([]);
-            setTestCategoriesSummary(emptyTestsSummary);
-            setEarningsData({ summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] });
-          }
-        })(),
-
-        // 6. Lab performance with its OWN filter
-        (async () => {
-          try {
-            const performanceStats = await fetchStats(performanceRange.startDate, performanceRange.endDate);
-            setLabPerformance((performanceStats.labPerformance || []).slice(0, 6));
-          } catch (error) {
-            console.error("Error fetching lab performance:", error);
-            setLabPerformance([]);
-          }
-        })(),
-
-        // 7. Top doctors with its OWN filter
-        (async () => {
-          try {
-            const doctorsStats = await fetchStats(doctorsRange.startDate, doctorsRange.endDate);
-            setTopDoctors((doctorsStats.topReferringDoctors || []).slice(0, 5));
-          } catch (error) {
-            console.error("Error fetching top doctors:", error);
-            setTopDoctors([]);
-          }
-        })(),
-      ]);
-
-      setLastUpdated(new Date());
+      const kpis = await getKpis(labIdParam, startDate, endDate);
+      setTotalLabs(kpis?.totalLabs || 0);
+      setTotalAdmins(extractRoleCount(kpis?.totalAdmins));
+      setTotalTechnicians(extractRoleCount(kpis?.totalTechnicians));
+      setTotalDeskRoles(extractRoleCount(kpis?.totalDeskRoles));
+      setTotalTests(kpis?.totalTests || 0);
+      setTotalRevenue(kpis?.totalRevenue || 0);
+      setReportsGenerated(kpis?.reportsGenerated || 0);
+      setPendingSamples(kpis?.pendingSamples || 0);
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.error("Error fetching KPIs:", error);
+      setKpisError(error instanceof Error ? error.message : "Failed to load KPIs");
+      setTotalLabs(0);
+      setTotalAdmins(0);
+      setTotalTechnicians(0);
+      setTotalDeskRoles(0);
+      setTotalTests(0);
+      setTotalRevenue(0);
+      setReportsGenerated(0);
+      setPendingSamples(0);
     } finally {
-      if (!silent) {
-        setLoading(false);
-      } else {
-        setRefreshing(false);
-      }
+      setKpisLoading(false);
     }
+  }, [labIdParam]);
+
+  const fetchDashboardSummaryData = useCallback(async (startDate?: string, endDate?: string) => {
+    setDashboardSummaryLoading(true);
+    try {
+      const summary = await getDashboardSummary(labIdParam, startDate, endDate);
+      setDashboardSummary(summary || null);
+    } catch (error) {
+      console.error("Error fetching dashboard summary:", error);
+      setDashboardSummary(null);
+    } finally {
+      setDashboardSummaryLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchTestsByCategoryData = useCallback(async (startDate?: string, endDate?: string) => {
+    setTestCategoriesLoading(true);
+    setTestCategoriesError(null);
+    try {
+      const data = await getTestsByCategory(labIdParam, startDate, endDate);
+      setTestCategories(data?.categories || []);
+      setTestCategoriesSummary(data?.summary || emptyTestsSummary);
+    } catch (error) {
+      console.error("Error fetching tests by category:", error);
+      setTestCategoriesError(error instanceof Error ? error.message : "Failed to load test categories");
+      setTestCategories([]);
+      setTestCategoriesSummary(emptyTestsSummary);
+    } finally {
+      setTestCategoriesLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchEarningsByCategoryData = useCallback(async (startDate?: string, endDate?: string) => {
+    setEarningsLoading(true);
+    setEarningsError(null);
+    try {
+      const earnings = await getEarningsByCategory(labIdParam, startDate, endDate);
+      const safeEarnings = earnings || {
+        summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 },
+        categories: [],
+      };
+      setEarningsData(safeEarnings);
+      if (safeEarnings.categories && safeEarnings.categories.length > 0) {
+        const sorted = [...safeEarnings.categories].sort((a, b) => (b.totalTests || 0) - (a.totalTests || 0));
+        setSelectedCategory(sorted[0].category);
+      }
+    } catch (error) {
+      console.error("Error fetching earnings by category:", error);
+      setEarningsError(error instanceof Error ? error.message : "Failed to load earnings by category");
+      setEarningsData({ summary: { totalCategories: 0, totalTests: 0, totalRevenue: 0, totalDue: 0 }, categories: [] });
+    } finally {
+      setEarningsLoading(false);
+    }
+  }, [labIdParam]);
+
+  // Revenue chart bars are derived by aggregating the backend's daily trend data
+  // on the frontend — no extra per-bucket API calls needed.
+  const fetchRevenueTrendData = useCallback(async (startDate?: string, endDate?: string) => {
+    setRevenueTrendLoading(true);
+    setRevenueTrendError(null);
+    try {
+      if (!startDate || !endDate) {
+        setRevenueTrendTotal(0);
+        setRevenueChartData([]);
+        return;
+      }
+      const trend = await getRevenueTrend(labIdParam, startDate, endDate);
+      setRevenueTrendTotal(trend?.totalRevenue || 0);
+      const dailyTrend: { date: string; revenue: number }[] = trend?.trend || [];
+      const buckets = getRevenueBuckets(revenueFilter, revenueCustomRange);
+      setRevenueChartData(
+        buckets.map((bucket) => ({
+          label: bucket.label,
+          revenue: dailyTrend
+            .filter((d) => d.date >= bucket.start && d.date <= bucket.end)
+            .reduce((sum, d) => sum + (Number(d.revenue) || 0), 0),
+        }))
+      );
+    } catch (error) {
+      console.error("Error fetching revenue trend:", error);
+      setRevenueTrendError(error instanceof Error ? error.message : "Failed to load revenue trend");
+      setRevenueTrendTotal(0);
+      setRevenueChartData([]);
+    } finally {
+      setRevenueTrendLoading(false);
+    }
+  }, [labIdParam, revenueFilter, revenueCustomRange]);
+
+  const fetchRevenueByLabData = useCallback(async (startDate?: string, endDate?: string) => {
+    setRevenueByLabLoading(true);
+    setRevenueByLabError(null);
+    try {
+      const rows = await getRevenueByLab(labIdParam, startDate, endDate);
+      const allLabsRevenue = rows || [];
+      setTotalLabsForRevenue(allLabsRevenue.length);
+      setRevenueByLab(allLabsRevenue.slice(0, 5));
+    } catch (error) {
+      console.error("Error fetching revenue by lab:", error);
+      setRevenueByLabError(error instanceof Error ? error.message : "Failed to load revenue by lab");
+      setTotalLabsForRevenue(0);
+      setRevenueByLab([]);
+    } finally {
+      setRevenueByLabLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchPackagesSummaryData = useCallback(async (startDate?: string, endDate?: string) => {
+    setPackagesSummaryLoading(true);
+    setPackagesSummaryError(null);
+    try {
+      const data = await getPackagesSummary(labIdParam, startDate, endDate);
+      setPackages(data?.packages || []);
+      const s = data?.summary;
+      setPackageSummary({
+        totalPackages: s?.totalPackages || 0,
+        totalVisits: s?.totalVisits || 0,
+        grossBilled: s?.totalRevenue || 0,
+        discount: s?.totalDiscount || 0,
+        paid: s?.totalPaid || 0,
+        due: s?.totalDue || 0,
+        paymentMode: { cash: s?.totalCash || 0, upi: s?.totalUpi || 0, card: s?.totalCard || 0 },
+      });
+    } catch (error) {
+      console.error("Error fetching packages summary:", error);
+      setPackagesSummaryError(error instanceof Error ? error.message : "Failed to load packages summary");
+      setPackages([]);
+      setPackageSummary(emptyPackageSummary);
+    } finally {
+      setPackagesSummaryLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchDetailedBillingData = useCallback(async (startDate?: string, endDate?: string) => {
+    setDetailedBillingLoading(true);
+    setDetailedBillingError(null);
+    try {
+      const data = await getDetailedBilling(labIdParam, startDate, endDate);
+      setBillingSummary(data?.summary || emptyBillingSummary);
+    } catch (error) {
+      console.error("Error fetching detailed billing:", error);
+      setDetailedBillingError(error instanceof Error ? error.message : "Failed to load billing summary");
+      setBillingSummary(emptyBillingSummary);
+    } finally {
+      setDetailedBillingLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchLabPerformanceData = useCallback(async (startDate?: string, endDate?: string) => {
+    setLabPerformanceLoading(true);
+    setLabPerformanceError(null);
+    try {
+      const rows = await getLabPerformance(labIdParam, startDate, endDate);
+      setLabPerformance((rows || []).slice(0, 6));
+    } catch (error) {
+      console.error("Error fetching lab performance:", error);
+      setLabPerformanceError(error instanceof Error ? error.message : "Failed to load lab performance");
+      setLabPerformance([]);
+    } finally {
+      setLabPerformanceLoading(false);
+    }
+  }, [labIdParam]);
+
+  const fetchTopDoctorsData = useCallback(async (startDate?: string, endDate?: string) => {
+    setTopDoctorsLoading(true);
+    setTopDoctorsError(null);
+    try {
+      const rows = await getTopReferringDoctors(labIdParam, startDate, endDate);
+      setTopDoctors((rows || []).slice(0, 5));
+    } catch (error) {
+      console.error("Error fetching top referring doctors:", error);
+      setTopDoctorsError(error instanceof Error ? error.message : "Failed to load top referring doctors");
+      setTopDoctors([]);
+    } finally {
+      setTopDoctorsLoading(false);
+    }
+  }, [labIdParam]);
+
+  // Fires all ~10 section fetches together, but each updates its own state the moment
+  // IT resolves (no Promise.all/allSettled gating here) — fast cards render immediately,
+  // slow ones keep spinning independently, and one failing section doesn't block the rest.
+  const fetchAllData = useCallback(() => {
+    const globalRange = getDateRange(globalFilter, globalCustomRange);
+    fetchKpis(globalRange.startDate, globalRange.endDate);
+    fetchDashboardSummaryData(globalRange.startDate, globalRange.endDate);
+    fetchEarningsByCategoryData(globalRange.startDate, globalRange.endDate);
+    fetchDetailedBillingData(globalRange.startDate, globalRange.endDate);
+    setLastUpdated(new Date());
   }, [
-    fetchStats,
     globalFilter, globalCustomRange,
-    revenueFilter, revenueCustomRange,
-    topLabsFilter, topLabsCustomRange,
-    categoryFilter, categoryCustomRange,
-    packagesFilter, packagesCustomRange,
-    performanceFilter, performanceCustomRange,
-    doctorsFilter, doctorsCustomRange,
+    fetchKpis, fetchDashboardSummaryData, fetchEarningsByCategoryData, fetchDetailedBillingData,
   ]);
 
-  // Initial load + reload whenever the lab filter changes (fetchStats depends on selectedLabId)
+  // Initial load + reload whenever the lab filter or global date range changes
+  // (mirrors the trigger the old single getAllStats() call used).
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
 
-  // Billing Grid Report: the UI shows every matching row with no pagination, so this
-  // pulls every page from the (paginated) backend endpoint and stitches them into one
-  // full row list. `silent` mirrors fetchAllData's silent refresh - used by the 30s
-  // auto-refresh below so the table doesn't flash back to a "Loading..." state.
+  // Each KPI widget below re-fetches on ITS OWN filter/custom-range, independent
+  // of globalFilter and of every other widget — mirrors the working gridFilter
+  // pattern further down, which is the only section that had this wired correctly.
+  useEffect(() => {
+    const range = getDateRange(revenueFilter, revenueCustomRange);
+    fetchRevenueTrendData(range.startDate, range.endDate);
+  }, [revenueFilter, revenueCustomRange, fetchRevenueTrendData]);
+
+  useEffect(() => {
+    const range = getDateRange(topLabsFilter, topLabsCustomRange);
+    fetchRevenueByLabData(range.startDate, range.endDate);
+  }, [topLabsFilter, topLabsCustomRange, fetchRevenueByLabData]);
+
+  useEffect(() => {
+    const range = getDateRange(categoryFilter, categoryCustomRange);
+    fetchTestsByCategoryData(range.startDate, range.endDate);
+  }, [categoryFilter, categoryCustomRange, fetchTestsByCategoryData]);
+
+  useEffect(() => {
+    const range = getDateRange(packagesFilter, packagesCustomRange);
+    fetchPackagesSummaryData(range.startDate, range.endDate);
+  }, [packagesFilter, packagesCustomRange, fetchPackagesSummaryData]);
+
+  useEffect(() => {
+    const range = getDateRange(doctorsFilter, doctorsCustomRange);
+    fetchTopDoctorsData(range.startDate, range.endDate);
+  }, [doctorsFilter, doctorsCustomRange, fetchTopDoctorsData]);
+
+  useEffect(() => {
+    const range = getDateRange(performanceFilter, performanceCustomRange);
+    fetchLabPerformanceData(range.startDate, range.endDate);
+  }, [performanceFilter, performanceCustomRange, fetchLabPerformanceData]);
+
+  // Billing Grid Report: fetches a single page (GRID_PAGE_SIZE rows) from the backend.
   const fetchGridData = useCallback(
     async (silent = false) => {
       if (!silent) setGridLoading(true);
       try {
         const range = getDateRange(gridFilter, gridCustomRange);
         const labIdParam = selectedLabId === "all" ? undefined : selectedLabId;
-
-        const firstPage = await getGridReport(labIdParam, range.startDate, range.endDate, 0, GRID_FETCH_PAGE_SIZE);
-        let allRows: GridReportRow[] = [...firstPage.rows];
-
-        if (firstPage.totalPages > 1) {
-          const remainingPages = await Promise.all(
-            Array.from({ length: firstPage.totalPages - 1 }, (_, i) =>
-              getGridReport(labIdParam, range.startDate, range.endDate, i + 1, GRID_FETCH_PAGE_SIZE)
-            )
-          );
-          remainingPages.forEach((p) => {
-            allRows = allRows.concat(p.rows);
-          });
-        }
-
-        setGridData({
-          page: 0,
-          size: allRows.length,
-          totalRecords: firstPage.totalRecords,
-          totalPages: 1,
-          rows: allRows,
-        });
+        const result = await getGridReport(labIdParam, range.startDate, range.endDate, gridPage, GRID_PAGE_SIZE);
+        setGridData(result);
       } catch (error) {
         console.error("Error fetching billing grid report:", error);
         if (!silent) setGridData({ page: 0, size: 0, totalRecords: 0, totalPages: 0, rows: [] });
@@ -806,27 +876,86 @@ const SuperAdminStats = () => {
         if (!silent) setGridLoading(false);
       }
     },
-    [selectedLabId, gridFilter, gridCustomRange]
+    [selectedLabId, gridFilter, gridCustomRange, gridPage]
   );
 
-  // Initial load + reload whenever the lab or the section's own date filter changes.
+  // Reset to page 0 when the lab or date filter changes so stale page offsets don't persist.
+  useEffect(() => {
+    setGridPage(0);
+  }, [selectedLabId, gridFilter, gridCustomRange]);
+
+  // Reset Revenue by Test pagination whenever the category, sort order, or underlying
+  // data changes so stale page offsets don't persist.
+  useEffect(() => {
+    setRevenueByTestPage(0);
+  }, [selectedCategory, sortOrder, earningsData]);
+
+  // Initial load + reload whenever the lab, filter, or page changes.
   useEffect(() => {
     fetchGridData();
   }, [fetchGridData]);
 
   // Manual refresh - replaces the old 30s auto-refresh, which was re-fetching every
   // section (including the full Billing Grid Report) too often and spiking load.
+  // `refreshing` only drives the button's spinner; it does NOT gate any section's own
+  // loading/data state, so each card still updates independently as its own call resolves.
   const handleManualRefresh = useCallback(() => {
-    fetchAllData(true);
-    fetchGridData(true);
-  }, [fetchAllData, fetchGridData]);
+    setRefreshing(true);
+    const globalRange = getDateRange(globalFilter, globalCustomRange);
+    const revenueRange = getDateRange(revenueFilter, revenueCustomRange);
+    const topLabsRange = getDateRange(topLabsFilter, topLabsCustomRange);
+    const categoryRange = getDateRange(categoryFilter, categoryCustomRange);
+    const packagesRange = getDateRange(packagesFilter, packagesCustomRange);
+    const doctorsRange = getDateRange(doctorsFilter, doctorsCustomRange);
+    const performanceRange = getDateRange(performanceFilter, performanceCustomRange);
+    Promise.allSettled([
+      fetchKpis(globalRange.startDate, globalRange.endDate),
+      fetchDashboardSummaryData(globalRange.startDate, globalRange.endDate),
+      fetchEarningsByCategoryData(globalRange.startDate, globalRange.endDate),
+      fetchDetailedBillingData(globalRange.startDate, globalRange.endDate),
+      fetchTestsByCategoryData(categoryRange.startDate, categoryRange.endDate),
+      fetchRevenueTrendData(revenueRange.startDate, revenueRange.endDate),
+      fetchRevenueByLabData(topLabsRange.startDate, topLabsRange.endDate),
+      fetchPackagesSummaryData(packagesRange.startDate, packagesRange.endDate),
+      fetchLabPerformanceData(performanceRange.startDate, performanceRange.endDate),
+      fetchTopDoctorsData(doctorsRange.startDate, doctorsRange.endDate),
+      fetchGridData(true),
+    ]).finally(() => setRefreshing(false));
+    setLastUpdated(new Date());
+  }, [
+    globalFilter, globalCustomRange, fetchGridData,
+    revenueFilter, revenueCustomRange, topLabsFilter, topLabsCustomRange,
+    categoryFilter, categoryCustomRange, packagesFilter, packagesCustomRange,
+    doctorsFilter, doctorsCustomRange, performanceFilter, performanceCustomRange,
+    fetchKpis, fetchDashboardSummaryData, fetchTestsByCategoryData, fetchEarningsByCategoryData,
+    fetchRevenueTrendData, fetchRevenueByLabData, fetchPackagesSummaryData, fetchDetailedBillingData,
+    fetchLabPerformanceData, fetchTopDoctorsData,
+  ]);
 
-  // The grid table already holds the full filtered result set (no pagination), so the
-  // CSV export just converts what's already loaded - no extra fetch needed.
-  const handleDownloadGridCsv = () => {
-    if (gridData.rows.length === 0) return;
-    const csv = buildGridReportCsv(gridData.rows);
-    downloadCSV(csv, generateCSVFilename("billing-grid-report"));
+  // CSV export fetches all pages sequentially to avoid concurrent load, then downloads.
+  const handleDownloadGridCsv = async () => {
+    if (gridData.totalRecords === 0) return;
+    setCsvDownloading(true);
+    try {
+      const range = getDateRange(gridFilter, gridCustomRange);
+      const labIdParam = selectedLabId === "all" ? undefined : selectedLabId;
+      const DOWNLOAD_PAGE_SIZE = 200;
+
+      const firstPage = await getGridReport(labIdParam, range.startDate, range.endDate, 0, DOWNLOAD_PAGE_SIZE);
+      let allRows: GridReportRow[] = [...firstPage.rows];
+
+      for (let i = 1; i < firstPage.totalPages; i++) {
+        const page = await getGridReport(labIdParam, range.startDate, range.endDate, i, DOWNLOAD_PAGE_SIZE);
+        allRows = allRows.concat(page.rows);
+      }
+
+      const csv = buildGridReportCsv(allRows);
+      downloadCSV(csv, generateCSVFilename("billing-grid-report"));
+    } catch (error) {
+      console.error("Error downloading billing grid CSV:", error);
+    } finally {
+      setCsvDownloading(false);
+    }
   };
 
   // Format data for category pie chart
@@ -997,56 +1126,56 @@ const SuperAdminStats = () => {
     {
       id: 1,
       title: "Total Labs",
-      value: loading ? "..." : String(totalLabs),
+      value: kpisLoading ? "..." : String(totalLabs),
       color: "text-secondary-700",
       icon: Building2,
     },
     {
       id: 2,
       title: "Total Admins",
-      value: roleKpisLoading ? "..." : String(totalAdmins),
+      value: kpisLoading ? "..." : String(totalAdmins),
       color: "text-secondary-700",
       icon: HiOutlineUserGroup,
     },
     {
       id: 3,
       title: "Total Desk Users",
-      value: roleKpisLoading ? "..." : String(totalDeskRoles),
+      value: kpisLoading ? "..." : String(totalDeskRoles),
       color: "text-secondary-700",
       icon: HiOutlineUsers,
     },
     {
       id: 4,
       title: "Total Technicians",
-      value: roleKpisLoading ? "..." : String(totalTechnicians),
+      value: kpisLoading ? "..." : String(totalTechnicians),
       color: "text-secondary-700",
       icon: PiGraduationCapThin,
     },
     {
       id: 5,
       title: "Total Tests",
-      value: loading ? "..." : String(totalTests),
+      value: kpisLoading ? "..." : String(totalTests),
       color: "text-secondary-700",
       icon: PiFlaskLight,
     },
     {
       id: 6,
       title: "Pending Samples",
-      value: loading ? "..." : String(pendingSamples),
+      value: kpisLoading ? "..." : String(pendingSamples),
       color: "text-secondary-700",
       icon: PiDna,
     },
     {
       id: 7,
       title: "Reports Generated",
-      value: loading ? "..." : String(reportsGenerated),
+      value: kpisLoading ? "..." : String(reportsGenerated),
       color: "text-secondary-700",
       icon: ClipboardCheck,
     },
     {
       id: 8,
       title: "Total Revenue",
-      value: loading ? "..." : formatCurrency(totalRevenue),
+      value: kpisLoading ? "..." : formatCurrency(totalRevenue),
       color: "text-secondary-700",
       icon: HiOutlineBanknotes,
     }
@@ -1061,6 +1190,11 @@ const SuperAdminStats = () => {
   const categoryOptions = getCategoriesForDropdown();
   const sortedTests = [...earnings.tests].sort((a, b) =>
     sortOrder === "desc" ? (b.grossEarnings || 0) - (a.grossEarnings || 0) : (a.grossEarnings || 0) - (b.grossEarnings || 0)
+  );
+  const revenueByTestTotalPages = Math.max(1, Math.ceil(sortedTests.length / REVENUE_BY_TEST_PAGE_SIZE));
+  const paginatedTests = sortedTests.slice(
+    revenueByTestPage * REVENUE_BY_TEST_PAGE_SIZE,
+    (revenueByTestPage + 1) * REVENUE_BY_TEST_PAGE_SIZE
   );
 
   // Top labs data (revenue kept in raw currency units; formatted for display via getRevenueAxisConfig)
@@ -1149,18 +1283,24 @@ const SuperAdminStats = () => {
 
   // Helper to render the lab filter dropdown (All Labs + every lab under this super admin)
   const renderLabFilterDropdown = () => (
-    <select
-      value={selectedLabId}
-      onChange={(e) => setSelectedLabId(e.target.value === "all" ? "all" : Number(e.target.value))}
-      className="min-w-40 rounded-lg border border-pneutral-100 bg-pneutral-100 px-4 py-2 text-p3 font-medium text-pneutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-500"
-    >
-      <option value="all">All Labs</option>
-      {labs.map((lab) => (
-        <option key={lab.id} value={lab.id}>
-          {lab.name}
-        </option>
-      ))}
-    </select>
+    <div className="relative min-w-40 max-w-50">
+      <select
+        value={selectedLabId}
+        onChange={(e) => setSelectedLabId(e.target.value === "all" ? "all" : Number(e.target.value))}
+        className="w-full appearance-none truncate rounded-lg border border-pneutral-100 bg-pneutral-100 py-2 pl-4 pr-8 text-p3 font-medium text-pneutral-900 focus:outline-none focus:ring-2 focus:ring-secondary-500"
+      >
+        <option value="all">All Labs</option>
+        {labs.map((lab) => (
+          <option key={lab.id} value={lab.id} title={lab.name}>
+            {lab.name}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        size={16}
+        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-pneutral-500"
+      />
+    </div>
   );
 
   // Custom tooltip for category pie chart
@@ -1238,9 +1378,9 @@ const SuperAdminStats = () => {
             <h1 className="text-h3 font-heading font-bold text-pneutral-900">
               Cumulative Analytics
             </h1>
-            <span className="rounded-full bg-secondary-100 px-4 py-1 text-label-l3 font-semibold text-secondary-700">
+            {/* <span className="rounded-full bg-secondary-100 px-4 py-1 text-label-l3 font-semibold text-secondary-700">
               Level 1: ALL Labs Overview
-            </span>
+            </span> */}
             <button
               type="button"
               onClick={handleManualRefresh}
@@ -1325,7 +1465,15 @@ const SuperAdminStats = () => {
             </div>
           </div>
           <div className="h-[200px]">
-            {revenueChartData.length > 0 ? (
+            {revenueTrendLoading ? (
+              <div className="flex h-full w-full items-center justify-center">
+                <Loader type="spinner" size="sm" text="" />
+              </div>
+            ) : revenueTrendError ? (
+              <div className="flex h-full w-full items-center justify-center text-p3 text-danger-500">
+                {revenueTrendError}
+              </div>
+            ) : revenueChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={revenueChartData}>
                   <defs>
@@ -1398,7 +1546,13 @@ const SuperAdminStats = () => {
             </div>
           </div>
           <div className="space-y-4">
-            {topLabs.length > 0 ? (
+            {revenueByLabLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader type="spinner" size="sm" text="" />
+              </div>
+            ) : revenueByLabError ? (
+              <div className="text-center py-8 text-danger-500">{revenueByLabError}</div>
+            ) : topLabs.length > 0 ? (
               topLabs.map((lab, index) => (
                 <div key={index} className="grid grid-cols-[1.2fr_2.5fr_64px] items-center gap-5">
                   <p className="truncate text-p3 font-medium text-pneutral-900">{lab.name}</p>
@@ -1445,7 +1599,7 @@ const SuperAdminStats = () => {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {/* Test By Category - Pie Chart */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between mb-8">
             <h2 className="text-p4 font-heading font-semibold text-pneutral-900">Test by Category</h2>
             {renderFilterDropdown(
               categoryFilter,
@@ -1456,7 +1610,13 @@ const SuperAdminStats = () => {
             )}
           </div>
           <div className="flex items-center justify-between">
-            {categoryChartData.length > 0 ? (
+            {testCategoriesLoading ? (
+              <div className="flex w-full items-center justify-center py-8">
+                <Loader type="spinner" size="sm" text="" />
+              </div>
+            ) : testCategoriesError ? (
+              <div className="w-full py-8 text-center text-danger-500">{testCategoriesError}</div>
+            ) : categoryChartData.length > 0 ? (
               <>
                 <div className="h-[270px] w-[270px]">
                   <ResponsiveContainer>
@@ -1515,7 +1675,7 @@ const SuperAdminStats = () => {
         </div>
 
         {/* Revenue by Test - Table */}
-        <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
+        <div className="flex flex-col rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
               Revenue by Test
@@ -1535,8 +1695,14 @@ const SuperAdminStats = () => {
               </select>
             </div>
           </div>
-          <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-            {sortedTests.length > 0 ? (
+          <div className="min-h-[300px] flex-1 overflow-x-auto overflow-y-auto">
+            {earningsLoading ? (
+              <div className="flex w-full items-center justify-center py-8">
+                <Loader type="spinner" size="sm" text="" />
+              </div>
+            ) : earningsError ? (
+              <div className="w-full py-8 text-center text-danger-500">{earningsError}</div>
+            ) : sortedTests.length > 0 ? (
               <table className="min-w-full">
                 <thead className="sticky top-0 bg-white z-10">
                   <tr className="border-b border-pneutral-100 bg-pneutral-50">
@@ -1558,9 +1724,11 @@ const SuperAdminStats = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedTests.map((test, index) => (
+                  {paginatedTests.map((test, index) => (
                     <tr key={test.testId || index} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
-                      <td className="px-4 py-2 text-p3 text-pneutral-900">{index + 1}</td>
+                      <td className="px-4 py-2 text-p3 text-pneutral-900">
+                        {revenueByTestPage * REVENUE_BY_TEST_PAGE_SIZE + index + 1}
+                      </td>
                       <td className="px-4 py-2 text-p3 font-medium text-pneutral-900">
                         {test.testName || "Unknown"}
                       </td>
@@ -1582,6 +1750,39 @@ const SuperAdminStats = () => {
               </div>
             )}
           </div>
+          {sortedTests.length > 0 && (
+            <div className="mt-3 px-1 flex items-center justify-between gap-4">
+              <p className="text-p3 text-pneutral-500">
+                {`${revenueByTestPage * REVENUE_BY_TEST_PAGE_SIZE + 1}–${Math.min(
+                  (revenueByTestPage + 1) * REVENUE_BY_TEST_PAGE_SIZE,
+                  sortedTests.length
+                )} of ${sortedTests.length} tests`}
+              </p>
+              {revenueByTestTotalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRevenueByTestPage((p) => Math.max(0, p - 1))}
+                    disabled={revenueByTestPage === 0}
+                    className="rounded-lg border border-pneutral-200 bg-base-white px-3 py-1 text-p3 text-pneutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-pneutral-50"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-p3 text-pneutral-500">
+                    Page {revenueByTestPage + 1} of {revenueByTestTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setRevenueByTestPage((p) => Math.min(revenueByTestTotalPages - 1, p + 1))}
+                    disabled={revenueByTestPage >= revenueByTestTotalPages - 1}
+                    className="rounded-lg border border-pneutral-200 bg-base-white px-3 py-1 text-p3 text-pneutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-pneutral-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1603,7 +1804,13 @@ const SuperAdminStats = () => {
             )}
           </div>
           <div className="flex items-center justify-between">
-            {packagesChartData.length > 0 ? (
+            {packagesSummaryLoading ? (
+              <div className="flex w-full items-center justify-center py-8">
+                <Loader type="spinner" size="sm" text="" />
+              </div>
+            ) : packagesSummaryError ? (
+              <div className="w-full py-8 text-center text-danger-500">{packagesSummaryError}</div>
+            ) : packagesChartData.length > 0 ? (
               <>
                 <div className="h-[200px] w-[200px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1672,7 +1879,13 @@ const SuperAdminStats = () => {
             </h2>
           </div>
           <div className="flex items-center justify-between px-2 pb-2">
-            {alertsData.some(item => item.value > 0) ? (
+            {detailedBillingLoading ? (
+              <div className="flex w-full items-center justify-center py-8">
+                <Loader type="spinner" size="sm" text="" />
+              </div>
+            ) : detailedBillingError ? (
+              <div className="w-full py-8 text-center text-danger-500">{detailedBillingError}</div>
+            ) : alertsData.some(item => item.value > 0) ? (
               <>
                 <div className="h-[180px] w-[180px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1760,13 +1973,27 @@ const SuperAdminStats = () => {
                 </tr>
               </thead>
               <tbody>
-                {doctorsData.map((doctor) => (
-                  <tr key={doctor.id} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
-                    <td className="px-4 py-2 text-p3 text-pneutral-900">{doctor.srNo}</td>
-                    <td className="px-4 py-2 text-p3 font-medium text-pneutral-900">{doctor.doctorName}</td>
-                    <td className="px-4 py-2 text-p3 text-right font-medium text-pneutral-900">{doctor.revenue}</td>
+                {topDoctorsLoading ? (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-8 text-center">
+                      <div className="flex items-center justify-center">
+                        <Loader type="spinner" size="sm" text="" />
+                      </div>
+                    </td>
                   </tr>
-                ))}
+                ) : topDoctorsError ? (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-8 text-center text-danger-500">{topDoctorsError}</td>
+                  </tr>
+                ) : (
+                  doctorsData.map((doctor) => (
+                    <tr key={doctor.id} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
+                      <td className="px-4 py-2 text-p3 text-pneutral-900">{doctor.srNo}</td>
+                      <td className="px-4 py-2 text-p3 font-medium text-pneutral-900">{doctor.doctorName}</td>
+                      <td className="px-4 py-2 text-p3 text-right font-medium text-pneutral-900">{doctor.revenue}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -1803,28 +2030,42 @@ const SuperAdminStats = () => {
               </tr>
             </thead>
             <tbody>
-              {tableData.map((item) => (
-                <tr key={item.id} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
-                  <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.id}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 font-medium text-pneutral-900">{item.lab}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 font-medium text-pneutral-900">{item.revenue}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.tests}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.patients}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 font-medium text-danger-600">{item.pending}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.tat}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.reports}</td>
-                  <td className="border-b border-pneutral-100 px-4 py-2">
-                    <div
-                      className={`flex items-center gap-2 font-medium ${
-                        item.positive ? "text-success-600" : "text-warning-500"
-                      }`}
-                    >
-                      {item.positive ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
-                      {item.growth}
+              {labPerformanceLoading ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-8 text-center">
+                    <div className="flex items-center justify-center">
+                      <Loader type="spinner" size="sm" text="" />
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : labPerformanceError ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-8 text-center text-danger-500">{labPerformanceError}</td>
+                </tr>
+              ) : (
+                tableData.map((item) => (
+                  <tr key={item.id} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.id}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 font-medium text-pneutral-900">{item.lab}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 font-medium text-pneutral-900">{item.revenue}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.tests}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.patients}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 font-medium text-danger-600">{item.pending}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.tat}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{item.reports}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2">
+                      <div
+                        className={`flex items-center gap-2 font-medium ${
+                          item.positive ? "text-success-600" : "text-warning-500"
+                        }`}
+                      >
+                        {item.positive ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
+                        {item.growth}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -1840,10 +2081,10 @@ const SuperAdminStats = () => {
             <button
               type="button"
               onClick={handleDownloadGridCsv}
-              disabled={gridLoading || gridData.rows.length === 0}
+              disabled={gridLoading || csvDownloading || gridData.totalRecords === 0}
               className="rounded-lg border border-success-500 bg-[#55D400] px-4 py-2 text-p3 font-medium text-pneutral-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Download as CSV
+              {csvDownloading ? "Exporting..." : "Download as CSV"}
             </button>
             {renderFilterDropdown(
               gridFilter,
@@ -1888,7 +2129,7 @@ const SuperAdminStats = () => {
                 gridData.rows.map((row, index) => (
                   <tr key={row.billingId ?? index} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">
-                      {index + 1}
+                      {gridPage * GRID_PAGE_SIZE + index + 1}
                     </td>
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.visitCode}</td>
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.patientName}</td>
@@ -1930,10 +2171,35 @@ const SuperAdminStats = () => {
             </tbody>
           </table>
         </div>
-        <div className="mt-3 px-1">
+        <div className="mt-3 px-1 flex items-center justify-between gap-4">
           <p className="text-p3 text-pneutral-500">
-            {gridData.totalRecords > 0 ? `${gridData.totalRecords} records` : "0 records"}
+            {gridData.totalRecords > 0
+              ? `${gridPage * GRID_PAGE_SIZE + 1}–${Math.min((gridPage + 1) * GRID_PAGE_SIZE, gridData.totalRecords)} of ${gridData.totalRecords} records`
+              : "0 records"}
           </p>
+          {gridData.totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setGridPage((p) => Math.max(0, p - 1))}
+                disabled={gridLoading || gridPage === 0}
+                className="rounded-lg border border-pneutral-200 bg-base-white px-3 py-1 text-p3 text-pneutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-pneutral-50"
+              >
+                Prev
+              </button>
+              <span className="text-p3 text-pneutral-500">
+                Page {gridPage + 1} of {gridData.totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setGridPage((p) => Math.min(gridData.totalPages - 1, p + 1))}
+                disabled={gridLoading || gridPage >= gridData.totalPages - 1}
+                className="rounded-lg border border-pneutral-200 bg-base-white px-3 py-1 text-p3 text-pneutral-700 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-pneutral-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -2943,21 +3209,21 @@ export default SuperAdminStats;
 //     {
 //       id: 2,
 //       title: "Total Admins",
-//       value: roleKpisLoading ? "..." : String(totalAdmins),
+//       value: loading ? "..." : String(totalAdmins),
 //       color: "text-secondary-700",
 //       icon: HiOutlineUserGroup,
 //     },
 //     {
 //       id: 3,
 //       title: "Total Desk Users",
-//       value: roleKpisLoading ? "..." : String(totalDeskRoles),
+//       value: loading ? "..." : String(totalDeskRoles),
 //       color: "text-secondary-700",
 //       icon: HiOutlineUsers,
 //     },
 //     {
 //       id: 4,
 //       title: "Total Technicians",
-//       value: roleKpisLoading ? "..." : String(totalTechnicians),
+//       value: loading ? "..." : String(totalTechnicians),
 //       color: "text-secondary-700",
 //       icon: PiGraduationCapThin,
 //     },
