@@ -96,16 +96,44 @@ export const getAllVisits = async (labId: number) => {
 //         throw new Error('An error occurred while fetching visits by date range.');
 //     }
 // }
-export const getAllPatientVisitsByDateRangeoflab = async (labId: number, startDate: string, endDate: string) => {
+export interface PaginatedPatientVisitsResponse {
+    data: Patient[];
+    totalElements: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+}
+
+// Backend paginates this endpoint server-side (page is 0-based, size defaults to 10).
+// search matches patient first/last name, phone, or patient code; visitStatus is an exact match
+// (e.g. "Pending" | "Completed" | "Cancelled"). Bill status and visit type are not filterable server-side yet.
+export const getAllPatientVisitsByDateRangeoflab = async (
+    labId: number,
+    startDate: string,
+    endDate: string,
+    page: number = 0,
+    size: number = 10,
+    search?: string,
+    visitStatus?: string
+): Promise<PaginatedPatientVisitsResponse> => {
     try {
         const response = await api.get(`/lab/${labId}/datewise-patient-visits`, {
             params: {
                 startDate,
-                endDate
+                endDate,
+                page,
+                size,
+                search: search || undefined,
+                visitStatus: visitStatus || undefined,
             }
         });
-        // Ensure we always return an array, even if data is missing
-        return Array.isArray(response.data?.data) ? response.data.data : [];
+        return {
+            data: Array.isArray(response.data?.data) ? response.data.data : [],
+            totalElements: response.data?.totalElements ?? 0,
+            totalPages: response.data?.totalPages ?? 0,
+            currentPage: response.data?.currentPage ?? page,
+            pageSize: response.data?.pageSize ?? size,
+        };
     } catch (error: unknown) {
         throw new Error('An error occurred while fetching visits by date range.');
     }

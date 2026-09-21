@@ -11,6 +11,7 @@ export interface PaginatedTestResponse {
   totalPages: number;
   hasNext: boolean;
   hasPrevious: boolean;
+  categories: string[];
 }
 
 export const getTests = async (labId: string): Promise<TestList[]> => {
@@ -30,10 +31,17 @@ export const getTests = async (labId: string): Promise<TestList[]> => {
   }
 };
 
+export interface GetTestsPaginatedParams {
+  search?: string;
+  category?: string;
+  sortOrder?: 'low' | 'high' | '';
+}
+
 export const getTestsPaginated = async (
   labId: number,
   page: number = 0,
-  size: number = 10
+  size: number = 10,
+  params: GetTestsPaginatedParams = {}
 ): Promise<PaginatedTestResponse> => {
   try {
     const response = await api.get<PaginatedTestResponse | { data: PaginatedTestResponse; message: string; status: string }>(
@@ -43,18 +51,21 @@ export const getTestsPaginated = async (
           labId,
           page,
           size,
+          search: params.search || undefined,
+          category: params.category || undefined,
+          sortOrder: params.sortOrder || undefined,
         },
       }
     );
-    
+
     // Handle both direct response and wrapped response formats
     const data = (response.data as any)?.data ? (response.data as any).data : response.data;
-    
+
     // Ensure the response has the expected structure
     if (!data || typeof data !== 'object') {
       throw new Error('Invalid response format from server');
     }
-    
+
     // Ensure content is always an array
     const paginatedResponse: PaginatedTestResponse = {
       content: Array.isArray(data.content) ? data.content : [],
@@ -64,8 +75,9 @@ export const getTestsPaginated = async (
       totalPages: data.totalPages ?? 0,
       hasNext: data.hasNext ?? false,
       hasPrevious: data.hasPrevious ?? false,
+      categories: Array.isArray(data.categories) ? data.categories : [],
     };
-    
+
     return paginatedResponse;
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while fetching tests.';

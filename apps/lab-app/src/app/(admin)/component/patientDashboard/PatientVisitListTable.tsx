@@ -3,7 +3,7 @@ import { useLabs } from '@/context/LabContext';
 import { Patient, VisitType } from '@/types/patient/patient';
 import { DATE_FILTER_OPTIONS, DateFilterOption, formatDateForAPI, getDateRange } from '@/utils/dateUtils';
 import { Edit, Plus, Search } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { FaFilterCircleXmark } from "react-icons/fa6";
 import { LiaFileInvoiceSolid } from "react-icons/lia";
@@ -74,6 +74,9 @@ interface PatientVisitListTableProps {
   onAddPatientFormChange?: (isOpen: boolean) => void;
 }
 
+const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 350;
+
 const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPatientFormChange }) => {
   const { currentLab, setPatientDetails, patientDetails } = useLabs();
   const { user: loginedUser } = useAuthStore();
@@ -86,6 +89,9 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
   const canAccessCancelledFilter = isAdmin || isSuperAdmin;
 
   const [patientList, setPatientList] = useState<Patient[]>([]);
+  const [currentPage, setCurrentPage] = useState<number>(0); // 0-based, matches backend
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalElements, setTotalElements] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [billStatusFilter, setBillStatusFilter] = useState<string>('');
   const [visitTypeFilter, setVisitTypeFilter] = useState<string>('');
@@ -102,11 +108,22 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
   const [addUpdatePatientListVist, setAddUpdatePatientListVist] = useState<boolean>(false);
   const [viewReportModal, setViewReportModal] = useState<boolean>(false);
   const [viewReportDetails, setViewReportDetails] = useState<Patient | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  // Search box value vs. the debounced term actually sent to the server
+  const [searchInput, setSearchInput] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [deletePatientModal, setDeletePatientModal] = useState<boolean>(false);
   const [duePaymentModal, setDuePaymentModal] = useState<boolean>(false);
   const [cancellationDetailsModal, setCancellationDetailsModal] = useState<boolean>(false);
   const [hasCustomDateInteraction, setHasCustomDateInteraction] = useState<boolean>(false);
+
+  // Debounce the search box so we don't hit the server on every keystroke
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setSearchTerm(searchInput);
+      setCurrentPage(0);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
 
   // Notify parent when the add patient form opens/closes so it can hide surrounding navigation
   useEffect(() => {
@@ -117,64 +134,72 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAddPatientForm]);
 
-  const fetchVisits = async () => {
+  // Fetch a single page from the server - real server-side pagination, search and status filter
+  const fetchVisits = useCallback(async (page: number) => {
+    if (!currentLab?.id) return;
     try {
       setIsLoading(true);
-      if (currentLab?.id) {
-        // Validate custom dates before proceeding
-        if (!validateCustomDates()) {
-          setIsLoading(false);
-          return;
-        }
-
-        const { startDate, endDate } = getDateRange(dateRangeFilter, customStartDate, customEndDate);
-
-        if (!startDate || !endDate) return;
-
-        const formattedStartDate = formatDateForAPI(startDate);
-        const formattedEndDate = formatDateForAPI(endDate);
-
-
-
-        const response = await getAllPatientVisitsByDateRangeoflab(
-          currentLab.id,
-          formattedStartDate,
-          formattedEndDate
-        );
-        setPatientList(response || []);
+      // Validate custom dates before proceeding
+      if (!validateCustomDates()) {
+        setIsLoading(false);
+        return;
       }
+
+      const { startDate, endDate } = getDateRange(dateRangeFilter, customStartDate, customEndDate);
+
+      if (!startDate || !endDate) return;
+
+      const formattedStartDate = formatDateForAPI(startDate);
+      const formattedEndDate = formatDateForAPI(endDate);
+
+      const response = await getAllPatientVisitsByDateRangeoflab(
+        currentLab.id,
+        formattedStartDate,
+        formattedEndDate,
+        page,
+        PAGE_SIZE,
+        searchTerm,
+        statusFilter
+      );
+
+      setPatientList(response.data);
+      setTotalPages(response.totalPages);
+      setTotalElements(response.totalElements);
     } catch (error: unknown) {
       toast.error((error as Error).message || 'An error occurred while fetching visits', {
         autoClose: 2000,
         className: 'bg-red-50 text-red-800'
       });
+      setPatientList([]);
+      setTotalPages(0);
+      setTotalElements(0);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchVisits();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentLab, updatePatientListVist, addUpdatePatientListVist, dateRangeFilter, customStartDate, customEndDate]);
+  }, [currentLab?.id, dateRangeFilter, customStartDate, customEndDate, searchTerm, statusFilter]);
 
-  const { startDate, endDate } = getDateRange(dateRangeFilter, customStartDate, customEndDate);
+  // Fetch on page change, filter change, or when the list is externally invalidated
+  useEffect(() => {
+    fetchVisits(currentPage);
+  }, [fetchVisits, currentPage, updatePatientListVist, addUpdatePatientListVist]);
 
+  // Reset to first page whenever a filter that changes the server-side result set changes
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [dateRangeFilter, customStartDate, customEndDate, statusFilter]);
+
+  // billStatus and visitType aren't filterable server-side yet, so they only narrow the
+  // current page of results (and cancelled visits stay hidden from deskrole users).
   const filteredPatients = (patientList || []).filter((visit) => {
     if (!visit) return false;
     let isValid = true;
 
     if (!visit?.visit) return false;
 
-    const visitDate = new Date(visit?.visit?.visitDate);
-
     // Hide cancelled data for deskrole users
     if (isDeskRole && visit?.visit?.visitStatus?.toUpperCase() === 'CANCELLED') {
       return false;
-    }
-
-    if (statusFilter && visit?.visit?.visitStatus?.toUpperCase() !== statusFilter.toUpperCase()) {
-      isValid = false;
     }
 
     if (billStatusFilter && getBillStatus(visit) !== billStatusFilter) {
@@ -183,23 +208,6 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
 
     if (visitTypeFilter && visit?.visit?.visitType !== visitTypeFilter) {
       isValid = false;
-    }
-
-    if (startDate && visitDate < startDate) {
-      isValid = false;
-    }
-
-    if (endDate && visitDate > endDate) {
-      isValid = false;
-    }
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const nameMatch = `${visit?.firstName || ''} ${visit?.lastName || ''}`.toLowerCase().includes(query);
-      const phoneMatch = visit?.phone?.toLowerCase().includes(query);
-      if (!nameMatch && !phoneMatch) {
-        isValid = false;
-      }
     }
 
     return isValid;
@@ -220,12 +228,6 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
 
     return dateComparison;
   });
-
-  // Use useMemo to create a reset key based on filter changes so NewCommonTable resets to page 1
-  const resetPageKey = useMemo(
-    () => JSON.stringify({ statusFilter, billStatusFilter, visitTypeFilter, dateRangeFilter, customStartDate, customEndDate, searchQuery }),
-    [statusFilter, billStatusFilter, visitTypeFilter, dateRangeFilter, customStartDate, customEndDate, searchQuery]
-  );
 
   const dueVisitsCount = useMemo(
     () => (patientList || []).filter(
@@ -264,8 +266,10 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
     setDateRangeFilter('today');
     setCustomStartDate(null);
     setCustomEndDate(null);
-    setSearchQuery('');
+    setSearchInput('');
+    setSearchTerm('');
     setHasCustomDateInteraction(false);
+    setCurrentPage(0);
   };
 
   function validateCustomDates() {
@@ -622,16 +626,16 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
               <h3 className="text-sm font-medium text-pneutral-900">Total Visits</h3>
-              <p className="mt-4 text-3xl font-semibold text-pneutral-900">{patientList?.length || 0}</p>
+              <p className="mt-4 text-3xl font-semibold text-pneutral-900">{totalElements}</p>
             </div>
 
             <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
-              <h3 className="text-sm font-medium text-pneutral-900">Due Payments</h3>
+              <h3 className="text-sm font-medium text-pneutral-900">Due Payments (this page)</h3>
               <p className="mt-4 text-3xl font-semibold text-info-500">{dueVisitsCount}</p>
             </div>
 
             <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
-              <h3 className="text-sm font-medium text-pneutral-900">Cancelled Visits</h3>
+              <h3 className="text-sm font-medium text-pneutral-900">Cancelled Visits (this page)</h3>
               <p className="mt-4 text-3xl font-semibold text-danger-600">{cancelledVisitsCount}</p>
             </div>
           </div>
@@ -649,9 +653,9 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
               />
               <input
                 type="text"
-                placeholder="Search patients by name or phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search patients by name, phone, or patient code..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="h-10 w-full rounded-lg border border-pneutral-200 pl-10 pr-4 text-sm outline-none focus:border-pneutral-500"
               />
             </div>
@@ -744,7 +748,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
                 </>
               )}
 
-              {(statusFilter || billStatusFilter || visitTypeFilter || dateRangeFilter !== 'today' || searchQuery) && (
+              {(statusFilter || billStatusFilter || visitTypeFilter || dateRangeFilter !== 'today' || searchInput) && (
                 <button
                   onClick={handleClearFilters}
                   className="flex items-center gap-2 rounded-full border border-warning-500 px-4 py-2 text-label-l3 font-medium text-warning-600 hover:bg-warning-50 transition-colors"
@@ -789,9 +793,9 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
                 />
               </svg>
               <p className="mt-4 text-sm font-medium text-pneutral-500">
-                {searchQuery || statusFilter || billStatusFilter || visitTypeFilter ? 'No results found' : 'No patient visits available'}
+                {searchInput || statusFilter || billStatusFilter || visitTypeFilter ? 'No results found' : 'No patient visits available'}
               </p>
-              {(searchQuery || statusFilter || billStatusFilter || visitTypeFilter) && (
+              {(searchInput || statusFilter || billStatusFilter || visitTypeFilter) && (
                 <p className="mt-1 text-xs text-pneutral-400">
                   Try adjusting your search or filter criteria
                 </p>
@@ -801,9 +805,13 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
             <NewCommonTable
               columns={columns}
               data={sortedPatients}
-              pageSize={10}
+              pageSize={PAGE_SIZE}
               showPagination={true}
-              resetPageKey={resetPageKey}
+              serverPagination={{
+                currentPage: currentPage + 1,
+                totalPages,
+                onPageChange: (page) => setCurrentPage(page - 1),
+              }}
             />
           )}
         </div>
@@ -876,7 +884,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
       <CancelPatient
         isOpen={deletePatientModal}
         onClose={() => setDeletePatientModal(false)}
-        onPatientCancelled={fetchVisits}
+        onPatientCancelled={() => fetchVisits(currentPage)}
       />
 
       {/* Cancellation Details Modal */}
@@ -898,7 +906,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
             onClose={() => setDuePaymentModal(false)}
             onPaymentSuccess={() => {
               // Refresh the patient list to get updated data
-              fetchVisits();
+              fetchVisits(currentPage);
               // Close the modal
               setDuePaymentModal(false);
               // Show success message

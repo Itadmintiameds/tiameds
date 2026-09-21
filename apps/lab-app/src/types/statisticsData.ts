@@ -251,6 +251,32 @@ export interface GridReportResponse {
     rows: GridReportRow[];
 }
 
+// ---- GET /lab-super-admin/stats/tests-by-category (standalone) ----
+export interface TestsByCategoryData {
+    summary: TestsSummary;
+    categories: TestCategoryRow[];
+}
+
+// ---- GET /lab-super-admin/stats/packages-summary (standalone) ----
+// Flat totals shape (backend's buildPackagesSummary), distinct from
+// DetailedBilling["packageSummary"]'s nested paymentMode shape.
+export interface PackagesSummaryTotals {
+    totalPackages: number;
+    totalVisits: number;
+    totalRevenue: number;
+    totalDiscount: number;
+    totalPaid: number;
+    totalDue: number;
+    totalCash: number;
+    totalUpi: number;
+    totalCard: number;
+}
+
+export interface PackagesSummaryData {
+    summary: PackagesSummaryTotals;
+    packages: PackageRow[];
+}
+
 export interface AllStatsResponse {
     kpis: AllStatsKpis;
     dashboardSummary: DashboardSummary;

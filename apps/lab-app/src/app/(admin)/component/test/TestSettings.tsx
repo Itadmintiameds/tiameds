@@ -6,4 +6,4 @@ const TestSettings = () => {
   )
 }
 
-export default TestSettings
+export default TestSettings; 

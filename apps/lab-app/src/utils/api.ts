@@ -27,7 +27,7 @@ const handleTokenExpiration = () => {
 
 const api: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-  timeout: 10000,
+  timeout: 120000,
   withCredentials: true, // Critical: This ensures cookies (accessToken, refreshToken) are sent with requests
   headers: {
     'Content-Type': 'application/json',
@@ -37,7 +37,7 @@ const api: AxiosInstance = axios.create({
 // Separate axios instance for refresh calls to avoid infinite loops
 const refreshClient: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-  timeout: 10000,
+  timeout: 120000,
   withCredentials: true, // Ensures refreshToken cookie is sent
   headers: {
     'Content-Type': 'application/json',
