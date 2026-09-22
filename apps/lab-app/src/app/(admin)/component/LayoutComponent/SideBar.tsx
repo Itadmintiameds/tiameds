@@ -370,7 +370,7 @@ const SideBar = ({ isOpen, setIsOpen }: SideBarProps) => {
         <div className="flex flex-col items-center">
           <div className="text-xs text-pneutral-50 mb-1 font-mono flex items-center gap-1">
             <span className="inline-block w-2 h-2 rounded-full bg-secondary-500 animate-pulse"></span>
-            v2.0.0
+            v2.0.1
           </div>
           <div className="text-[10px] text-pneutral-50 tracking-wider">
             © {new Date().getFullYear()} TiaMeds Labs
