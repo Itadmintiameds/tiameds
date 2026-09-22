@@ -99,15 +99,38 @@ export const getAllVisitssamples = async (labId: number, startDate?: string, end
     }
 }
 
-/*  NEW API for collected completed samples */
-export const getCollectedCompleted = async (labId: number, startDate: string, endDate: string): Promise<VisitSampleList[]> => {
+export interface PaginatedVisitSampleResponse {
+    data: VisitSampleList[];
+    totalElements: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+}
+
+// Backend paginates this endpoint server-side (page is 0-based, size defaults to 10).
+// It returns visits with status "Collected" or "Completed" combined; search matches
+// patient first/last name, phone, patient code, or visit code.
+export const getCollectedCompleted = async (
+    labId: number,
+    startDate: string,
+    endDate: string,
+    page: number = 0,
+    size: number = 10,
+    search?: string
+): Promise<PaginatedVisitSampleResponse> => {
 
     try {
-        const params: { [key: string]: string | undefined } = {};
+        const params: { [key: string]: string | number | undefined } = { page, size, search: search || undefined };
         if (startDate) params.startDate = startDate;
         if (endDate) params.endDate = endDate;
-        const response = await api.get<ApiResponse<VisitSampleList[]>>(`/lab/${labId}/patients/collected-completed`, { params });
-        return response.data.data;
+        const response = await api.get<ApiResponse<VisitSampleList[]> & Omit<PaginatedVisitSampleResponse, 'data'>>(`/lab/${labId}/patients/collected-completed`, { params });
+        return {
+            data: response.data.data,
+            totalElements: response.data.totalElements ?? 0,
+            totalPages: response.data.totalPages ?? 0,
+            currentPage: response.data.currentPage ?? page,
+            pageSize: response.data.pageSize ?? size,
+        };
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'An error occurred while fetching collected completed samples.');
     }
