@@ -197,12 +197,22 @@ export const getPatientHealthSnapshot = async (labId: number, patientId: number)
     }
 }
 
-export const getVisitsByDate = async (labId: number, startDate: string, endDate: string) => {
+// Backend paginates this endpoint server-side (page is 0-based, size defaults to 10) and
+// always filters to "Pending" visits only. No search param is supported here yet.
+export const getVisitsByDate = async (
+    labId: number,
+    startDate: string,
+    endDate: string,
+    page: number = 0,
+    size: number = 10
+) => {
     try {
         const response = await api.get(`/lab/${labId}/visitsdatewise`, {
             params: {
                 startDate,
-                endDate
+                endDate,
+                page,
+                size
             }
         });
         return response.data;
