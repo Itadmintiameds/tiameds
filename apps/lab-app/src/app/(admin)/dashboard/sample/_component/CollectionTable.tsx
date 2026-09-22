@@ -162,7 +162,7 @@ const CollectionTable: React.FC<CollectionTableProps> = ({
       );
 
       // Filter out visits where all tests are completed
-      const collectedVisits = response
+      const collectedVisits = response.data
         .filter(visit => {
           if (!visit.testResult || visit.testResult.length === 0) {
             return true;
