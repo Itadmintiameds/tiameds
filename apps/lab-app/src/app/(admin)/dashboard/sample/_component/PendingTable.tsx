@@ -22,6 +22,9 @@ import SampleCollect from './SampleCollect';
 import NewModal from "../../newcommoncomponent/NewModal";
 
 type SortOption = 'patientName' | 'patientId';
+const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 350;
+
 interface PendingTableProps {
   onDataUpdate?: (count: number) => void;
   onDateFilterChange?: (filter: DateFilterOption, startDate?: Date | null, endDate?: Date | null) => void;
@@ -40,6 +43,8 @@ const PendingTable = ({ onDataUpdate,  onDateFilterChange, refreshTrigger,
   const [currentPage, setCurrentPage] = useState<number>(0); // 0-based, matches backend
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalElements, setTotalElements] = useState<number>(0);
+  // Search box value vs. the debounced term actually sent to the server
+  const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState<DateFilterOption>('today');
   const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
@@ -60,6 +65,15 @@ const [expandedSections, setExpandedSections] = useState<{
   [key: string]: boolean;
 }>({});
 
+  // Debounce the search box so we don't hit the server on every keystroke
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setSearchTerm(searchInput);
+      setCurrentPage(0);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
+
   // Report the real total (across all pages) to the parent KPI card, not just this page's count
   useEffect(() => {
     if (onDataUpdate) {
@@ -73,8 +87,8 @@ const [expandedSections, setExpandedSections] = useState<{
   }
 }, [dateFilter, customStartDate, customEndDate, onDateFilterChange]);
 
-  // Fetch a single page from the server - real server-side pagination.
-  // The backend already filters to "Pending" visits only; no search param is supported here yet.
+  // Fetch a single page from the server - real server-side pagination + search.
+  // The backend always filters to "Pending" visits; search matches name/phone/patient code.
   const fetchVisits = useCallback(async (page: number) => {
     if (!currentLab?.id) return;
 
@@ -89,7 +103,8 @@ const [expandedSections, setExpandedSections] = useState<{
         formatDateForAPI(startDate),
         formatDateForAPI(endDate),
         page,
-        10
+        PAGE_SIZE,
+        searchTerm
       );
 
       const visits = response?.data || [];
@@ -129,7 +144,7 @@ const [expandedSections, setExpandedSections] = useState<{
       setIsFetching(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentLab?.id, dateFilter, customStartDate, customEndDate]);
+  }, [currentLab?.id, dateFilter, customStartDate, customEndDate, searchTerm]);
 
   // Fetch on page change, or when the list is externally invalidated
   useEffect(() => {
@@ -141,23 +156,9 @@ const [expandedSections, setExpandedSections] = useState<{
     setCurrentPage(0);
   }, [dateFilter, customStartDate, customEndDate]);
 
-  // Search and sort only apply to the current page - the backend doesn't accept a search
-  // param on this endpoint yet, so results outside the loaded page won't be matched.
+  // Search is applied server-side; sort by name/ID only needs to run on the current page
   useEffect(() => {
-    let filtered = patientList;
-
-    // Apply search filter
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = patientList.filter(patient =>
-        patient.visitDetailDto.visitCode?.toLowerCase().includes(searchLower) ||
-        `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(searchLower) ||
-        patient.id.toString().includes(searchTerm)
-      );
-    }
-
-    // Apply sorting
-    filtered = [...filtered].sort((a, b) => {
+    const filtered = [...patientList].sort((a, b) => {
       if (sortBy === 'patientName') {
         const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
         const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
@@ -169,7 +170,7 @@ const [expandedSections, setExpandedSections] = useState<{
     });
 
     setFilteredPatients(filtered);
-  }, [patientList, searchTerm, sortBy]);
+  }, [patientList, sortBy]);
 
   // Get test items for a patient
   const getPatientTestItems = (patient: Patient) => {
@@ -485,9 +486,9 @@ const [expandedSections, setExpandedSections] = useState<{
             />
             <input
               type="text"
-              placeholder="Search by ID or Name"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name, phone, or patient code"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="h-10 w-full rounded-lg border border-pneutral-200 pl-10 pr-4 text-sm outline-none focus:border-pneutral-500"
             />
           </div>
@@ -560,9 +561,9 @@ const [expandedSections, setExpandedSections] = useState<{
         />
       </svg>
       <p className="mt-4 text-sm font-medium text-pneutral-500">
-        {searchTerm ? `No results found for "${searchTerm}"` : "No pending samples found"}
+        {searchInput ? `No results found for "${searchInput}"` : "No pending samples found"}
       </p>
-      {searchTerm && (
+      {searchInput && (
         <p className="mt-1 text-xs text-pneutral-400">
           Try adjusting your search or filter criteria
         </p>
@@ -572,7 +573,7 @@ const [expandedSections, setExpandedSections] = useState<{
     <NewCommonTable
       columns={columns}
       data={filteredPatients}
-      pageSize={10}
+      pageSize={PAGE_SIZE}
       showPagination={true}
       serverPagination={{
         currentPage: currentPage + 1,
