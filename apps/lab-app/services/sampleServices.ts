@@ -108,17 +108,19 @@ export interface PaginatedVisitSampleResponse {
 }
 
 // Backend paginates this endpoint server-side (page is 0-based, size defaults to 10).
-// It returns visits with status "Collected" or "Completed" combined - no search param yet.
+// It returns visits with status "Collected" or "Completed" combined; search matches
+// patient first/last name, phone, patient code, or visit code.
 export const getCollectedCompleted = async (
     labId: number,
     startDate: string,
     endDate: string,
     page: number = 0,
-    size: number = 10
+    size: number = 10,
+    search?: string
 ): Promise<PaginatedVisitSampleResponse> => {
 
     try {
-        const params: { [key: string]: string | number | undefined } = { page, size };
+        const params: { [key: string]: string | number | undefined } = { page, size, search: search || undefined };
         if (startDate) params.startDate = startDate;
         if (endDate) params.endDate = endDate;
         const response = await api.get<ApiResponse<VisitSampleList[]> & Omit<PaginatedVisitSampleResponse, 'data'>>(`/lab/${labId}/patients/collected-completed`, { params });
