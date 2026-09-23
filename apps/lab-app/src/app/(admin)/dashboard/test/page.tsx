@@ -35,6 +35,7 @@ const Page = () => {
   const filteredTabs = allTabs.filter(tab => {
     if (isSuperAdmin || isAdmin) return true;
     if (isTechnician) return tab.id === 'test' || tab.id === 'test-referance-point';
+    if (isDeskRole) return tab.id === 'test';
     return false;
   });
 
@@ -54,20 +55,7 @@ const Page = () => {
   };
 
   // Authorization logic
-  if (isDeskRole && !isAdmin && !isTechnician && !isSuperAdmin) {
-    return (
-      <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
-        <Unauthorised
-          username={loginedUser?.username || ''}
-          currentRoles={roles}
-          notallowedRoles={['DESKROLE']}
-          allowedRoles={['TECHNICIAN', 'ADMIN', 'SUPERADMIN']}
-        />
-      </div>
-    );
-  }
-
-  const isAuthorized = isAdmin || isTechnician || isSuperAdmin;
+  const isAuthorized = isAdmin || isTechnician || isSuperAdmin || isDeskRole;
   if (!isAuthorized) {
     return (
       <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
@@ -75,7 +63,7 @@ const Page = () => {
           username={loginedUser?.username || ''}
           currentRoles={roles}
           notallowedRoles={roles}
-          allowedRoles={['TECHNICIAN', 'ADMIN', 'SUPER_ADMIN']}
+          allowedRoles={['TECHNICIAN', 'ADMIN', 'SUPER_ADMIN', 'DESKROLE']}
         />
       </div>
     );
