@@ -55,23 +55,14 @@ const baseNavigation: BaseNavigationItem[] = [
       href: "/dashboard/pendingsamples?tab=completed",
       icon: ClipboardListIcon,
     },
-    // {
-    //   name: "New Sample Configuration",
-    //   href: "/dashboard/pendingsamples?tab=configuration",
-    //   icon: ClipboardListIcon,
-    // },
   ],
 },
-//   {
-//   name: "Pending Samples",
-//   href: "/dashboard/pendingsamples",
-//   icon: ClipboardListIcon,
-// },
+
   {
     name: "Lab Management",
     icon: FlaskConical,
     children: [
-      { name: "Tests", href: "/dashboard/test", icon: ClipboardListIcon, allowedRoles: ["SUPERADMIN", "ADMIN", "TECHNICIAN"] },
+      { name: "Tests", href: "/dashboard/test", icon: ClipboardListIcon, allowedRoles: ["SUPERADMIN", "ADMIN", "TECHNICIAN", "DESKROLE"] },
       { name: "Doctors", href: "/dashboard/doctor", icon: FaUserDoctor },
       { name: "Sample List", href: "/dashboard/sample/add", icon: FaPeriscope },
       // { name: "Sample Collection", href: "/dashboard/sample", icon: ClipboardListIcon },

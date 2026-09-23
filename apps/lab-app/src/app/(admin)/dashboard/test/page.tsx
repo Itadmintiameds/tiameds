@@ -38,7 +38,8 @@ const Page = () => {
   const filteredTabs = allTabs.filter(tab => {
     if (isSuperAdmin || isAdmin) return true; // Admins see all tabs
     if (isTechnician) return tab.id === 'test' || tab.id === 'test-referance-point';
-    return false; // Desk role and others see no tabs
+    if (isDeskRole) return tab.id === 'test';
+    return false;
   });
 
   // Set default tab if selected is not allowed
@@ -57,22 +58,8 @@ const Page = () => {
     }, 300);
   };
 
-  // Authorization for Desk Role (unless they also hold a higher role)
-  if (isDeskRole && !isAdmin && !isTechnician && !isSuperAdmin) {
-    return (
-      <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
-        <Unauthorised
-          username={loginedUser?.username || ''}
-          currentRoles={roles}
-          notallowedRoles={['DESKROLE']}
-          allowedRoles={['TECHNICIAN', 'ADMIN', 'SUPERADMIN']}
-        />
-      </div>
-    );
-  }
-
-  // Check if user has at least one authorized role
-  const isAuthorized = isAdmin || isTechnician || isSuperAdmin;
+  // Authorization logic
+  const isAuthorized = isAdmin || isTechnician || isSuperAdmin || isDeskRole;
   if (!isAuthorized) {
     return (
       <div className="w-full p-6 mt-4 border-2 border-gray-300 rounded-lg">
@@ -80,7 +67,7 @@ const Page = () => {
           username={loginedUser?.username || ''}
           currentRoles={roles}
           notallowedRoles={roles}
-          allowedRoles={['TECHNICIAN', 'ADMIN', 'SUPER_ADMIN']}
+          allowedRoles={['TECHNICIAN', 'ADMIN', 'SUPER_ADMIN', 'DESKROLE']}
         />
       </div>
     );
