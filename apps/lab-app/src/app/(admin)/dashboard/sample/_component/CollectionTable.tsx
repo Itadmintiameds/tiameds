@@ -155,14 +155,26 @@ const CollectionTable: React.FC<CollectionTableProps> = ({
 
       if (!startDate || !endDate) return;
 
-      const response = await getCollectedCompleted(
-        currentLab.id,
-        formatDateForAPI(startDate),
-        formatDateForAPI(endDate),
-      );
+      // TEMP (until backend supports a status filter): the endpoint is paginated and
+      // mixes collected + completed visits, so fetch every page before filtering.
+      const PAGE_SIZE = 100;
+      const apiStart = formatDateForAPI(startDate);
+      const apiEnd = formatDateForAPI(endDate);
+
+      const firstPage = await getCollectedCompleted(currentLab.id, apiStart, apiEnd, 0, PAGE_SIZE);
+      let allVisits = firstPage.data ?? [];
+
+      if (firstPage.totalPages > 1) {
+        const remainingPages = await Promise.all(
+          Array.from({ length: firstPage.totalPages - 1 }, (_, i) =>
+            getCollectedCompleted(currentLab.id, apiStart, apiEnd, i + 1, PAGE_SIZE)
+          )
+        );
+        allVisits = allVisits.concat(...remainingPages.map((page) => page.data ?? []));
+      }
 
       // Filter out visits where all tests are completed
-      const collectedVisits = response.data
+      const collectedVisits = allVisits
         .filter(visit => {
           if (!visit.testResult || visit.testResult.length === 0) {
             return true;
