@@ -1,72 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import { callStatsBackend, refreshAccessTokenDeduped } from "@/lib/stats/superAdminBackend";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// SuperAdminStatsController on the backend authenticates via a mandatory
-// `Authorization` header instead of the httpOnly accessToken cookie every
-// other endpoint uses. The browser can never read that cookie to build the
-// header itself (that's the point of httpOnly), but this route runs on the
-// Next.js server, which receives the cookie with every request regardless.
-// So it re-attaches it as a Bearer header and proxies through to the backend.
-
-const backendBaseUrl = process.env.NEXT_PUBLIC_API_URL;
-
-type RefreshResult = { accessToken: string | null; setCookies: string[] };
-
-// Refresh tokens are rotated server-side on every use (see api.ts), so if
-// SuperAdminStats.tsx's Promise.allSettled fan-out of ~13 calls all land
-// with an expired accessToken at once, they must not each independently
-// hit /auth/refresh - the second call would invalidate the first's rotated
-// refreshToken and fail. Dedup within this server process the same way
-// utils/api.ts dedupes concurrent browser-side refreshes.
-let refreshInFlight: Promise<RefreshResult> | null = null;
-
-async function doRefresh(refreshToken: string): Promise<RefreshResult> {
-  try {
-    const res = await fetch(`${backendBaseUrl}/auth/refresh`, {
-      method: "POST",
-      headers: { Cookie: `refreshToken=${refreshToken}` },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      return { accessToken: null, setCookies: [] };
-    }
-
-    const setCookies = res.headers.getSetCookie();
-    const accessTokenCookie = setCookies.find((c) => c.startsWith("accessToken="));
-    const accessToken = accessTokenCookie
-      ? accessTokenCookie.split(";")[0].split("=").slice(1).join("=")
-      : null;
-
-    return { accessToken, setCookies };
-  } catch {
-    return { accessToken: null, setCookies: [] };
-  }
-}
-
-function refreshAccessTokenDeduped(refreshToken: string): Promise<RefreshResult> {
-  if (!refreshInFlight) {
-    refreshInFlight = doRefresh(refreshToken).finally(() => {
-      refreshInFlight = null;
-    });
-  }
-  return refreshInFlight;
-}
-
-async function callBackend(path: string, search: string, accessToken: string) {
-  return fetch(`${backendBaseUrl}/lab-super-admin/stats/${path}${search}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    cache: "no-store",
-  });
-}
+// Proxies to /lab-super-admin/stats/*, turning the httpOnly accessToken cookie
+// into the Bearer header the backend requires (see lib/stats/superAdminBackend.ts).
 
 async function proxy(req: NextRequest, path: string[]) {
   const cookieStore = cookies();
@@ -95,7 +36,7 @@ async function proxy(req: NextRequest, path: string[]) {
   const search = req.nextUrl.search;
 
   try {
-    let backendRes = await callBackend(joinedPath, search, accessToken);
+    let backendRes = await callStatsBackend(joinedPath, search, accessToken);
 
     // Access token was present but the backend rejected it as stale -
     // refresh once and retry, mirroring the reactive 401 handler in api.ts.
@@ -104,7 +45,7 @@ async function proxy(req: NextRequest, path: string[]) {
       if (result.accessToken) {
         accessToken = result.accessToken;
         refreshedCookies = result.setCookies;
-        backendRes = await callBackend(joinedPath, search, accessToken);
+        backendRes = await callStatsBackend(joinedPath, search, accessToken);
       }
     }
 

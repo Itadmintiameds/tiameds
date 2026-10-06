@@ -12,6 +12,7 @@ import {
   ChevronUp,
   ChevronDown,
   RefreshCw,
+  Download,
 } from "lucide-react";
 
 import {
@@ -49,7 +50,6 @@ import {
   DetailedBilling,
   EarningsByCategoryData,
   GridReportResponse,
-  GridReportRow,
   LabPerformanceRow,
   RevenueByLabRow,
   RoleLabWiseTotal,
@@ -57,12 +57,19 @@ import {
   TopReferringDoctor,
 } from "@/types/statisticsData";
 import Loader from "../../common/Loader";
+import { splitTestNames } from "@/lib/stats/gridReportCsv";
 import {
-  downloadCSV,
-  formatAmount as formatCsvAmount,
-  formatDate as formatCsvDate,
-  generateCSVFilename,
-} from "@/utils/csvUtils";
+  buildBillingSummaryCsv,
+  buildPackagesSummaryCsv,
+  buildRevenueByLabCsv,
+  buildRevenueByTestCsv,
+  buildRevenueTrendCsv,
+  buildTestsByCategoryCsv,
+  buildTopDoctorsCsv,
+  toExportLabLabel,
+} from "@/lib/stats/dashboardCardCsv";
+import { downloadCSV, generateCSVFilename } from "@/utils/csvUtils";
+import { toast } from "react-toastify";
 
 type DateFilterType = "currentFY" | "week" | "month" | "year" | "custom";
 
@@ -275,55 +282,6 @@ const getVisitStatusColorClass = (status?: string): string => {
   }
 };
 
-// Builds the CSV for the Billing Grid Report table/export - one row per visit/billing record.
-const buildGridReportCsv = (rows: GridReportRow[]): string => {
-  const headers = [
-    "SI No.",
-    "Visit Code",
-    "Patient Name",
-    "Patient Phone",
-    "Doctor Name",
-    "Visit Type",
-    "Visit Status",
-    "Billing Code",
-    "Billing Date",
-    "Payment Status",
-    "Payment Method",
-    "Total Amount",
-    "Discount",
-    "Net Amount",
-    "Paid Amount",
-    "Due Amount",
-    "Lab Name",
-  ];
-
-  const csvRows = rows.map((row, index) =>
-    [
-      index + 1,
-      row.visitCode,
-      row.patientName,
-      row.patientPhone,
-      row.doctorName || "N/A",
-      row.visitType,
-      row.visitStatus,
-      row.billingCode,
-      formatCsvDate(row.billingDate),
-      row.paymentStatus,
-      row.paymentMethod,
-      formatCsvAmount(row.totalAmount),
-      formatCsvAmount(row.discount),
-      formatCsvAmount(row.netAmount),
-      formatCsvAmount(row.paidAmount),
-      formatCsvAmount(row.dueAmount),
-      row.labName,
-    ]
-      .map((field) => `"${String(field ?? "").replace(/"/g, '""')}"`)
-      .join(",")
-  );
-
-  return [headers.join(","), ...csvRows].join("\n");
-};
-
 // Format currency
 const formatCurrency = (amount: number): string => {
   if (amount >= 100000) {
@@ -375,6 +333,9 @@ const GRID_PAGE_SIZE = 50;
 // already fetched in one call by getEarningsByCategory).
 const REVENUE_BY_TEST_PAGE_SIZE = 8;
 
+// Top Referring Doctors: ask for every doctor rather than the API's default top 10.
+const ALL_DOCTORS_LIMIT = 1000;
+
 // Defaults for the nested pieces of DetailedBilling before the first fetch resolves.
 const emptyPaymentMode = { cash: 0, upi: 0, card: 0 };
 const emptyBillingSummary: DetailedBilling["summary"] = {
@@ -405,6 +366,29 @@ const emptyPackageSummary: DetailedBilling["packageSummary"] = {
   due: 0,
   paymentMode: emptyPaymentMode,
 };
+
+// Small download icon shown in a dashboard card header; exports that card's
+// currently loaded data (its own date filter + selected lab) as CSV.
+const CardDownloadButton = ({
+  onClick,
+  disabled,
+  label,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  label: string;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    title={label}
+    aria-label={label}
+    className="rounded-md border border-success-500 bg-[#55D400] p-1 text-pneutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    <Download size={14} />
+  </button>
+);
 
 const SuperAdminStats = () => {
   const { labs } = useLabs();
@@ -546,6 +530,8 @@ const SuperAdminStats = () => {
 
   // Revenue Trend (Top 5 Labs) card
   const [revenueByLab, setRevenueByLab] = useState<RevenueByLabRow[]>([]);
+  // Unsliced list (every lab) - the card draws only the top 5, the CSV exports all.
+  const [allRevenueByLab, setAllRevenueByLab] = useState<RevenueByLabRow[]>([]);
   const [totalLabsForRevenue, setTotalLabsForRevenue] = useState<number>(0);
 
   const [labPerformance, setLabPerformance] = useState<LabPerformanceRow[]>([]);
@@ -560,7 +546,8 @@ const SuperAdminStats = () => {
   const [gridData, setGridData] = useState<GridReportResponse>(emptyGridData);
   const [gridLoading, setGridLoading] = useState<boolean>(true);
   const [gridPage, setGridPage] = useState(0);
-  const [csvDownloading, setCsvDownloading] = useState(false);
+  // Billing Report rows whose "Test Names" dropdown is expanded (keyed by billingId/index)
+  const [expandedGridTests, setExpandedGridTests] = useState<Record<string, boolean>>({});
 
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   // "Updated: hh:mm:ss" display is commented out for now (refresh button covers it) -
@@ -725,11 +712,13 @@ const SuperAdminStats = () => {
       const allLabsRevenue = rows || [];
       setTotalLabsForRevenue(allLabsRevenue.length);
       setRevenueByLab(allLabsRevenue.slice(0, 5));
+      setAllRevenueByLab(allLabsRevenue);
     } catch (error) {
       console.error("Error fetching revenue by lab:", error);
       setRevenueByLabError(error instanceof Error ? error.message : "Failed to load revenue by lab");
       setTotalLabsForRevenue(0);
       setRevenueByLab([]);
+      setAllRevenueByLab([]);
     } finally {
       setRevenueByLabLoading(false);
     }
@@ -795,8 +784,9 @@ const SuperAdminStats = () => {
     setTopDoctorsLoading(true);
     setTopDoctorsError(null);
     try {
-      const rows = await getTopReferringDoctors(labIdParam, startDate, endDate);
-      setTopDoctors((rows || []).slice(0, 5));
+      // Every referring doctor (not the API's default top 10); the card's table scrolls after ~5 rows.
+      const rows = await getTopReferringDoctors(labIdParam, startDate, endDate, ALL_DOCTORS_LIMIT);
+      setTopDoctors(rows || []);
     } catch (error) {
       console.error("Error fetching top referring doctors:", error);
       setTopDoctorsError(error instanceof Error ? error.message : "Failed to load top referring doctors");
@@ -932,31 +922,80 @@ const SuperAdminStats = () => {
     fetchLabPerformanceData, fetchTopDoctorsData,
   ]);
 
-  // CSV export fetches all pages sequentially to avoid concurrent load, then downloads.
-  const handleDownloadGridCsv = async () => {
+  // Hands the export to the browser's own download manager: the server route streams
+  // the CSV page by page, so it appears in Downloads immediately and the user can
+  // keep working while large exports finish in the background.
+  const handleDownloadGridCsv = () => {
     if (gridData.totalRecords === 0) return;
-    setCsvDownloading(true);
-    try {
-      const range = getDateRange(gridFilter, gridCustomRange);
-      const labIdParam = selectedLabId === "all" ? undefined : selectedLabId;
-      const DOWNLOAD_PAGE_SIZE = 200;
+    const range = getDateRange(gridFilter, gridCustomRange);
+    const params = new URLSearchParams();
+    if (selectedLabId !== "all") params.set("labId", String(selectedLabId));
+    if (range.startDate) params.set("startDate", range.startDate);
+    if (range.endDate) params.set("endDate", range.endDate);
+    params.set("labLabel", toExportLabLabel(selectedLabName));
 
-      const firstPage = await getGridReport(labIdParam, range.startDate, range.endDate, 0, DOWNLOAD_PAGE_SIZE);
-      let allRows: GridReportRow[] = [...firstPage.rows];
+    const link = document.createElement("a");
+    link.href = `/api/superadmin-stats/grid-export?${params.toString()}`;
+    link.download = "";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-      for (let i = 1; i < firstPage.totalPages; i++) {
-        const page = await getGridReport(labIdParam, range.startDate, range.endDate, i, DOWNLOAD_PAGE_SIZE);
-        allRows = allRows.concat(page.rows);
-      }
-
-      const csv = buildGridReportCsv(allRows);
-      downloadCSV(csv, generateCSVFilename("billing-grid-report"));
-    } catch (error) {
-      console.error("Error downloading billing grid CSV:", error);
-    } finally {
-      setCsvDownloading(false);
-    }
+    toast.info("Downloading file");
   };
+
+  // Same native-download approach as the Billing Report; exports every lab, not just the top 6 shown.
+  const handleDownloadLabPerformanceCsv = () => {
+    if (labPerformance.length === 0) return;
+    const range = getDateRange(performanceFilter, performanceCustomRange);
+    const params = new URLSearchParams();
+    if (selectedLabId !== "all") params.set("labId", String(selectedLabId));
+    if (range.startDate) params.set("startDate", range.startDate);
+    if (range.endDate) params.set("endDate", range.endDate);
+    params.set("labLabel", toExportLabLabel(selectedLabName));
+
+    const link = document.createElement("a");
+    link.href = `/api/superadmin-stats/lab-performance-export?${params.toString()}`;
+    link.download = "";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.info("Downloading file");
+  };
+
+  // Card CSV exports (download icon in each card header). These cards already hold
+  // their data for their own date filter + the selected lab, so the file is built
+  // client-side from that state - no extra API call.
+  const exportCardCsv = (filePrefix: string, csv: string) => {
+    downloadCSV(csv, generateCSVFilename(`${filePrefix}-${toExportLabLabel(selectedLabName)}`));
+    toast.info("Downloading file");
+  };
+
+  const handleDownloadRevenueTrendCsv = () =>
+    exportCardCsv("revenue-trend", buildRevenueTrendCsv(revenueChartData, revenueTrendTotal));
+
+  const handleDownloadRevenueByLabCsv = () =>
+    exportCardCsv("revenue-trend-lab-wise", buildRevenueByLabCsv(allRevenueByLab));
+
+  const handleDownloadTestsByCategoryCsv = () =>
+    exportCardCsv("test-by-category", buildTestsByCategoryCsv(testCategories));
+
+  // Follows the card's category dropdown and sort order (all pages, not just the visible one).
+  const handleDownloadRevenueByTestCsv = () =>
+    exportCardCsv(
+      "revenue-by-test",
+      buildRevenueByTestCsv(sortedTests, selectedCategory === "all" ? "" : selectedCategory)
+    );
+
+  const handleDownloadPackagesSummaryCsv = () =>
+    exportCardCsv("packages-summary", buildPackagesSummaryCsv(packages));
+
+  const handleDownloadBillingSummaryCsv = () =>
+    exportCardCsv("billing-summary", buildBillingSummaryCsv(billingSummary));
+
+  const handleDownloadTopDoctorsCsv = () =>
+    exportCardCsv("top-referring-doctors", buildTopDoctorsCsv(topDoctors));
 
   // Format data for category pie chart
   const getCategoryChartData = () => {
@@ -1444,9 +1483,16 @@ const SuperAdminStats = () => {
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-                {selectedLabName ? `Revenue Trend "${selectedLabName}"` : "Revenue Trend (All Labs)"}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+                  {selectedLabName ? `Revenue Trend "${selectedLabName}"` : "Revenue Trend (All Labs)"}
+                </h2>
+                <CardDownloadButton
+                  onClick={handleDownloadRevenueTrendCsv}
+                  disabled={revenueTrendLoading || revenueChartData.length === 0}
+                  label="Download Revenue Trend as CSV"
+                />
+              </div>
               <p className="mt-1 text-p3 font-semibold text-pneutral-900">
                 Total Revenue
                 <span className="ml-1 font-semibold text-pneutral-900">
@@ -1528,13 +1574,20 @@ const SuperAdminStats = () => {
         {/* Revenue Trend Top Labs */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-              {selectedLabName
-                ? `Revenue Trend "${selectedLabName}"`
-                : totalLabsForRevenue > 5
-                  ? "Revenue Trend (Top 5 Labs)"
-                  : "Revenue Trend Lab Wise"}
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+                {selectedLabName
+                  ? `Revenue Trend "${selectedLabName}"`
+                  : totalLabsForRevenue > 5
+                    ? "Revenue Trend (Top 5 Labs)"
+                    : "Revenue Trend Lab Wise"}
+              </h2>
+              <CardDownloadButton
+                onClick={handleDownloadRevenueByLabCsv}
+                disabled={revenueByLabLoading || allRevenueByLab.length === 0}
+                label="Download lab-wise revenue as CSV"
+              />
+            </div>
             <div className="flex items-center gap-3">
               {renderFilterDropdown(
                 topLabsFilter,
@@ -1600,7 +1653,14 @@ const SuperAdminStats = () => {
         {/* Test By Category - Pie Chart */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-p4 font-heading font-semibold text-pneutral-900">Test by Category</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-p4 font-heading font-semibold text-pneutral-900">Test by Category</h2>
+              <CardDownloadButton
+                onClick={handleDownloadTestsByCategoryCsv}
+                disabled={testCategoriesLoading || testCategories.length === 0}
+                label="Download Test by Category as CSV"
+              />
+            </div>
             {renderFilterDropdown(
               categoryFilter,
               setCategoryFilter,
@@ -1677,9 +1737,16 @@ const SuperAdminStats = () => {
         {/* Revenue by Test - Table */}
         <div className="flex flex-col rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-              Revenue by Test
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+                Revenue by Test
+              </h2>
+              <CardDownloadButton
+                onClick={handleDownloadRevenueByTestCsv}
+                disabled={earningsLoading || sortedTests.length === 0}
+                label="Download Revenue by Test as CSV"
+              />
+            </div>
             <div className="flex items-center gap-2">
               <select
                 value={selectedCategory}
@@ -1708,6 +1775,7 @@ const SuperAdminStats = () => {
                   <tr className="border-b border-pneutral-100 bg-pneutral-50">
                     <th className="px-4 py-2 text-left text-label-l3 font-semibold text-pneutral-900">SI No.</th>
                     <th className="px-4 py-2 text-left text-label-l3 font-semibold text-pneutral-900">Test Name</th>
+                    <th className="px-4 py-2 text-right text-label-l3 font-semibold text-pneutral-900">Count</th>
                     <th className="px-4 py-2 text-right text-label-l3 font-semibold text-pneutral-900">Paid</th>
                     <th className="px-4 py-2 text-right text-label-l3 font-semibold text-pneutral-900">Due</th>
                     <th
@@ -1729,8 +1797,14 @@ const SuperAdminStats = () => {
                       <td className="px-4 py-2 text-p3 text-pneutral-900">
                         {revenueByTestPage * REVENUE_BY_TEST_PAGE_SIZE + index + 1}
                       </td>
-                      <td className="px-4 py-2 text-p3 font-medium text-pneutral-900">
+                      <td
+                        className="px-4 py-2 text-p3 font-medium text-pneutral-900 max-w-45 truncate"
+                        title={test.testName || "Unknown"}
+                      >
                         {test.testName || "Unknown"}
+                      </td>
+                      <td className="px-4 py-2 text-p3 text-right text-pneutral-900">
+                        {(test.orderedCount ?? 0).toLocaleString()}
                       </td>
                       <td className="px-4 py-2 text-p3 text-right text-pneutral-900">
                         ₹{test.revenue?.toLocaleString() || "0"}
@@ -1791,9 +1865,16 @@ const SuperAdminStats = () => {
         {/* Packages Summary - 33% */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-              Packages Summary
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+                Packages Summary
+              </h2>
+              <CardDownloadButton
+                onClick={handleDownloadPackagesSummaryCsv}
+                disabled={packagesSummaryLoading || packages.length === 0}
+                label="Download Packages Summary as CSV"
+              />
+            </div>
             {renderFilterDropdown(
               packagesFilter,
               setPackagesFilter,
@@ -1873,10 +1954,15 @@ const SuperAdminStats = () => {
 
         {/* Billing Summary - 33% */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
-          <div className="px-2 pt-2">
+          <div className="flex items-center gap-2 px-2 pt-2">
             <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
               Billing Summary
             </h2>
+            <CardDownloadButton
+              onClick={handleDownloadBillingSummaryCsv}
+              disabled={detailedBillingLoading || !!detailedBillingError}
+              label="Download Billing Summary as CSV"
+            />
           </div>
           <div className="flex items-center justify-between px-2 pb-2">
             {detailedBillingLoading ? (
@@ -1951,9 +2037,16 @@ const SuperAdminStats = () => {
         {/* Top Referring Doctors - 34% */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="flex items-center justify-between px-2 pt-1">
-            <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-              Top Referring Doctors
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+                Top Referring Doctors
+              </h2>
+              <CardDownloadButton
+                onClick={handleDownloadTopDoctorsCsv}
+                disabled={topDoctorsLoading || topDoctors.length === 0}
+                label="Download Top Referring Doctors as CSV"
+              />
+            </div>
             {renderFilterDropdown(
               doctorsFilter,
               setDoctorsFilter,
@@ -1985,6 +2078,12 @@ const SuperAdminStats = () => {
                   <tr>
                     <td colSpan={3} className="px-4 py-8 text-center text-danger-500">{topDoctorsError}</td>
                   </tr>
+                ) : topDoctors.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-8 text-center text-p3 text-pneutral-500">
+                      No referring doctor found
+                    </td>
+                  </tr>
                 ) : (
                   doctorsData.map((doctor) => (
                     <tr key={doctor.id} className="border-b border-pneutral-100 transition hover:bg-pneutral-50">
@@ -2002,17 +2101,27 @@ const SuperAdminStats = () => {
 
       {/* Lab Performance Summary */}
       <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
           <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
             Lab Performance Summary
           </h2>
-          {renderFilterDropdown(
-            performanceFilter,
-            setPerformanceFilter,
-            performanceCustomRange,
-            setPerformanceCustomRange,
-            false
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadLabPerformanceCsv}
+              disabled={labPerformanceLoading || labPerformance.length === 0}
+              className="rounded-lg border border-success-500 bg-[#55D400] px-4 py-2 text-p3 font-medium text-pneutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Download as CSV
+            </button>
+            {renderFilterDropdown(
+              performanceFilter,
+              setPerformanceFilter,
+              performanceCustomRange,
+              setPerformanceCustomRange,
+              false
+            )}
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full border-separate border-spacing-y-0">
@@ -2081,10 +2190,10 @@ const SuperAdminStats = () => {
             <button
               type="button"
               onClick={handleDownloadGridCsv}
-              disabled={gridLoading || csvDownloading || gridData.totalRecords === 0}
+              disabled={gridLoading || gridData.totalRecords === 0}
               className="rounded-lg border border-success-500 bg-[#55D400] px-4 py-2 text-p3 font-medium text-pneutral-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {csvDownloading ? "Exporting..." : "Download as CSV"}
+              Download as CSV
             </button>
             {renderFilterDropdown(
               gridFilter,
@@ -2104,6 +2213,7 @@ const SuperAdminStats = () => {
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Patient Name</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Phone</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Doctor</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Test Names</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Type</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Status</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Billing Code</th>
@@ -2121,7 +2231,7 @@ const SuperAdminStats = () => {
             <tbody>
               {gridLoading ? (
                 <tr>
-                  <td colSpan={17} className="px-4 py-8 text-center text-pneutral-500">
+                  <td colSpan={18} className="px-4 py-8 text-center text-pneutral-500">
                     Loading...
                   </td>
                 </tr>
@@ -2135,6 +2245,37 @@ const SuperAdminStats = () => {
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.patientName}</td>
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.patientPhone}</td>
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.doctorName || "N/A"}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900 min-w-40">
+                      {(() => {
+                        const testList = splitTestNames(row.testNames);
+                        if (testList.length === 0) return "N/A";
+                        if (testList.length === 1) return testList[0];
+                        const key = String(row.billingId ?? index);
+                        const isOpen = expandedGridTests[key] || false;
+                        return (
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedGridTests((prev) => ({ ...prev, [key]: !prev[key] }))}
+                              className={`flex w-full items-center justify-between gap-2 rounded-lg border border-pneutral-100 bg-pneutral-50 px-3 py-1 text-p3 text-pneutral-900
+                              ${isOpen ? "rounded-b-none border-b-0" : ""}`}
+                            >
+                              <span>{testList.length} Tests</span>
+                              {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                            {isOpen && (
+                              <div className="w-full rounded-lg rounded-t-none border border-t-0 border-pneutral-100 bg-base-white px-3 py-1">
+                                {testList.map((name, i) => (
+                                  <p key={i} className="py-0.5 text-p3 text-pneutral-900">
+                                    {name}{i < testList.length - 1 ? "," : ""}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.visitType}</td>
                     <td className={`border-b border-pneutral-100 px-4 py-2 text-p3 font-medium ${getVisitStatusColorClass(row.visitStatus)}`}>
                       {row.visitStatus}
@@ -2163,7 +2304,7 @@ const SuperAdminStats = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={17} className="px-4 py-8 text-center text-pneutral-500">
+                  <td colSpan={18} className="px-4 py-8 text-center text-pneutral-500">
                     No billing records found
                   </td>
                 </tr>

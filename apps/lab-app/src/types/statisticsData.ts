@@ -199,6 +199,7 @@ export interface TopReferringDoctor {
     speciality: string;
     patientCount: number;
     labCount: number;
+    totalTests: number;
     revenue: number;
 }
 
@@ -241,6 +242,8 @@ export interface GridReportRow {
     billingDate: string;
     patientPhone: string;
     doctorName: string;
+    // Comma-separated test names for the visit, e.g. "CBC, Lipid Profile"
+    testNames?: string | null;
 }
 
 export interface GridReportResponse {
