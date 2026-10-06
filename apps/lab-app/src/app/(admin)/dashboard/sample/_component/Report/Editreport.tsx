@@ -8,6 +8,11 @@ import { useLabs } from '@/context/LabContext';
 // import { PatientData } from '@/types/sample/sample';
 import { TestList, TestReferancePoint } from '@/types/test/testlist';
 import { calculateAgeObject } from '@/utils/ageUtils';
+import {
+  isRadiologyTest,
+  createRadiologyReportPoint,
+  hasDetailedReportPoint as pointsHaveDetailedReport,
+} from '@/utils/radiology';
 import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { TbReportMedical, TbChevronLeft,} from "react-icons/tb";
@@ -469,6 +474,16 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
         filteredData[selectedTest.name] = refPointsRaw;
       }
 
+      // Radiology test without a configured report template (e.g. saved earlier as RADIOLOGY_TEST):
+      // add an empty one so the report can be written with the USG format library.
+      const refCategory = selectedTest.category || refPointsRaw.find(point => point?.category)?.category || '';
+      if (isRadiologyTest(selectedTest.name, refCategory) && !pointsHaveDetailedReport(filteredData[selectedTest.name] || [])) {
+        filteredData[selectedTest.name] = [
+          ...(filteredData[selectedTest.name] || []).filter(Boolean),
+          createRadiologyReportPoint(selectedTest.name, refCategory),
+        ];
+      }
+
       const detailedPointIndex = filteredData[selectedTest.name]?.findIndex(
         point => (point.testDescription || '').toUpperCase() === 'DETAILED REPORT'
       );
@@ -636,11 +651,24 @@ mappedReportData.forEach((reportItem) => {
     }
   };
 
+  // Visit tests opened from the collection table carry no category, so fall back to the
+  // category stored on the test's reference points.
+  const selectedRefPoints = referencePoints[selectedTest.name] || [];
+  const testCategory =
+    selectedTest.category || selectedRefPoints.find(point => point.category)?.category || '';
+  const isRadiology = isRadiologyTest(selectedTest.name, testCategory);
+  const hasDetailedReportPoint = selectedRefPoints.some(
+    point => (point.testDescription || '').toUpperCase() === 'DETAILED REPORT'
+  );
+  const hasRegularParams = selectedRefPoints.some(
+    point => (point.testDescription || '').toUpperCase() !== 'DETAILED REPORT'
+  );
+
   const validateForm = () => {
     const errors: Record<string, boolean> = {};
     let isValid = true;
 
-    if (selectedTest.category === 'RADIOLOGY') {
+    if (isRadiology && !hasRegularParams) {
       setValidationErrors({});
       return true;
     }
@@ -687,7 +715,9 @@ mappedReportData.forEach((reportItem) => {
       const refPoints = referencePoints[selectedTest.name] || [];
       const testInputs = inputValues[selectedTest.name] || {};
 
-      if (selectedTest.category === 'RADIOLOGY') {
+      // Legacy radiology rows without a template; tests with a DETAILED REPORT template go through
+      // the regular path below so the written report (reportJson) is saved.
+      if (isRadiology && !hasDetailedReportPoint && !hasRegularParams) {
         const existingItem = existingReportData[0];
         if (!existingItem?.report_id) {
           toast.error('Report ID missing for radiology test. Cannot update.');
@@ -697,7 +727,7 @@ mappedReportData.forEach((reportItem) => {
           report_id: existingItem.report_id,
           visit_id: editPatient.visitId.toString(),
           testName: selectedTest.name,
-          testCategory: selectedTest.category,
+          testCategory: testCategory,
           patientName: editPatient.patientname,
           referenceDescription: 'RADIOLOGY_TEST',
           referenceRange: 'N/A',
@@ -710,9 +740,14 @@ mappedReportData.forEach((reportItem) => {
         refPoints.forEach((point, index) => {
           const descriptionUpper = (point.testDescription || '').toUpperCase();
           if (descriptionUpper === 'DETAILED REPORT') {
-            const existingItem = existingReportData.find(
-              item => normalizeKey(item.referenceDescription) === normalizeKey(point.testDescription)
-            );
+            // Radiology reports saved before a template existed use the RADIOLOGY_TEST row
+            const existingItem =
+              existingReportData.find(
+                item => normalizeKey(item.referenceDescription) === normalizeKey(point.testDescription)
+              ) ||
+              (isRadiology
+                ? existingReportData.find(item => normalizeKey(item.referenceDescription) === normalizeKey('RADIOLOGY_TEST'))
+                : undefined);
             if (!existingItem?.report_id) {
               missingReportIds.push(point.testDescription || 'DETAILED REPORT');
               return;
@@ -721,7 +756,7 @@ mappedReportData.forEach((reportItem) => {
               report_id: existingItem.report_id,
               visit_id: editPatient.visitId.toString(),
               testName: selectedTest.name,
-              testCategory: selectedTest.category,
+              testCategory: testCategory,
               patientName: editPatient.patientname,
               referenceDescription: point.testDescription || 'DETAILED REPORT',
               referenceRange: 'N/A',
@@ -805,7 +840,7 @@ mappedReportData.forEach((reportItem) => {
               report_id: existingItem.report_id,
               visit_id: editPatient.visitId.toString(),
               testName: selectedTest.name,
-              testCategory: selectedTest.category,
+              testCategory: testCategory,
               patientName: editPatient.patientname,
               referenceDescription: point.testDescription || "No reference description available",
               referenceRange: referenceRange,
@@ -974,7 +1009,7 @@ mappedReportData.forEach((reportItem) => {
           {/* Test Header Card */}
           <div className="rounded-xl border border-pneutral-200 bg-white px-4 py-3">
             <h3 className="text-label-l4 font-medium text-pneutral-900">
-              {selectedTest?.name} — {selectedTest?.category || 'Test'}
+              {selectedTest?.name} — {testCategory || 'Test'}
             </h3>
           </div>
 
@@ -1211,6 +1246,7 @@ mappedReportData.forEach((reportItem) => {
             <div className="rounded-xl border border-pneutral-200 bg-white p-4">
               <DetailedReportEditor
                 point={detailedReportPoint}
+                showFormatLibrary={isRadiology}
                 onReportJsonChange={(reportJson) => {
                   setReferencePoints(prev => ({
                     ...prev,

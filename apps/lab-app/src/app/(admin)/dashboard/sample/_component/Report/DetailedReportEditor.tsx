@@ -4,10 +4,13 @@ import { TestReferancePoint } from '@/types/test/testlist';
 import DetailedReportTiptapEditor from '@/components/ui/detailed-report-tiptap-editor';
 import SectionEditorModal from '@/components/ui/section-editor-modal';
 import { formatMedicalReportToHTML } from '@/utils/reportFormatter';
+import RadiologyFormatPicker from './RadiologyFormatPicker';
 
 interface DetailedReportEditorProps {
   point: TestReferancePoint;
   onReportJsonChange?: (reportJson: string) => void;
+  // Radiology tests: show the USG/Doppler format library above the sections
+  showFormatLibrary?: boolean;
 }
 
 interface ReferenceRange {
@@ -38,9 +41,149 @@ interface ReportData {
   };
 }
 
-const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({ 
-  point, 
-  onReportJsonChange 
+// Stored DETAILED REPORT template shape (see DETAILED_REPORT_JSON_TEMPLATE in AddTestReferanceNew.tsx)
+interface TemplateSection {
+  title?: string;
+  content?: unknown;
+  contentType?: string;
+}
+
+interface TemplateTable {
+  title?: string;
+  headers?: unknown[];
+  rows?: unknown[][];
+}
+
+interface ReportTemplate {
+  reportType?: string;
+  indication?: string;
+  method?: string;
+  sections?: TemplateSection[] | Record<string, unknown>;
+  tables?: TemplateTable[];
+  measurements?: Record<string, unknown>;
+  impression?: unknown;
+  followUp?: unknown;
+  description?: string;
+}
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+const escapeHtml = (value: unknown) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+const looksLikeHtml = (value: string) => /<\/?[a-z][\s\S]*>/i.test(value);
+
+const textToHtml = (value: string) => {
+  if (looksLikeHtml(value)) return value;
+  const paragraphs = value.split(/\n+/).map(line => line.trim()).filter(Boolean);
+  return paragraphs.length ? paragraphs.map(line => `<p>${escapeHtml(line)}</p>`).join('') : '<p></p>';
+};
+
+const listToHtml = (items: unknown[]) =>
+  items.length ? `<ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<p></p>';
+
+const keyValueToHtml = (content: Record<string, unknown>) =>
+  `<ul>${Object.entries(content)
+    .map(([key, value]) => `<li><strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}</li>`)
+    .join('')}</ul>`;
+
+const templateContentToHtml = (content: unknown, contentType?: string): string => {
+  if (Array.isArray(content)) return listToHtml(content);
+  if (content && typeof content === 'object') return keyValueToHtml(content as Record<string, unknown>);
+  const text = String(content ?? '');
+  return contentType === 'list' ? listToHtml(text.split(/\n+/).filter(Boolean)) : textToHtml(text);
+};
+
+const tableToHtml = (table: TemplateTable) => {
+  const headers = Array.isArray(table.headers) ? table.headers : [];
+  const rows = Array.isArray(table.rows) ? table.rows : [];
+  const head = headers.length
+    ? `<thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>`
+    : '';
+  const body = `<tbody>${rows
+    .map(row => `<tr>${(Array.isArray(row) ? row : []).map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
+    .join('')}</tbody>`;
+  return `<table>${head}${body}</table>`;
+};
+
+// Turns a stored report template into one editable section per template part, in reading order,
+// so the technician fills in the template itself instead of a single flattened blob.
+const templateToSections = (template: ReportTemplate): ReportSection[] => {
+  const sections: Omit<ReportSection, 'id' | 'order'>[] = [];
+
+  const details = [
+    ['Examination', template.reportType],
+    ['Clinical Indication', template.indication],
+    ['Technique', template.method],
+  ].filter(([, value]) => typeof value === 'string' && value.trim());
+  if (details.length) {
+    sections.push({
+      title: 'Examination Details',
+      content: details.map(([label, value]) => `<p><strong>${label}:</strong> ${escapeHtml(value)}</p>`).join(''),
+      type: 'text',
+    });
+  }
+
+  // Older templates store sections as an object map: { "Liver": "...", "Spleen": "..." }
+  const templateSections: TemplateSection[] = Array.isArray(template.sections)
+    ? template.sections
+    : isPlainObject(template.sections)
+      ? Object.entries(template.sections).map(([title, content]) => ({ title, content }))
+      : [];
+
+  templateSections.forEach((section, index) => {
+    const isList = section.contentType === 'list' || Array.isArray(section.content);
+    sections.push({
+      title: section.title || `Section ${index + 1}`,
+      content: templateContentToHtml(section.content, section.contentType),
+      type: isList ? 'list' : 'text',
+    });
+  });
+
+  (template.tables || []).forEach((table, index) => {
+    sections.push({
+      title: table.title || `Table ${index + 1}`,
+      content: tableToHtml(table),
+      type: 'table',
+    });
+  });
+
+  if (template.measurements && typeof template.measurements === 'object') {
+    const measurements = Object.fromEntries(
+      Object.entries(template.measurements).map(([key, value]) => {
+        if (value && typeof value === 'object' && 'value' in value) {
+          const { value: v, unit } = value as { value?: unknown; unit?: unknown };
+          return [key, `${v ?? ''} ${unit ?? ''}`.trim()];
+        }
+        return [key, value];
+      })
+    );
+    sections.push({ title: 'Measurements', content: keyValueToHtml(measurements), type: 'list' });
+  }
+
+  if (template.impression !== undefined && template.impression !== null && template.impression !== '') {
+    sections.push({
+      title: 'Impression',
+      content: templateContentToHtml(template.impression),
+      type: Array.isArray(template.impression) ? 'list' : 'text',
+    });
+  }
+
+  if (template.followUp !== undefined && template.followUp !== null && template.followUp !== '') {
+    sections.push({ title: 'Advice / Follow-up', content: templateContentToHtml(template.followUp), type: 'text' });
+  }
+
+  return sections.map((section, index) => ({ ...section, id: String(index + 1), order: index + 1 }));
+};
+
+const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
+  point,
+  onReportJsonChange,
+  showFormatLibrary = false
 }) => {
   const [reportData, setReportData] = useState<ReportData>({
     title: '',
@@ -64,27 +207,24 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
       try {
         const parsed = JSON.parse(point.reportJson);
         // Check if it's already a structured report (with title and sections array matching our format)
-        if (parsed.title && parsed.sections && Array.isArray(parsed.sections) && parsed.sections[0]?.id) {
+        if (parsed.title && Array.isArray(parsed.sections) && (parsed.sections.length === 0 || parsed.sections[0]?.id)) {
           setReportData(parsed);
-        } else if (parsed.tables || (parsed.sections && Array.isArray(parsed.sections)) || (parsed.impression && Array.isArray(parsed.impression))) {
-          // New API format with tables, sections, impression, etc. - convert to HTML
-          const formattedContent = formatMedicalReportToHTML(point.reportJson);
-          setReportData({
+        } else if (parsed.tables || Array.isArray(parsed.sections) || isPlainObject(parsed.sections) || (parsed.impression && Array.isArray(parsed.impression))) {
+          // Report template (reportType/indication/method/sections/tables/impression/followUp):
+          // expand it into one editable section per part so results are written on the template.
+          const templateReport: ReportData = {
             title: point.testName || parsed.reportType || 'Test Report',
             description: parsed.description || '',
-            sections: [{
-              id: '1',
-              title: 'Formatted Report',
-              content: formattedContent || '<p>No report data available. Please add content using the editor.</p>',
-              type: 'text',
-              order: 1
-            }],
+            sections: templateToSections(parsed as ReportTemplate),
             metadata: {
               author: '',
               date: new Date().toISOString().split('T')[0],
               version: parsed.meta?.version || '1.0'
             }
-          });
+          };
+          setReportData(templateReport);
+          // Save in the same structure the user sees, even if no section is edited.
+          onReportJsonChange?.(JSON.stringify(templateReport, null, 2));
         } else {
           // Convert raw data to structured format using the formatter
           const formattedContent = formatMedicalReportToHTML(point.reportJson);
@@ -141,6 +281,8 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
         setReferenceRanges([]);
       }
     }
+    // onReportJsonChange is an inline parent callback; re-running on its identity would loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [point.reportJson, point.referenceRanges, point.testName]);
 
   const handleReportDataChange = (updatedData: ReportData) => {
@@ -190,10 +332,23 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
         };
     }
 
+    // Add it right away so typing is committed live (see updateEditingContent)
+    handleReportDataChange({ ...reportData, sections: [...reportData.sections, newSection] });
     setEditingSection(newSection);
     setIsNewSection(true);
     setEditingSectionId(newSection.id);
   };
+
+  const applyFormat = (reportJson: string) => {
+    setEditingSectionId(null);
+    setEditingSection(null);
+    setIsNewSection(false);
+    handleReportDataChange(JSON.parse(reportJson) as ReportData);
+  };
+
+  const hasReportContent = reportData.sections.some(
+    section => section.content && section.content.replace(/<[^>]*>/g, '').trim()
+  );
 
   const handleSectionSave = (section: ReportSection) => {
     if (isNewSection) {
@@ -222,37 +377,50 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
     // Note: editing sections with complex <table> markup in the rich text editor
     // may still change their layout, but we intentionally avoid blocking or
     // showing alerts here so the UX stays simple.
+    if (editingSectionId === section.id) return;
     setEditingSectionId(section.id);
-    setEditingSection(section);
+    setEditingSection(section); // snapshot used by cancelInlineEdit
+    setIsNewSection(false);
+  };
+
+  // Edits are committed to the report as the user types, so "Save & Generate Report" in the
+  // parent never loses text that wasn't confirmed with the tick button.
+  const updateEditingContent = (content: string) => {
+    if (!editingSectionId) return;
+    setReportData(prev => {
+      const updatedData = {
+        ...prev,
+        sections: prev.sections.map(s => (s.id === editingSectionId ? { ...s, content } : s))
+      };
+      onReportJsonChange?.(JSON.stringify(updatedData, null, 2));
+      return updatedData;
+    });
   };
 
   const cancelInlineEdit = () => {
+    if (editingSection) {
+      if (isNewSection) {
+        handleReportDataChange({
+          ...reportData,
+          sections: reportData.sections.filter(s => s.id !== editingSection.id)
+        });
+      } else {
+        // editingSection holds the content from before editing started
+        handleReportDataChange({
+          ...reportData,
+          sections: reportData.sections.map(s => (s.id === editingSection.id ? editingSection : s))
+        });
+      }
+    }
     setEditingSectionId(null);
     setEditingSection(null);
     setIsNewSection(false);
   };
 
   const saveInlineEdit = () => {
-    if (editingSection) {
-      if (isNewSection) {
-        // Add new section
-        const updatedData = {
-          ...reportData,
-          sections: [...reportData.sections, editingSection]
-        };
-        handleReportDataChange(updatedData);
-        setIsNewSection(false);
-      } else {
-        // Update existing section
-        const updatedSections = reportData.sections.map(s =>
-          s.id === editingSection.id ? editingSection : s
-        );
-        const updatedData = { ...reportData, sections: updatedSections };
-        handleReportDataChange(updatedData);
-      }
-    }
     setEditingSectionId(null);
     setEditingSection(null);
+    setIsNewSection(false);
   };
 
   const removeSection = (sectionId: string) => {
@@ -318,6 +486,14 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
         
           <div className="p-4">
             <div className="space-y-6">
+              {showFormatLibrary && (
+                <RadiologyFormatPicker
+                  testName={point.testName}
+                  hasContent={hasReportContent}
+                  onApply={applyFormat}
+                />
+              )}
+
               {/* Report Sections */}
               <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -326,6 +502,7 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Report Sections ({reportData.sections.length})
+                    <span className="text-xs font-normal text-gray-500">— click a section to write the findings</span>
                   </h5>
             <div className="flex items-center gap-2">
                     <button
@@ -466,11 +643,7 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
                               <div className="overflow-hidden rounded-b-lg min-h-[500px]">
                                 <DetailedReportTiptapEditor
                                   value={editingSection?.content || ''}
-                                  onChange={(value: string) =>
-                                    setEditingSection(prev =>
-                                      prev ? { ...prev, content: value } : null
-                                    )
-                                  }
+                                  onChange={updateEditingContent}
                                   height="500px"
                                 />
                               </div>
@@ -478,11 +651,16 @@ const DetailedReportEditor: React.FC<DetailedReportEditorProps> = ({
                               <>
                                 {section.content && section.content.trim() && !section.content.includes('Click here to start editing') ? (
                                   <div
-                                    className="report-html prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
+                                    onClick={() => startInlineEdit(section)}
+                                    title="Click to write in this section"
+                                    className="report-html prose prose-sm max-w-none cursor-text rounded hover:bg-blue-50/40 prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-li:text-gray-700"
                                     dangerouslySetInnerHTML={{ __html: section.content }}
                                   />
                                 ) : (
-                                  <div className="text-gray-400 italic text-sm bg-gray-50 p-4 rounded border-2 border-dashed border-gray-200">
+                                  <div
+                                    onClick={() => startInlineEdit(section)}
+                                    className="cursor-text text-gray-400 italic text-sm bg-gray-50 p-4 rounded border-2 border-dashed border-gray-200"
+                                  >
                                     <div className="flex items-center gap-2">
                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

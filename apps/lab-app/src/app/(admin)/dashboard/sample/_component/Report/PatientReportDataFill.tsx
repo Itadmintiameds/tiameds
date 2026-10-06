@@ -10,6 +10,11 @@ import { TestList, TestReferancePoint } from '@/types/test/testlist';
 import { getTestReferanceRangeByTestName } from '@/../services/testService';
 import { createReportWithTestResult } from '@/../services/reportServices';
 import { calculateAgeObject } from '@/utils/ageUtils';
+import {
+  isRadiologyTest as isRadiologyTestName,
+  createRadiologyReportPoint,
+  hasDetailedReportPoint,
+} from '@/utils/radiology';
 import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
 import AutoCalculation from './AutoCalculation';
 import DetailedReportEditor from './DetailedReportEditor';
@@ -434,9 +439,18 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
       const response = await getTestReferanceRangeByTestName(currentLab.id.toString(), selectedTest.name);
 
       if (response) {
-        const responseArray = Array.isArray(response) ? response : [response];
-        
+        const responseArray = (Array.isArray(response) ? response : [response]).filter(Boolean);
+        const category = selectedTest.category || responseArray.find(point => point.category)?.category || '';
+
         const filteredData = filterReferenceData({ [selectedTest.name]: responseArray });
+        // Radiology test without a configured report template: give it an empty one so the
+        // report editor and the USG format library are available.
+        if (isRadiologyTestName(selectedTest.name, category) && !hasDetailedReportPoint(filteredData[selectedTest.name] || [])) {
+          filteredData[selectedTest.name] = [
+            ...(filteredData[selectedTest.name] || []),
+            createRadiologyReportPoint(selectedTest.name, category),
+          ];
+        }
         setReferencePoints(filteredData);
 
         const testInputs: Record<string | number, string> = {};
@@ -452,6 +466,11 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
         }));
       }
     } catch (error) {
+      if (isRadiologyTestName(selectedTest.name, selectedTest.category)) {
+        // No reference rows for this imaging test: still allow writing the report from a format
+        setReferencePoints({ [selectedTest.name]: [createRadiologyReportPoint(selectedTest.name, selectedTest.category)] });
+        return;
+      }
       let errorMessage = 'Failed to fetch test reference data';
       if (error instanceof Error) {
         errorMessage = error.message;
@@ -558,12 +577,22 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     }
   };
 
+  // Visit tests opened from the collection table carry no category, so fall back to the
+  // category stored on the test's reference points.
+  const resolveCategory = (test: TestList) =>
+    test.category || referencePoints[test.name]?.find(point => point.category)?.category || '';
+  // Radiology tests with regular parameters besides the DETAILED REPORT template go through the
+  // normal path so those parameters are validated and saved too.
+  const isRadiologyTest = (test: TestList) =>
+    isRadiologyTestName(test.name, resolveCategory(test)) &&
+    !(referencePoints[test.name] || []).some(point => point.testDescription !== 'DETAILED REPORT');
+
   const validateForm = () => {
     const errors: Record<string, boolean> = {};
     let isValid = true;
 
     allTests.forEach(test => {
-        if (test.category === 'RADIOLOGY') {
+        if (isRadiologyTest(test)) {
             return;
         }
 
@@ -603,13 +632,13 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
       const generatedReportData: ReportData[] = [];
 
       allTests.forEach((test) => {
-        if (test.category === 'RADIOLOGY') {
+        if (isRadiologyTest(test)) {
           const formattedTestName = test.name
             .split(' ')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
             .join(' ');
 
-          const formattedCategory = test.category
+          const formattedCategory = resolveCategory(test)
             .split(' ')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
             .join(' ');
@@ -643,7 +672,7 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
               .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
               .join(' ');
 
-            const formattedCategory = test.category
+            const formattedCategory = resolveCategory(test)
               .split(' ')
               .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
               .join(' ');
@@ -898,7 +927,7 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
           {/* Test Header Card */}
           <div className="rounded-xl border border-pneutral-200 bg-white px-4 py-3">
             <h3 className="text-label-l4 font-medium text-pneutral-900">
-              {selectedTest?.name} — {selectedTest?.category || 'Test'}
+              {selectedTest?.name} — {resolveCategory(selectedTest) || 'Test'}
             </h3>
           </div>
 
@@ -1136,6 +1165,7 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
             <div className="rounded-xl border border-pneutral-200 bg-white p-4">
               <DetailedReportEditor
                 point={detailedReportPoint}
+                showFormatLibrary={isRadiologyTestName(selectedTest.name, resolveCategory(selectedTest))}
                 onReportJsonChange={(reportJson) => {
                   setReferencePoints(prev => ({
                     ...prev,
