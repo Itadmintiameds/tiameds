@@ -13,7 +13,10 @@ import {
   Clock3,
   FileText,
   RefreshCw,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
+import { toast } from "react-toastify";
 
 import {
   CartesianGrid,
@@ -67,6 +70,19 @@ import {
   formatDate as formatCsvDate,
   generateCSVFilename,
 } from "@/utils/csvUtils";
+import {
+  buildAdminTestsByCategoryCsv,
+  buildAdminTopDoctorsCsv,
+  buildAgeGenderCsv,
+  buildPackagesSummaryCsv,
+  buildRevenueByCollectionCsv,
+  buildRevenueTrendCsv,
+  buildTechnicianPerformanceCsv,
+  buildTopOrderedTestsCsv,
+  toExportLabLabel,
+} from "@/lib/stats/dashboardCardCsv";
+import { splitTestNames } from "@/lib/stats/gridReportCsv";
+import CardDownloadButton from "./CardDownloadButton";
 
 type DateFilterType = "currentFY" | "week" | "month" | "year" | "custom";
 
@@ -310,6 +326,10 @@ const buildGridReportCsv = (rows: GridReportRow[]): string => {
 // every page and stitch them into one full row list.
 const GRID_FETCH_PAGE_SIZE = 200;
 
+// Top Referring Doctors / Technician Performance list everyone (scrolling table) - the
+// backend caps these at `limit`, so ask for a number no lab will reach.
+const ALL_ROWS_LIMIT = 1000;
+
 // Color constants for charts
 const CATEGORY_COLORS = [
   "#4F6BED",
@@ -442,6 +462,8 @@ const AdminStats = () => {
   const emptyGridData: GridReportResponse = { page: 0, size: 0, totalRecords: 0, totalPages: 0, rows: [] };
   const [gridData, setGridData] = useState<GridReportResponse>(emptyGridData);
   const [gridLoading, setGridLoading] = useState<boolean>(true);
+  // Which Billing Report rows have their "N Tests" dropdown open (keyed by billingId).
+  const [expandedGridTests, setExpandedGridTests] = useState<Record<string, boolean>>({});
 
   // ========== SYNC FILTERS ==========
   useEffect(() => {
@@ -645,7 +667,7 @@ const AdminStats = () => {
                 labId,
                 doctorsRange.startDate,
                 doctorsRange.endDate,
-                5
+                ALL_ROWS_LIMIT
               );
               setTopDoctors(doctorsResult || []);
             } catch (error) {
@@ -782,6 +804,43 @@ const AdminStats = () => {
     const csv = buildGridReportCsv(gridData.rows);
     downloadCSV(csv, generateCSVFilename("billing-report"));
   };
+
+  // Card CSV exports (download icon in each card header). Each card already holds its data
+  // for its own date filter, so the file is built client-side from that state - no API call.
+  const exportCardCsv = (filePrefix: string, csv: string) => {
+    downloadCSV(csv, generateCSVFilename(`${filePrefix}-${toExportLabLabel(currentLab?.name)}`));
+    toast.info("Downloading file");
+  };
+
+  const handleDownloadRevenueTrendCsv = () =>
+    exportCardCsv("daily-revenue-trend", buildRevenueTrendCsv(revenueChartData, totalRevenue));
+
+  const handleDownloadPackagePerformanceCsv = () =>
+    exportCardCsv("package-performance", buildPackagesSummaryCsv(packagePerformance));
+
+  const handleDownloadTestsByCategoryCsv = () =>
+    exportCardCsv("test-by-category", buildAdminTestsByCategoryCsv(testsByCategory));
+
+  const handleDownloadTopOrderedTestsCsv = () =>
+    exportCardCsv("top-order-test", buildTopOrderedTestsCsv(topOrderedTests));
+
+  const handleDownloadCollectionCsv = () =>
+    exportCardCsv(
+      "revenue-by-collection-method",
+      buildRevenueByCollectionCsv(revenueByCollection?.methods || [], revenueByCollection?.total || 0)
+    );
+
+  const handleDownloadAgeGenderCsv = () =>
+    exportCardCsv(
+      "age-gender-distribution",
+      buildAgeGenderCsv(ageGenderData?.gender || [], ageGenderData?.ageGroups || [])
+    );
+
+  const handleDownloadTechnicianCsv = () =>
+    exportCardCsv("technician-performance", buildTechnicianPerformanceCsv(technicianPerformance));
+
+  const handleDownloadTopDoctorsCsv = () =>
+    exportCardCsv("top-referring-doctors", buildAdminTopDoctorsCsv(topDoctors));
 
   // ========== DATA FORMATTING FUNCTIONS ==========
 
@@ -978,15 +1037,7 @@ const AdminStats = () => {
   // Format doctors data
   const getFormattedDoctors = () => {
     if (topDoctors.length === 0) {
-      return [
-        {
-          id: 1,
-          srNo: "01",
-          doctorName: "No data available",
-          patients: 0,
-          revenue: "₹0",
-        },
-      ];
+      return [];
     }
     return topDoctors.map((item, index) => ({
       id: index + 1,
@@ -1000,16 +1051,7 @@ const AdminStats = () => {
   // Format technician performance data
   const getFormattedTechnicians = () => {
     if (technicianPerformance.length === 0) {
-      return [
-        {
-          id: 1,
-          srNo: "01",
-          name: "No data available",
-          samplesProcessed: 0,
-          reportsEntered: 0,
-          avgTat: "0 hrs",
-        },
-      ];
+      return [];
     }
     return technicianPerformance.map((item, index) => ({
       id: index + 1,
@@ -1567,9 +1609,16 @@ const AdminStats = () => {
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-                Daily Revenue Trend
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+                  Daily Revenue Trend
+                </h2>
+                <CardDownloadButton
+                  onClick={handleDownloadRevenueTrendCsv}
+                  disabled={loading || revenueTrend.length === 0}
+                  label="Download Daily Revenue Trend as CSV"
+                />
+              </div>
               <p className="mt-1 text-p3 font-semibold text-pneutral-900">
                 Total Revenue
                 <span className="ml-1 font-semibold text-pneutral-900">
@@ -1637,9 +1686,16 @@ const AdminStats = () => {
         {/* Package Performance - Right */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-              Package Performance
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+                Package Performance
+              </h2>
+              <CardDownloadButton
+                onClick={handleDownloadPackagePerformanceCsv}
+                disabled={loading || packagePerformance.length === 0}
+                label="Download Package Performance as CSV"
+              />
+            </div>
             {renderFilterDropdown(
               packageFilter,
               setPackageFilter,
@@ -1729,9 +1785,16 @@ const AdminStats = () => {
         {/* Test By Category - Pie Chart */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-              Test by Category
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+                Test by Category
+              </h2>
+              <CardDownloadButton
+                onClick={handleDownloadTestsByCategoryCsv}
+                disabled={loading || testsByCategory.length === 0}
+                label="Download Test by Category as CSV"
+              />
+            </div>
             {renderFilterDropdown(
               categoryFilter,
               setCategoryFilter,
@@ -1812,9 +1875,16 @@ const AdminStats = () => {
         {/* Top Order Test */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-              Top Order Test
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+                Top Order Test
+              </h2>
+              <CardDownloadButton
+                onClick={handleDownloadTopOrderedTestsCsv}
+                disabled={loading || topOrderedTests.length === 0}
+                label="Download Top Order Test as CSV"
+              />
+            </div>
             {renderFilterDropdown(
               categoryFilter,
               setCategoryFilter,
@@ -1882,9 +1952,16 @@ const AdminStats = () => {
         {/* Revenue by Collection Method */}
         <div className="rounded-lg border border-pneutral-100 bg-white px-4 py-2 shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-p4 font-semibold text-pneutral-900">
-              Revenue by Collection Method
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-p4 font-semibold text-pneutral-900">
+                Revenue by Collection Method
+              </h2>
+              <CardDownloadButton
+                onClick={handleDownloadCollectionCsv}
+                disabled={loading || collectionChartData.length === 0}
+                label="Download Revenue by Collection Method as CSV"
+              />
+            </div>
             {renderFilterDropdown(
               collectionFilter,
               setCollectionFilter,
@@ -1963,9 +2040,20 @@ const AdminStats = () => {
         {/* Age & Gender Distribution */}
         <div className="rounded-lg border border-pneutral-100 bg-white px-4 py-2 shadow-sm">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-p4 font-semibold text-pneutral-900">
-              Age & Gender Distribution
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-p4 font-semibold text-pneutral-900">
+                Age & Gender Distribution
+              </h2>
+              <CardDownloadButton
+                onClick={handleDownloadAgeGenderCsv}
+                disabled={
+                  loading ||
+                  ((ageGenderData?.gender?.length ?? 0) === 0 &&
+                    (ageGenderData?.ageGroups?.length ?? 0) === 0)
+                }
+                label="Download Age & Gender Distribution as CSV"
+              />
+            </div>
             {renderFilterDropdown(
               ageGenderFilter,
               setAgeGenderFilter,
@@ -2079,9 +2167,16 @@ const AdminStats = () => {
         {/* Technician Performance */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-              Technician Performance
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+                Technician Performance
+              </h2>
+              <CardDownloadButton
+                onClick={handleDownloadTechnicianCsv}
+                disabled={loading || technicianPerformance.length === 0}
+                label="Download Technician Performance as CSV"
+              />
+            </div>
             {renderFilterDropdown(
               technicianFilter,
               setTechnicianFilter,
@@ -2112,7 +2207,14 @@ const AdminStats = () => {
                 </tr>
               </thead>
               <tbody>
-                {techniciansData.map((tech) => (
+                {techniciansData.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-p3 text-pneutral-500">
+                      No technician found
+                    </td>
+                  </tr>
+                ) : (
+                  techniciansData.map((tech) => (
                   <tr
                     key={tech.id}
                     className="border-b border-pneutral-100 transition hover:bg-pneutral-50"
@@ -2133,7 +2235,8 @@ const AdminStats = () => {
                       {tech.avgTat}
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -2142,9 +2245,16 @@ const AdminStats = () => {
         {/* Top Referring Doctors */}
         <div className="rounded-lg border border-pneutral-100 bg-base-white px-4 py-2 shadow-xsm">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
-              Top Referring Doctors
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-p4 font-heading font-semibold text-pneutral-900">
+                Top Referring Doctors
+              </h2>
+              <CardDownloadButton
+                onClick={handleDownloadTopDoctorsCsv}
+                disabled={loading || topDoctors.length === 0}
+                label="Download Top Referring Doctors as CSV"
+              />
+            </div>
             {renderFilterDropdown(
               doctorsFilter,
               setDoctorsFilter,
@@ -2172,7 +2282,14 @@ const AdminStats = () => {
                 </tr>
               </thead>
               <tbody>
-                {doctorsData.map((doctor) => (
+                {doctorsData.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-p3 text-pneutral-500">
+                      No referring doctor found
+                    </td>
+                  </tr>
+                ) : (
+                  doctorsData.map((doctor) => (
                   <tr
                     key={doctor.id}
                     className="border-b border-pneutral-100 transition hover:bg-pneutral-50"
@@ -2190,7 +2307,8 @@ const AdminStats = () => {
                       {doctor.revenue}
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -2230,6 +2348,7 @@ const AdminStats = () => {
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Patient Name</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Phone</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Doctor</th>
+                <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Test Names</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Type</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Visit Status</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Billing Code</th>
@@ -2241,13 +2360,14 @@ const AdminStats = () => {
                 <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Net Amount</th>
                 <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Paid</th>
                 <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Due</th>
+                <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Refund</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Lab Name</th>
               </tr>
             </thead>
             <tbody>
               {gridLoading ? (
                 <tr>
-                  <td colSpan={17} className="px-4 py-8 text-center text-pneutral-500">
+                  <td colSpan={19} className="px-4 py-8 text-center text-pneutral-500">
                     Loading...
                   </td>
                 </tr>
@@ -2261,6 +2381,37 @@ const AdminStats = () => {
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.patientName}</td>
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.patientPhone}</td>
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.doctorName || "N/A"}</td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900 min-w-40">
+                      {(() => {
+                        const testList = splitTestNames(row.testNames);
+                        if (testList.length === 0) return "N/A";
+                        if (testList.length === 1) return testList[0];
+                        const key = String(row.billingId ?? index);
+                        const isOpen = expandedGridTests[key] || false;
+                        return (
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedGridTests((prev) => ({ ...prev, [key]: !prev[key] }))}
+                              className={`flex w-full items-center justify-between gap-2 rounded-lg border border-pneutral-100 bg-pneutral-50 px-3 py-1 text-p3 text-pneutral-900
+                              ${isOpen ? "rounded-b-none border-b-0" : ""}`}
+                            >
+                              <span>{testList.length} Tests</span>
+                              {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                            {isOpen && (
+                              <div className="w-full rounded-lg rounded-t-none border border-t-0 border-pneutral-100 bg-base-white px-3 py-1">
+                                {testList.map((name, i) => (
+                                  <p key={i} className="py-0.5 text-p3 text-pneutral-900">
+                                    {name}{i < testList.length - 1 ? "," : ""}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.visitType}</td>
                     <td className={`border-b border-pneutral-100 px-4 py-2 text-p3 font-medium ${getVisitStatusColorClass(row.visitStatus)}`}>
                       {row.visitStatus}
@@ -2284,12 +2435,15 @@ const AdminStats = () => {
                     <td className="border-b border-pneutral-100 px-4 py-2 text-right font-medium text-danger-600">
                       ₹{(row.dueAmount || 0).toLocaleString()}
                     </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-right text-p3 text-pneutral-900">
+                      ₹{(row.refundAmount || 0).toLocaleString()}
+                    </td>
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.labName}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={17} className="px-4 py-8 text-center text-pneutral-500">
+                  <td colSpan={19} className="px-4 py-8 text-center text-pneutral-500">
                     No billing records found
                   </td>
                 </tr>

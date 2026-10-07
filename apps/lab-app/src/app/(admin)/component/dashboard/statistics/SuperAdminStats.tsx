@@ -12,7 +12,6 @@ import {
   ChevronUp,
   ChevronDown,
   RefreshCw,
-  Download,
 } from "lucide-react";
 
 import {
@@ -57,6 +56,7 @@ import {
   TopReferringDoctor,
 } from "@/types/statisticsData";
 import Loader from "../../common/Loader";
+import CardDownloadButton from "./CardDownloadButton";
 import { splitTestNames } from "@/lib/stats/gridReportCsv";
 import {
   buildBillingSummaryCsv,
@@ -335,6 +335,7 @@ const REVENUE_BY_TEST_PAGE_SIZE = 8;
 
 // Top Referring Doctors: ask for every doctor rather than the API's default top 10.
 const ALL_DOCTORS_LIMIT = 1000;
+const ALL_LABS_LIMIT = 1000;
 
 // Defaults for the nested pieces of DetailedBilling before the first fetch resolves.
 const emptyPaymentMode = { cash: 0, upi: 0, card: 0 };
@@ -366,29 +367,6 @@ const emptyPackageSummary: DetailedBilling["packageSummary"] = {
   due: 0,
   paymentMode: emptyPaymentMode,
 };
-
-// Small download icon shown in a dashboard card header; exports that card's
-// currently loaded data (its own date filter + selected lab) as CSV.
-const CardDownloadButton = ({
-  onClick,
-  disabled,
-  label,
-}: {
-  onClick: () => void;
-  disabled: boolean;
-  label: string;
-}) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    title={label}
-    aria-label={label}
-    className="rounded-md border border-success-500 bg-[#55D400] p-1 text-pneutral-50 disabled:cursor-not-allowed disabled:opacity-50"
-  >
-    <Download size={14} />
-  </button>
-);
 
 const SuperAdminStats = () => {
   const { labs } = useLabs();
@@ -769,8 +747,8 @@ const SuperAdminStats = () => {
     setLabPerformanceLoading(true);
     setLabPerformanceError(null);
     try {
-      const rows = await getLabPerformance(labIdParam, startDate, endDate);
-      setLabPerformance((rows || []).slice(0, 6));
+      const rows = await getLabPerformance(labIdParam, startDate, endDate, ALL_LABS_LIMIT);
+      setLabPerformance(rows || []);
     } catch (error) {
       console.error("Error fetching lab performance:", error);
       setLabPerformanceError(error instanceof Error ? error.message : "Failed to load lab performance");
@@ -2123,9 +2101,9 @@ const SuperAdminStats = () => {
             )}
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
           <table className="min-w-full border-separate border-spacing-y-0">
-            <thead>
+            <thead className="sticky top-0 bg-white z-10">
               <tr className="border-b border-pneutral-100 bg-pneutral-50">
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">SI No.</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Lab Name</th>
@@ -2225,13 +2203,14 @@ const SuperAdminStats = () => {
                 <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Net Amount</th>
                 <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Paid</th>
                 <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Due</th>
+                <th className="px-4 py-4 text-right text-label-l3 font-semibold text-pneutral-900">Refund</th>
                 <th className="px-4 py-4 text-left text-label-l3 font-semibold text-pneutral-900">Lab Name</th>
               </tr>
             </thead>
             <tbody>
               {gridLoading ? (
                 <tr>
-                  <td colSpan={18} className="px-4 py-8 text-center text-pneutral-500">
+                  <td colSpan={19} className="px-4 py-8 text-center text-pneutral-500">
                     Loading...
                   </td>
                 </tr>
@@ -2299,12 +2278,15 @@ const SuperAdminStats = () => {
                     <td className="border-b border-pneutral-100 px-4 py-2 text-right font-medium text-danger-600">
                       ₹{(row.dueAmount || 0).toLocaleString()}
                     </td>
+                    <td className="border-b border-pneutral-100 px-4 py-2 text-right text-p3 text-pneutral-900">
+                      ₹{(row.refundAmount || 0).toLocaleString()}
+                    </td>
                     <td className="border-b border-pneutral-100 px-4 py-2 text-p3 text-pneutral-900">{row.labName}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={18} className="px-4 py-8 text-center text-pneutral-500">
+                  <td colSpan={19} className="px-4 py-8 text-center text-pneutral-500">
                     No billing records found
                   </td>
                 </tr>
