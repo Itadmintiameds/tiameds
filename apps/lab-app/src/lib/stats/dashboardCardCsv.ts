@@ -16,10 +16,10 @@ import { formatAmount } from "@/utils/csvUtils";
 const toCsvLine = (fields: unknown[]): string =>
   fields.map((field) => `"${String(field ?? "").replace(/"/g, '""')}"`).join(",");
 
-const buildCsv = (headers: string[], rows: unknown[][]): string =>
+export const buildCsv = (headers: string[], rows: unknown[][]): string =>
   [toCsvLine(headers), ...rows.map(toCsvLine)].join("\n");
 
-const amt = (value: number | null | undefined): string => formatAmount(Number(value) || 0);
+export const amt = (value: number | null | undefined): string => formatAmount(Number(value) || 0);
 
 // Filename-safe label for which lab(s) an export covers: the lab's name when one
 // lab is selected, "all-labs" otherwise. Also used server-side to sanitize the
@@ -91,7 +91,9 @@ export const buildRevenueByTestCsv = (
     ])
   );
 
-export const buildPackagesSummaryCsv = (rows: PackageRow[]): string =>
+export const buildPackagesSummaryCsv = (
+  rows: Array<Omit<PackageRow, "packageCode"> & { packageCode?: string }>
+): string =>
   buildCsv(
     ["SI No.", "Package Name", "Package Code", "Visits", "Revenue", "Discount", "Paid", "Due", "Cash", "UPI", "Card"],
     rows.map((row, index) => [
@@ -137,6 +139,79 @@ export const buildTopDoctorsCsv = (rows: TopReferringDoctor[]): string =>
       row.speciality,
       row.patientCount || 0,
       row.totalTests || 0,
+      amt(row.revenue),
+    ])
+  );
+
+// ---- AdminStats cards (single lab, so no lab column) ----
+
+// Test by Category (admin) - count + share per category.
+export const buildAdminTestsByCategoryCsv = (
+  rows: Array<{ category: string; count: number; percentage: number }>
+): string =>
+  buildCsv(
+    ["SI No.", "Category", "Test Count", "Percentage"],
+    rows.map((row, index) => [index + 1, row.category || "Unknown", row.count || 0, row.percentage || 0])
+  );
+
+// Top Order Test - every test the API returned, not just the ones scrolled into view.
+export const buildTopOrderedTestsCsv = (
+  rows: Array<{ testName: string; testCode?: string; orderedCount: number }>
+): string =>
+  buildCsv(
+    ["SI No.", "Test Name", "Test Code", "Ordered Count"],
+    rows.map((row, index) => [index + 1, row.testName || "Unknown", row.testCode, row.orderedCount || 0])
+  );
+
+export const buildRevenueByCollectionCsv = (
+  methods: Array<{ method: string; revenue: number; percentage: number }>,
+  total: number
+): string =>
+  buildCsv(
+    ["Collection Method", "Revenue", "Percentage"],
+    [
+      ...methods.map((m) => [m.method || "Unknown", amt(m.revenue), m.percentage || 0]),
+      ["Total", amt(total), ""],
+    ]
+  );
+
+// Age & Gender - one sheet with both breakdowns, told apart by the Type column.
+export const buildAgeGenderCsv = (
+  gender: Array<{ gender: string; count: number; percentage: number }>,
+  ageGroups: Array<{ ageGroup: string; count: number; percentage: number }>
+): string =>
+  buildCsv(
+    ["Type", "Group", "Patients", "Percentage"],
+    [
+      ...gender.map((g) => ["Gender", g.gender || "Unknown", g.count || 0, g.percentage || 0]),
+      ...ageGroups.map((a) => ["Age Group", a.ageGroup || "Unknown", a.count || 0, a.percentage || 0]),
+    ]
+  );
+
+export const buildTechnicianPerformanceCsv = (
+  rows: Array<{ technicianName: string; samplesProcessed: number; reportsEntered: number; avgTatHours: number }>
+): string =>
+  buildCsv(
+    ["SI No.", "Technician", "Samples Processed", "Reports Entered", "Avg TAT (hrs)"],
+    rows.map((row, index) => [
+      index + 1,
+      row.technicianName || "Unknown",
+      row.samplesProcessed || 0,
+      row.reportsEntered || 0,
+      (row.avgTatHours || 0).toFixed(1),
+    ])
+  );
+
+export const buildAdminTopDoctorsCsv = (
+  rows: Array<{ doctorName: string; speciality?: string; patientCount: number; revenue: number }>
+): string =>
+  buildCsv(
+    ["SI No.", "Doctor Name", "Speciality", "Patients", "Revenue"],
+    rows.map((row, index) => [
+      index + 1,
+      row.doctorName || "Unknown Doctor",
+      row.speciality,
+      row.patientCount || 0,
       amt(row.revenue),
     ])
   );

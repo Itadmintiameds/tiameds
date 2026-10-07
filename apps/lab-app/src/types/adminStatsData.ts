@@ -234,6 +234,9 @@ export interface GridReportRow {
     billingDate: string;
     patientPhone: string;
     doctorName: string;
+    refundAmount?: number | null;
+    // Comma-separated test names for the visit, e.g. "CBC, Lipid Profile"
+    testNames?: string | null;
 }
 
 export interface GridReportResponse {

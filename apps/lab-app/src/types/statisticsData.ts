@@ -222,6 +222,7 @@ export interface GridReportRow {
     paymentStatus: string;
     discount: number;
     dueAmount: number;
+    refundAmount?: number | null;
     netAmount: number;
     paymentMethod: string;
     totalAmount: number;
