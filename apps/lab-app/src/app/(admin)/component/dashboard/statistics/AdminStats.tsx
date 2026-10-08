@@ -793,7 +793,7 @@ const AdminStats = () => {
     exportCardCsv(
       "daily-revenue-trend",
       "Daily Revenue Trend",
-      buildRevenueTrendCsv(revenueChartData, totalRevenue),
+      buildRevenueTrendCsv(revenueChartData, revenueTrendTotal),
       revenueFilter,
       revenueCustomRange
     );
@@ -866,19 +866,7 @@ const AdminStats = () => {
 
   // Format revenue data with dynamic X-axis labels
   const formatRevenueData = () => {
-    if (revenueTrend.length === 0) {
-      return [
-        { label: "Jun", revenue: 0 },
-        { label: "Jul", revenue: 0 },
-        { label: "Aug", revenue: 0 },
-        { label: "Sep", revenue: 0 },
-        { label: "Oct", revenue: 0 },
-        { label: "Nov", revenue: 0 },
-        { label: "Dec", revenue: 0 },
-        { label: "Jan", revenue: 0 },
-      ];
-    }
-
+    // Buckets are built from the selected filter, so the x-axis stays correct even with no data.
     const currentFilter = revenueFilter;
     const sortedData = [...revenueTrend].sort(
       (a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf()
@@ -1254,6 +1242,8 @@ const AdminStats = () => {
 
   // ========== CHART DATA ==========
   const revenueChartData = formatRevenueData();
+  // Card total follows the card's own filter, not the global one.
+  const revenueTrendTotal = revenueTrend.reduce((sum, item) => sum + (item.revenue || 0), 0);
   const categoryChartData = getCategoryChartData();
   const topOrderTests = getTopOrderTests();
   const doctorsData = getFormattedDoctors();
@@ -1642,7 +1632,7 @@ const AdminStats = () => {
               <p className="mt-1 text-p3 font-semibold text-pneutral-900">
                 Total Revenue
                 <span className="ml-1 font-semibold text-pneutral-900">
-                  {formatCurrency(totalRevenue)}
+                  {formatCurrency(revenueTrendTotal)}
                 </span>
               </p>
             </div>
