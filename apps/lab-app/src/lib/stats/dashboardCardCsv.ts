@@ -31,6 +31,25 @@ export const toExportLabLabel = (labName?: string | null): string =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) || "all-labs";
 
+// File name for the server-streamed exports: <prefix>-<lab|all-labs>-DD-MM-YYYY-to-DD-MM-YYYY.csv.
+// "/" can't appear in a file name, so the dates use "-". Dates arrive as YYYY-MM-DD query params
+// (untrusted), so anything that doesn't match is dropped and the range is omitted.
+export const buildExportFilename = (
+  prefix: string,
+  labLabel: string | null | undefined,
+  startDate?: string | null,
+  endDate?: string | null
+): string => {
+  const toDmy = (value?: string | null): string | null => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || "");
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+  };
+  const from = toDmy(startDate);
+  const to = toDmy(endDate);
+  const range = from && to ? `-${from}-to-${to}` : "";
+  return `${prefix}-${toExportLabLabel(labLabel)}${range}.csv`;
+};
+
 // Revenue Trend - one row per chart bucket (day/week/month depending on the filter).
 export const buildRevenueTrendCsv = (
   points: Array<{ label: string; revenue: number }>,
@@ -40,6 +59,12 @@ export const buildRevenueTrendCsv = (
     ["Period", "Revenue"],
     [...points.map((p) => [p.label, amt(p.revenue)]), ["Total", amt(totalRevenue)]]
   );
+
+// Puts a title line (plus a blank line) above a CSV body.
+export const withCsvHeading = (heading: string, csv: string): string =>
+  `${toCsvLine([heading])}
+
+${csv}`;
 
 // Revenue Trend lab-wise - every lab, not just the top 5 drawn on the card.
 export const buildRevenueByLabCsv = (rows: RevenueByLabRow[]): string =>
