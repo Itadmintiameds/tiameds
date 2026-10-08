@@ -67,8 +67,9 @@ import {
   buildTestsByCategoryCsv,
   buildTopDoctorsCsv,
   toExportLabLabel,
+  withCsvHeading,
 } from "@/lib/stats/dashboardCardCsv";
-import { downloadCSV, generateCSVFilename } from "@/utils/csvUtils";
+import { downloadCSV } from "@/utils/csvUtils";
 import { toast } from "react-toastify";
 
 type DateFilterType = "currentFY" | "week" | "month" | "year" | "custom";
@@ -944,36 +945,90 @@ const SuperAdminStats = () => {
 
   // Card CSV exports (download icon in each card header). These cards already hold
   // their data for their own date filter + the selected lab, so the file is built
-  // client-side from that state - no extra API call.
-  const exportCardCsv = (filePrefix: string, csv: string) => {
-    downloadCSV(csv, generateCSVFilename(`${filePrefix}-${toExportLabLabel(selectedLabName)}`));
+  // client-side from that state - no extra API call. The file name has no date
+  // (<card>-<lab|all-labs>.csv); the card name, lab and selected date range go in a
+  // heading line at the top of the file instead.
+  const exportCardCsv = (
+    filePrefix: string,
+    cardName: string,
+    csv: string,
+    filter: DateFilterType,
+    customRange?: DateRange
+  ) => {
+    const title = selectedLabName ? `${cardName} "${selectedLabName}"` : `${cardName} (All Labs)`;
+    const { startDate, endDate } = getDateRange(filter, customRange);
+    const heading =
+      startDate && endDate
+        ? `${title} - ${dayjs(startDate).format("DD/MM/YYYY")} to ${dayjs(endDate).format("DD/MM/YYYY")}`
+        : title;
+    downloadCSV(withCsvHeading(heading, csv), `${filePrefix}-${toExportLabLabel(selectedLabName)}.csv`);
     toast.info("Downloading file");
   };
 
   const handleDownloadRevenueTrendCsv = () =>
-    exportCardCsv("revenue-trend", buildRevenueTrendCsv(revenueChartData, revenueTrendTotal));
+    exportCardCsv(
+      "revenue-trend",
+      "Revenue Trend",
+      buildRevenueTrendCsv(revenueChartData, revenueTrendTotal),
+      revenueFilter,
+      revenueCustomRange
+    );
 
   const handleDownloadRevenueByLabCsv = () =>
-    exportCardCsv("revenue-trend-lab-wise", buildRevenueByLabCsv(allRevenueByLab));
+    exportCardCsv(
+      "revenue-trend-lab-wise",
+      "Revenue Trend Lab Wise",
+      buildRevenueByLabCsv(allRevenueByLab),
+      topLabsFilter,
+      topLabsCustomRange
+    );
 
   const handleDownloadTestsByCategoryCsv = () =>
-    exportCardCsv("test-by-category", buildTestsByCategoryCsv(testCategories));
+    exportCardCsv(
+      "test-by-category",
+      "Test by Category",
+      buildTestsByCategoryCsv(testCategories),
+      categoryFilter,
+      categoryCustomRange
+    );
 
   // Follows the card's category dropdown and sort order (all pages, not just the visible one).
+  // Revenue by Test and Billing Summary are driven by the global date filter.
   const handleDownloadRevenueByTestCsv = () =>
     exportCardCsv(
       "revenue-by-test",
-      buildRevenueByTestCsv(sortedTests, selectedCategory === "all" ? "" : selectedCategory)
+      "Revenue by Test",
+      buildRevenueByTestCsv(sortedTests, selectedCategory === "all" ? "" : selectedCategory),
+      globalFilter,
+      globalCustomRange
     );
 
   const handleDownloadPackagesSummaryCsv = () =>
-    exportCardCsv("packages-summary", buildPackagesSummaryCsv(packages));
+    exportCardCsv(
+      "packages-summary",
+      "Packages Summary",
+      buildPackagesSummaryCsv(packages),
+      packagesFilter,
+      packagesCustomRange
+    );
 
   const handleDownloadBillingSummaryCsv = () =>
-    exportCardCsv("billing-summary", buildBillingSummaryCsv(billingSummary));
+    exportCardCsv(
+      "billing-summary",
+      "Billing Summary",
+      buildBillingSummaryCsv(billingSummary),
+      globalFilter,
+      globalCustomRange
+    );
 
   const handleDownloadTopDoctorsCsv = () =>
-    exportCardCsv("top-referring-doctors", buildTopDoctorsCsv(topDoctors));
+    exportCardCsv(
+      "top-referring-doctors",
+      "Top Referring Doctors",
+      buildTopDoctorsCsv(topDoctors),
+      doctorsFilter,
+      doctorsCustomRange
+    );
 
   // Format data for category pie chart
   const getCategoryChartData = () => {

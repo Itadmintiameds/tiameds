@@ -4,8 +4,7 @@ import { cookies } from "next/headers";
 import type { LabPerformanceRow } from "@/types/statisticsData";
 import { callStatsBackend, refreshAccessTokenDeduped } from "@/lib/stats/superAdminBackend";
 import { buildLabPerformanceCsv } from "@/lib/stats/labPerformanceCsv";
-import { toExportLabLabel } from "@/lib/stats/dashboardCardCsv";
-import { generateCSVFilename } from "@/utils/csvUtils";
+import { buildExportFilename } from "@/lib/stats/dashboardCardCsv";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -72,9 +71,12 @@ export async function GET(req: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        // labLabel = selected lab's name or "all-labs"; re-sanitized here since it comes from the URL.
-        "Content-Disposition": `attachment; filename="${generateCSVFilename(
-          `lab-performance-summary-${toExportLabLabel(req.nextUrl.searchParams.get("labLabel"))}`
+        // labLabel = selected lab's name or "all-labs"; re-sanitized here since it comes from the URL; the date range is the selected filter.
+        "Content-Disposition": `attachment; filename="${buildExportFilename(
+          "lab-performance-summary",
+          req.nextUrl.searchParams.get("labLabel"),
+          req.nextUrl.searchParams.get("startDate"),
+          req.nextUrl.searchParams.get("endDate")
         )}"`,
         "Cache-Control": "no-store",
       },

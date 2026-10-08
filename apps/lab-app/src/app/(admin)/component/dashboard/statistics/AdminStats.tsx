@@ -68,18 +68,19 @@ import {
   downloadCSV,
   formatAmount as formatCsvAmount,
   formatDate as formatCsvDate,
-  generateCSVFilename,
 } from "@/utils/csvUtils";
 import {
   buildAdminTestsByCategoryCsv,
   buildAdminTopDoctorsCsv,
   buildAgeGenderCsv,
+  buildExportFilename,
   buildPackagesSummaryCsv,
   buildRevenueByCollectionCsv,
   buildRevenueTrendCsv,
   buildTechnicianPerformanceCsv,
   buildTopOrderedTestsCsv,
   toExportLabLabel,
+  withCsvHeading,
 } from "@/lib/stats/dashboardCardCsv";
 import { splitTestNames } from "@/lib/stats/gridReportCsv";
 import CardDownloadButton from "./CardDownloadButton";
@@ -280,6 +281,7 @@ const buildGridReportCsv = (rows: GridReportRow[]): string => {
     "Patient Name",
     "Patient Phone",
     "Doctor Name",
+    "Test Names",
     "Visit Type",
     "Visit Status",
     "Billing Code",
@@ -290,6 +292,7 @@ const buildGridReportCsv = (rows: GridReportRow[]): string => {
     "Discount",
     "Net Amount",
     "Paid Amount",
+    "Refund Amount",
     "Due Amount",
     "Lab Name",
   ];
@@ -301,6 +304,7 @@ const buildGridReportCsv = (rows: GridReportRow[]): string => {
       row.patientName,
       row.patientPhone,
       row.doctorName || "N/A",
+      splitTestNames(row.testNames).join("; "),
       row.visitType,
       row.visitStatus,
       row.billingCode,
@@ -311,6 +315,7 @@ const buildGridReportCsv = (rows: GridReportRow[]): string => {
       formatCsvAmount(row.discount),
       formatCsvAmount(row.netAmount),
       formatCsvAmount(row.paidAmount),
+      formatCsvAmount(row.refundAmount || 0),
       formatCsvAmount(row.dueAmount),
       row.labName,
     ]
@@ -490,262 +495,218 @@ const AdminStats = () => {
     }
   }, [globalCustomRange, globalFilter]);
 
-  // ========== FETCH PACKAGE PERFORMANCE DATA ==========
-  const fetchPackagePerformance = useCallback(
-    async () => {
-      if (!labId) return;
+  // ========== FETCH FUNCTIONS (one per section) ==========
+  // Each section owns its fetcher + effect, and the fetcher depends ONLY on that section's
+  // filter. Changing one card's filter therefore re-fetches just that card instead of
+  // the whole dashboard.
+  const fetchAllTimeKpis = useCallback(async () => {
+    if (!labId) return;
+    const [adminsResult, techniciansResult, deskRolesResult, dashboardKpisResult] =
+      await Promise.allSettled([
+        getTotalAdmins(labId),
+        getTotalTechnicians(labId),
+        getTotalDeskRoles(labId),
+        getDashboardKpis(labId),
+      ]);
 
-      try {
-        const packageRange = getDateRange(packageFilter, packageCustomRange);
+    if (adminsResult.status === "fulfilled") setTotalAdmins(adminsResult.value.totalAdmins);
+    if (techniciansResult.status === "fulfilled")
+      setTotalTechnicians(techniciansResult.value.totalTechnicians);
+    if (deskRolesResult.status === "fulfilled")
+      setTotalDeskRoles(deskRolesResult.value.totalDeskRoles);
+    if (dashboardKpisResult.status === "fulfilled") setDashboardKpis(dashboardKpisResult.value);
+  }, [labId]);
 
-        const packageResult = await getPackagePerformance(
-          labId,
-          packageRange.startDate,
-          packageRange.endDate
-        );
+  // Main KPI cards - follow the GLOBAL date filter
+  const fetchGlobalKpis = useCallback(async () => {
+    if (!labId) return;
+    const globalRange = getDateRange(globalFilter, globalCustomRange);
+    const [testsResult, reportsResult, pendingResult, patientsResult, revenueResult, avgTatResult] =
+      await Promise.allSettled([
+        getTotalTests(labId, globalRange.startDate, globalRange.endDate),
+        getReportsGenerated(labId, globalRange.startDate, globalRange.endDate),
+        getPendingSamples(labId, globalRange.startDate, globalRange.endDate),
+        getTotalPatients(labId, globalRange.startDate, globalRange.endDate),
+        getTotalRevenue(labId, globalRange.startDate, globalRange.endDate),
+        getAvgTat(labId, globalRange.startDate, globalRange.endDate),
+      ]);
 
-        setPackagePerformance(packageResult || []);
-      } catch (error) {
-        console.error("Error fetching package performance:", error);
-        setPackagePerformance([]);
-      }
-    },
-    [labId, packageFilter, packageCustomRange]
-  );
+    if (testsResult.status === "fulfilled") setTotalTests(testsResult.value.totalTests);
+    if (reportsResult.status === "fulfilled") setReportsGenerated(reportsResult.value.reportsGenerated);
+    if (pendingResult.status === "fulfilled") setPendingSamples(pendingResult.value.pendingSamples);
+    if (patientsResult.status === "fulfilled") setTotalPatients(patientsResult.value.totalPatients);
+    if (revenueResult.status === "fulfilled") setTotalRevenue(revenueResult.value.totalRevenue);
+    if (avgTatResult.status === "fulfilled") setAvgTat(avgTatResult.value.avgTatHours);
+  }, [labId, globalFilter, globalCustomRange]);
 
-  // ========== FETCH FUNCTION ==========
-  // All sections below are independent of each other (each computes its own date range
-  // locally and calls its own endpoint), so they're fired together via Promise.allSettled
-  // instead of one after another - this turns what used to be ~9 sequential round trips
-  // into a single parallel batch, which is the main lever for a faster first paint.
+  const fetchRevenueTrend = useCallback(async () => {
+    if (!labId) return;
+    const range = getDateRange(revenueFilter, revenueCustomRange);
+    if (!range.startDate || !range.endDate) {
+      setRevenueTrend([]);
+      return;
+    }
+    try {
+      const trendResult = await getRevenueTrend(labId, range.startDate, range.endDate);
+      setRevenueTrend(trendResult.trend || []);
+    } catch (error) {
+      console.error("Error fetching revenue trend:", error);
+      setRevenueTrend([]);
+    }
+  }, [labId, revenueFilter, revenueCustomRange]);
+
+  const fetchTestsByCategory = useCallback(async () => {
+    if (!labId) return;
+    const range = getDateRange(categoryFilter, categoryCustomRange);
+    try {
+      const categoryResult = await getTestsByCategory(labId, range.startDate, range.endDate);
+      setTestsByCategory(categoryResult.categories || []);
+      setCategoryTotal(categoryResult.total || 0);
+    } catch (error) {
+      console.error("Error fetching tests by category:", error);
+      setTestsByCategory([]);
+      setCategoryTotal(0);
+    }
+  }, [labId, categoryFilter, categoryCustomRange]);
+
+  // Top ordered tests share the category card's filter (all tests, not just top N)
+  const fetchTopOrderedTests = useCallback(async () => {
+    if (!labId) return;
+    const range = getDateRange(categoryFilter, categoryCustomRange);
+    try {
+      const topTests = await getTopOrderedTests(labId, range.startDate, range.endDate);
+      setTopOrderedTests(topTests || []);
+    } catch (error) {
+      console.error("Error fetching top ordered tests:", error);
+      setTopOrderedTests([]);
+    }
+  }, [labId, categoryFilter, categoryCustomRange]);
+
+  const fetchTechnicianPerformance = useCallback(async () => {
+    if (!labId) return;
+    const range = getDateRange(technicianFilter, technicianCustomRange);
+    try {
+      const techResult = await getTechnicianPerformance(labId, range.startDate, range.endDate);
+      setTechnicianPerformance(techResult || []);
+    } catch (error) {
+      console.error("Error fetching technician performance:", error);
+      setTechnicianPerformance([]);
+    }
+  }, [labId, technicianFilter, technicianCustomRange]);
+
+  const fetchTopDoctors = useCallback(async () => {
+    if (!labId) return;
+    const range = getDateRange(doctorsFilter, doctorsCustomRange);
+    try {
+      const doctorsResult = await getTopReferringDoctors(
+        labId,
+        range.startDate,
+        range.endDate,
+        ALL_ROWS_LIMIT
+      );
+      setTopDoctors(doctorsResult || []);
+    } catch (error) {
+      console.error("Error fetching top doctors:", error);
+      setTopDoctors([]);
+    }
+  }, [labId, doctorsFilter, doctorsCustomRange]);
+
+  const fetchRevenueByCollection = useCallback(async () => {
+    if (!labId) return;
+    const range = getDateRange(collectionFilter, collectionCustomRange);
+    try {
+      const collectionResult = await getRevenueByCollectionMethod(
+        labId,
+        range.startDate,
+        range.endDate
+      );
+      setRevenueByCollection(collectionResult);
+    } catch (error) {
+      console.error("Error fetching revenue by collection:", error);
+      setRevenueByCollection(null);
+    }
+  }, [labId, collectionFilter, collectionCustomRange]);
+
+  const fetchAgeGender = useCallback(async () => {
+    if (!labId) return;
+    const range = getDateRange(ageGenderFilter, ageGenderCustomRange);
+    try {
+      const ageGenderResult = await getAgeGenderDistribution(labId, range.startDate, range.endDate);
+      setAgeGenderData(ageGenderResult);
+    } catch (error) {
+      console.error("Error fetching age & gender:", error);
+      setAgeGenderData(null);
+    }
+  }, [labId, ageGenderFilter, ageGenderCustomRange]);
+
+  const fetchPackagePerformance = useCallback(async () => {
+    if (!labId) return;
+    try {
+      const range = getDateRange(packageFilter, packageCustomRange);
+      const packageResult = await getPackagePerformance(labId, range.startDate, range.endDate);
+      setPackagePerformance(packageResult || []);
+    } catch (error) {
+      console.error("Error fetching package performance:", error);
+      setPackagePerformance([]);
+    }
+  }, [labId, packageFilter, packageCustomRange]);
+
+  // `loading` only drives the KPI cards, so it tracks just the two KPI fetchers.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.allSettled([fetchAllTimeKpis(), fetchGlobalKpis()]).then(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchAllTimeKpis, fetchGlobalKpis]);
+
+  useEffect(() => { fetchRevenueTrend(); }, [fetchRevenueTrend]);
+  useEffect(() => { fetchTestsByCategory(); }, [fetchTestsByCategory]);
+  useEffect(() => { fetchTopOrderedTests(); }, [fetchTopOrderedTests]);
+  useEffect(() => { fetchTechnicianPerformance(); }, [fetchTechnicianPerformance]);
+  useEffect(() => { fetchTopDoctors(); }, [fetchTopDoctors]);
+  useEffect(() => { fetchRevenueByCollection(); }, [fetchRevenueByCollection]);
+  useEffect(() => { fetchAgeGender(); }, [fetchAgeGender]);
+  useEffect(() => { fetchPackagePerformance(); }, [fetchPackagePerformance]);
+
+  // Manual refresh re-fetches every section with its current filter.
   const fetchAllData = useCallback(
-    async (silent = false) => {
-      if (!labId) return;
-
-      if (!silent) {
-        setLoading(true);
-      } else {
-        setRefreshing(true);
-      }
-
+    async () => {
+      setRefreshing(true);
       try {
-        const globalRange = getDateRange(globalFilter, globalCustomRange);
-        const revenueRange = getDateRange(revenueFilter, revenueCustomRange);
-        const categoryRange = getDateRange(categoryFilter, categoryCustomRange);
-        const technicianRange = getDateRange(technicianFilter, technicianCustomRange);
-        const doctorsRange = getDateRange(doctorsFilter, doctorsCustomRange);
-        const collectionRange = getDateRange(collectionFilter, collectionCustomRange);
-        const ageGenderRange = getDateRange(ageGenderFilter, ageGenderCustomRange);
-
         await Promise.allSettled([
-          // 1. KPIs WITHOUT date filters (all-time)
-          (async () => {
-            const [
-              adminsResult,
-              techniciansResult,
-              deskRolesResult,
-              dashboardKpisResult,
-            ] = await Promise.allSettled([
-              getTotalAdmins(labId),
-              getTotalTechnicians(labId),
-              getTotalDeskRoles(labId),
-              getDashboardKpis(labId),
-            ]);
-
-            if (adminsResult.status === "fulfilled")
-              setTotalAdmins(adminsResult.value.totalAdmins);
-            if (techniciansResult.status === "fulfilled")
-              setTotalTechnicians(techniciansResult.value.totalTechnicians);
-            if (deskRolesResult.status === "fulfilled")
-              setTotalDeskRoles(deskRolesResult.value.totalDeskRoles);
-            if (dashboardKpisResult.status === "fulfilled")
-              setDashboardKpis(dashboardKpisResult.value);
-          })(),
-
-          // 2. Data with GLOBAL date filter for main KPIs
-          (async () => {
-            const [
-              testsResult,
-              reportsResult,
-              pendingResult,
-              patientsResult,
-              revenueResult,
-              avgTatResult,
-            ] = await Promise.allSettled([
-              getTotalTests(labId, globalRange.startDate, globalRange.endDate),
-              getReportsGenerated(labId, globalRange.startDate, globalRange.endDate),
-              getPendingSamples(labId, globalRange.startDate, globalRange.endDate),
-              getTotalPatients(labId, globalRange.startDate, globalRange.endDate),
-              getTotalRevenue(labId, globalRange.startDate, globalRange.endDate),
-              getAvgTat(labId, globalRange.startDate, globalRange.endDate),
-            ]);
-
-            if (testsResult.status === "fulfilled")
-              setTotalTests(testsResult.value.totalTests);
-            if (reportsResult.status === "fulfilled")
-              setReportsGenerated(reportsResult.value.reportsGenerated);
-            if (pendingResult.status === "fulfilled")
-              setPendingSamples(pendingResult.value.pendingSamples);
-            if (patientsResult.status === "fulfilled")
-              setTotalPatients(patientsResult.value.totalPatients);
-            if (revenueResult.status === "fulfilled")
-              setTotalRevenue(revenueResult.value.totalRevenue);
-            if (avgTatResult.status === "fulfilled")
-              setAvgTat(avgTatResult.value.avgTatHours);
-          })(),
-
-          // 3. Revenue trend with its OWN filter
-          (async () => {
-            if (revenueRange.startDate && revenueRange.endDate) {
-              try {
-                const trendResult = await getRevenueTrend(
-                  labId,
-                  revenueRange.startDate,
-                  revenueRange.endDate
-                );
-                setRevenueTrend(trendResult.trend || []);
-              } catch (error) {
-                console.error("Error fetching revenue trend:", error);
-                setRevenueTrend([]);
-              }
-            } else {
-              setRevenueTrend([]);
-            }
-          })(),
-
-          // 4. Tests by category with the section's OWN filter
-          (async () => {
-            try {
-              const categoryResult = await getTestsByCategory(
-                labId,
-                categoryRange.startDate,
-                categoryRange.endDate
-              );
-              setTestsByCategory(categoryResult.categories || []);
-              setCategoryTotal(categoryResult.total || 0);
-            } catch (error) {
-              console.error("Error fetching tests by category:", error);
-              setTestsByCategory([]);
-              setCategoryTotal(0);
-            }
-          })(),
-
-          // 5. Top ordered tests with the category filter (all tests, not just top N)
-          (async () => {
-            try {
-              const topTests = await getTopOrderedTests(
-                labId,
-                categoryRange.startDate,
-                categoryRange.endDate
-              );
-              setTopOrderedTests(topTests || []);
-            } catch (error) {
-              console.error("Error fetching top ordered tests:", error);
-              setTopOrderedTests([]);
-            }
-          })(),
-
-          // 6. Technician performance with its OWN filter
-          (async () => {
-            try {
-              const techResult = await getTechnicianPerformance(
-                labId,
-                technicianRange.startDate,
-                technicianRange.endDate
-              );
-              setTechnicianPerformance(techResult || []);
-            } catch (error) {
-              console.error("Error fetching technician performance:", error);
-              setTechnicianPerformance([]);
-            }
-          })(),
-
-          // 7. Top doctors with its OWN filter
-          (async () => {
-            try {
-              const doctorsResult = await getTopReferringDoctors(
-                labId,
-                doctorsRange.startDate,
-                doctorsRange.endDate,
-                ALL_ROWS_LIMIT
-              );
-              setTopDoctors(doctorsResult || []);
-            } catch (error) {
-              console.error("Error fetching top doctors:", error);
-              setTopDoctors([]);
-            }
-          })(),
-
-          // 8. Revenue by collection method
-          (async () => {
-            try {
-              const collectionResult = await getRevenueByCollectionMethod(
-                labId,
-                collectionRange.startDate,
-                collectionRange.endDate
-              );
-              setRevenueByCollection(collectionResult);
-            } catch (error) {
-              console.error("Error fetching revenue by collection:", error);
-              setRevenueByCollection(null);
-            }
-          })(),
-
-          // 9. Age & gender distribution
-          (async () => {
-            try {
-              const ageGenderResult = await getAgeGenderDistribution(
-                labId,
-                ageGenderRange.startDate,
-                ageGenderRange.endDate
-              );
-              setAgeGenderData(ageGenderResult);
-            } catch (error) {
-              console.error("Error fetching age & gender:", error);
-              setAgeGenderData(null);
-            }
-          })(),
-
-          // 10. Package performance
+          fetchAllTimeKpis(),
+          fetchGlobalKpis(),
+          fetchRevenueTrend(),
+          fetchTestsByCategory(),
+          fetchTopOrderedTests(),
+          fetchTechnicianPerformance(),
+          fetchTopDoctors(),
+          fetchRevenueByCollection(),
+          fetchAgeGender(),
           fetchPackagePerformance(),
         ]);
-
         setLastUpdated(new Date());
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
       } finally {
-        if (!silent) {
-          setLoading(false);
-        } else {
-          setRefreshing(false);
-        }
+        setRefreshing(false);
       }
     },
     [
-      labId,
-      globalFilter,
-      globalCustomRange,
-      revenueFilter,
-      revenueCustomRange,
-      categoryFilter,
-      categoryCustomRange,
-      packageFilter,
-      packageCustomRange,
-      technicianFilter,
-      technicianCustomRange,
-      doctorsFilter,
-      doctorsCustomRange,
-      collectionFilter,
-      collectionCustomRange,
-      ageGenderFilter,
-      ageGenderCustomRange,
+      fetchAllTimeKpis,
+      fetchGlobalKpis,
+      fetchRevenueTrend,
+      fetchTestsByCategory,
+      fetchTopOrderedTests,
+      fetchTechnicianPerformance,
+      fetchTopDoctors,
+      fetchRevenueByCollection,
+      fetchAgeGender,
       fetchPackagePerformance,
     ]
   );
-
-  useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
 
   const fetchGridData = useCallback(
     async (silent = false) => {
@@ -793,54 +754,113 @@ const AdminStats = () => {
   // Manual refresh - replaces the old 30s auto-refresh, which was re-fetching every
   // section (including the full Billing Grid Report) too often and spiking load.
   const handleManualRefresh = useCallback(() => {
-    fetchAllData(true);
+    fetchAllData();
     fetchGridData(true);
   }, [fetchAllData, fetchGridData]);
 
   // The grid table already holds the full filtered result set (no pagination), so the
   // CSV export just converts what's already loaded - no extra fetch needed.
+  // File name: billing-report-<lab>-DD-MM-YYYY-to-DD-MM-YYYY.csv (no "/" allowed in file names).
   const handleDownloadGridCsv = () => {
     if (gridData.rows.length === 0) return;
     const csv = buildGridReportCsv(gridData.rows);
-    downloadCSV(csv, generateCSVFilename("billing-report"));
+    const { startDate, endDate } = getDateRange(gridFilter, gridCustomRange);
+    downloadCSV(csv, buildExportFilename("billing-report", currentLab?.name, startDate, endDate));
   };
 
   // Card CSV exports (download icon in each card header). Each card already holds its data
   // for its own date filter, so the file is built client-side from that state - no API call.
-  const exportCardCsv = (filePrefix: string, csv: string) => {
-    downloadCSV(csv, generateCSVFilename(`${filePrefix}-${toExportLabLabel(currentLab?.name)}`));
+  // The file name has no date (<card>-<lab>.csv); the card name, lab and selected date range
+  // go in a heading line at the top of the file instead.
+  const exportCardCsv = (
+    filePrefix: string,
+    cardName: string,
+    csv: string,
+    filter: DateFilterType,
+    customRange?: DateRange
+  ) => {
+    const title = currentLab?.name ? `${cardName} "${currentLab.name}"` : cardName;
+    const { startDate, endDate } = getDateRange(filter, customRange);
+    const heading =
+      startDate && endDate
+        ? `${title} - ${dayjs(startDate).format("DD/MM/YYYY")} to ${dayjs(endDate).format("DD/MM/YYYY")}`
+        : title;
+    downloadCSV(withCsvHeading(heading, csv), `${filePrefix}-${toExportLabLabel(currentLab?.name)}.csv`);
     toast.info("Downloading file");
   };
 
   const handleDownloadRevenueTrendCsv = () =>
-    exportCardCsv("daily-revenue-trend", buildRevenueTrendCsv(revenueChartData, totalRevenue));
+    exportCardCsv(
+      "daily-revenue-trend",
+      "Daily Revenue Trend",
+      buildRevenueTrendCsv(revenueChartData, totalRevenue),
+      revenueFilter,
+      revenueCustomRange
+    );
 
   const handleDownloadPackagePerformanceCsv = () =>
-    exportCardCsv("package-performance", buildPackagesSummaryCsv(packagePerformance));
+    exportCardCsv(
+      "package-performance",
+      "Package Performance",
+      buildPackagesSummaryCsv(packagePerformance),
+      packageFilter,
+      packageCustomRange
+    );
 
   const handleDownloadTestsByCategoryCsv = () =>
-    exportCardCsv("test-by-category", buildAdminTestsByCategoryCsv(testsByCategory));
+    exportCardCsv(
+      "test-by-category",
+      "Test by Category",
+      buildAdminTestsByCategoryCsv(testsByCategory),
+      categoryFilter,
+      categoryCustomRange
+    );
 
+  // Top Order Test is fetched with the category filter's range.
   const handleDownloadTopOrderedTestsCsv = () =>
-    exportCardCsv("top-order-test", buildTopOrderedTestsCsv(topOrderedTests));
+    exportCardCsv(
+      "top-order-test",
+      "Top Order Test",
+      buildTopOrderedTestsCsv(topOrderedTests),
+      categoryFilter,
+      categoryCustomRange
+    );
 
   const handleDownloadCollectionCsv = () =>
     exportCardCsv(
       "revenue-by-collection-method",
-      buildRevenueByCollectionCsv(revenueByCollection?.methods || [], revenueByCollection?.total || 0)
+      "Revenue by Collection Method",
+      buildRevenueByCollectionCsv(revenueByCollection?.methods || [], revenueByCollection?.total || 0),
+      collectionFilter,
+      collectionCustomRange
     );
 
   const handleDownloadAgeGenderCsv = () =>
     exportCardCsv(
       "age-gender-distribution",
-      buildAgeGenderCsv(ageGenderData?.gender || [], ageGenderData?.ageGroups || [])
+      "Age & Gender Distribution",
+      buildAgeGenderCsv(ageGenderData?.gender || [], ageGenderData?.ageGroups || []),
+      ageGenderFilter,
+      ageGenderCustomRange
     );
 
   const handleDownloadTechnicianCsv = () =>
-    exportCardCsv("technician-performance", buildTechnicianPerformanceCsv(technicianPerformance));
+    exportCardCsv(
+      "technician-performance",
+      "Technician Performance",
+      buildTechnicianPerformanceCsv(technicianPerformance),
+      technicianFilter,
+      technicianCustomRange
+    );
 
   const handleDownloadTopDoctorsCsv = () =>
-    exportCardCsv("top-referring-doctors", buildAdminTopDoctorsCsv(topDoctors));
+    exportCardCsv(
+      "top-referring-doctors",
+      "Top Referring Doctors",
+      buildAdminTopDoctorsCsv(topDoctors),
+      doctorsFilter,
+      doctorsCustomRange
+    );
 
   // ========== DATA FORMATTING FUNCTIONS ==========
 
