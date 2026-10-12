@@ -1,202 +1,159 @@
-'use client'
-import { motion } from 'framer-motion'
-import Image from "next/image"
-import Link from "next/link"
-import {
-  FaEnvelope,
-  FaLinkedin,
-  FaMapMarkerAlt,
-  FaPhone,
-  FaServer
-} from 'react-icons/fa'
-import {
-  GiNetworkBars,
-  GiProcessor
-} from 'react-icons/gi'
+import Image from 'next/image';
+import Link from 'next/link';
+import { ArrowUp, LinkedIn, Mail, MapPin, Phone } from './ui/icons';
+import LiveClock from './ui/LiveClock';
+
+const company = [
+  { name: 'About Us', href: '/about' },
+  { name: 'Contact Us', href: '/contact' },
+  { name: 'Careers', href: '/careers' },
+];
+
+// The product list from the "TiaMeds Website Changes" doc (top level + sub-products), linking to /product sections
+const solutions = [
+  {
+    name: 'TiaMeds One – HIMS',
+    href: '/product#tiameds-one-hims',
+    children: [
+      { name: 'TiaMeds Patient Flow', href: '/product#tiameds-patient-flow' },
+      { name: 'TiaMeds Lab', href: '/product#tiameds-lab' },
+      { name: 'TiaMeds Insurance', href: '/product#tiameds-insurance' },
+      { name: 'TiaMeds EMR and integrated hospital workflows', href: '/product#tiameds-one-hims' },
+    ],
+  },
+  {
+    name: 'TiaMeds Marketplace',
+    href: '/product#tiameds-marketplace',
+    children: [
+      { name: 'TiaMeds Pharma Inventory', href: '/product#tiameds-pharma-inventory' },
+      { name: 'TiaMeds Pharma Marketplace', href: '/product#tiameds-marketplace' },
+    ],
+  },
+  { name: 'Blood Buddy', href: '/product#blood-buddy', children: [] },
+  { name: 'TiaMeds Sporty – Sports & Fitness App', href: '/product#tiameds-sporty-sports-fitness-app', children: [] },
+  { name: 'Digital Marketing & Growth Solutions', href: '/product#digital-marketing-growth-solutions', children: [] },
+];
+
+const labelCls = 'mb-6 font-mono text-[11px] uppercase tracking-[0.16em] text-faint';
+const linkCls = 'link-sweep text-mute transition-colors hover:text-ink';
 
 const FooterSection = () => {
   return (
-    <footer className="relative bg-gradient-to-b from-gray-50 to-white py-20 px-6 lg:px-8 overflow-hidden">
-      {/* Circuit Board Background Pattern */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 opacity-10">
-        <svg
-          viewBox="0 0 1200 800"
-          className="w-full h-full"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M100,100 L1100,100 L1100,700 L100,700 Z"
-            stroke="currentColor"
-            strokeWidth="1"
-            strokeDasharray="4 4"
-            className="text-blue-200"
-            fill="none"
-          />
-          <rect x="300" y="300" width="600" height="200"
-            stroke="currentColor"
-            strokeWidth="1"
-            strokeDasharray="4 4"
-            className="text-purple-200"
-            fill="none"
-          />
-          <circle cx="600" cy="400" r="150"
-            stroke="currentColor"
-            strokeWidth="1"
-            strokeDasharray="4 4"
-            className="text-teal-200"
-            fill="none"
-          />
-        </svg>
-      </div>
+    <footer className="relative isolate overflow-hidden border-t border-edge/10 bg-canvas">
+      <div aria-hidden="true" className="absolute inset-x-0 bottom-0 -z-10 h-[60%] bg-[radial-gradient(50%_80%_at_50%_100%,rgb(var(--halo)/0.10),transparent_70%)]" />
 
-      {/* Floating Tech Icons */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-        <GiProcessor className="absolute top-1/4 left-10 text-blue-100 text-6xl opacity-20" />
-        <FaServer className="absolute top-1/3 right-20 text-violet-100 text-5xl opacity-20" />
-        <GiNetworkBars className="absolute bottom-1/4 left-1/4 text-teal-100 text-7xl opacity-20" />
-      </div>
-
-      <div className="mx-auto max-w-7xl">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-12"
-        >
-          {/* Company Info */}
-          <div className="space-y-6">
-            <Link href="/" className="flex items-center">
+      <div className="container-x pb-8 pt-20 sm:pt-24">
+        <div className="grid gap-14 md:grid-cols-2 lg:grid-cols-12 lg:gap-10">
+          {/* Brand */}
+          <div className="lg:col-span-4">
+            <Link href="/" aria-label="TiaMeds — home" className="inline-block">
               <Image
-                alt="/LOGO.svg"
                 src="/LOGO.svg"
-                className="h-12 w-auto transition-transform duration-300 scale-120"
-                width={120}
-                height={120}
+                alt="TiaMeds — Innovating Today, Shaping Tomorrow!"
+                width={225}
+                height={80}
+                unoptimized
+                className="h-16 w-auto [filter:brightness(0)_invert(1)]"
               />
             </Link>
-            <p className="text-gray-600">
-              Enterprise-grade technology solutions for digital transformation.
-            </p>
-            <div className="flex space-x-6">
-              {/* <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.9 }}>
-                <Link
-                  href="#"
-                  className="text-gray-600 hover:text-primary transition-colors"
-                  aria-label="Twitter"
-                >
-                  <FaTwitter className="w-5 h-5" />
-                </Link>
-              </motion.div> */}
-              <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.9 }}>
-                <Link
-                  href="https://www.linkedin.com/company/tiameds-technologies/"
-                  className="text-gray-600 hover:text-primary transition-colors"
-                  aria-label="LinkedIn"
-                >
-                  <FaLinkedin className="w-5 h-5" />
-                </Link>
-              </motion.div>
-              {/* <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.9 }}>
-                <Link
-                  href="#"
-                  className="text-gray-600 hover:text-primary transition-colors"
-                  aria-label="GitHub"
-                >
-                  <FaGithub className="w-5 h-5" />
-                </Link>
-              </motion.div> */}
-            </div>
+            <p className="mt-6 max-w-xs text-mute">Enterprise-grade technology solutions for digital transformation.</p>
+            <a
+              href="https://www.linkedin.com/company/tiameds-technologies/"
+              aria-label="TiaMeds on LinkedIn"
+              className="mt-6 inline-flex h-10 w-10 items-center justify-center rounded-full border border-edge/15 text-mute transition-colors hover:border-edge/40 hover:text-ink"
+            >
+              <LinkedIn size={16} />
+            </a>
           </div>
 
-          {/* Navigation */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Company</h3>
-            <div className="space-y-4">
-              <motion.p whileHover={{ x: 5 }}>
-                <Link href="/about" className="text-gray-600 hover:text-primary transition-colors">
-                  About Us
-                </Link>
-              </motion.p>
-              <motion.p whileHover={{ x: 5 }}>
-                <Link href="/contact" className="text-gray-600 hover:text-primary transition-colors">
-                  Contact Us
-                </Link>
-              </motion.p>
-              <motion.p whileHover={{ x: 5 }}>
-                <Link href="/careers" className="text-gray-600 hover:text-primary transition-colors">
-                  Careers
-                </Link>
-              </motion.p>
-            </div>
-          </div>
+          {/* Company */}
+          <nav aria-label="Company" className="lg:col-span-2">
+            <h3 className={labelCls}>Company</h3>
+            <ul className="space-y-3">
+              {company.map((item) => (
+                <li key={item.name}>
+                  <Link href={item.href} className={linkCls}>
+                    {item.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
           {/* Solutions */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Solutions</h3>
+          <nav aria-label="Solutions" className="lg:col-span-3">
+            <h3 className={labelCls}>Solutions</h3>
             <ul className="space-y-4">
-              <motion.p whileHover={{ x: 5 }}>
-                <Link href="/product" className="text-gray-600 hover:text-primary transition-colors">
-
-                  Pharma E-Commerce Platform
-                </Link>
-              </motion.p>
-              <motion.p whileHover={{ x: 5 }}>
-                <Link href="/product" className="text-gray-600 hover:text-primary transition-colors">
-                  Lab Management Software
-                </Link>
-              </motion.p>
-              <motion.p whileHover={{ x: 5 }}>
-                <Link href="/product" className="text-gray-600 hover:text-primary transition-colors">
-                  Pharma Managment Software
-                </Link>
-              </motion.p>
+              {solutions.map((group) => (
+                <li key={group.name}>
+                  <Link href={group.href} className={linkCls}>
+                    {group.name}
+                  </Link>
+                  {group.children.length > 0 && (
+                    <ul className="mt-3 space-y-2 border-l border-edge/10 pl-4">
+                      {group.children.map((child) => (
+                        <li key={child.name}>
+                          <Link href={child.href} className="link-sweep text-sm text-faint transition-colors hover:text-ink">
+                            {child.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
             </ul>
-          </div>
+          </nav>
 
           {/* Contact */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Contact</h3>
-            <address className="not-italic text-gray-600 space-y-4">
-              <motion.div whileHover={{ x: 5 }} className="flex items-start">
-                <FaMapMarkerAlt className="flex-shrink-0 mt-1 mr-3 text-primary" />
-                <span className="hover:text-primary transition-colors">
-                No. 59, 2nd Floor of Dakshina Murthy Towers <br />
-                 Devanooru, Rajeevnagara 2nd Stage, Udayagiri, <br />
+          <div className="lg:col-span-3">
+            <h3 className={labelCls}>Contact</h3>
+            <address className="space-y-5 not-italic text-mute">
+              <p className="flex gap-3">
+                <MapPin size={18} className="mt-0.5 shrink-0 text-signal" />
+                <span>
+                  No. 59, 2nd Floor of Dakshina Murthy Towers <br />
+                  Devanooru, Rajeevnagara 2nd Stage, Udayagiri, <br />
                   Mysore, Karnataka – 570019.
                 </span>
-              </motion.div>
-              <motion.div whileHover={{ x: 5 }} className="flex items-center">
-                <FaPhone className="flex-shrink-0 mr-3 text-primary" />
-                <Link href="tel:7678325053" className="hover:text-primary transition-colors">
+              </p>
+              <p className="flex items-center gap-3">
+                <Phone size={18} className="shrink-0 text-signal" />
+                <a href="tel:7678325053" className={linkCls}>
                   +91 7678325053
-                </Link>
-              </motion.div>
-              <motion.div whileHover={{ x: 5 }} className="flex items-center">
-                <FaEnvelope className="flex-shrink-0 mr-3 text-primary" />
-                <Link href="mailto:info@technova.com" className="hover:text-primary transition-colors">
+                </a>
+              </p>
+              <p className="flex items-center gap-3">
+                <Mail size={18} className="shrink-0 text-signal" />
+                <a href="mailto:info@technova.com" className={linkCls}>
                   support@tiameds.ai
-                </Link>
-              </motion.div>
+                </a>
+              </p>
             </address>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Copyright */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          viewport={{ once: true }}
-          className="mt-16 pt-8 border-t border-gray-200 text-center"
+        {/* Oversized wordmark */}
+        <p
+          aria-hidden="true"
+          className="pointer-events-none mt-20 select-none bg-gradient-to-b from-ink/[0.14] to-ink/0 bg-clip-text text-center text-[clamp(4.5rem,21vw,19rem)] font-semibold leading-[0.8] tracking-[-0.07em] text-transparent"
         >
-          <p className="text-gray-500 text-sm">
-            © {new Date().getFullYear()} TiaMeds Technologies Pvt. Ltd. All rights reserved.
+          TiaMeds
+        </p>
+
+        <div className="mt-8 flex flex-col gap-4 border-t border-edge/10 pt-6 text-sm text-faint md:flex-row md:items-center md:justify-between">
+          <p>© {new Date().getFullYear()} TiaMeds Technologies Pvt. Ltd. All rights reserved.</p>
+          <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em]">
+            <span className="h-1.5 w-1.5 rounded-full bg-signal motion-safe:animate-pulse-dot" aria-hidden="true" />
+            Mysuru, India · <LiveClock className="text-mute" />
           </p>
-        </motion.div>
+          <a href="#main" className="inline-flex items-center gap-2 transition-colors hover:text-ink">
+            Back to top <ArrowUp size={14} />
+          </a>
+        </div>
       </div>
     </footer>
-  )
-}
+  );
+};
 
-export default FooterSection
+export default FooterSection;

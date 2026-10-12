@@ -2,67 +2,685 @@
 @tailwind components;
 @tailwind utilities;
 
-
+/* ------------------------------------------------------------------ tokens */
 :root {
-  /* Primary branding colors for consistency across the UI */
-  --PRIMARY: #6b21a8; /* Main brand color for navigation and pro minent elements */
-  --SECONDARY: #9333ea; /* Accent color for highlights and secondary actions */
-  --TERTIARY: #a855f7; /* Tertiary color for subtle highlights or background accents */
+  /* Legacy brand tokens (kept for older components that still reference them) */
+  --PRIMARY: #6b21a8;
+  --SECONDARY: #9333ea;
+  --TERTIARY: #a855f7;
+  --BACKGROUND: #f3f4f6;
+  --CARD-BACKGROUND: #ffffff;
+  --CARD-HOVER: #f9fafb;
+  --TEXT-DARK: #1e1b4b;
+  --TEXT-LIGHT: #71717a;
+  --TEXT-MUTED: #9ca3af;
+  --TEXT-WHITE: #ffffff;
+  --TEXT-ZINC: #09090b;
+  --SAVE-BUTTON: #8b5cf6;
+  --SAVE-HOVER: #7c3aed;
+  --DELETE-BUTTON: #dc2626;
+  --DELETE-HOVER: #b91c1c;
+  --UPDATE-BUTTON: #4f46e5;
+  --UPDATE-HOVER: #4338ca;
 
-  /* Background colors for different sections of the website */
-  --BACKGROUND: #f3f4f6; /* Default page background for content areas */
-  --CARD-BACKGROUND: #ffffff; /* White background for cards, panels, and modals */
-  --CARD-HOVER: #f9fafb; /* Hover state for cards and panels */
+  /* Clinical noir — RGB channels, consumed as rgb(var(--x) / alpha) */
+  --canvas: 7 8 11;
+  --surface: 13 15 20;
+  --raised: 20 23 30;
+  --ink: 244 245 247;
+  --mute: 163 169 181;
+  --faint: 124 131 146;
+  --edge: 255 255 255;
+  --signal: 79 227 176;
+  --on-signal: 4 26 18;
+  --halo: 124 92 255;
+  --danger: 255 128 128;
 
-  /* Text colors for improved readability and emphasis */
-  --TEXT-DARK: #1e1b4b; /* Primary text color for headings and important information */
-  --TEXT-LIGHT: #71717a; /* Secondary text for body content */
-  --TEXT-MUTED: #9ca3af; /* Muted text for captions and less critical information */
-  --TEXT-WHITE: #ffffff; /* White text for dark backgrounds */
-  --TEXT-ZINC :#09090b;  /* Zinc text for dark backgrounds */
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+  --header-h: 72px;
 
-  /* Button colors for different actions */
-  --SAVE-BUTTON: #8b5cf6; /* Save button background */
-  --SAVE-HOVER: #7c3aed; /* Hover state for save button */
-  --DELETE-BUTTON: #dc2626; /* Delete button background for destructive actions */
-  --DELETE-HOVER: #b91c1c; /* Hover state for delete button */
-  --UPDATE-BUTTON: #4f46e5; /* Update button background for modifications */
-  --UPDATE-HOVER: #4338ca; /* Hover state for update button */
+  color-scheme: dark;
 }
 
-
-body {
-  color: var( --text-dark);
-  background: var(--BACKGROUND );
-  font-family: Arial, Helvetica, sans-serif;
+/* Warm "paper" interlude: flip the same tokens for a light band */
+.theme-paper {
+  --canvas: 239 238 233;
+  --surface: 247 246 242;
+  --raised: 255 255 255;
+  --ink: 21 23 28;
+  --mute: 75 81 94;
+  --faint: 98 104 118;
+  --edge: 21 23 28;
+  --signal: 8 105 77;
+  --on-signal: 255 255 255;
+  --danger: 176 32 32;
+  color-scheme: light;
+  background-color: rgb(var(--canvas));
+  color: rgb(var(--ink));
 }
 
+/* ------------------------------------------------------------------ base */
+@layer base {
+  html {
+    background-color: rgb(var(--canvas));
+    color: rgb(var(--ink));
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-top: calc(var(--header-h) + 24px);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: rgb(var(--canvas));
+    color: rgb(var(--ink));
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: rgb(var(--signal));
+    color: rgb(var(--on-signal));
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--signal));
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+}
+
+/* ------------------------------------------------------------------ layout + type */
+@layer components {
+  .skip-link {
+    position: fixed;
+    left: 16px;
+    top: -60px;
+    z-index: 120;
+    border-radius: 9999px;
+    background-color: rgb(var(--ink));
+    color: rgb(var(--canvas));
+    padding: 0.6rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: top 0.3s var(--ease-out);
+  }
+
+  .skip-link:focus {
+    top: 16px;
+  }
+
+  .container-x {
+    width: 100%;
+    max-width: 1360px;
+    margin-inline: auto;
+    padding-inline: clamp(20px, 4vw, 56px);
+  }
+
+  .section {
+    padding-block: clamp(88px, 11vw, 160px);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.75rem;
+    line-height: 1;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgb(var(--mute));
+  }
+
+  .eyebrow-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background-color: rgb(var(--signal));
+    flex: none;
+  }
+
+  .display {
+    font-weight: 500;
+    font-size: clamp(2.75rem, 7.6vw, 7rem);
+    line-height: 0.95;
+    letter-spacing: -0.045em;
+    text-wrap: balance;
+  }
+
+  .h-section {
+    font-weight: 500;
+    font-size: clamp(2.25rem, 5.4vw, 4.75rem);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    text-wrap: balance;
+  }
+
+  .h-sub {
+    font-weight: 500;
+    font-size: clamp(1.6rem, 3vw, 2.5rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  .lede {
+    font-size: clamp(1.05rem, 1.35vw, 1.25rem);
+    line-height: 1.65;
+    color: rgb(var(--mute));
+    text-wrap: pretty;
+  }
+
+  /* Serif italic accent inside sans headings */
+  .em {
+    font-family: var(--font-serif), ui-serif, Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    font-size: 1.06em;
+    padding-right: 0.04em;
+  }
+
+  .mono-num {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  /* ---------- buttons */
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    min-height: 46px;
+    padding: 0 1.35rem;
+    border-radius: 9999px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    transition: background-color 0.35s var(--ease-out), color 0.35s var(--ease-out), border-color 0.35s var(--ease-out), transform 0.35s var(--ease-out);
+  }
+
+  .btn:active {
+    transform: translateY(1px);
+  }
+
+  .btn-primary {
+    background-color: rgb(var(--ink));
+    color: rgb(var(--canvas));
+  }
+
+  .btn-primary:hover {
+    background-color: rgb(var(--signal));
+    color: rgb(var(--on-signal));
+  }
+
+  .btn-signal {
+    background-color: rgb(var(--signal));
+    color: rgb(var(--on-signal));
+  }
+
+  .btn-signal:hover {
+    background-color: rgb(var(--ink));
+    color: rgb(var(--canvas));
+  }
+
+  .btn-ghost {
+    border: 1px solid rgb(var(--edge) / 0.18);
+    color: rgb(var(--ink));
+  }
+
+  .btn-ghost:hover {
+    border-color: rgb(var(--edge) / 0.45);
+    background-color: rgb(var(--edge) / 0.05);
+  }
+
+  .btn[aria-disabled='true'],
+  .btn:disabled {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  .btn .btn-icon {
+    transition: transform 0.45s var(--ease-out);
+  }
+
+  .btn:hover .btn-icon {
+    transform: translateX(3px);
+  }
+
+  .btn:hover .btn-icon-diag {
+    transform: translate(2px, -2px);
+  }
+
+  /* ---------- links */
+  .link-sweep {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 0.5s var(--ease-out), color 0.3s var(--ease-out);
+    padding-bottom: 2px;
+  }
+
+  .link-sweep:hover,
+  .link-sweep:focus-visible,
+  .link-sweep[aria-current='page'] {
+    background-size: 100% 1px;
+  }
+
+  /* ---------- surfaces */
+  .card {
+    position: relative;
+    border-radius: 20px;
+    border: 1px solid rgb(var(--edge) / 0.09);
+    background-color: rgb(var(--surface) / 0.7);
+    transition: border-color 0.4s var(--ease-out), background-color 0.4s var(--ease-out), transform 0.5s var(--ease-out);
+  }
+
+  .card-hover:hover {
+    border-color: rgb(var(--edge) / 0.2);
+  }
+
+  /* Pointer spotlight (positions fed by SpotlightController) */
+  .spotlight {
+    isolation: isolate;
+  }
+
+  .spotlight::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.45s var(--ease-out);
+    background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgb(var(--signal) / 0.09), transparent 60%);
+  }
+
+  .spotlight:hover::before {
+    opacity: 1;
+  }
+
+  .hairline-list > * {
+    border-top: 1px solid rgb(var(--edge) / 0.1);
+  }
+
+  .hairline-list > *:last-child {
+    border-bottom: 1px solid rgb(var(--edge) / 0.1);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(var(--edge) / 0.14);
+    padding: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    color: rgb(var(--mute));
+  }
+
+  /* ---------- forms */
+  .field-label {
+    display: block;
+    margin-bottom: 0.55rem;
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgb(var(--mute));
+  }
+
+  .field {
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid rgb(var(--edge) / 0.12);
+    background-color: rgb(var(--edge) / 0.03);
+    padding: 0.85rem 1rem;
+    color: rgb(var(--ink));
+    font-size: 0.975rem;
+    line-height: 1.5;
+    transition: border-color 0.3s var(--ease-out), background-color 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+  }
+
+  .field::placeholder {
+    color: rgb(var(--faint));
+  }
+
+  .field:hover {
+    border-color: rgb(var(--edge) / 0.22);
+  }
+
+  .field:focus {
+    outline: none;
+    border-color: rgb(var(--signal) / 0.8);
+    background-color: rgb(var(--edge) / 0.05);
+    box-shadow: 0 0 0 4px rgb(var(--signal) / 0.14);
+  }
+
+  select.field {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a9b5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+  }
+
+  select.field option {
+    background-color: rgb(var(--raised));
+    color: rgb(var(--ink));
+  }
+
+  /* ---------- atmosphere */
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .glow-halo {
+    background:
+      radial-gradient(60% 55% at 78% 18%, rgb(var(--halo) / 0.22), transparent 70%),
+      radial-gradient(45% 45% at 12% 88%, rgb(var(--signal) / 0.08), transparent 70%);
+  }
+
+  .fade-edges-x {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  }
+}
+
+/* ------------------------------------------------------------------ motion: reveal system */
+/* `.js` is set by the inline head script, so content stays visible without JavaScript. */
+.js [data-reveal] {
+  transition:
+    opacity 0.9s var(--ease-out),
+    transform 0.9s var(--ease-out),
+    clip-path 1.2s var(--ease-out);
+  transition-delay: var(--d, 0ms);
+}
+
+.js [data-reveal]:not(.is-in) {
+  opacity: 0;
+}
+
+.js [data-reveal='up']:not(.is-in) {
+  transform: translate3d(0, 28px, 0);
+}
+
+.js [data-reveal='scale']:not(.is-in) {
+  transform: scale(0.97);
+}
+
+.js [data-reveal='clip']:not(.is-in) {
+  opacity: 1;
+  clip-path: inset(0 0 100% 0 round 20px);
+}
+
+.js [data-reveal='line'] {
+  transform-origin: left center;
+}
+
+.js [data-reveal='line']:not(.is-in) {
+  opacity: 1;
+  transform: scaleX(0);
+}
+
+/* Word-by-word masked heading reveal */
+.split .w {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+}
+
+.split .w-em {
+  padding-right: 0.12em;
+  margin-right: -0.12em;
+}
+
+.split .wi {
+  display: inline-block;
+  transition: transform 1.05s var(--ease-out);
+  transition-delay: calc(var(--d, 0ms) + var(--i, 0) * 42ms);
+}
+
+.js [data-reveal='split']:not(.is-in) {
+  opacity: 1;
+}
+
+.js [data-reveal='split']:not(.is-in) .wi {
+  transform: translate3d(0, 112%, 0);
+}
+
+/* ------------------------------------------------------------------ motion: pieces */
+/* Typewriter: server-rendered phrase stays for no-JS; with JS it is hidden until typing starts */
+.js [data-typewriter]:not([data-ready]) .tw-display {
+  visibility: hidden;
+}
+
+.caret {
+  display: inline-block;
+  width: 0.08em;
+  min-width: 2px;
+  height: 0.95em;
+  margin-left: 0.08em;
+  vertical-align: -0.08em;
+  background-color: rgb(var(--signal));
+  animation: caret 1.05s steps(1, end) infinite;
+}
+
+.marquee {
+  --gap: clamp(2rem, 4vw, 4rem);
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+
+.marquee-track {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--gap);
+  min-width: 100%;
+  padding-right: var(--gap);
+  animation: marquee var(--marquee-duration, 42s) linear infinite;
+}
+
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes marquee {
+  to {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+/* ECG pulse line */
+.ecg-base {
+  stroke: rgb(var(--edge) / 0.12);
+}
+
+.ecg-pulse {
+  stroke: rgb(var(--signal));
+  stroke-dasharray: 140 2400;
+  stroke-dashoffset: 2540;
+  filter: drop-shadow(0 0 6px rgb(var(--signal) / 0.75));
+  animation: ecg-travel 4.2s cubic-bezier(.45, 0, .2, 1) infinite;
+}
+
+@keyframes ecg-travel {
+  0% {
+    stroke-dashoffset: 2540;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.ecg-draw {
+  stroke-dasharray: var(--len, 1200);
+  stroke-dashoffset: var(--len, 1200);
+  animation: ecg-draw 1.1s var(--ease-in-out) forwards;
+}
+
+@keyframes ecg-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes scrollcue {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(300%);
+  }
+}
+
+/* Page enter (template.tsx) */
+.page-enter {
+  animation: page-in 0.7s var(--ease-out) both;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------ preloader */
+/* Hidden unless the head script flagged a first visit (html[data-intro]). Fails safe without JS. */
+.preloader {
+  display: none;
+}
+
+html[data-intro] .preloader {
+  display: flex;
+}
+
+.preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  flex-direction: column;
+  background-color: rgb(7 8 11);
+  color: rgb(244 245 247);
+  animation: preloader-failsafe 0.01s linear 7s forwards;
+  transition: transform 0.95s var(--ease-in-out);
+}
+
+.preloader.is-leaving {
+  transform: translate3d(0, -100%, 0);
+}
+
+@keyframes preloader-failsafe {
+  to {
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+
+.preloader-mark {
+  opacity: 0;
+  animation: tm-fade-in 0.9s var(--ease-out) 0.1s forwards;
+}
+
+@keyframes tm-fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------------------ reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .js [data-reveal],
+  .js [data-reveal] .wi {
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+  }
+
+  .marquee {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .marquee-track {
+    flex-wrap: wrap;
+    animation: none !important;
+  }
+
+  .marquee-track[aria-hidden='true'] {
+    display: none;
+  }
+
+  .ecg-pulse {
+    display: none;
+  }
+
+  .caret {
+    animation: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------ legacy (unused carousel styles, kept) */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-/* -------------------- */
-/* Make the carousel continuous */
 .solutions-carousel {
   display: flex;
   animation: scroll 20s linear infinite;
-  transition: transform 0.3s ease; /* Smooth transition when paused */
+  transition: transform 0.3s ease;
 }
 
-/* Create the smooth scroll effect */
 @keyframes scroll {
   0% {
     transform: translateX(0);
@@ -72,24 +690,20 @@ body {
   }
 }
 
-/* Hover effect: Stop the scroll */
 .solutions-carousel:hover {
   animation-play-state: paused;
 }
 
-/* For each card */
 .solution-card {
   transition: transform 0.3s ease-in-out;
 }
 
-/* Scale up the center card */
 .solutions-carousel .solution-card:nth-child(4) {
   transform: scale(1.1);
 }
 
 @media (max-width: 640px) {
-  /* For smaller screens, ensure carousel cards are displayed in a single column */
   .solutions-carousel {
-    animation: scroll 30s linear infinite; /* Slower for smaller screens */
+    animation: scroll 30s linear infinite;
   }
 }

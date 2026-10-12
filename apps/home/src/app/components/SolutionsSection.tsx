@@ -157,18 +157,6 @@ const SolutionsSection = () => {
                   <span className="text-xs font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-700">
                     {solution.stat}
                   </span>
-                  
-                  <button className="flex items-center text-sm font-medium text-primary group-hover:text-secondary transition-colors">
-                    Explore
-                    <svg 
-                      className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" 
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                    >
-                      <path d="M5 12H19M19 12L12 5M19 12L12 19" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
                 </div>
               </div>
             </motion.div>

@@ -1,199 +1,94 @@
-'use client'
+import { ButtonLink } from './ui/Button';
+import LiveClock from './ui/LiveClock';
+import Marquee from './ui/Marquee';
+import { Ecg, Rings } from './ui/Ornaments';
+import Reveal from './ui/Reveal';
+import { Eyebrow } from './ui/SectionHeading';
+import SplitText from './ui/SplitText';
+import Typewriter from './ui/Typewriter';
 
-import { motion } from 'framer-motion'
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { AiOutlineCloudServer } from 'react-icons/ai'
-import { BsShieldLock } from 'react-icons/bs'
-import { FaRobot } from 'react-icons/fa'
-import {
-  FiArrowRight,
-  FiCloud,
-  FiCpu,
-  FiDatabase,
-  FiShield,
-} from 'react-icons/fi'
+// Who the platform serves (from the "Our Ecosystem Connects" list)
+const audiences = ['hospitals.', 'laboratories.', 'pharmacies.', 'pharmaceutical businesses.', 'blood banks.', 'sports and wellness.'];
 
-const techIcons = [
-  { icon: <FiCpu className="h-8 w-8" />, name: 'Processing' },
-  { icon: <FiCloud className="h-8 w-8" />, name: 'Cloud' },
-  { icon: <FiDatabase className="h-8 w-8" />, name: 'Database' },
-  { icon: <FiShield className="h-8 w-8" />, name: 'Security' },
-  { icon: <FaRobot className="h-8 w-8" />, name: 'AI' },
-  { icon: <AiOutlineCloudServer className="h-8 w-8" />, name: 'Server' },
-  { icon: <BsShieldLock className="h-8 w-8" />, name: 'Encryption' },
-]
+const capabilities = ['Processing', 'Cloud', 'Database', 'Security', 'AI', 'Server', 'Encryption'];
 
 const Herosection = () => {
-  interface FloatingIcon {
-    top: number
-    left: number
-    fontSize: number
-    moveX: number
-    moveY: number
-    rotate: number
-    duration: number
-    icon: JSX.Element
-  }
-  
-  const [floatingIcons, setFloatingIcons] = useState<FloatingIcon[]>([])
-
-  useEffect(() => {
-    const icons = Array.from({ length: 15 }).map(() => {
-      const top = Math.random() * 100
-      const left = Math.random() * 100
-      const fontSize = Math.random() * 20 + 10
-      const moveY = Math.random() * 100 - 50
-      const moveX = Math.random() * 100 - 50
-      const rotate = 360
-      const duration = Math.random() * 20 + 10
-      const tech = techIcons[Math.floor(Math.random() * techIcons.length)].icon
-
-      return {
-        top,
-        left,
-        fontSize,
-        moveX,
-        moveY,
-        rotate,
-        duration,
-        icon: tech,
-      }
-    })
-    setFloatingIcons(icons)
-  }, [])
-
   return (
-    <div className="bg-gradient-to-b from-gray-50 to-white">
-      <div className="relative isolate px-6 pt-14 lg:px-8 overflow-hidden">
+    <>
+      <section className="grain relative isolate overflow-hidden">
+        <div aria-hidden="true" className="glow-halo absolute inset-0 -z-10" />
+        <Rings className="absolute -right-[34rem] top-[42%] -z-10 h-[64rem] w-[64rem] -translate-y-1/2 opacity-80 sm:-right-[26rem] lg:-right-72" />
 
-        {/* Floating tech icons (client-only) */}
-        <div className="absolute inset-0 -z-10 overflow-hidden">
-          {floatingIcons.map((item, i) => (
-            <motion.div
-              key={i}
-              className="absolute text-gray-200"
-              style={{
-                top: `${item.top}%`,
-                left: `${item.left}%`,
-                fontSize: `${item.fontSize}px`,
-              }}
-              animate={{
-                y: [0, item.moveY],
-                x: [0, item.moveX],
-                rotate: [0, item.rotate],
-              }}
-              transition={{
-                duration: item.duration,
-                repeat: Infinity,
-                repeatType: 'reverse',
-                ease: 'linear',
-              }}
-            >
-              {item.icon}
-            </motion.div>
+        <div className="container-x flex min-h-[100svh] flex-col pb-8 pt-[calc(var(--header-h)+40px)]">
+          <div className="flex flex-1 flex-col justify-center py-10 sm:py-16">
+            <Eyebrow>Enterprise-Grade Tech Solutions</Eyebrow>
+
+            <SplitText
+              as="h1"
+              text={'Building the Digital\n*Infrastructure* of Tomorrow'}
+              className="display mt-8 max-w-[14ch]"
+            />
+
+            <Reveal delay={380} className="mt-8 flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-[0.95rem] text-mute sm:text-lg">
+              <span className="text-faint" aria-hidden="true">
+                {'//'}
+              </span>
+              <span>Built for</span>
+              <Typewriter phrases={audiences} className="text-ink" startDelay={700} />
+            </Reveal>
+
+            <div className="mt-12 grid gap-10 lg:mt-16 lg:grid-cols-12 lg:items-end">
+              <Reveal delay={460} className="lg:col-span-6">
+                <p className="lede max-w-xl">
+                  TiaMeds Technologies Pvt. Ltd. delivers cutting-edge SaaS platforms and enterprise solutions that power
+                  businesses at scale with security, reliability, and innovation.
+                </p>
+              </Reveal>
+              <Reveal delay={540} className="flex flex-wrap gap-3 lg:col-span-6 lg:justify-end">
+                <ButtonLink href="/contact-for-services">Start Your Project</ButtonLink>
+                <ButtonLink href="/techstack" variant="ghost" icon="diag">
+                  Explore Our Tech Stack
+                </ButtonLink>
+              </Reveal>
+            </div>
+          </div>
+
+          <Ecg className="-mx-[clamp(20px,4vw,56px)] h-16 w-[calc(100%_+_2*clamp(20px,4vw,56px))] sm:h-20" />
+
+          <div className="mt-4 flex items-center justify-between gap-6 border-t border-edge/10 pt-5 font-mono text-[11px] uppercase tracking-[0.14em] text-faint">
+            <p className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-signal motion-safe:animate-pulse-dot" aria-hidden="true" />
+              Mysuru, Karnataka · <LiveClock className="text-mute" />
+            </p>
+            <p className="hidden sm:block">Healthcare · Pharma · Wellness</p>
+            <a href="#services" className="group inline-flex items-center gap-3 transition-colors hover:text-ink">
+              Scroll
+              <span aria-hidden="true" className="relative h-6 w-px overflow-hidden bg-edge/15">
+                <span className="absolute inset-x-0 top-0 h-2 bg-signal motion-safe:animate-[scrollcue_1.8s_cubic-bezier(.65,0,.35,1)_infinite]" />
+              </span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Capability strip */}
+      <section aria-label="Capabilities" className="border-y border-edge/10 py-8">
+        <div className="container-x mb-6 flex items-center justify-between">
+          <p className="eyebrow">Trusted by innovators worldwide</p>
+          <p className="hidden font-mono text-[11px] uppercase tracking-[0.14em] text-faint sm:block">Core capabilities</p>
+        </div>
+        <Marquee
+          duration={36}
+          items={capabilities.map((c) => (
+            <span key={c} className="text-[clamp(1.6rem,3.6vw,2.75rem)] font-medium tracking-[-0.04em] text-ink/80">
+              {c}
+            </span>
           ))}
-        </div>
+          separator={<span className="text-xl text-signal">✦</span>}
+        />
+      </section>
+    </>
+  );
+};
 
-        {/* Main content */}
-        <div className="mx-auto max-w-7xl py-32 sm:py-48 lg:py-28">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-center"
-          >
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              className="inline-block mb-6 px-4 py-2 bg-primary/10 rounded-full"
-            >
-              <span className="text-sm font-medium text-primary">
-                Enterprise-Grade Tech Solutions
-              </span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-5xl font-bold tracking-tight text-gray-900 sm:text-7xl"
-            >
-              <span className="block">Building the Digital</span>
-              <span className="relative inline-block">
-                <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                  Infrastructure
-                </span>
-              </span>
-              <span className="block">of Tomorrow</span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-6 text-xl leading-8 text-gray-600 max-w-3xl mx-auto"
-            >
-              TiaMeds Technologies Pvt. Ltd.  delivers cutting-edge SaaS platforms and
-              enterprise solutions that power businesses at scale with security,
-              reliability, and innovation.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-              className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-6"
-            >
-              <Link
-                href="/contact-for-services"
-                className="relative group rounded-lg bg-gradient-to-r from-primary to-secondary px-6 py-3 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                <span className="relative z-10">Start Your Project</span>
-                <span className="absolute inset-0 bg-gradient-to-r from-secondary to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
-                <FiArrowRight className="ml-2 inline-block group-hover:translate-x-1 transition-transform" />
-              </Link>
-
-              <Link
-                href="/techstack"
-                className="flex items-center gap-2 text-gray-900 font-medium hover:text-primary transition-colors group"
-              >
-                Explore Our Tech Stack
-                <FiArrowRight className="transition-transform group-hover:translate-x-1" />
-              </Link>
-            </motion.div>
-
-            {/* Tech stack showcase */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-              className="mt-16"
-            >
-              <p className="text-sm text-gray-500 mb-4">
-                TRUSTED BY INNOVATORS WORLDWIDE
-              </p>
-              <div className="flex flex-wrap justify-center gap-8">
-                {techIcons.map((item) => (
-                  <motion.div
-                    key={item.name}
-                    whileHover={{ y: -5, scale: 1.1 }}
-                    className="flex flex-col items-center"
-                  >
-                    <div className="p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-                      {item.icon}
-                    </div>
-                    <span className="mt-2 text-xs font-medium text-gray-500">
-                      {item.name}
-                    </span>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export default Herosection
+export default Herosection;
