@@ -3,6 +3,8 @@ import { TestReferancePoint } from "@/types/test/testlist";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
 import { X } from "lucide-react";
+import TestDescriptionSelect from "./TestDescriptionSelect";
+import ParameterSelect from "./ParameterSelect";
 
 // Dropdown Editor Component
 interface DropdownItem {
@@ -1402,39 +1404,44 @@ const AddExistingTestReferance = ({
 
                 {/* Form Section */}
                 <form onSubmit={handleFormSubmit} className="space-y-4">
-                    {/* Test Reference Description Section - Purple */}
-                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
-                        <h4 className="font-semibold text-purple-800 mb-2">Test Reference Description</h4>
+                    {/* Parameter (left) + Test Reference Description (right) - Purple */}
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex flex-col">
-                            <input
-                                type="text"
-                                name="testDescription"
-                                list="existingTestDescriptionOptions"
-                                placeholder="Type or select test description (will be converted to uppercase)"
-                                value={existingTestReferanceRecord.testDescription || ""}
-                                onChange={handleDescriptionChange}
-                                className={`w-full bg-white border px-3 py-2 rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-sm ${validationErrors.testDescription ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}`}
+                            <label className="text-gray-700 mb-1 text-sm font-medium">Parameter</label>
+                            <ParameterSelect
+                                parameterId={existingTestReferanceRecord?.parameterId}
+                                parameterName={existingTestReferanceRecord?.parameterName}
+                                onChange={(parameter) => setExistingTestReferanceRecord(prev => {
+                                    // No description type chosen yet (or it was auto-filled from the previous parameter):
+                                    // use the parameter name so the reference can be saved on its own.
+                                    const autoFilled = !prev.testDescription || prev.testDescription === prev.parameterName?.toUpperCase();
+                                    return {
+                                        ...prev,
+                                        ...parameter,
+                                        testDescription: autoFilled ? (parameter.parameterName?.toUpperCase() ?? "") : prev.testDescription,
+                                    };
+                                })}
+                            />
+                        </div>
+                        <div className="flex flex-col">
+                            <label className="text-gray-700 mb-1 text-sm font-medium">
+                                Test Reference Description <span className="text-red-500">*</span>
+                            </label>
+                            <TestDescriptionSelect
+                                value={existingTestReferanceRecord?.testDescription || ""}
+                                onChange={(value) =>
+                                    handleDescriptionChange({ target: { name: "testDescription", value } } as React.ChangeEvent<HTMLInputElement>)
+                                }
                             />
                             {validationErrors.testDescription && (
                                 <p className="text-xs text-red-500 mt-1">{validationErrors.testDescription}</p>
                             )}
-                            <datalist id="existingTestDescriptionOptions">
-                                <option value="DESCRIPTION">Description</option>
-                                <option value="DROPDOWN">Dropdown</option>
-                                <option value="DROPDOWN-POSITIVE/NEGATIVE">Dropdown - Positive/Negative</option>
-                                <option value="DROPDOWN-PRESENT/ABSENT">Dropdown - Present/Absent</option>
-                                <option value="DROPDOWN-REACTIVE/NONREACTIVE">Dropdown - Reactive/Nonreactive</option>
-                                <option value="DROPDOWN-PERCENTAGE">Dropdown - Percentage</option>
-                                <option value="DROPDOWN-COMPATIBLE/INCOMPATIBLE">Dropdown - Compatible/Incompatible</option>
-                                <option value="DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE">Dropdown with Description - Reactive/Nonreactive</option>
-                                <option value="DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT">Dropdown with Description - Present/Absent</option>
-                                <option value="DETAILED REPORT">Detailed Report</option>
-                            </datalist>
-                            <p className="text-xs text-gray-500 mt-1">Type custom description or select from suggestions</p>
                         </div>
                     </div>
+                </div>
 
-                    {/* Basic Information Section - Blue */}
+                {/* Basic Information Section - Blue */}
                     <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
                         <h4 className="font-semibold text-blue-800 mb-2">Basic Information</h4>
                         <div className="grid grid-cols-2 gap-3">

@@ -65,6 +65,7 @@ const baseNavigation: BaseNavigationItem[] = [
       { name: "Tests", href: "/dashboard/test", icon: ClipboardListIcon, allowedRoles: ["SUPERADMIN", "ADMIN", "TECHNICIAN", "DESKROLE"] },
       { name: "Doctors", href: "/dashboard/doctor", icon: FaUserDoctor },
       { name: "Sample List", href: "/dashboard/sample/add", icon: FaPeriscope },
+      { name: "Parameter List", href: "/dashboard/parameter", icon: ClipboardListIcon, allowedRoles: ["SUPERADMIN", "ADMIN", "TECHNICIAN"] },
       // { name: "Sample Collection", href: "/dashboard/sample", icon: ClipboardListIcon },
       // {name : "Patient Details",href : "/dashboard/patientdetails", icon: MdMan}, // Hidden for this release
     ],

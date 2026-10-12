@@ -148,7 +148,7 @@ export const testReferancePointSchema = z
 });
 
 import { TestReferancePoint } from "@/types/test/testlist";
-import { TrashIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { TrashIcon } from "@heroicons/react/24/outline";
 import { PlusIcon, X } from "lucide-react";
 import React from "react";
 import { useLabs } from "@/context/LabContext";
@@ -157,6 +157,9 @@ import { getTests } from "../../../../../services/testService";
 import { toast } from "react-toastify";
 import { TestList } from "@/types/test/testlist";
 import Loader from "../common/Loader";
+import SearchableSelect from "../common/SearchableSelect";
+import TestDescriptionSelect from "./TestDescriptionSelect";
+import ParameterSelect from "./ParameterSelect";
 
 // Dropdown Editor Component
 interface DropdownItem {
@@ -1060,7 +1063,6 @@ const AddTestReferanceNew = ({
     const { currentLab } = useLabs();
     const [tests, setTests] = useState<TestList[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("");
 
     useEffect(() => {
@@ -1080,11 +1082,14 @@ const AddTestReferanceNew = ({
     }, [currentLab]);
 
     const categories = Array.from(new Set(tests.map(test => test.category)));
-    const filteredTests = tests.filter(test => {
-        const matchesSearch = test.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = selectedCategory ? test.category === selectedCategory : true;
-        return matchesSearch && matchesCategory;
-    });
+    // A category must be chosen before any test is offered
+    const filteredTests = selectedCategory ? tests.filter(test => test.category === selectedCategory) : [];
+
+    const handleCategorySelect = (category: string) => {
+        setSelectedCategory(category);
+        // Changing the category invalidates the previously chosen test
+        setNewReferanceRecord(prev => ({ ...prev, category: "", testName: "" }));
+    };
 
     const handleTestSelect = (test: TestList) => {
         setNewReferanceRecord(prev => ({
@@ -1314,100 +1319,74 @@ const AddTestReferanceNew = ({
         <div className="bg-white rounded-lg">
             {/* Content */}
             <div className="p-6">
-                {/* Search and Filter Section */}
-                <div className="mb-6 space-y-3">
-                <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search tests..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-purple-500 focus:border-purple-500 text-sm"
-                    />
-                </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                    <button
-                        onClick={() => setSelectedCategory("")}
-                            className={`px-3 py-1 text-xs rounded-lg font-medium transition-all duration-200 ${!selectedCategory ? 'bg-purple-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                    >
-                        All
-                    </button>
-                    {categories?.map(category => (
-                        <button
-                            key={category}
-                            onClick={() => setSelectedCategory(category)}
-                                className={`px-3 py-1 text-xs rounded-lg font-medium whitespace-nowrap transition-all duration-200 ${selectedCategory === category ? 'bg-purple-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                        >
-                            {category}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Test Selection */}
-            {filteredTests?.length > 0 && (
-                    <div className="mb-6 max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-white">
-                    {filteredTests.map(test => (
-                        <div
-                            key={test.id}
-                            onClick={() => handleTestSelect(test)}
-                                className={`p-3 hover:bg-purple-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors ${newReferanceRecord.testName === test.name ? 'bg-purple-50 border-l-4 border-l-purple-500' : ''}`}
-                        >
-                                <div className="font-medium text-gray-900">{test?.name}</div>
-                                <div className="text-xs text-purple-600 mt-1">{test?.category}</div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-                {/* Selected Test Preview - Green section */}
-            {newReferanceRecord?.testName && (
-                    <div className="mb-6 bg-green-50 p-4 rounded-lg border border-green-100">
-                        <h4 className="font-semibold text-green-800 mb-2">Selected Test</h4>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                                <span className="font-medium text-gray-600">Test Name:</span>
-                                <span className="ml-2 text-gray-900">{newReferanceRecord?.testName}</span>
-                            </div>
-                            <div>
-                                <span className="font-medium text-gray-600">Category:</span>
-                                <span className="ml-2 text-gray-900">{newReferanceRecord?.category}</span>
-                        </div>
+                {/* Category -> Test selection */}
+                <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col">
+                        <label className="text-gray-700 mb-1 text-sm font-medium">
+                            Category <span className="text-red-500">*</span>
+                        </label>
+                        <SearchableSelect
+                            options={categories.filter(Boolean).map(c => ({ value: c, label: c }))}
+                            value={selectedCategory}
+                            onChange={handleCategorySelect}
+                            placeholder="Select category"
+                            searchPlaceholder="Search category..."
+                            emptyText="No category found"
+                        />
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-gray-700 mb-1 text-sm font-medium">
+                            Test Name <span className="text-red-500">*</span>
+                        </label>
+                        <SearchableSelect
+                            options={filteredTests.map(t => ({ value: t.name, label: t.name }))}
+                            value={newReferanceRecord?.testName || ""}
+                            onChange={(name) => {
+                                const test = filteredTests.find(t => t.name === name);
+                                if (test) handleTestSelect(test);
+                            }}
+                            disabled={!selectedCategory}
+                            placeholder={selectedCategory ? "Select test" : "Select a category first"}
+                            searchPlaceholder="Search test..."
+                            emptyText="No test found in this category"
+                        />
                     </div>
                 </div>
-            )}
 
             {/* Form Section */}
             <form onSubmit={handleAddNewReferanceRecord} className="space-y-6">
-                {/* Test Reference Description Section - Purple */}
+                {/* Parameter (left) + Test Reference Description (right) - Purple */}
                 <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                    <h4 className="font-semibold text-purple-800 mb-3">Test Reference Description</h4>
-                    <div className="flex flex-col">
-                    <input
-                        type="text"
-                        name="testDescription"
-                        list="testDescriptionOptions"
-                        placeholder="Type or select test description (will be converted to uppercase)"
-                        value={newReferanceRecord?.testDescription || ""}
-                        onChange={handleDescriptionChange}
-                            className="w-full bg-white border border-gray-300 px-3 py-2 rounded-lg focus:ring-1 focus:ring-purple-500 focus:border-purple-500 uppercase-input"
-                    />
-                    <datalist id="testDescriptionOptions">
-                        <option value="DESCRIPTION">Description</option>
-                        <option value="DROPDOWN">Dropdown</option>
-                        <option value="DROPDOWN-POSITIVE/NEGATIVE">Dropdown - Positive/Negative</option>
-                        <option value="DROPDOWN-PRESENT/ABSENT">Dropdown - Present/Absent</option>
-                        <option value="DROPDOWN-REACTIVE/NONREACTIVE">Dropdown - Reactive/Nonreactive</option>
-                        <option value="DROPDOWN-PERCENTAGE">Dropdown - Percentage</option>
-                        <option value="DROPDOWN-COMPATIBLE/INCOMPATIBLE">Dropdown - Compatible/Incompatible</option>
-                        <option value="DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE">Dropdown with Description - Reactive/Nonreactive</option>
-                        <option value="DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT">Dropdown with Description - Present/Absent</option>
-                            <option value="DETAILED REPORT">Detailed Report</option>
-                    </datalist>
-                        <p className="text-xs text-gray-500 mt-2">Type custom description or select from suggestions</p>
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col">
+                            <label className="text-gray-700 mb-1 text-sm font-medium">Parameter</label>
+                            <ParameterSelect
+                                parameterId={newReferanceRecord?.parameterId}
+                                parameterName={newReferanceRecord?.parameterName}
+                                onChange={(parameter) => setNewReferanceRecord(prev => {
+                                    // No description type chosen yet (or it was auto-filled from the previous parameter):
+                                    // use the parameter name so the reference can be saved on its own.
+                                    const autoFilled = !prev.testDescription || prev.testDescription === prev.parameterName?.toUpperCase();
+                                    return {
+                                        ...prev,
+                                        ...parameter,
+                                        testDescription: autoFilled ? (parameter.parameterName?.toUpperCase() ?? "") : prev.testDescription,
+                                    };
+                                })}
+                            />
+                        </div>
+                        <div className="flex flex-col">
+                            <label className="text-gray-700 mb-1 text-sm font-medium">
+                                Test Reference Description <span className="text-red-500">*</span>
+                            </label>
+                            <TestDescriptionSelect
+                                value={newReferanceRecord?.testDescription || ""}
+                                onChange={(value) =>
+                                    handleDescriptionChange({ target: { name: "testDescription", value } } as React.ChangeEvent<HTMLInputElement>)
+                                }
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Basic Information Section - Blue */}

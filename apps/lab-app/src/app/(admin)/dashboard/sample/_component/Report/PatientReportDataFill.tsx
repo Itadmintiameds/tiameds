@@ -17,6 +17,7 @@ import DetailedReportEditor from './DetailedReportEditor';
 import NewModal from "../../../newcommoncomponent/NewModal";
 import { FaChevronDown } from "react-icons/fa";
 import { createPortal } from "react-dom";
+import { getPointLabel } from "@/utils/referencePointLabel";
 
 // Interfaces
 export interface Patient {
@@ -723,7 +724,7 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
               testName: formattedTestName,
               testCategory: formattedCategory,
               patientName: selectedPatient.patientname,
-              referenceDescription: point.testDescription || "No reference description available",
+              referenceDescription: getPointLabel(point) || "No reference description available",
               referenceRange: referenceRange,
               enteredValue: finalValue,
               referenceAgeRange: `${point.ageMin ?? "N/A"} ${point.minAgeUnit ?? "YEARS"} - ${point.ageMax ?? "N/A"} ${point.maxAgeUnit ?? "YEARS"}`,
@@ -1010,7 +1011,7 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
                         className={`border-b border-pneutral-200 last:border-0 ${getRowBackground(status)}`}
                       >
                         <td className="px-4 py-3 text-p3 text-pneutral-900">
-                          {point.testDescription || `Parameter ${index + 1}`}
+                          {getPointLabel(point) || `Parameter ${index + 1}`}
                           {isAutoCalculated && (
                             <span className="ml-2 text-xs text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
                               Auto-calc

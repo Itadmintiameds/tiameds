@@ -17,6 +17,7 @@ import DetailedReportEditor from './DetailedReportEditor';
 import NewModal from "../../../newcommoncomponent/NewModal";
 import { FaChevronDown } from "react-icons/fa";
 import { createPortal } from "react-dom";
+import { getPointLabel } from "@/utils/referencePointLabel";
 
 export interface Patient {
   visitId: number;
@@ -710,7 +711,10 @@ mappedReportData.forEach((reportItem) => {
         refPoints.forEach((point, index) => {
           const descriptionUpper = (point.testDescription || '').toUpperCase();
           if (descriptionUpper === 'DETAILED REPORT') {
+            // Rows saved before parameters existed are keyed by the description type
             const existingItem = existingReportData.find(
+              item => normalizeKey(item.referenceDescription) === normalizeKey(getPointLabel(point))
+            ) ?? existingReportData.find(
               item => normalizeKey(item.referenceDescription) === normalizeKey(point.testDescription)
             );
             if (!existingItem?.report_id) {
@@ -807,7 +811,7 @@ mappedReportData.forEach((reportItem) => {
               testName: selectedTest.name,
               testCategory: selectedTest.category,
               patientName: editPatient.patientname,
-              referenceDescription: point.testDescription || "No reference description available",
+              referenceDescription: getPointLabel(point) || "No reference description available",
               referenceRange: referenceRange,
               enteredValue: finalValue,
               referenceAgeRange: `${point.ageMin ?? "N/A"} ${point.minAgeUnit ?? "YEARS"} - ${point.ageMax ?? "N/A"} ${point.maxAgeUnit ?? "YEARS"}`,
@@ -1085,7 +1089,7 @@ mappedReportData.forEach((reportItem) => {
                         className={`border-b border-pneutral-200 last:border-0 ${getRowBackground(status)}`}
                       >
                         <td className="px-4 py-3 text-p3 text-pneutral-900">
-                          {point.testDescription || `Parameter ${index + 1}`}
+                          {getPointLabel(point) || `Parameter ${index + 1}`}
                           {isAutoCalculated && (
                             <span className="ml-2 text-xs text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
                               Auto-calc
