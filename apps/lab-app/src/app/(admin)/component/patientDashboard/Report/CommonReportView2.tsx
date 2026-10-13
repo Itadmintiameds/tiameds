@@ -110,11 +110,50 @@ const doesRowMatchFieldType = (
     return targets.some((value) => fieldTypes.has(value));
 };
 
-const isExcludedQualitativeRow = (row?: { referenceDescription?: string; testParameter?: string }) =>
+type QualitativeRowLike = {
+    referenceDescription?: string;
+    testParameter?: string;
+    enteredValue?: string;
+    normalRange?: string;
+    unit?: string;
+};
+
+// Values a dropdown field can produce; these stay in the Result column.
+const DROPDOWN_VALUES = new Set(
+    [
+        "POSITIVE", "NEGATIVE", "PRESENT", "ABSENT", "REACTIVE", "NON-REACTIVE", "NONREACTIVE",
+        "COMPATIBLE", "INCOMPATIBLE", "YES", "NO", "N/A",
+        "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-",
+    ]
+);
+
+const isBlankOrNA = (value?: string) => {
+    const v = (value || "").toString().trim().toUpperCase();
+    return v === "" || v === "N/A" || v === "-" || v === "—";
+};
+
+// Rows are labelled with the parameter-master name, so the field type (DESCRIPTION, DROPDOWN...)
+// is no longer visible on the row. A numeric result always has a range or unit, so a
+// non-numeric value with neither (and that isn't a known dropdown value) is free text. It is
+// laid out full width like a description row; multi-line values always are.
+const isLongTextRow = (row?: QualitativeRowLike) => {
+    const value = (row?.enteredValue || "").toString().trim();
+    if (!value) return false;
+    if (value.includes("\n")) return true;
+    if (!isBlankOrNA(row?.normalRange) || !isBlankOrNA(row?.unit)) return false;
+    if (!Number.isNaN(Number(value))) return false;
+    return !DROPDOWN_VALUES.has(value.toUpperCase());
+};
+
+// Row whose own label is a field-type token (no real parameter name).
+const isFieldTypeTokenRow = (row?: QualitativeRowLike) =>
     doesRowMatchFieldType(row, EXCLUDED_FIELD_TYPES);
 
-const shouldShowQualitativeDescriptionRow = (row?: { referenceDescription?: string; testParameter?: string }) =>
-    doesRowMatchFieldType(row, QUALITATIVE_DESCRIPTION_FIELD_TYPES);
+const isExcludedQualitativeRow = (row?: QualitativeRowLike) =>
+    isFieldTypeTokenRow(row) || isLongTextRow(row);
+
+const shouldShowQualitativeDescriptionRow = (row?: QualitativeRowLike) =>
+    doesRowMatchFieldType(row, QUALITATIVE_DESCRIPTION_FIELD_TYPES) || isLongTextRow(row);
 
 // Human-readable name for a qualitative row. When the row's own label is just a field-type
 // token (e.g. "DROPDOWN-POSITIVE/NEGATIVE") there is no real parameter name, so fall back to
@@ -126,7 +165,7 @@ const getQualitativeDisplayName = (
 ) => {
     const candidate = row.testParameter || row.referenceDescription || "";
     if (!candidate) return fallbackTestName || "Test";
-    return doesRowMatchFieldType(row, EXCLUDED_FIELD_TYPES)
+    return isFieldTypeTokenRow(row)
         ? (fallbackTestName || candidate)
         : candidate;
 };
@@ -2560,7 +2599,10 @@ const CommonReportView2 = ({
                         className="px-2 py-1 text-xs"
                         style={{ color: REPORT_COLORS.neutral900, borderBottom: RESULT_TABLE_ROW_BORDER, ...RESULT_CELL_VALIGN }}
                     >
-                        <p className="font-semibold whitespace-pre-wrap">{resultValue}</p>
+                        {!isFieldTypeTokenRow(row) && row.testParameter && (
+                            <p className="font-semibold">{row.testParameter}</p>
+                        )}
+                        <p className={`${isFieldTypeTokenRow(row) ? "font-semibold " : ""}whitespace-pre-wrap break-words`}>{resultValue}</p>
                         {showDescription && <p className="mt-0.5">{row.description}</p>}
                     </td>
                 </tr>
@@ -2589,7 +2631,7 @@ const CommonReportView2 = ({
         const quantitativeRows = rows.filter((row) => !isExcludedQualitativeRow(row));
         const isCBCTest = (report.testName || "").toUpperCase().includes("CBC");
         const firstRow = rows[0];
-        const shouldHideResultTable = rows.length > 0 && isExcludedQualitativeRow(firstRow);
+        const shouldHideResultTable = rows.length > 0 && isFieldTypeTokenRow(firstRow);
 
         const hasDetailedReportRow = rows.some(row => (row.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
         const detailedEntry = (report.reportJson || hasDetailedReportRow)
@@ -2684,7 +2726,10 @@ const CommonReportView2 = ({
 
                                                     return (
                                                         <div key={`qual-desc-${report.reportId}-${idx}`} className="text-xs">
-                                                            <p className="text-black leading-normal font-semibold whitespace-pre-wrap">{resultValue}</p>
+                                                            {!isFieldTypeTokenRow(row) && row.testParameter && (
+                                                                <p className="text-black font-semibold">{row.testParameter}</p>
+                                                            )}
+                                                            <p className={`text-black leading-normal whitespace-pre-wrap break-words ${isFieldTypeTokenRow(row) ? "font-semibold" : ""}`}>{resultValue}</p>
                                                             {showDescription && (
                                                                 <p className="text-black mb-1">{row.description}</p>
                                                             )}

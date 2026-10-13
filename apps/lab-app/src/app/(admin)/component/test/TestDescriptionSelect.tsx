@@ -5,7 +5,8 @@ import SearchableSelect, { SearchableSelectOption } from "../common/SearchableSe
 // Description types that drive special behaviour (hidden ranges, report editor, dropdown options).
 const SPECIAL_TYPES: SearchableSelectOption[] = [
   { value: "DESCRIPTION", label: "Description" },
-  { value: "DROPDOWN", label: "Dropdown" },
+  { value: "NUMERIC", label: "Numeric" },
+  { value: "DROPDOWN", label: "Dropdown - Yes/No" },
   { value: "DROPDOWN-POSITIVE/NEGATIVE", label: "Dropdown - Positive/Negative" },
   { value: "DROPDOWN-PRESENT/ABSENT", label: "Dropdown - Present/Absent" },
   { value: "DROPDOWN-REACTIVE/NONREACTIVE", label: "Dropdown - Reactive/Nonreactive" },

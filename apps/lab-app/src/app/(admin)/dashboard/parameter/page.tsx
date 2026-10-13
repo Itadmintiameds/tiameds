@@ -1,12 +1,13 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Edit, Search } from "lucide-react";
-import { HiOutlineTrash } from "react-icons/hi2";
 import { FaTag } from "react-icons/fa";
 import { toast } from "react-toastify";
 import {
+  activateParameter,
   addParameter,
   deleteParameter,
+  getInactiveParameters,
   getParameters,
   ParameterMaster,
   updateParameter,
@@ -36,14 +37,18 @@ const Page = () => {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Delete modal
-  const [toDelete, setToDelete] = useState<ParameterMaster | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  // Enable / disable confirmation modal
+  const [toToggle, setToToggle] = useState<ParameterMaster | null>(null);
+  const [isToggling, setIsToggling] = useState(false);
 
   const loadParameters = useCallback(async () => {
     try {
-      const list = await getParameters();
-      setParameters([...list].sort((a, b) => a.parameterName.localeCompare(b.parameterName)));
+      const [active, inactive] = await Promise.all([getParameters(), getInactiveParameters()]);
+      const list = [
+        ...active.map(p => ({ ...p, isActive: true })),
+        ...inactive.map(p => ({ ...p, isActive: false })),
+      ];
+      setParameters(list.sort((a, b) => a.parameterName.localeCompare(b.parameterName)));
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -104,18 +109,23 @@ const Page = () => {
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (!toDelete) return;
+  const handleConfirmToggle = async () => {
+    if (!toToggle) return;
+    const disabling = toToggle.isActive;
     try {
-      setIsDeleting(true);
-      await deleteParameter(toDelete.parameterId);
-      toast.success("Parameter deleted successfully.", { autoClose: 2000 });
-      setToDelete(null);
+      setIsToggling(true);
+      if (disabling) {
+        await deleteParameter(toToggle.parameterId);
+      } else {
+        await activateParameter(toToggle.parameterId);
+      }
+      toast.success(`Parameter ${disabling ? "disabled" : "enabled"} successfully.`, { autoClose: 2000 });
+      setToToggle(null);
       await loadParameters();
     } catch (err) {
       toast.error((err as Error).message, { autoClose: 3000 });
     } finally {
-      setIsDeleting(false);
+      setIsToggling(false);
     }
   };
 
@@ -153,7 +163,22 @@ const Page = () => {
       header: "Parameter Name",
       accessor: "parameterName",
       render: (row: ParameterMaster) => (
-        <p className="font-semibold text-p3 text-pneutral-900">{row.parameterName}</p>
+        <p className={`font-semibold text-p3 ${row.isActive ? "text-pneutral-900" : "text-pneutral-400"}`}>
+          {row.parameterName}
+        </p>
+      ),
+    },
+    {
+      header: "Status",
+      accessor: "isActive",
+      render: (row: ParameterMaster) => (
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-p2 font-medium ${
+            row.isActive ? "bg-green-100 text-green-700" : "bg-pneutral-100 text-pneutral-600"
+          }`}
+        >
+          {row.isActive ? "Active" : "Inactive"}
+        </span>
       ),
     },
     {
@@ -169,11 +194,15 @@ const Page = () => {
             <Edit size={12} />
           </button>
           <button
-            onClick={() => setToDelete(row)}
-            className="flex h-[28px] w-[28px] items-center justify-center border border-warning-500 rounded-full text-warning-500 hover:bg-warning-50 transition-colors"
-            title="Delete Parameter"
+            onClick={() => setToToggle(row)}
+            className={`rounded-full border px-3 py-1 text-p2 font-medium transition-colors ${
+              row.isActive
+                ? "border-warning-500 text-warning-500 hover:bg-warning-50"
+                : "border-green-600 text-green-600 hover:bg-green-50"
+            }`}
+            title={row.isActive ? "Disable Parameter" : "Enable Parameter"}
           >
-            <HiOutlineTrash size={12} />
+            {row.isActive ? "Disable" : "Enable"}
           </button>
         </div>
       ),
@@ -290,33 +319,36 @@ const Page = () => {
         </form>
       </NewModal>
 
-      {/* Delete confirmation */}
+      {/* Enable / disable confirmation */}
       <NewModal
-        isOpen={!!toDelete}
-        onClose={() => setToDelete(null)}
-        title="Delete Parameter"
+        isOpen={!!toToggle}
+        onClose={() => setToToggle(null)}
+        title={toToggle?.isActive ? "Disable Parameter" : "Enable Parameter"}
         modalClassName="max-w-md"
       >
         <div className="space-y-5">
-          <p className="text-p3 text-pneutral-700">
-            Are you sure you want to delete the parameter{" "}
-            <span className="font-semibold text-pneutral-900">&quot;{toDelete?.parameterName}&quot;</span>?
+          <p className="text-center text-p3 text-pneutral-700">
+            Do you want to {toToggle?.isActive ? "disable" : "enable"} this parameter{" "}
+            <span className="font-semibold text-pneutral-900">&quot;{toToggle?.parameterName}&quot;</span>?
           </p>
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-center gap-3">
             <button
               type="button"
-              onClick={() => setToDelete(null)}
-              className="px-4 py-2 text-p3 font-medium text-pneutral-700 bg-pneutral-100 rounded-lg hover:bg-pneutral-200 transition-colors"
+              onClick={() => setToToggle(null)}
+              disabled={isToggling}
+              className="px-4 py-2 text-p3 font-medium text-pneutral-700 bg-pneutral-100 rounded-lg hover:bg-pneutral-200 transition-colors disabled:opacity-60"
             >
-              Cancel
+              No
             </button>
             <button
               type="button"
-              onClick={handleConfirmDelete}
-              disabled={isDeleting}
-              className="px-4 py-2 text-p3 font-medium text-pneutral-50 bg-warning-500 rounded-lg hover:bg-warning-600 transition-colors disabled:opacity-60"
+              onClick={handleConfirmToggle}
+              disabled={isToggling}
+              className={`px-4 py-2 text-p3 font-medium text-pneutral-50 rounded-lg transition-colors disabled:opacity-60 ${
+                toToggle?.isActive ? "bg-warning-500 hover:bg-warning-600" : "bg-green-600 hover:bg-green-700"
+              }`}
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isToggling ? "Saving..." : "Yes"}
             </button>
           </div>
         </div>

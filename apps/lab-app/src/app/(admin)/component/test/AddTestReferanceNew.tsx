@@ -1363,16 +1363,7 @@ const AddTestReferanceNew = ({
                             <ParameterSelect
                                 parameterId={newReferanceRecord?.parameterId}
                                 parameterName={newReferanceRecord?.parameterName}
-                                onChange={(parameter) => setNewReferanceRecord(prev => {
-                                    // No description type chosen yet (or it was auto-filled from the previous parameter):
-                                    // use the parameter name so the reference can be saved on its own.
-                                    const autoFilled = !prev.testDescription || prev.testDescription === prev.parameterName?.toUpperCase();
-                                    return {
-                                        ...prev,
-                                        ...parameter,
-                                        testDescription: autoFilled ? (parameter.parameterName?.toUpperCase() ?? "") : prev.testDescription,
-                                    };
-                                })}
+                                onChange={(parameter) => setNewReferanceRecord(prev => ({ ...prev, ...parameter }))}
                             />
                         </div>
                         <div className="flex flex-col">

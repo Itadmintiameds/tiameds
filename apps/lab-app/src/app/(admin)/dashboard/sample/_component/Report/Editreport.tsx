@@ -327,6 +327,30 @@ const getStatusLabel = (status: string) => {
 
 const normalizeKey = (value?: string) => (value || '').trim().toUpperCase();
 
+// Pairs each reference point with its saved report row (by index in `points`). Saved rows are
+// keyed by the parameter name (older ones by the description type), and one parameter can have
+// several points / rows, so each row is used at most once, in order.
+const matchReportItemsToPoints = <T extends { referenceDescription?: string }>(
+  points: TestReferancePoint[],
+  items: T[]
+): (T | undefined)[] => {
+  const used = new Set<number>();
+  const take = (predicate: (item: T) => boolean) => {
+    const idx = items.findIndex((item, i) => !used.has(i) && predicate(item));
+    if (idx < 0) return undefined;
+    used.add(idx);
+    return items[idx];
+  };
+  return points.map((point) => {
+    const label = normalizeKey(getPointLabel(point));
+    const description = normalizeKey(point.testDescription);
+    return (
+      take(item => normalizeKey(item.referenceDescription) === label) ??
+      take(item => normalizeKey(item.referenceDescription) === description)
+    );
+  });
+};
+
 const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
   editPatient,
   selectedTest,
@@ -470,6 +494,15 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
         filteredData[selectedTest.name] = refPointsRaw;
       }
 
+      // Parameters added to the test after this report was generated have no saved row; leave
+      // them out so editing only shows what the report was generated with. If nothing matches
+      // at all (unrecognised legacy rows), keep every point rather than showing an empty form.
+      const candidatePoints = filteredData[selectedTest.name] || [];
+      const candidateMatches = matchReportItemsToPoints(candidatePoints, mappedReportData);
+      if (candidateMatches.some(Boolean)) {
+        filteredData[selectedTest.name] = candidatePoints.filter((_, i) => candidateMatches[i]);
+      }
+
       const detailedPointIndex = filteredData[selectedTest.name]?.findIndex(
         point => (point.testDescription || '').toUpperCase() === 'DETAILED REPORT'
       );
@@ -486,13 +519,9 @@ const PatientReportDataEdit: React.FC<PatientReportDataEditProps> = ({
       const refPoints = filteredData[selectedTest.name] || [];
 
       // In the fetchReferenceData function, when setting initial input values:
-mappedReportData.forEach((reportItem) => {
-  const reportKey = normalizeKey(reportItem.referenceDescription);
-  const pointIndex = refPoints.findIndex(
-    point => normalizeKey(point.testDescription) === reportKey
-  );
-
-  if (pointIndex >= 0) {
+const matchedItems = matchReportItemsToPoints(refPoints, mappedReportData);
+matchedItems.forEach((reportItem, pointIndex) => {
+  if (reportItem) {
     if (!initialInputValues[selectedTest.name]) {
       initialInputValues[selectedTest.name] = {};
     }
@@ -708,6 +737,7 @@ mappedReportData.forEach((reportItem) => {
           description: 'Imaging test - Results provided separately',
         });
       } else {
+        const matchedExistingItems = matchReportItemsToPoints(refPoints, existingReportData);
         refPoints.forEach((point, index) => {
           const descriptionUpper = (point.testDescription || '').toUpperCase();
           if (descriptionUpper === 'DETAILED REPORT') {
@@ -797,11 +827,9 @@ mappedReportData.forEach((reportItem) => {
               referenceRange = resolvedReferenceRange;
             }
 
-            const existingItem = existingReportData.find(
-              item => normalizeKey(item.referenceDescription) === normalizeKey(point.testDescription)
-            );
+            const existingItem = matchedExistingItems[index];
             if (!existingItem?.report_id) {
-              missingReportIds.push(point.testDescription || 'Unknown');
+              missingReportIds.push(getPointLabel(point) || 'Unknown');
               return;
             }
 
