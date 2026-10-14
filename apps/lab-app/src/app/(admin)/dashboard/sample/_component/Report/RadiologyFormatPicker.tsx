@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import NewModal from '../../../newcommoncomponent/NewModal';
 import {
   RadiologyFormat,
@@ -8,6 +8,7 @@ import {
   loadRadiologyFormats,
   rankFormatsForTest,
 } from '@/lib/radiology/usgFormats';
+import { wordFileToRadiologyFormat } from '@/lib/radiology/docxFormat';
 
 interface RadiologyFormatPickerProps {
   testName: string;
@@ -19,7 +20,11 @@ interface RadiologyFormatPickerProps {
 const SUGGESTION_COUNT = 6;
 
 const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName, hasContent, onApply }) => {
-  const [formats, setFormats] = useState<RadiologyFormat[]>([]);
+  const [libraryFormats, setLibraryFormats] = useState<RadiologyFormat[]>([]);
+  const [uploaded, setUploaded] = useState<RadiologyFormat[]>([]);
+  const [uploadError, setUploadError] = useState('');
+  const [isReading, setIsReading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loadError, setLoadError] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -29,12 +34,34 @@ const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName,
   useEffect(() => {
     let active = true;
     loadRadiologyFormats()
-      .then(data => active && setFormats(data))
+      .then(data => active && setLibraryFormats(data))
       .catch(() => active && setLoadError(true));
     return () => {
       active = false;
     };
   }, []);
+
+  const formats = useMemo(() => [...uploaded, ...libraryFormats], [uploaded, libraryFormats]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadError('');
+    setIsReading(true);
+    try {
+      const format = await wordFileToRadiologyFormat(file);
+      setUploaded(prev => [format, ...prev]);
+      setSearch('');
+      setGroup('');
+      setSelectedId(format.id);
+      setIsOpen(true);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Could not read the document.');
+    } finally {
+      setIsReading(false);
+    }
+  };
 
   const suggestions = useMemo(() => rankFormatsForTest(formats, testName), [formats, testName]);
   const groups = useMemo(() => Array.from(new Set(formats.map(f => f.group))), [formats]);
@@ -86,15 +113,33 @@ const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName,
               : 'Choose a USG / Doppler format to start the report.'}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => openPicker()}
-          disabled={!formats.length}
-          className="rounded-full border border-secondary-700 bg-white px-3 py-1.5 text-xs font-medium text-secondary-700 hover:bg-secondary-50 disabled:opacity-50"
-        >
-          {formats.length ? `Browse all formats (${formats.length})` : 'Loading formats...'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isReading}
+            className="rounded-full border border-secondary-700 bg-secondary-700 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {isReading ? 'Reading document...' : 'Upload Word format (.doc / .docx)'}
+          </button>
+          <button
+            type="button"
+            onClick={() => openPicker()}
+            disabled={!formats.length}
+            className="rounded-full border border-secondary-700 bg-white px-3 py-1.5 text-xs font-medium text-secondary-700 hover:bg-secondary-50 disabled:opacity-50"
+          >
+            {formats.length ? `Browse all formats (${formats.length})` : 'Loading formats...'}
+          </button>
+        </div>
       </div>
+      {uploadError && <p className="mt-2 text-xs text-danger-600">{uploadError}</p>}
 
       {suggestions.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
