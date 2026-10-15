@@ -5,6 +5,8 @@ import DetailedReportTiptapEditor from "@/components/ui/detailed-report-tiptap-e
 import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
 import { toast } from "react-toastify";
 import { X } from "lucide-react";
+import ParameterSelect from "./ParameterSelect";
+import TestDescriptionSelect from "./TestDescriptionSelect";
 
 // Dropdown Editor Component
 interface DropdownItem {
@@ -625,6 +627,22 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
         }
     };
 
+    // Description is select-only (same as the Add modal)
+    const handleDescriptionSelect = (value: string) => {
+        const description = value.toUpperCase();
+        setFormData(prev => {
+            const updated = { ...prev, testDescription: description } as TestReferancePoint;
+            // Report content only belongs to DETAILED REPORT
+            if (description !== "DETAILED REPORT") {
+                updated.reportJson = undefined;
+            }
+            return updated;
+        });
+        if (validationErrors.testDescription) {
+            setValidationErrors(prev => ({ ...prev, testDescription: "" }));
+        }
+    };
+
     // Custom handler for gender to convert "B" to "MF"
     const handleGenderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value === "B" ? "MF" : e.target.value;
@@ -915,15 +933,26 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
     
     return (
         <div className="p-4 bg-white rounded-lg">
-            {/* Header with subtle accent */}
-            <div className="mb-4 pb-3 border-b border-gray-100">
-                <h2 className="text-lg font-semibold text-blue-700 flex items-center">
-                    <span className="w-1.5 h-6 bg-blue-500 rounded-full mr-3"></span>
-                    {formData.testName}
-                </h2>
-                <p className="text-xs text-gray-500 mt-1 pl-4.5">
-                    Category: {formData.category}
-                </p>
+            {/* Category / Test Name (fixed while editing) */}
+            <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col">
+                    <label className="text-gray-700 mb-1 text-sm font-medium">Category</label>
+                    <input
+                        type="text"
+                        value={formData.category || ""}
+                        disabled
+                        className="w-full bg-gray-100 border border-gray-300 px-3 py-2 rounded-lg text-sm text-gray-600 cursor-not-allowed"
+                    />
+                </div>
+                <div className="flex flex-col">
+                    <label className="text-gray-700 mb-1 text-sm font-medium">Test Name</label>
+                    <input
+                        type="text"
+                        value={formData.testName || ""}
+                        disabled
+                        className="w-full bg-gray-100 border border-gray-300 px-3 py-2 rounded-lg text-sm text-gray-600 cursor-not-allowed"
+                    />
+                </div>
             </div>
 
             {/* Validation Errors Summary */}
@@ -961,53 +990,45 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
             )}
 
             <form onSubmit={handleFormSubmit} className="space-y-4">
-                {/* Test Information Section - Green */}
-                <div className="bg-green-50 p-3 rounded-lg border border-green-100">
-                    <h4 className="font-semibold text-green-800 mb-2">Test Information</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div className="sm:col-span-2">
-                            <label className="text-xs font-medium text-gray-600 block mb-1">Description</label>
-                            <input
-                                type="text"
-                                name="testDescription"
-                                list="editTestDescriptionOptions"
-                                value={formData.testDescription.toLocaleUpperCase()}
-                                onChange={handleChangeWithValidation}
-                                className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-green-300 transition-all ${validationErrors.testDescription ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
-                                placeholder="Type or select test description"
+                {/* Parameter (left) + Test Reference Description (right) - Purple */}
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col">
+                            <label className="text-gray-700 mb-1 text-sm font-medium">Parameter</label>
+                            <ParameterSelect
+                                parameterId={formData.parameterId}
+                                parameterName={formData.parameterName}
+                                onChange={(parameter) => setFormData(prev => ({ ...prev, ...parameter }))}
+                            />
+                        </div>
+                        <div className="flex flex-col">
+                            <label className="text-gray-700 mb-1 text-sm font-medium">
+                                Test Reference Description <span className="text-red-500">*</span>
+                            </label>
+                            <TestDescriptionSelect
+                                value={(formData.testDescription || "").toUpperCase()}
+                                onChange={handleDescriptionSelect}
                             />
                             {validationErrors.testDescription && (
                                 <p className="text-xs text-red-500 mt-1">{validationErrors.testDescription}</p>
                             )}
-                            <datalist id="editTestDescriptionOptions">
-                                <option value="DESCRIPTION">Description</option>
-                                <option value="DROPDOWN">Dropdown</option>
-                                <option value="DROPDOWN-POSITIVE/NEGATIVE">Dropdown - Positive/Negative</option>
-                                <option value="DROPDOWN-PRESENT/ABSENT">Dropdown - Present/Absent</option>
-                                <option value="DROPDOWN-REACTIVE/NONREACTIVE">Dropdown - Reactive/Nonreactive</option>
-                                <option value="DROPDOWN-PERCENTAGE">Dropdown - Percentage</option>
-                                <option value="DROPDOWN-COMPATIBLE/INCOMPATIBLE">Dropdown - Compatible/Incompatible</option>
-                                <option value="DROPDOWN WITH DESCRIPTION-REACTIVE/NONREACTIVE">Dropdown with Description - Reactive/Nonreactive</option>
-                                <option value="DROPDOWN WITH DESCRIPTION-PRESENT/ABSENT">Dropdown with Description - Present/Absent</option>
-                                <option value="DETAILED REPORT">Detailed Report</option>
-                            </datalist>
                         </div>
                     </div>
                 </div>
 
-                {/* Reference Range Information Section - Blue */}
-                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                    <h4 className="font-semibold text-blue-800 mb-2">Reference Range Information</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {/* Gender */}
-                        <div>
-                            <label className="text-xs font-medium text-gray-600 block mb-1">Gender</label>
+                {/* Basic Information Section - Blue */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <h4 className="font-semibold text-blue-800 mb-3">Basic Information</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col">
+                            <label className="text-gray-700 mb-1 text-sm font-medium">Gender</label>
                             <select
                                 name="gender"
-                                value={formData.gender === "MF" ? "B" : formData.gender}
+                                value={formData.gender === "MF" ? "B" : (formData.gender || "")}
                                 onChange={handleGenderChange}
-                                className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.gender ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
+                                className={`w-full bg-white border px-3 py-2 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${validationErrors.gender ? 'border-red-300' : 'border-gray-300'}`}
                             >
+                                <option value="" disabled>Select Gender</option>
                                 <option value="M">Male</option>
                                 <option value="F">Female</option>
                                 <option value="B">Both</option>
@@ -1017,117 +1038,20 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                             )}
                         </div>
 
-                        {/* Units */}
-                        <div>
-                            <label className="text-xs font-medium text-gray-600 block mb-1">Units</label>
+                        <div className="flex flex-col">
+                            <label className="text-gray-700 mb-1 text-sm font-medium">Units</label>
                             <input
                                 type="text"
                                 name="units"
-                                value={formData.units}
+                                placeholder="Units"
+                                value={formData.units || ""}
                                 onChange={handleChangeWithValidation}
-                                className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.units ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
-                                placeholder="Measurement units"
+                                className={`w-full bg-white border px-3 py-2 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${validationErrors.units ? 'border-red-300' : 'border-gray-300'}`}
                             />
                             {validationErrors.units && (
                                 <p className="text-xs text-red-500 mt-1">{validationErrors.units}</p>
                             )}
                         </div>
-
-                        {/* Min Age with Unit */}
-                        <div>
-                            <label className="text-xs font-medium text-gray-600 block mb-1">Min Age</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="number"
-                                    name="ageMin"
-                                    value={formData.ageMin}
-                                    onChange={handleAgeChange}
-                                    className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.ageMin ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
-                                    min={0}
-                                    max={100}
-                                />
-                                <select
-                                    name="minAgeUnit"
-                                    value={formData.minAgeUnit || "YEARS"}
-                                    onChange={handleChangeWithValidation}
-                                    className="w-full px-2.5 py-2 text-xs bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
-                                >
-                                    <option value="YEARS">Years</option>
-                                    <option value="MONTHS">Months</option>
-                                    <option value="WEEKS">Weeks</option>
-                                    <option value="DAYS">Days</option>
-                                </select>
-                            </div>
-                            {validationErrors.ageMin && (
-                                <p className="text-xs text-red-500 mt-1">{validationErrors.ageMin}</p>
-                            )}
-                        </div>
-
-                        {/* Max Age with Unit */}
-                        <div>
-                            <label className="text-xs font-medium text-gray-600 block mb-1">Max Age</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="number"
-                                    name="ageMax"
-                                    min={0}
-                                    max={100}
-                                    value={formData.ageMax}
-                                    onChange={handleAgeChange}
-                                    className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.ageMax ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
-                                />
-                                <select
-                                    name="maxAgeUnit"
-                                    value={formData.maxAgeUnit || "YEARS"}
-                                    onChange={handleChangeWithValidation}
-                                    className="w-full px-2.5 py-2 text-xs bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-300 transition-all"
-                                >
-                                    <option value="YEARS">Years</option>
-                                    <option value="MONTHS">Months</option>
-                                    <option value="WEEKS">Weeks</option>
-                                    <option value="DAYS">Days</option>
-                                </select>
-                            </div>
-                            {validationErrors.ageMax && (
-                                <p className="text-xs text-red-500 mt-1">{validationErrors.ageMax}</p>
-                            )}
-                        </div>
-
-                        {/* Reference Range - Hidden for special test descriptions */}
-                        {!hasSpecialTestDescription && (
-                            <div className="grid grid-cols-2 gap-2 sm:col-span-2">
-                                <div>
-                                    <label className="text-xs font-medium text-gray-600 block mb-1">Min Range</label>
-                                    <input
-                                        type="number"
-                                        name="minReferenceRange"
-                                        min={0}
-                                        value={formData.minReferenceRange}
-                                        onChange={handleChangeWithValidation}
-                                        className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.minReferenceRange ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
-                                        step="0.01"
-                                    />
-                                    {validationErrors.minReferenceRange && (
-                                        <p className="text-xs text-red-500 mt-1">{validationErrors.minReferenceRange}</p>
-                                    )}
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-gray-600 block mb-1">Max Range</label>
-                                    <input
-                                        type="number"
-                                        name="maxReferenceRange"
-                                        min={0}
-                                        value={formData.maxReferenceRange}
-                                        onChange={handleChangeWithValidation}
-                                        className={`w-full px-2.5 py-2 text-xs bg-white border rounded-md focus:ring-1 focus:ring-blue-300 transition-all ${validationErrors.maxReferenceRange ? 'border-red-300 focus:ring-red-300' : 'border-gray-300'}`}
-                                        step="0.01"
-                                    />
-                                    {validationErrors.maxReferenceRange && (
-                                        <p className="text-xs text-red-500 mt-1">{validationErrors.maxReferenceRange}</p>
-                                    )}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
 
@@ -1164,6 +1088,113 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
                         </div>
                     )}
                 </div>
+
+                {/* Age Range Section - Orange */}
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                    <h4 className="font-semibold text-orange-800 mb-3">Age Range</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col">
+                            <label className="text-gray-700 mb-1 text-sm font-medium">Min Age</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="number"
+                                    name="ageMin"
+                                    min={0}
+                                    max={100}
+                                    placeholder="Minimum Age"
+                                    value={formData.ageMin ?? ""}
+                                    onChange={handleAgeChange}
+                                    className={`flex-1 min-w-0 bg-white border px-3 py-2 rounded-lg focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-all ${validationErrors.ageMin ? 'border-red-300' : 'border-gray-300'}`}
+                                />
+                                <select
+                                    name="minAgeUnit"
+                                    value={formData.minAgeUnit || "YEARS"}
+                                    onChange={handleChangeWithValidation}
+                                    className="w-32 bg-white border border-gray-300 px-3 py-2 rounded-lg focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
+                                >
+                                    <option value="YEARS">Years</option>
+                                    <option value="MONTHS">Months</option>
+                                    <option value="WEEKS">Weeks</option>
+                                    <option value="DAYS">Days</option>
+                                </select>
+                            </div>
+                            {validationErrors.ageMin && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors.ageMin}</p>
+                            )}
+                        </div>
+
+                        <div className="flex flex-col">
+                            <label className="text-gray-700 mb-1 text-sm font-medium">Max Age</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="number"
+                                    name="ageMax"
+                                    min={0}
+                                    max={100}
+                                    placeholder="Maximum Age"
+                                    value={formData.ageMax ?? ""}
+                                    onChange={handleAgeChange}
+                                    className={`flex-1 min-w-0 bg-white border px-3 py-2 rounded-lg focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-all ${validationErrors.ageMax ? 'border-red-300' : 'border-gray-300'}`}
+                                />
+                                <select
+                                    name="maxAgeUnit"
+                                    value={formData.maxAgeUnit || "YEARS"}
+                                    onChange={handleChangeWithValidation}
+                                    className="w-32 bg-white border border-gray-300 px-3 py-2 rounded-lg focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
+                                >
+                                    <option value="YEARS">Years</option>
+                                    <option value="MONTHS">Months</option>
+                                    <option value="WEEKS">Weeks</option>
+                                    <option value="DAYS">Days</option>
+                                </select>
+                            </div>
+                            {validationErrors.ageMax && (
+                                <p className="text-xs text-red-500 mt-1">{validationErrors.ageMax}</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Reference Range Section - Green (hidden for special test descriptions) */}
+                {!hasSpecialTestDescription && (
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                        <h4 className="font-semibold text-green-800 mb-3">Reference Range</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="flex flex-col">
+                                <label className="text-gray-700 mb-1 text-sm font-medium">Min Range</label>
+                                <input
+                                    type="number"
+                                    name="minReferenceRange"
+                                    min={0}
+                                    step="0.01"
+                                    placeholder="Minimum Range"
+                                    value={formData.minReferenceRange ?? ""}
+                                    onChange={handleChangeWithValidation}
+                                    className={`w-full bg-white border px-3 py-2 rounded-lg focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all ${validationErrors.minReferenceRange ? 'border-red-300' : 'border-gray-300'}`}
+                                />
+                                {validationErrors.minReferenceRange && (
+                                    <p className="text-xs text-red-500 mt-1">{validationErrors.minReferenceRange}</p>
+                                )}
+                            </div>
+                            <div className="flex flex-col">
+                                <label className="text-gray-700 mb-1 text-sm font-medium">Max Range</label>
+                                <input
+                                    type="number"
+                                    name="maxReferenceRange"
+                                    min={0}
+                                    step="0.01"
+                                    placeholder="Maximum Range"
+                                    value={formData.maxReferenceRange ?? ""}
+                                    onChange={handleChangeWithValidation}
+                                    className={`w-full bg-white border px-3 py-2 rounded-lg focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all ${validationErrors.maxReferenceRange ? 'border-red-300' : 'border-gray-300'}`}
+                                />
+                                {validationErrors.maxReferenceRange && (
+                                    <p className="text-xs text-red-500 mt-1">{validationErrors.maxReferenceRange}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Report Content Section - Purple (Show only for DETAILED REPORT) */}
                 {isDetailedReport && (
@@ -1307,10 +1338,10 @@ const TestEditReferance = ({ editRecord, setEditRecord, handleUpdate, handleChan
 
                 {/* Reference Ranges Section - Orange (Hidden for special test descriptions) */}
                 {!hasSpecialTestDescription && (
-                    <div className="bg-orange-50 p-3 rounded-lg border border-orange-100">
+                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
                         <div className="flex items-center justify-between mb-3">
                             <div>
-                                <h4 className="font-semibold text-orange-800">Reference Ranges (Optional)</h4>
+                                <h4 className="font-semibold text-yellow-800">Reference Ranges (Optional)</h4>
                                 <p className="text-xs text-gray-600 mt-1">Configure reference ranges for this test reference</p>
                             </div>
                             <button
