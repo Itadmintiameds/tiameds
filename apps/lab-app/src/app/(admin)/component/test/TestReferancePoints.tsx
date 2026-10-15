@@ -185,6 +185,8 @@ const TestReferancePoints = () => {
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
   const [activeFilter, setActiveFilter] = useState<"all" | "category" | "test" | "description">("all");
   const [activeTab, setActiveTab] = useState<"all" | "common" | "special">("all");
+  const [deleteTarget, setDeleteTarget] = useState<TestReferancePoint | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchReferencePoints = useCallback(async (page: number = 0, size: number = ITEMS_PER_PAGE) => {
     if (currentLab?.id) {
@@ -395,29 +397,35 @@ const TestReferancePoints = () => {
     setEditModalOpen(true);
   };
 
-  const handleDelete = async (testReferenceCode: string | undefined) => {
-    if (!testReferenceCode) {
+  const handleDelete = (test: TestReferancePoint) => {
+    if (!test?.testReferenceCode) {
       toast.error("Invalid test reference code.", { autoClose: 2000 });
       return;
     }
+    setDeleteTarget(test);
+  };
 
-    if (!window.confirm("Are you sure you want to delete this test reference range?")) return;
+  const confirmDelete = async () => {
+    const testReferenceCode = deleteTarget?.testReferenceCode;
+    if (!testReferenceCode) return;
 
     if (!currentLab?.id) {
       toast.error("No lab selected.", { autoClose: 2000 });
+      setDeleteTarget(null);
       return;
     }
 
     try {
-      setLoading(true);
+      setIsDeleting(true);
       await deleteTestReferanceRange(currentLab.id, testReferenceCode);
+      setDeleteTarget(null);
       await fetchReferencePoints(currentPage, ITEMS_PER_PAGE);
       toast.success("Test reference range deleted successfully.", { autoClose: 2000 });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "An unexpected error occurred while deleting the test reference range.";
       toast.error(message, { autoClose: 2000 });
     } finally {
-      setLoading(false);
+      setIsDeleting(false);
     }
   };
 
@@ -759,7 +767,7 @@ const TestReferancePoints = () => {
                                       size={14}
                                     />
                                     <FaTrash
-                                      onClick={() => test?.testReferenceCode && handleDelete(test.testReferenceCode)}
+                                      onClick={() => test?.testReferenceCode && handleDelete(test)}
                                       className="text-warning-500 cursor-pointer hover:text-warning-700"
                                       title="Delete"
                                       size={14}
@@ -1093,6 +1101,45 @@ const TestReferancePoints = () => {
           )}
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <NewModal
+        isOpen={!!deleteTarget}
+        onClose={() => !isDeleting && setDeleteTarget(null)}
+        title="Delete Parameter"
+        modalClassName="max-w-md"
+      >
+        <div className="text-center py-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4">
+            <FaTrash className="h-5 w-5 text-red-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-pneutral-900 mb-2">
+            Are you sure you want to delete &quot;{deleteTarget?.parameterName || deleteTarget?.testDescription || 'this parameter'}&quot; from {deleteTarget?.testName || 'this test'}?
+          </h3>
+          <p className="text-p3 text-pneutral-500 mb-4">
+            Once deleted, it cannot be retrieved.
+          </p>
+          <div className="flex justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium text-pneutral-700 bg-pneutral-100 rounded-lg hover:bg-pneutral-200 transition-colors disabled:opacity-50"
+            >
+              No
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              <FaTrash size={14} />
+              {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+            </button>
+          </div>
+        </div>
+      </NewModal>
 
       {/* Edit Modal */}
       {isEditModalOpen && (

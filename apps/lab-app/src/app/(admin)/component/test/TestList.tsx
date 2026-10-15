@@ -51,6 +51,8 @@ const TestLists = () => {
   const [editPopup, setEditPopup] = useState(false);
   const [updateTest, setUpdateTest] = useState<TestList>();
   const [updateList, setUpdateList] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<TestList | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Debounce the search box so we don't hit the server on every keystroke
   useEffect(() => {
@@ -122,14 +124,18 @@ const TestLists = () => {
   };
 
   // Handle Delete Test
-  const handleDeleteTest = async (testId: string) => {
-    if (!currentLab) return;
+  const confirmDeleteTest = async () => {
+    if (!currentLab || !deleteTarget) return;
     try {
-      await deleteTest(testId, currentLab.id.toString());
+      setIsDeleting(true);
+      await deleteTest(deleteTarget.id.toString(), currentLab.id.toString());
+      setDeleteTarget(null);
       setUpdateList(!updateList);
       toast.success('Test deleted successfully');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete test');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -236,7 +242,7 @@ const TestLists = () => {
             )}
             {canDelete && (
               <button
-                onClick={() => handleDeleteTest(row.id.toString())}
+                onClick={() => setDeleteTarget(row)}
                 className="flex h-[28px] w-[28px] items-center justify-center border border-warning-500 rounded-full text-warning-500 hover:bg-warning-50 transition-colors"
                 title="Delete Test"
               >
@@ -440,6 +446,45 @@ const TestLists = () => {
       </NewModal>
 
       {/* Edit Modal */}
+      {/* Delete Confirmation Modal */}
+      <NewModal
+        isOpen={!!deleteTarget}
+        onClose={() => !isDeleting && setDeleteTarget(null)}
+        title="Delete Test"
+        modalClassName="max-w-md"
+      >
+        <div className="text-center py-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4">
+            <HiOutlineTrash className="h-6 w-6 text-red-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-pneutral-900 mb-2">
+            Are you sure you want to delete &quot;{deleteTarget?.name}&quot;?
+          </h3>
+          <p className="text-p3 text-pneutral-500 mb-4">
+            Once deleted, it cannot be retrieved.
+          </p>
+          <div className="flex justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium text-pneutral-700 bg-pneutral-100 rounded-lg hover:bg-pneutral-200 transition-colors disabled:opacity-50"
+            >
+              No
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteTest}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              <HiOutlineTrash size={16} />
+              {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+            </button>
+          </div>
+        </div>
+      </NewModal>
+
       {editPopup && updateTest && (
         <NewModal
           isOpen={editPopup}
