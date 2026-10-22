@@ -1,5 +1,5 @@
 'use client';
-import { deleteTest, getTestsPaginated, PaginatedTestResponse } from '@/../../services/testService';
+import { activateTest, deleteTest, getTestsPaginated, PaginatedTestResponse } from '@/../../services/testService';
 import { downloadTestCsv, downloadTestCsvExcel } from '@/../services/testService';
 import { useLabs } from '@/context/LabContext';
 import { TestList } from '@/types/test/testlist';
@@ -7,7 +7,6 @@ import { Plus, Edit, Search } from 'lucide-react';
 import Papa from 'papaparse';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { FaDownload, FaFileExcel } from 'react-icons/fa';
-import { HiOutlineTrash } from 'react-icons/hi2';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 
@@ -45,6 +44,7 @@ const TestLists = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('');
   const [sortOrder, setSortOrder] = useState<'low' | 'high' | ''>('');
+  const [status, setStatus] = useState<'active' | 'inactive'>('active');
 
   // UI States
   const [isModalOpen, setModalOpen] = useState(false);
@@ -69,8 +69,9 @@ const TestLists = () => {
       searchTerm,
       category,
       sortOrder,
+      status,
     }),
-    [searchTerm, category, sortOrder]
+    [searchTerm, category, sortOrder, status]
   );
 
   // Fetch Tests - real server-side pagination, search, category filter and sort
@@ -82,6 +83,7 @@ const TestLists = () => {
           search: searchTerm,
           category,
           sortOrder,
+          status,
         });
 
         setTests(Array.isArray(response?.content) ? response.content : []);
@@ -99,7 +101,7 @@ const TestLists = () => {
         setLoading(false);
       }
     }
-  }, [currentLab?.id, searchTerm, category, sortOrder]);
+  }, [currentLab?.id, searchTerm, category, sortOrder, status]);
 
   // Fetch on page change, filter change, or when the list is externally invalidated
   useEffect(() => {
@@ -123,17 +125,29 @@ const TestLists = () => {
     setCurrentPage(0);
   };
 
-  // Handle Delete Test
-  const confirmDeleteTest = async () => {
+  // Handle Status Change - Reset to first page
+  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStatus(e.target.value as 'active' | 'inactive');
+    setCategory('');
+    setCurrentPage(0);
+  };
+
+  // Handle Enable / Disable Test
+  const confirmToggleTest = async () => {
     if (!currentLab || !deleteTarget) return;
+    const isDisabling = status === 'active';
     try {
       setIsDeleting(true);
-      await deleteTest(deleteTarget.id.toString(), currentLab.id.toString());
+      if (isDisabling) {
+        await deleteTest(deleteTarget.id.toString(), currentLab.id.toString());
+      } else {
+        await activateTest(deleteTarget.id.toString(), currentLab.id.toString());
+      }
       setDeleteTarget(null);
       setUpdateList(!updateList);
-      toast.success('Test deleted successfully');
+      toast.success(`Test ${isDisabling ? 'disabled' : 'enabled'} successfully`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete test');
+      toast.error(err instanceof Error ? err.message : `Failed to ${isDisabling ? 'disable' : 'enable'} test`);
     } finally {
       setIsDeleting(false);
     }
@@ -220,10 +234,23 @@ const TestLists = () => {
       ),
     },
     {
+      header: "Status",
+      accessor: "status",
+      render: () => (
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-p2 font-medium ${
+            status === 'active' ? 'bg-green-100 text-green-700' : 'bg-pneutral-100 text-pneutral-600'
+          }`}
+        >
+          {status === 'active' ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    },
+    {
       header: "Actions",
       accessor: "actions",
       render: (row: TestList) => {
-        const canEdit = isSuperAdmin || isAdmin;
+        const canEdit = (isSuperAdmin || isAdmin) && status === 'active';
         const canDelete = isSuperAdmin || isAdmin;
 
         return (
@@ -243,10 +270,14 @@ const TestLists = () => {
             {canDelete && (
               <button
                 onClick={() => setDeleteTarget(row)}
-                className="flex h-[28px] w-[28px] items-center justify-center border border-warning-500 rounded-full text-warning-500 hover:bg-warning-50 transition-colors"
-                title="Delete Test"
+                className={`rounded-full border px-3 py-1 text-p2 font-medium transition-colors ${
+                  status === 'active'
+                    ? 'border-warning-500 text-warning-500 hover:bg-warning-50'
+                    : 'border-green-600 text-green-600 hover:bg-green-50'
+                }`}
+                title={status === 'active' ? 'Disable Test' : 'Enable Test'}
               >
-                <HiOutlineTrash size={12} />
+                {status === 'active' ? 'Disable' : 'Enable'}
               </button>
             )}
           </div>
@@ -329,7 +360,7 @@ const TestLists = () => {
 
           <div className="rounded-xl border border-pneutral-100 bg-white p-5 text-left">
             <h3 className="text-sm font-medium text-pneutral-900">
-              Active Tests
+              {status === 'active' ? 'Active Tests' : 'Inactive Tests'}
             </h3>
             <p className="mt-4 text-3xl font-semibold text-danger-600">
               {totalElements}
@@ -356,6 +387,18 @@ const TestLists = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-p3 text-pneutral-500">Status:</span>
+              <select
+                value={status}
+                onChange={handleStatusChange}
+                className="h-10 rounded-md border border-pneutral-200 px-3 text-p3 focus:border-pneutral-500"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+
             <div className="flex items-center gap-2">
               <span className="text-p3 text-pneutral-500">Category:</span>
               <select
@@ -407,7 +450,7 @@ const TestLists = () => {
               />
             </svg>
             <p className="mt-4 text-sm font-medium text-pneutral-500">
-              {searchTerm || category ? `No results found` : "No tests available"}
+              {searchTerm || category ? `No results found` : status === 'inactive' ? "No inactive tests" : "No tests available"}
             </p>
             {(searchTerm || category) && (
               <p className="mt-1 text-xs text-pneutral-400">
@@ -446,40 +489,36 @@ const TestLists = () => {
       </NewModal>
 
       {/* Edit Modal */}
-      {/* Delete Confirmation Modal */}
+      {/* Enable / Disable Confirmation Modal */}
       <NewModal
         isOpen={!!deleteTarget}
         onClose={() => !isDeleting && setDeleteTarget(null)}
-        title="Delete Test"
+        title={status === 'active' ? 'Disable Test' : 'Enable Test'}
         modalClassName="max-w-md"
       >
-        <div className="text-center py-4">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4">
-            <HiOutlineTrash className="h-6 w-6 text-red-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-pneutral-900 mb-2">
-            Are you sure you want to delete &quot;{deleteTarget?.name}&quot;?
-          </h3>
-          <p className="text-p3 text-pneutral-500 mb-4">
-            Once deleted, it cannot be retrieved.
+        <div className="space-y-5">
+          <p className="text-center text-p3 text-pneutral-700">
+            Do you want to {status === 'active' ? 'disable' : 'enable'} this test{' '}
+            <span className="font-semibold text-pneutral-900">&quot;{deleteTarget?.name}&quot;</span>?
           </p>
           <div className="flex justify-center gap-3">
             <button
               type="button"
               onClick={() => setDeleteTarget(null)}
               disabled={isDeleting}
-              className="px-4 py-2 text-sm font-medium text-pneutral-700 bg-pneutral-100 rounded-lg hover:bg-pneutral-200 transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-p3 font-medium text-pneutral-700 bg-pneutral-100 rounded-lg hover:bg-pneutral-200 transition-colors disabled:opacity-60"
             >
               No
             </button>
             <button
               type="button"
-              onClick={confirmDeleteTest}
+              onClick={confirmToggleTest}
               disabled={isDeleting}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+              className={`px-4 py-2 text-p3 font-medium text-pneutral-50 rounded-lg transition-colors disabled:opacity-60 ${
+                status === 'active' ? 'bg-warning-500 hover:bg-warning-600' : 'bg-green-600 hover:bg-green-700'
+              }`}
             >
-              <HiOutlineTrash size={16} />
-              {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+              {isDeleting ? 'Saving...' : 'Yes'}
             </button>
           </div>
         </div>
