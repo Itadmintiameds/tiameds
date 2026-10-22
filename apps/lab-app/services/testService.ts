@@ -35,6 +35,7 @@ export interface GetTestsPaginatedParams {
   search?: string;
   category?: string;
   sortOrder?: 'low' | 'high' | '';
+  status?: 'active' | 'inactive';
 }
 
 export const getTestsPaginated = async (
@@ -44,18 +45,16 @@ export const getTestsPaginated = async (
   params: GetTestsPaginatedParams = {}
 ): Promise<PaginatedTestResponse> => {
   try {
+    const query = {
+      page,
+      size,
+      search: params.search || undefined,
+      category: params.category || undefined,
+      sortOrder: params.sortOrder || undefined,
+    };
     const response = await api.get<PaginatedTestResponse | { data: PaginatedTestResponse; message: string; status: string }>(
-      `admin/lab/tests`,
-      {
-        params: {
-          labId,
-          page,
-          size,
-          search: params.search || undefined,
-          category: params.category || undefined,
-          sortOrder: params.sortOrder || undefined,
-        },
-      }
+      params.status ? `admin/lab/${labId}/tests/${params.status}` : `admin/lab/tests`,
+      { params: params.status ? query : { labId, ...query } }
     );
 
     // Handle both direct response and wrapped response formats
@@ -90,7 +89,24 @@ export const getTestsPaginated = async (
   }
 };
 
-//delete test
+//activate a previously deactivated test
+export const activateTest = async (testId: string, labId: string): Promise<void> => {
+  try {
+    await api.put(`/admin/lab/${labId}/activate/${testId}`);
+  } catch (error: unknown) {
+    let errorMessage = 'An error occurred while activating test.';
+
+    if (error instanceof Error && (error as any).response?.data?.message) {
+      errorMessage = (error as any).response.data.message;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
+  }
+};
+
+//deactivate test (soft delete)
 export const deleteTest = async (testId: string, labId: string): Promise<void> => {
   try {
     await api.delete(`/admin/lab/${labId}/remove/${testId}`);
