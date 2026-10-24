@@ -9,6 +9,8 @@ import { useLabs } from "@/context/LabContext";
 import { formatAgeForDisplay } from "@/utils/ageUtils";
 import type { PatientData } from "@/types/sample/sample";
 import { formatMedicalReportToHTML } from "@/utils/reportFormatter";
+import { isRadiologyTest } from "@/utils/radiology";
+import type { RadiologyReport } from "../../../../../../services/radiologyServices";
 import { getPatientHealthSnapshot } from "../../../../../../services/patientServices";
 import { saveAiClinicalObservation } from "../../../../../../services/reportServices";
 import type { HealthSnapshot, HealthSnapshotTest, HealthSnapshotTestResult } from "@/types/patient/healthSnapshot";
@@ -775,6 +777,27 @@ const buildDetailedReportHTML = (reportJson?: string | null) => {
     }
 };
 
+const escapeRadiologyText = (value: string) =>
+    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>');
+
+const radiologyField = (label: string, value?: string | null) =>
+    value && value.trim()
+        ? `<p style="margin: 2px 0; font-size: 10px; line-height: 1.35; color: #000000;"><strong style="color: #000000; font-weight: 700;">${label}:</strong> ${escapeRadiologyText(value.trim())}</p>`
+        : '';
+
+// What was saved for the radiology report: clinical history / technique / comparison, the findings
+// written in the editor.
+const buildRadiologyReportHTML = (report: RadiologyReport) => {
+    const findings = report.findingsJson as DetailedReport | undefined;
+    const sections = Array.isArray(findings?.sections) ? findings.sections : [];
+    const findingsHtml = sections.length > 0 ? buildDetailedReportHTML(JSON.stringify(findings)) : '';
+    return `<div style="color: #000000; font-size: 10px;">${[
+        radiologyField('Clinical History', report.clinicalHistory),
+        radiologyField('Technique', report.technique),
+        radiologyField('Comparison', report.comparison),
+    ].join('')}${findingsHtml}</div>`;
+};
+
 // A `data-print-table` block is only safe to paginate row-by-row when it is literally a
 // single <table> -- the merged multi-test results table, whose several <tbody> groups the
 // row-chunker walks together into one rebuilt table. Detailed-report and qualitative
@@ -839,6 +862,8 @@ interface CommonReportView2Props {
     // nothing to look up (no lab/visit, or an order that isn't finished); `null` means it
     // looked and there was no record.
     storedObservation?: AiClinicalObservation | null;
+    // Radiology reports saved for this visit (signing doctors, findings, impression)
+    radiologyReports?: RadiologyReport[];
 }
 
 // AI Clinical Observations are only worth generating on a finished order: a partially
@@ -865,6 +890,7 @@ const CommonReportView2 = ({
     hidePrintButton = false,
     reportsData,
     storedObservation,
+    radiologyReports,
 }: CommonReportView2Props) => {
     const { currentLab } = useLabs();
     const reportRef = useRef<HTMLDivElement>(null);
@@ -2390,7 +2416,7 @@ const CommonReportView2 = ({
     };
 
     const isDetailedReportEntry = (report: ConsolidatedReport) => {
-        if (report.reportJson) return true;
+        if (report.reportJson || findRadiologyReport(report)) return true;
         const rows = report.testRows && report.testRows.length > 0 ? report.testRows : [];
         return rows.some((row) => (row.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
     };
@@ -2612,6 +2638,21 @@ const CommonReportView2 = ({
         return elements;
     };
 
+    // The saved radiology report of a printed test: matched by test id through the visit's tests,
+    // or, when ids are unavailable, when the visit has exactly one imaging test and one report.
+    const findRadiologyReport = (report: ConsolidatedReport): RadiologyReport | undefined => {
+        if (!radiologyReports?.length || !isRadiologyTest(report.testName, report.testCategory)) return undefined;
+        const name = (report.testName || "").trim().toUpperCase();
+        const testId = patientData?.tests?.find((t) => (t.name || "").trim().toUpperCase() === name)?.id;
+        const byId = testId !== undefined ? radiologyReports.find((r) => r.testId === testId) : undefined;
+        if (byId) return byId;
+        const imagingEntries = reportsData.filter((r) => isRadiologyTest(r.testName, r.testCategory));
+        return imagingEntries.length === 1 && radiologyReports.length === 1 ? radiologyReports[0] : undefined;
+    };
+
+    const hasRadiologyReports = reportsData.some((r) => isRadiologyTest(r.testName, r.testCategory));
+    const hasNonRadiologyReports = reportsData.some((r) => !isRadiologyTest(r.testName, r.testCategory));
+
     const renderTestCardBody = (report: ConsolidatedReport, index: number) => {
         const rows =
             report.testRows && report.testRows.length > 0
@@ -2634,7 +2675,8 @@ const CommonReportView2 = ({
         const shouldHideResultTable = rows.length > 0 && isFieldTypeTokenRow(firstRow);
 
         const hasDetailedReportRow = rows.some(row => (row.referenceDescription || '').toUpperCase() === 'DETAILED REPORT');
-        const detailedEntry = (report.reportJson || hasDetailedReportRow)
+        const radiologyReport = findRadiologyReport(report);
+        const detailedEntry = (report.reportJson || hasDetailedReportRow || radiologyReport)
             ? { reportJson: report.reportJson, referenceRanges: report.referenceRanges }
             : null;
 
@@ -2663,7 +2705,7 @@ const CommonReportView2 = ({
                 {(detailedEntry || shouldHideResultTable) && renderSectionTitleBand(`${index}. ${report.testName}`)}
 
                 <div className={detailedEntry || shouldHideResultTable ? "p-2" : ""}>
-                    {detailedEntry && detailedEntry.reportJson && (
+                    {detailedEntry && (detailedEntry.reportJson || radiologyReport) && (
                         <div className="w-full">
                             <div
                                 className="report-html"
@@ -2672,9 +2714,27 @@ const CommonReportView2 = ({
                                     fontSize: '11px',
                                     lineHeight: '1.4'
                                 }}
-                                dangerouslySetInnerHTML={{ __html: buildDetailedReportHTML(detailedEntry.reportJson) }}
+                                dangerouslySetInnerHTML={{ __html: radiologyReport ? buildRadiologyReportHTML(radiologyReport) : buildDetailedReportHTML(detailedEntry.reportJson) }}
                             />
                             {renderReferenceRanges(detailedEntry.referenceRanges, report.testName)}
+                            {radiologyReport && radiologyReport.signatories?.length > 0 && (
+                                <div className="mt-3 flex flex-wrap items-start justify-start gap-x-8 gap-y-2 text-left">
+                                    {radiologyReport.signatories.map((doctor) => (
+                                        <div key={doctor.doctorId}>
+                                            <p className="text-xs font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>{doctor.doctorName}</p>
+                                            {doctor.qualification && (
+                                                <p className="text-[10px] leading-normal mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>{doctor.qualification}</p>
+                                            )}
+                                            {doctor.designation && (
+                                                <p className="text-[10px] leading-normal mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>{doctor.designation}</p>
+                                            )}
+                                            {doctor.licenseNumber && (
+                                                <p className="text-[10px] leading-normal mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>Reg. No. {doctor.licenseNumber}</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -3210,6 +3270,8 @@ const CommonReportView2 = ({
                                 <p className="text-[10px] font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>Lab Technician</p>
                             </div>
 
+                            {/* The pathologist signs the lab results; imaging reports carry their own doctors under each report */}
+                            {(hasNonRadiologyReports || !hasRadiologyReports) && (
                             <div className="flex flex-col items-center">
                                 {/* <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Lab Approval</h3> */}
                                 <img
@@ -3222,6 +3284,7 @@ const CommonReportView2 = ({
                                 <p className="text-[10px] leading-normal mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>MBBS, MD (Pathology)</p>
                                 <p className="text-[10px] leading-normal mt-0.5 pb-0.5" style={{ color: REPORT_COLORS.neutral600 }}>Consultant Pathologist</p>
                             </div>
+                            )}
                         </div>
                     </div>
                     </div>

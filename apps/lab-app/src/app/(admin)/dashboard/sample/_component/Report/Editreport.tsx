@@ -19,6 +19,7 @@ import { TbReportMedical, TbChevronLeft,} from "react-icons/tb";
 import { toast } from 'react-toastify';
 import AutoCalculation from './AutoCalculation';
 import DetailedReportEditor from './DetailedReportEditor';
+import RadiologyReportPanel, { useRadiologyReport } from './RadiologyReportPanel';
 import NewModal from "../../../newcommoncomponent/NewModal";
 import { FaChevronDown } from "react-icons/fa";
 import { createPortal } from "react-dom";
@@ -694,11 +695,22 @@ matchedItems.forEach((reportItem, pointIndex) => {
     point => (point.testDescription || '').toUpperCase() !== 'DETAILED REPORT'
   );
 
+  // Imaging reports are also saved to the radiology report API (signing doctors, impression, history)
+  const isRadiologyReport = isRadiology && hasDetailedReportPoint;
+  const radiology = useRadiologyReport({
+    labId: currentLab?.id,
+    visitId: editPatient.visitId,
+    testId: selectedTest.id,
+    enabled: isRadiologyReport,
+  });
+  const getRadiologyReportJson = () =>
+    selectedRefPoints.find(point => (point.testDescription || '').toUpperCase() === 'DETAILED REPORT')?.reportJson;
+
   const validateForm = () => {
     const errors: Record<string, boolean> = {};
     let isValid = true;
 
-    if (isRadiology && !hasRegularParams) {
+    if (isRadiology && (!hasRegularParams || hasDetailedReportPoint)) {
       setValidationErrors({});
       return true;
     }
@@ -731,6 +743,14 @@ matchedItems.forEach((reportItem, pointIndex) => {
     if (!validateForm()) {
       toast.error('Please fill in all required fields');
       return;
+    }
+
+    if (isRadiologyReport) {
+      const radiologyError = radiology.validate(getRadiologyReportJson());
+      if (radiologyError) {
+        toast.error(radiologyError);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -770,6 +790,8 @@ matchedItems.forEach((reportItem, pointIndex) => {
         const matchedExistingItems = matchReportItemsToPoints(refPoints, existingReportData);
         refPoints.forEach((point, index) => {
           const descriptionUpper = (point.testDescription || '').toUpperCase();
+          // Imaging reports carry only the written report, not parameter rows
+          if (isRadiologyReport && descriptionUpper !== 'DETAILED REPORT') return;
           if (descriptionUpper === 'DETAILED REPORT') {
             // Rows saved before parameters existed are keyed by the description type;
             // radiology reports saved before a template existed use the RADIOLOGY_TEST row
@@ -894,6 +916,13 @@ matchedItems.forEach((reportItem, pointIndex) => {
       }
 
       await updateReportById(currentLab.id, reportId.toString(), generatedReportData);
+      if (isRadiologyReport) {
+        try {
+          await radiology.save(getRadiologyReportJson());
+        } catch (radiologyError) {
+          toast.error(radiologyError instanceof Error ? radiologyError.message : 'Failed to save the radiology report');
+        }
+      }
       refreshReports();
       setShowModal(false);
       toast.success('Report updated successfully');
@@ -1047,7 +1076,7 @@ matchedItems.forEach((reportItem, pointIndex) => {
           </div>
 
           {/* Test Table Card */}
-          {hasNonDetailedReportParams && (
+          {hasNonDetailedReportParams && !isRadiologyReport && (
           <div className="overflow-hidden rounded-xl border border-pneutral-200 bg-white">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[750px]">
@@ -1275,11 +1304,12 @@ matchedItems.forEach((reportItem, pointIndex) => {
           )}
 
           {/* Detailed Report Editor (table-based report sections, e.g. Complete Urine Analysis) */}
+          {isRadiologyReport && detailedReportPoint && <RadiologyReportPanel state={radiology} />}
           {detailedReportPoint && (
             <div className="rounded-xl border border-pneutral-200 bg-white p-4">
               <DetailedReportEditor
                 point={detailedReportPoint}
-                showFormatLibrary={isRadiology}
+                showFormatLibrary={isRadiologyReport}
                 onReportJsonChange={(reportJson) => {
                   setReferencePoints(prev => ({
                     ...prev,

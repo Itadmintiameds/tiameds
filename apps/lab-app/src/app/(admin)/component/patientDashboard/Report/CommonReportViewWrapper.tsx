@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLabs } from "@/context/LabContext";
 import { getAiClinicalObservation, getReportData } from "../../../../../../services/reportServices";
 import { getPatientByVisitIdAndVisitDetails } from "../../../../../../services/patientServices";
+import { listRadiologyReportsForVisit, type RadiologyReport } from "../../../../../../services/radiologyServices";
 import { PatientData } from "@/types/sample/sample";
 import type { AiClinicalObservation } from "@/types/aiInsights";
 import CommonReportView from "./CommonReportView";
@@ -112,6 +113,7 @@ const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
     const [reports, setReports] = useState<ConsolidatedReport[] | null>(null);
     const [resolvedPatientId, setResolvedPatientId] = useState<number>();
     const [storedObservation, setStoredObservation] = useState<AiClinicalObservation | null>();
+    const [radiologyReports, setRadiologyReports] = useState<RadiologyReport[]>([]);
 
     const callerPatientId = toPatientId(patientData?.patientId);
 
@@ -141,11 +143,16 @@ const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
                 ? getAiClinicalObservation(currentLab.id, visitId)
                 : Promise.resolve(null);
 
-            const [reportResult, patientResult, observationResult] = await Promise.allSettled([
+            // Signing doctors and saved findings of imaging tests; a failure just leaves the lab report as saved
+            const radiologyLookup = listRadiologyReportsForVisit(currentLab.id, visitId).catch(() => [] as RadiologyReport[]);
+
+            const [reportResult, patientResult, observationResult, radiologyResult] = await Promise.allSettled([
                 getReportData(currentLab.id.toString(), visitId.toString()),
                 patientLookup,
                 observationLookup,
+                radiologyLookup,
             ]);
+            setRadiologyReports(radiologyResult.status === "fulfilled" ? radiologyResult.value : []);
 
             // A failed lookup only costs the Health Snapshot, so it must never take the
             // report down with it -- the results are settled independently for that reason.
@@ -243,6 +250,7 @@ const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
                 patientData={effectivePatientData}
                 reportsData={reports}
                 storedObservation={storedObservation}
+                radiologyReports={radiologyReports}
             />
         );
     }

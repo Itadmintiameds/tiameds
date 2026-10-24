@@ -18,6 +18,7 @@ import {
 import { hasValidDropdown, parseDropdownField, DropdownItem } from '@/utils/dropdownParser';
 import AutoCalculation from './AutoCalculation';
 import DetailedReportEditor from './DetailedReportEditor';
+import RadiologyReportPanel, { useRadiologyReport } from './RadiologyReportPanel';
 // import { TbSquareRoundedCheck, TbX } from "react-icons/tb";
 import NewModal from "../../../newcommoncomponent/NewModal";
 import { FaChevronDown } from "react-icons/fa";
@@ -582,11 +583,23 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
   // category stored on the test's reference points.
   const resolveCategory = (test: TestList) =>
     test.category || referencePoints[test.name]?.find(point => point.category)?.category || '';
-  // Radiology tests with regular parameters besides the DETAILED REPORT template go through the
-  // normal path so those parameters are validated and saved too.
-  const isRadiologyTest = (test: TestList) =>
-    isRadiologyTestName(test.name, resolveCategory(test)) &&
-    !(referencePoints[test.name] || []).some(point => point.testDescription !== 'DETAILED REPORT');
+  // Imaging tests are reported only through their written report (format / uploaded document),
+  // so their parameters (result, unit, reference range, status) are neither shown nor saved.
+  const isRadiologyTest = (test: TestList) => isRadiologyTestName(test.name, resolveCategory(test));
+
+  // Imaging tests are also saved to the radiology report API (signing doctors, impression, history)
+  const isRadiologyReport =
+    !!selectedTest &&
+    isRadiologyTestName(selectedTest.name, resolveCategory(selectedTest)) &&
+    (referencePoints[selectedTest.name] || []).some(point => point.testDescription === 'DETAILED REPORT');
+  const radiology = useRadiologyReport({
+    labId: currentLab?.id,
+    visitId: selectedPatient.visitId,
+    testId: selectedTest?.id,
+    enabled: isRadiologyReport,
+  });
+  const getRadiologyReportJson = () =>
+    (referencePoints[selectedTest.name] || []).find(point => point.testDescription === 'DETAILED REPORT')?.reportJson;
 
   const validateForm = () => {
     const errors: Record<string, boolean> = {};
@@ -625,6 +638,14 @@ const PatientReportDataFill: React.FC<PatientReportDataFillProps> = ({
     if (!validateForm()) {
       toast.error('Please fill in all required fields');
       return;
+    }
+
+    if (isRadiologyReport) {
+      const radiologyError = radiology.validate(getRadiologyReportJson());
+      if (radiologyError) {
+        toast.error(radiologyError);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -777,6 +798,13 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
       const response = await createReportWithTestResult(currentLab?.id.toString() || '', completePayload);
 
       if (response !== undefined && response !== null) {
+        if (isRadiologyReport) {
+          try {
+            await radiology.save(getRadiologyReportJson());
+          } catch (radiologyError) {
+            toast.error(radiologyError instanceof Error ? radiologyError.message : 'Failed to save the radiology report');
+          }
+        }
         toast.success('Report submitted successfully!');
         setUpdateCollectionTable(prev => !prev);
         setShowModal(false);
@@ -933,7 +961,7 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
           </div>
 
           {/* Test Table Card */}
-          {hasNonDetailedReportParams && (
+          {hasNonDetailedReportParams && !isRadiologyReport && (
           <div className="overflow-hidden rounded-xl border border-pneutral-200 bg-white">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[750px]">
@@ -1162,11 +1190,12 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
           )}
 
           {/* Detailed Report Editor (table-based report sections, e.g. Complete Urine Analysis) */}
+          {isRadiologyReport && detailedReportPoint && <RadiologyReportPanel state={radiology} />}
           {detailedReportPoint && (
             <div className="rounded-xl border border-pneutral-200 bg-white p-4">
               <DetailedReportEditor
                 point={detailedReportPoint}
-                showFormatLibrary={isRadiologyTestName(selectedTest.name, resolveCategory(selectedTest))}
+                showFormatLibrary={isRadiologyReport}
                 onReportJsonChange={(reportJson) => {
                   setReferencePoints(prev => ({
                     ...prev,

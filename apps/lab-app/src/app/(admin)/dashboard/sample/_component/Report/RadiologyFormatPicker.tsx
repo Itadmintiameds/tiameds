@@ -6,7 +6,6 @@ import {
   RadiologyFormat,
   formatToReportJson,
   loadRadiologyFormats,
-  rankFormatsForTest,
 } from '@/lib/radiology/usgFormats';
 import { wordFileToRadiologyFormat } from '@/lib/radiology/docxFormat';
 
@@ -16,8 +15,6 @@ interface RadiologyFormatPickerProps {
   hasContent: boolean;
   onApply: (reportJson: string, format: RadiologyFormat) => void;
 }
-
-const SUGGESTION_COUNT = 6;
 
 const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName, hasContent, onApply }) => {
   const [libraryFormats, setLibraryFormats] = useState<RadiologyFormat[]>([]);
@@ -63,7 +60,6 @@ const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName,
     }
   };
 
-  const suggestions = useMemo(() => rankFormatsForTest(formats, testName), [formats, testName]);
   const groups = useMemo(() => Array.from(new Set(formats.map(f => f.group))), [formats]);
 
   const filtered = useMemo(() => {
@@ -73,18 +69,15 @@ const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName,
       const haystack = `${f.group} ${f.name} ${f.title}`.toLowerCase();
       return terms.every(term => haystack.includes(term));
     });
-    if (terms.length || group) return matches;
-    // no filter: suggested formats for this test first
-    const suggestedIds = new Set(suggestions.map(f => f.id));
-    return [...suggestions, ...matches.filter(f => !suggestedIds.has(f.id))];
-  }, [formats, search, group, suggestions]);
+    return matches;
+  }, [formats, search, group]);
 
   const selected = formats.find(f => f.id === selectedId) || null;
 
   const openPicker = (formatId?: string) => {
     setSearch('');
-    setGroup(formatId ? '' : suggestions[0]?.group || '');
-    setSelectedId(formatId || suggestions[0]?.id || null);
+    setGroup('');
+    setSelectedId(formatId || null);
     setIsOpen(true);
   };
 
@@ -108,9 +101,7 @@ const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName,
         <div>
           <p className="text-sm font-semibold text-pneutral-900">Report format</p>
           <p className="text-xs text-pneutral-500">
-            {suggestions.length
-              ? `Suggested formats for ${testName}. Pick one, then fill in the ___ values and edit the findings.`
-              : 'Choose a USG / Doppler format to start the report.'}
+            Choose a USG / Doppler format or upload a Word document, then edit the report.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -140,22 +131,6 @@ const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName,
         </div>
       </div>
       {uploadError && <p className="mt-2 text-xs text-danger-600">{uploadError}</p>}
-
-      {suggestions.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {suggestions.slice(0, SUGGESTION_COUNT).map(format => (
-            <button
-              key={format.id}
-              type="button"
-              onClick={() => openPicker(format.id)}
-              className="rounded-full border border-info-300 bg-white px-3 py-1 text-xs text-pneutral-800 hover:border-secondary-700 hover:text-secondary-700"
-              title={`${format.group} — ${format.title}`}
-            >
-              {format.name}
-            </button>
-          ))}
-        </div>
-      )}
 
       <NewModal
         isOpen={isOpen}
