@@ -286,15 +286,6 @@ const TestLists = () => {
     },
   ];
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <Loader type="progress" fullScreen={false} text="Loading tests..." />
-        <p className="mt-4 text-sm text-gray-500">Fetching the latest test data...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full">
       {/* Header Section */}
@@ -433,7 +424,12 @@ const TestLists = () => {
 
       {/* Table Section - pagination is driven by the server */}
       <div className="relative">
-        {tests.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-64 rounded-xl border border-pneutral-200 bg-white">
+            <Loader type="progress" fullScreen={false} text="Loading tests..." />
+            <p className="mt-4 text-sm text-gray-500">Fetching the latest test data...</p>
+          </div>
+        ) : tests.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-pneutral-200 bg-white py-16">
             <svg
               xmlns="http://www.w3.org/2000/svg"

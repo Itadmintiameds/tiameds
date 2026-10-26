@@ -1368,7 +1368,7 @@ const AddTestReferanceNew = ({
                         </div>
                         <div className="flex flex-col">
                             <label className="text-gray-700 mb-1 text-sm font-medium">
-                                Test Reference Description <span className="text-red-500">*</span>
+                                Parameter Result Type <span className="text-red-500">*</span>
                             </label>
                             <TestDescriptionSelect
                                 value={newReferanceRecord?.testDescription || ""}

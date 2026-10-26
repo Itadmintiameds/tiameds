@@ -71,8 +71,8 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
             setIsLoading(true);
             const updatedData = {
                 ...formData,
-                category: cleanedCategory,
-                name: cleanedName,
+                category: test?.category ?? cleanedCategory,
+                name: test?.name ?? cleanedName,
                 price: Number(formData.price) || 0 // Convert string to number when submitting
             };
             updateTest(currentLab.id.toString(), test?.id.toString() || '', updatedData)
@@ -111,9 +111,10 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
                                 name="category"
                                 value={formData.category}
                                 onChange={handleInputChange}
-                                className="w-full rounded-lg border border-pneutral-200 pl-9 pr-4 py-2 text-p3 focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500 bg-white"
+                                className="w-full rounded-lg border border-pneutral-200 pl-9 pr-4 py-2 text-p3 bg-pneutral-100 text-pneutral-500 cursor-not-allowed"
                                 placeholder="Enter category"
-                                required
+                                readOnly
+                                disabled
                             />
                         </div>
                     </div>
@@ -131,9 +132,10 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
                                 name="name"
                                 value={formData.name}
                                 onChange={handleInputChange}
-                                className="w-full rounded-lg border border-pneutral-200 pl-9 pr-4 py-2 text-p3 focus:border-secondary-500 focus:outline-none focus:ring-1 focus:ring-secondary-500 bg-white"
+                                className="w-full rounded-lg border border-pneutral-200 pl-9 pr-4 py-2 text-p3 bg-pneutral-100 text-pneutral-500 cursor-not-allowed"
                                 placeholder="Enter test name"
-                                required
+                                readOnly
+                                disabled
                             />
                         </div>
                     </div>
