@@ -43,6 +43,11 @@ const hasReportText = (reportJson?: string) => {
   return Array.isArray(sections) && sections.some(s => typeof s?.content === 'string' && stripHtml(s.content));
 };
 
+// Doctors are just added; the backend still needs a role per signer, so the first doctor
+// is the reporting doctor and the others verify.
+const assignRoles = (list: SignatoryDraft[]): SignatoryDraft[] =>
+  list.map((s, index) => ({ ...s, role: index === 0 ? 'REPORTING' : 'VERIFYING' }));
+
 interface UseRadiologyReportArgs {
   labId?: number;
   visitId?: number | string;
@@ -84,7 +89,7 @@ export const useRadiologyReport = ({ labId, visitId, testId, enabled }: UseRadio
   // Returns a message when the radiology report cannot be saved yet, otherwise null
   const validate = useCallback(
     (reportJson?: string): string | null => {
-      if (!signatories.some(s => s.role === 'REPORTING')) return 'Select at least one reporting doctor for the radiology report';
+      if (!signatories.some(s => s.role === 'REPORTING')) return 'Select at least one doctor for the radiology report';
       if (!hasReportText(reportJson)) return 'Write the radiology report (choose a format or upload a document) before saving';
       if (isLocked && !reason.trim()) return 'Enter the reason for changing the finalized radiology report';
       return null;
@@ -141,10 +146,7 @@ const RadiologyReportPanel: React.FC<{ state: RadiologyReportState }> = ({ state
   const addDoctor = () => {
     const doctorId = Number(pickedDoctor);
     if (!doctorId) return;
-    setSignatories(prev => [
-      ...prev,
-      { doctorId, role: prev.some(s => s.role === 'REPORTING') ? 'VERIFYING' : 'REPORTING' },
-    ]);
+    setSignatories(prev => assignRoles([...prev, { doctorId, role: 'VERIFYING' }]));
     setPickedDoctor('');
   };
 
@@ -176,21 +178,9 @@ const RadiologyReportPanel: React.FC<{ state: RadiologyReportState }> = ({ state
                     {[doctor?.qualification, doctor?.speciality].filter(Boolean).join(' · ') || '—'}
                   </p>
                 </div>
-                <select
-                  value={signatory.role}
-                  onChange={e =>
-                    setSignatories(prev =>
-                      prev.map(s => (s.doctorId === signatory.doctorId ? { ...s, role: e.target.value as RadiologySignatoryRole } : s))
-                    )
-                  }
-                  className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs"
-                >
-                  <option value="REPORTING">Reporting</option>
-                  <option value="VERIFYING">Verifying</option>
-                </select>
                 <button
                   type="button"
-                  onClick={() => setSignatories(prev => prev.filter(s => s.doctorId !== signatory.doctorId))}
+                  onClick={() => setSignatories(prev => assignRoles(prev.filter(s => s.doctorId !== signatory.doctorId)))}
                   className="text-xs font-medium text-red-600 hover:underline"
                 >
                   Remove

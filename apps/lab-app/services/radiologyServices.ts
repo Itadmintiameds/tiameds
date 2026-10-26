@@ -48,6 +48,32 @@ export interface SaveRadiologyReportPayload {
   reason?: string;
 }
 
+export interface RadiologyFormatSummary {
+  id: number;
+  documentName: string;
+  contentType?: string | null;
+  fileSize?: number;
+  doctorId?: number | null;
+  doctorName?: string | null;
+  uploadedBy?: string | null;
+  uploadedAt?: string | null;
+}
+
+// Text and tables of the uploaded Word file, in document order (formatting is not kept)
+export type RadiologyFormatBlock =
+  | { type: 'paragraph'; text: string; style?: string }
+  | { type: 'table'; rows: string[][] };
+
+export interface RadiologyFormatContent {
+  id: number;
+  documentName: string;
+  doctorId?: number | null;
+  doctorName?: string | null;
+  uploadedAt?: string | null;
+  // null for formats uploaded before the backend stored parsed content, or files it could not read
+  content: { blocks: RadiologyFormatBlock[] } | null;
+}
+
 const errorMessage = (error: unknown, fallback: string) => {
   if (error instanceof AxiosError) return error.response?.data?.message || fallback;
   if (error instanceof Error) return error.message;
@@ -108,5 +134,51 @@ export const finalizeRadiologyReport = async (
     return response.data?.data;
   } catch (error) {
     throw new Error(errorMessage(error, 'Failed to finalize the radiology report'));
+  }
+};
+
+// ---------------------------------------------------------------- report formats
+
+const formatsUrl = (labId: number | string) => `/lab/${labId}/radiology/report-formats`;
+
+export const listRadiologyFormats = async (labId: number | string): Promise<RadiologyFormatSummary[]> => {
+  try {
+    const response = await api.get(formatsUrl(labId));
+    return response.data?.data ?? [];
+  } catch (error) {
+    throw new Error(errorMessage(error, 'Failed to fetch the report formats'));
+  }
+};
+
+export const getRadiologyFormat = async (
+  labId: number | string,
+  formatId: number | string
+): Promise<RadiologyFormatContent> => {
+  try {
+    const response = await api.get(`${formatsUrl(labId)}/${formatId}`);
+    return response.data?.data;
+  } catch (error) {
+    throw new Error(errorMessage(error, 'Failed to fetch the report format'));
+  }
+};
+
+// The format is saved under `documentName` (defaults to the file name) and then appears in the list
+export const uploadRadiologyFormat = async (
+  labId: number | string,
+  file: File,
+  options: { documentName?: string; doctorId?: number; doctorName?: string } = {}
+): Promise<{ id: number; documentName: string; contentParsed: boolean }> => {
+  const form = new FormData();
+  form.append('file', file);
+  if (options.documentName) form.append('documentName', options.documentName);
+  if (options.doctorId) form.append('doctorId', String(options.doctorId));
+  if (options.doctorName) form.append('doctorName', options.doctorName);
+  try {
+    const response = await api.post(formatsUrl(labId), form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data?.data;
+  } catch (error) {
+    throw new Error(errorMessage(error, 'Failed to upload the report format'));
   }
 };
