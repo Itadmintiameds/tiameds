@@ -37,6 +37,7 @@ const DOCTOR_SPECIALITIES = [
     'General Surgery',
     'Physiotherapy',
     'Homeopathy',
+    'Radiologist',
     'Ayurveda',
     'Unani',
     'Naturopathy',

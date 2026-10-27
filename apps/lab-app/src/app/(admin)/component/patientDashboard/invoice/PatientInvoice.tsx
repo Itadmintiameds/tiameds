@@ -94,12 +94,21 @@ const PatientInvoice = ({ viewPatientDetails }: PatientDetails) => {
     const printContent = document.getElementById('printable-content');
     const printWindow = window.open('', '', 'width=800,height=600');
     if (printWindow && printContent) {
+      // Copy the app's stylesheets so the Tailwind classes render the same in the print window
+      const appStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+        .map(node => node.outerHTML)
+        .join('\n');
       printWindow.document.write(`
         <html>
           <head>
             <title>Lab Invoice - ${viewPatientDetails?.firstName} ${viewPatientDetails?.lastName}</title>
+            ${appStyles}
             <style>
-              body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; }
+              @page { size: A4; margin: 10mm; }
+              html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; text-rendering: optimizeLegibility; -webkit-font-smoothing: auto; -moz-osx-font-smoothing: auto; }
+              #printable-content .text-gray-400, #printable-content .text-gray-500, #printable-content .text-gray-600 { color: var(--pneutral-800) !important; }
+              #printable-content .text-xs, #printable-content .text-sm { font-size: 11pt !important; }
+              body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: var(--pneutral-900); }
               .invoice-header { display: flex; justify-content: space-between; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0; }
               .section-title { font-size: 14px; font-weight: 600; color: #1e40af; border-bottom: 1px solid #dbeafe; padding-bottom: 5px; margin-bottom: 10px; }
               .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
@@ -109,7 +118,7 @@ const PatientInvoice = ({ viewPatientDetails }: PatientDetails) => {
               td { padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
               .total-section { background: #f8fafc; padding: 15px; border-radius: 8px; margin-top: 20px; }
               .footer { text-align: center; margin-top: 30px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 15px; }
-              .watermark { position: fixed; bottom: 50%; right: 50%; transform: translate(50%, 50%); opacity: 0.1; font-size: 80px; color: #2563eb; pointer-events: none; z-index: -1; font-weight: bold; }
+              .watermark { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 80px; color: rgba(37, 99, 235, 0.08); pointer-events: none; z-index: -1; font-weight: bold; }
             </style>
           </head>
           <body>
@@ -123,7 +132,7 @@ const PatientInvoice = ({ viewPatientDetails }: PatientDetails) => {
         printWindow.focus();
         printWindow.print();
         printWindow.close();
-      }, 500);
+      }, 800);
     }
   };
 

@@ -347,7 +347,7 @@ const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName,
               onChange={e => setGroup(e.target.value)}
               className="h-9 w-full rounded-full border border-info-500 bg-white px-3 text-sm outline-none focus:border-secondary-700"
             >
-              <option value="">All groups</option>
+              <option value="">Select by Dr. Name</option>
               {groups.map(g => (
                 <option key={g} value={g}>
                   {g} ({formats.filter(f => f.group === g).length})

@@ -87,6 +87,15 @@ const LETTERHEAD_MARGINS = {
 };
 const PLAIN_PAGE_PADDING = '20px';
 
+// Explicit font stack: the invoice is rendered in a detached off-screen node and
+// rasterised, so without a font set it falls back to the browser's serif default (Times).
+// Inter is loaded app-wide via next/font (--font-inter); same stack as CommonReportView2.tsx.
+const INVOICE_FONT_FAMILY = 'var(--font-inter), "Inter", "Helvetica Neue", Arial, sans-serif';
+
+// html2canvas defaults to the screen's devicePixelRatio (often 1, ~100 DPI on A4), which
+// prints soft. 3x gives ~300 DPI on the A4 page.
+const PDF_CAPTURE_SCALE = 3;
+
 // The invoice header logo used to be this static file, hardcoded. It now prefers the
 // lab's own uploaded logo (labLogo/logo, set from the lab settings screen) and falls
 // back to this so labs that have never uploaded one keep the header they had before
@@ -483,8 +492,9 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
     return (
       <div
         key={`page-${pageNumber}${transaction ? `-txn-${transaction.id}` : ''}`}
-        className="mb-6 font-sans"
+        className="mb-6"
         style={{
+          fontFamily: INVOICE_FONT_FAMILY,
           width: '210mm',
           minHeight: '297mm',
           paddingTop: isLetterhead ? LETTERHEAD_MARGINS.top : PLAIN_PAGE_PADDING,
@@ -818,17 +828,27 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
           setTimeout(async () => {
             try {
+              // Make sure Inter (regular + bold) is loaded before rasterising, otherwise
+              // the capture can snapshot the fallback font.
+              await Promise.all([
+                document.fonts.load('400 12px Inter'),
+                document.fonts.load('700 12px Inter'),
+              ]).catch(() => undefined);
+              await document.fonts.ready;
+
               const canvas = await html2canvas(tempDiv.firstChild as HTMLElement, {
                 logging: false,
                 useCORS: true,
-                allowTaint: true
+                allowTaint: true,
+                scale: PDF_CAPTURE_SCALE,
+                backgroundColor: INVOICE_COLORS.white
               });
 
               const imgData = canvas.toDataURL('image/png');
               const imgWidth = A4_WIDTH - 20;
               const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-              pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+              pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight, undefined, 'FAST');
 
               document.body.removeChild(tempDiv);
               resolve();

@@ -22,31 +22,88 @@ export interface VerificationErrorResponse {
   message: string;
 }
 
-export interface LabDetails {
-  name: string;
-  address: string;
-  city: string;
+// ---------------------------------------------------------------------------
+// Form state (what the 5-step wizard edits)
+// ---------------------------------------------------------------------------
+
+export interface AddressFields {
+  addressLine1: string;
+  addressLine2: string;
+  country: string;
   state: string;
-  description?: string;
-  licenseNumber: string;
-  labType: string;
-  labZip: string;
-  labCountry: string;
-  labPhone: string;
-  labEmail: string;
-  directorName: string;
-  directorEmail: string;
-  directorPhone: string;
-  certificationBody: string;
-  labCertificate: string;
-  directorGovtId: string;
-  labBusinessRegistration: string;
-  labLicense: string;
-  taxId: string;
-  labAccreditation: string;
-  dataPrivacyAgreement: boolean;
+  district: string;
+  city: string;
+  pinCode: string;
 }
 
+export interface SuperAdminForm {
+  firstName: string;
+  lastName: string;
+  username: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface OrganizationForm extends AddressFields {
+  name: string;
+  type: string;
+  email: string;
+  phone: string;
+  pan: string;
+  gstin: string;
+}
+
+export interface LaboratoryForm extends AddressFields {
+  name: string;
+  type: string;
+  services: string[];
+  sameAsOrganizationAddress: boolean;
+  phone: string;
+  email: string;
+}
+
+export interface ComplianceForm {
+  establishmentRegistrationNumber: string;
+  issuingAuthority: string;
+  issuingDate: string;
+  expiryDate: string;
+  establishmentCertificate: File | null;
+  panSameAsOrganization: boolean;
+  pan: string;
+  gstinSameAsOrganization: boolean;
+  gstin: string;
+  gstinCertificate: File | null;
+  biomedicalWasteGenerated: '' | 'YES' | 'NO';
+  biomedicalWasteAuthorizationNumber: string;
+  biomedicalWasteCertificate: File | null;
+  nablAccreditationNumber: string;
+  nablCertificate: File | null;
+}
+
+export interface ConsentForm {
+  authorizedToRegister: boolean;
+  termsAccepted: boolean;
+}
+
+export interface OnboardingFormState {
+  token: string;
+  superAdmin: SuperAdminForm;
+  organization: OrganizationForm;
+  laboratory: LaboratoryForm;
+  compliance: ComplianceForm;
+  consent: ConsentForm;
+}
+
+// ---------------------------------------------------------------------------
+// Request / response payloads
+// ---------------------------------------------------------------------------
+
+/**
+ * JSON part of the registration request. Certificates are sent as separate
+ * multipart file parts (see `OnboardingFiles`).
+ */
 export interface OnboardingRequestDTO {
   token: string;
   email: string;
@@ -55,12 +112,68 @@ export interface OnboardingRequestDTO {
   firstName: string;
   lastName: string;
   phone: string;
-  address: string;
-  city: string;
-  state: string;
-  zip: string;
-  country: string;
-  lab: LabDetails;
+
+  organization: {
+    name: string;
+    type: string;
+    email: string;
+    phone: string;
+    addressLine1: string;
+    addressLine2?: string;
+    country: string;
+    state: string;
+    district: string;
+    city: string;
+    pinCode: string;
+    pan?: string;
+    gstin?: string;
+  };
+
+  lab: {
+    name: string;
+    labType: string;
+    services: string[];
+    addressLine1: string;
+    addressLine2?: string;
+    country: string;
+    state: string;
+    district: string;
+    city: string;
+    pinCode: string;
+    labPhone: string;
+    labEmail: string;
+    // Legacy keys still populated from the super admin / compliance data
+    directorName: string;
+    directorEmail: string;
+    directorPhone: string;
+    labAccreditation: string;
+  };
+
+  compliance: {
+    establishmentRegistrationNumber: string;
+    issuingAuthority: string;
+    issuingDate: string;
+    expiryDate: string;
+    pan?: string;
+    gstin?: string;
+    biomedicalWasteGenerated: boolean;
+    biomedicalWasteAuthorizationNumber?: string;
+    nablAccreditationNumber: string;
+  };
+
+  consent: {
+    authorizedToRegister: boolean;
+    termsAccepted: boolean;
+    termsVersion: string;
+    termsAcceptedAt: string;
+  };
+}
+
+export interface OnboardingFiles {
+  establishmentCertificate: File;
+  gstinCertificate: File;
+  biomedicalWasteCertificate?: File;
+  nablCertificate?: File;
 }
 
 export interface OnboardingResponseDTO {
@@ -75,4 +188,3 @@ export interface OnboardingResponseDTO {
     accountActive: boolean;
   };
 }
-

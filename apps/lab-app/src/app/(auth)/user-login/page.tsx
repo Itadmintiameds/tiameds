@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { 
   FaArrowLeft, FaSignInAlt,FaFlask, 
   FaMicroscope, FaLock, FaUser, FaEye, FaEyeSlash, FaEnvelope,
+  FaUserPlus,
   // FaUserPlus
 } from 'react-icons/fa'
 // import {FaUserPlus} from 'react-icons/fa';
@@ -481,7 +482,7 @@ const LoginPage: React.FC = () => {
           )}
 
           {/* Divider */}
-          {/* <div className="relative">
+          <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-200" />
             </div>
@@ -495,7 +496,7 @@ const LoginPage: React.FC = () => {
               <FaUserPlus className="text-purple-600" />
               Register Laboratory
             </button>
-          </Link> */}
+          </Link>
 
           <p className="text-center text-xs text-gray-400">
             © {new Date().getFullYear()} Tiamed Diagnostics. All rights reserved.

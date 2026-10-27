@@ -5,6 +5,7 @@ import {
   VerificationResponseDTO,
   VerificationErrorResponse,
   OnboardingRequestDTO,
+  OnboardingFiles,
   OnboardingResponseDTO,
 } from '@/types/onboarding/onboarding';
 
@@ -55,14 +56,24 @@ export const verifyEmailToken = async (
   }
 };
 
-// Complete onboarding
+// Complete onboarding.
+// Sent as multipart/form-data: the JSON payload goes in the `data` part and each
+// certificate is its own file part (the backend must accept this shape).
 export const completeOnboarding = async (
-  data: OnboardingRequestDTO
+  data: OnboardingRequestDTO,
+  files: OnboardingFiles
 ): Promise<OnboardingResponseDTO> => {
   try {
+    const body = new FormData();
+    body.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    Object.entries(files).forEach(([key, file]) => {
+      if (file) body.append(key, file);
+    });
+
     const response = await api.post<OnboardingResponseDTO>(
       '/public/onboarding/complete',
-      data
+      body,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
     );
     return response.data;
   } catch (error: any) {
