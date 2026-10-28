@@ -1,7 +1,6 @@
 import { TestReferancePoint } from '@/types/test/testlist';
 
-// Radiology tests are identified by category, or by name for tests whose category is missing/generic
-// (same rules the report print view has used since the original radiology implementation).
+// Name patterns for radiology/imaging tests (not used by isRadiologyTest, which is category-only).
 export const RADIOLOGY_PATTERNS = [
   /\bRADIOLOGY\b/i,
   /\bX[\s-]?RAY\b/i,
@@ -21,11 +20,10 @@ export const RADIOLOGY_PATTERNS = [
   /\bSCAN\b/i,
 ];
 
-export const isRadiologyTest = (testName?: string, testCategory?: string) => {
-  if ((testCategory || '').trim().toUpperCase() === 'RADIOLOGY') return true;
-  const name = (testName || '').trim();
-  return !!name && RADIOLOGY_PATTERNS.some(pattern => pattern.test(name));
-};
+// Only the category decides: a name like "CT" also exists in Hematology (clotting time), so
+// name matching would show radiology formats for lab tests.
+export const isRadiologyTest = (_testName?: string, testCategory?: string) =>
+  (testCategory || '').trim().toUpperCase() === 'RADIOLOGY';
 
 // Placeholder DETAILED REPORT reference row for radiology tests that have no report template
 // configured, so the report editor (and its format library) can still be used for them.

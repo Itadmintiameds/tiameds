@@ -122,7 +122,10 @@ const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName,
   const saveFormat = async () => {
     if (!pendingFile || !labId) return;
     const name = documentName.trim();
-    if (!name) return;
+    // "Dr." is shown as a fixed prefix, so drop it if the user typed it anyway
+    const doctorBase = doctorName.trim().replace(/^dr\.?\s*/i, '').trim();
+    if (!name || !doctorBase) return;
+    const doctor = `Dr. ${doctorBase}`;
     // the backend checks the extension of the saved name, so keep the file's own extension
     const extension = pendingFile.name.match(/\.docx?$/i)?.[0] ?? '';
     const finalName = /\.docx?$/i.test(name) ? name : `${name}${extension}`;
@@ -131,7 +134,7 @@ const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName,
     try {
       const saved = await uploadRadiologyFormat(labId, pendingFile, {
         documentName: finalName,
-        doctorName: doctorName.trim() || undefined,
+        doctorName: doctor,
       });
       await loadFormats();
       setPendingFile(null);
@@ -248,7 +251,7 @@ const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName,
             <button
               type="button"
               onClick={saveFormat}
-              disabled={isUploading || !documentName.trim()}
+              disabled={isUploading || !documentName.trim() || !doctorName.trim().replace(/^dr\.?\s*/i, '')}
               className="rounded-full bg-secondary-700 px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
             >
               {isUploading ? 'Saving...' : 'Save format'}
@@ -272,13 +275,19 @@ const RadiologyFormatPicker: React.FC<RadiologyFormatPickerProps> = ({ testName,
             />
           </label>
           <label className="block text-xs font-medium text-pneutral-700">
-            Doctor name (optional)
-            <input
-              type="text"
-              value={doctorName}
-              onChange={e => setDoctorName(e.target.value)}
-              className="mt-1 h-9 w-full rounded-full border border-info-500 bg-white px-3 text-sm outline-none focus:border-secondary-700"
-            />
+            Doctor name <span className="text-warning-500">*</span>
+            <div className="mt-1 flex h-9 w-full items-center rounded-full border border-info-500 bg-white px-3 text-sm focus-within:border-secondary-700">
+              <span className="select-none text-pneutral-900">Dr.</span>
+              <span className="mx-2 h-5 w-px bg-pneutral-300" aria-hidden="true" />
+              <input
+                type="text"
+                value={doctorName}
+                onChange={e => setDoctorName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && saveFormat()}
+                required
+                className="h-full min-w-0 flex-1 bg-transparent outline-none"
+              />
+            </div>
           </label>
           <div>
             <p className="mb-1 text-xs font-medium text-pneutral-700">Preview</p>

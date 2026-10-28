@@ -909,7 +909,14 @@ const CommonReportView2 = ({
     const [healthSnapshotFetched, setHealthSnapshotFetched] = useState(false);
     // Drives both the OpenAI call and the card: a partially completed order gets no
     // request and no section at all, in every place this view is opened from.
-    const showAiInsights = useMemo(() => areAllTestsCompleted(patientData), [patientData]);
+    // Radiology-only orders get neither: the observation reasons over lab values, and an
+    // imaging report has none.
+    const showAiInsights = useMemo(
+        () =>
+            areAllTestsCompleted(patientData) &&
+            !(reportsData.length > 0 && reportsData.every((r) => isRadiologyTest(r.testName, r.testCategory))),
+        [patientData, reportsData]
+    );
     const sortedReports = useMemo(() => {
         const copy = [...reportsData];
         copy.sort((a, b) => {
