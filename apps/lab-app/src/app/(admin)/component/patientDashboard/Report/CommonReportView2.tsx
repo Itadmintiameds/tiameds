@@ -17,6 +17,9 @@ import type { HealthSnapshot, HealthSnapshotTest, HealthSnapshotTestResult } fro
 import type { AiClinicalObservation, AiReportInsights } from "@/types/aiInsights";
 import type { AiHistoryPoint, AiTestFinding } from "@/lib/ai/labReportPrompt";
 import { buildObservationContentHash, toAiClinicalObservation, toAiReportInsights } from "@/lib/ai/aiClinicalObservation";
+import PrintTypeSelect from "@/components/PrintTypeSelect";
+import { usePrintType } from "@/hooks/usePrintType";
+import { A4_WIDTH_MM, LETTERHEAD_MARGINS, LETTERHEAD_PRINT_FRAME_MM, PRINT_TYPE_OPTIONS } from "@/utils/printType";
 
 type Html2CanvasBaseOptions = NonNullable<Parameters<typeof html2canvas>[1]>;
 type Html2CanvasEnhancedOptions = Html2CanvasBaseOptions & {
@@ -59,6 +62,8 @@ const REPORT_COLORS = {
 // const BLOCK_GAP_MM = 2;
 
 
+// Plain-paper geometry. Letterhead printing swaps these for LETTERHEAD_PRINT_FRAME_MM (see
+// printGeometry in the component).
 const PAGE_WIDTH_MM = 190;
 const PAGE_HEIGHT_MM = 297;
 const MARGIN_X_MM = 10;
@@ -70,7 +75,6 @@ const BOTTOM_MARGIN_MM = 8;
 // Extra buffer to avoid edge clipping when html2canvas output is placed into jsPDF.
 const CONTENT_SAFETY_MM = 1;
 const BLOCK_GAP_MM = 2;
-const USABLE_HEIGHT_MM = PAGE_HEIGHT_MM - TOP_MARGIN_MM - BOTTOM_MARGIN_MM;
 
 const normalizeFieldKey = (value?: string) =>
     (value || "")
@@ -895,6 +899,26 @@ const CommonReportView2 = ({
     const { currentLab } = useLabs();
     const reportRef = useRef<HTMLDivElement>(null);
     const [printing, setPrinting] = useState(false);
+    const { printType, setPrintType, isLetterhead, showLabHeader } = usePrintType();
+    // How printReports() lays the report out and where it places it on the A4 sheet. Plain
+    // paper keeps the report's own margins. Letterhead lays the report out narrower (so text
+    // prints at the same size as on plain paper) and lands it in exactly the box a printed
+    // invoice occupies, clear of the stock's pre-printed header and footer bands.
+    const printGeometry = isLetterhead
+        ? {
+              layoutWidthMm: LETTERHEAD_PRINT_FRAME_MM.layoutWidthMm,
+              marginXMm: LETTERHEAD_PRINT_FRAME_MM.leftMm,
+              pageWidthMm: LETTERHEAD_PRINT_FRAME_MM.widthMm,
+              topMarginMm: LETTERHEAD_PRINT_FRAME_MM.topMm,
+              bottomMarginMm: LETTERHEAD_PRINT_FRAME_MM.bottomMm,
+          }
+        : {
+              layoutWidthMm: A4_WIDTH_MM,
+              marginXMm: MARGIN_X_MM,
+              pageWidthMm: PAGE_WIDTH_MM,
+              topMarginMm: TOP_MARGIN_MM,
+              bottomMarginMm: BOTTOM_MARGIN_MM,
+          };
     const [selectedReports, setSelectedReports] = useState<Record<number, boolean>>({});
     const [healthSnapshot, setHealthSnapshot] = useState<HealthSnapshot | null>(null);
     const [healthSnapshotLoading, setHealthSnapshotLoading] = useState(false);
@@ -1848,7 +1872,7 @@ const CommonReportView2 = ({
         measurementHost.style.position = "absolute";
         measurementHost.style.left = "-9999px";
         measurementHost.style.top = "0";
-        measurementHost.style.width = "210mm";
+        measurementHost.style.width = `${printGeometry.layoutWidthMm}mm`;
         measurementHost.style.visibility = "hidden";
         measurementHost.style.pointerEvents = "none";
         document.body.appendChild(measurementHost);
@@ -1962,6 +1986,7 @@ const CommonReportView2 = ({
         }
 
         setPrinting(true);
+        const { layoutWidthMm, marginXMm, pageWidthMm, topMarginMm, bottomMarginMm } = printGeometry;
         let tempContainer: HTMLDivElement | null = null;
         try {
             const pdf = new jsPDF({
@@ -1984,7 +2009,7 @@ const CommonReportView2 = ({
             tempContainer.style.position = "absolute";
             tempContainer.style.left = "-9999px";
             tempContainer.style.top = "0";
-            tempContainer.style.width = "210mm";
+            tempContainer.style.width = `${layoutWidthMm}mm`;
             tempContainer.style.padding = "0";
             tempContainer.style.margin = "0";
             tempContainer.style.backgroundColor = "#ffffff";
@@ -1997,8 +2022,8 @@ const CommonReportView2 = ({
             let headerHeightMm = 0;
             let closingHeightMm = 0;
             const pageTemplateSection = sections[0].cloneNode(true) as HTMLElement;
-            pageTemplateSection.style.width = "210mm";
-            pageTemplateSection.style.maxWidth = "210mm";
+            pageTemplateSection.style.width = `${layoutWidthMm}mm`;
+            pageTemplateSection.style.maxWidth = `${layoutWidthMm}mm`;
             pageTemplateSection.style.margin = "0 auto";
             pageTemplateSection.style.boxSizing = "border-box";
             pageTemplateSection.style.backgroundColor = "#ffffff";
@@ -2012,22 +2037,23 @@ const CommonReportView2 = ({
             if (headerTemplate) {
                 stripBlockMargins(headerTemplate);
                 headerCanvas = await renderNodeToCanvas(headerTemplate, renderScale);
-                headerHeightMm = canvasToMm(headerCanvas, PAGE_WIDTH_MM).heightMm;
+                headerHeightMm = canvasToMm(headerCanvas, pageWidthMm).heightMm;
             }
             if (closingTemplate) {
                 stripBlockMargins(closingTemplate);
                 closingCanvas = await renderNodeToCanvas(closingTemplate, renderScale);
-                closingHeightMm = canvasToMm(closingCanvas, PAGE_WIDTH_MM).heightMm;
+                closingHeightMm = canvasToMm(closingCanvas, pageWidthMm).heightMm;
             }
             tempContainer.removeChild(pageTemplateSection);
 
-            const contentTopMm = TOP_MARGIN_MM + (headerHeightMm > 0 ? headerHeightMm + BLOCK_GAP_MM : 0);
+            const contentTopMm = topMarginMm + (headerHeightMm > 0 ? headerHeightMm + BLOCK_GAP_MM : 0);
             // The closing block isn't reserved on every page -- it's appended to the normal
             // content flow after the last block, so a report that fits on one page actually
             // stays on one page instead of leaving a permanent blank gap sized for a footer
             // that only ever gets drawn on the final page.
-            const contentBottomMm = PAGE_HEIGHT_MM - BOTTOM_MARGIN_MM - CONTENT_SAFETY_MM;
-            const usableContentHeightMm = contentBottomMm - contentTopMm > 0 ? contentBottomMm - contentTopMm : USABLE_HEIGHT_MM;
+            const contentBottomMm = PAGE_HEIGHT_MM - bottomMarginMm - CONTENT_SAFETY_MM;
+            const usableContentHeightMm =
+                contentBottomMm - contentTopMm > 0 ? contentBottomMm - contentTopMm : PAGE_HEIGHT_MM - topMarginMm - bottomMarginMm;
 
             // Bottom limit that applies only to the *final* piece of content, so signature +
             // footer land on the same page as the content they close. Without this the last
@@ -2071,11 +2097,11 @@ const CommonReportView2 = ({
                 bottomLimitMm: number = contentBottomMm,
                 reserveAfterMm = 0
             ) => {
-                const { widthMm, heightMm } = canvasToMm(canvas, PAGE_WIDTH_MM);
+                const { widthMm, heightMm } = canvasToMm(canvas, pageWidthMm);
                 const remainingMm = bottomLimitMm - currentY;
 
                 if (heightMm + reserveAfterMm <= remainingMm) {
-                    addCanvasAtCursor(pdf, canvas, MARGIN_X_MM, currentY, widthMm, heightMm);
+                    addCanvasAtCursor(pdf, canvas, marginXMm, currentY, widthMm, heightMm);
                     currentY += heightMm + BLOCK_GAP_MM;
                     hasContentOnPage = true;
                     contentPages.add(currentPageNumber);
@@ -2089,7 +2115,7 @@ const CommonReportView2 = ({
                     if (hasContentOnPage) {
                         startNewPage();
                     }
-                    addCanvasAtCursor(pdf, canvas, MARGIN_X_MM, currentY, widthMm, heightMm);
+                    addCanvasAtCursor(pdf, canvas, marginXMm, currentY, widthMm, heightMm);
                     currentY += heightMm + BLOCK_GAP_MM;
                     hasContentOnPage = true;
                     contentPages.add(currentPageNumber);
@@ -2106,8 +2132,8 @@ const CommonReportView2 = ({
                     if (sliceIndex > 0 || hasContentOnPage) {
                         startNewPage();
                     }
-                    const sliceDims = canvasToMm(slice, PAGE_WIDTH_MM);
-                    addCanvasAtCursor(pdf, slice, MARGIN_X_MM, currentY, sliceDims.widthMm, sliceDims.heightMm);
+                    const sliceDims = canvasToMm(slice, pageWidthMm);
+                    addCanvasAtCursor(pdf, slice, marginXMm, currentY, sliceDims.widthMm, sliceDims.heightMm);
                     currentY += sliceDims.heightMm + BLOCK_GAP_MM;
                     hasContentOnPage = true;
                     contentPages.add(currentPageNumber);
@@ -2116,8 +2142,8 @@ const CommonReportView2 = ({
 
             for (const section of sections) {
                 const sectionClone = section.cloneNode(true) as HTMLElement;
-                sectionClone.style.width = "210mm";
-                sectionClone.style.maxWidth = "210mm";
+                sectionClone.style.width = `${layoutWidthMm}mm`;
+                sectionClone.style.maxWidth = `${layoutWidthMm}mm`;
                 sectionClone.style.margin = "0 auto";
                 sectionClone.style.boxSizing = "border-box";
                 sectionClone.style.backgroundColor = "#ffffff";
@@ -2200,11 +2226,11 @@ const CommonReportView2 = ({
                     }
 
                     const fullCanvas = await renderNodeToCanvas(node, renderScale);
-                    const fullDims = canvasToMm(fullCanvas, PAGE_WIDTH_MM);
+                    const fullDims = canvasToMm(fullCanvas, pageWidthMm);
                     const remainingMm = nodeBottomMm - currentY;
 
                     if (fullDims.heightMm <= remainingMm) {
-                        addCanvasAtCursor(pdf, fullCanvas, MARGIN_X_MM, currentY, fullDims.widthMm, fullDims.heightMm);
+                        addCanvasAtCursor(pdf, fullCanvas, marginXMm, currentY, fullDims.widthMm, fullDims.heightMm);
                         currentY += fullDims.heightMm + BLOCK_GAP_MM;
                         hasContentOnPage = true;
                         contentPages.add(currentPageNumber);
@@ -2219,7 +2245,7 @@ const CommonReportView2 = ({
                     // budgets via the node's CSS width; the previous canvas-based ratio was
                     // inflated by renderScale, producing page-overflowing chunks that fell back
                     // to slicing the canvas mid-row.
-                    const cssPxPerMm = node.offsetWidth > 0 ? node.offsetWidth / PAGE_WIDTH_MM : 96 / 25.4;
+                    const cssPxPerMm = node.offsetWidth > 0 ? node.offsetWidth / pageWidthMm : 96 / 25.4;
                     const maxChunkHeightPx = Math.max(1, Math.floor(usableContentHeightMm * cssPxPerMm));
 
                     // Chunks are budgeted against the real page bottom, NOT nodeBottomMm. The
@@ -2271,7 +2297,7 @@ const CommonReportView2 = ({
                         const chunkCanvas = await renderNodeToCanvas(chunkNode, renderScale);
                         tempContainer.removeChild(chunkNode);
 
-                        const chunkDims = canvasToMm(chunkCanvas, PAGE_WIDTH_MM);
+                        const chunkDims = canvasToMm(chunkCanvas, pageWidthMm);
                         // The final chunk of the final block is the one the closing block has to
                         // follow, so it -- and only it -- honours the reserved bottom limit.
                         // Reserving on the intermediate chunks too would cost ~1 closing block of
@@ -2287,7 +2313,7 @@ const CommonReportView2 = ({
                         }
 
                         if (chunkDims.heightMm <= usableContentHeightMm) {
-                            addCanvasAtCursor(pdf, chunkCanvas, MARGIN_X_MM, currentY, chunkDims.widthMm, chunkDims.heightMm);
+                            addCanvasAtCursor(pdf, chunkCanvas, marginXMm, currentY, chunkDims.widthMm, chunkDims.heightMm);
                             currentY += chunkDims.heightMm + BLOCK_GAP_MM;
                             hasContentOnPage = true;
                             contentPages.add(currentPageNumber);
@@ -2301,8 +2327,8 @@ const CommonReportView2 = ({
                             if (sliceIndex > 0 || hasContentOnPage) {
                                 startNewPage();
                             }
-                            const sliceDims = canvasToMm(slice, PAGE_WIDTH_MM);
-                            addCanvasAtCursor(pdf, slice, MARGIN_X_MM, currentY, sliceDims.widthMm, sliceDims.heightMm);
+                            const sliceDims = canvasToMm(slice, pageWidthMm);
+                            addCanvasAtCursor(pdf, slice, marginXMm, currentY, sliceDims.widthMm, sliceDims.heightMm);
                             currentY += sliceDims.heightMm + BLOCK_GAP_MM;
                             hasContentOnPage = true;
                             contentPages.add(currentPageNumber);
@@ -2324,7 +2350,7 @@ const CommonReportView2 = ({
             pagesToStamp.forEach((pageNo) => {
                 pdf.setPage(pageNo);
                 if (headerCanvas && headerHeightMm > 0) {
-                    addCanvasAtCursor(pdf, headerCanvas, MARGIN_X_MM, TOP_MARGIN_MM, PAGE_WIDTH_MM, headerHeightMm);
+                    addCanvasAtCursor(pdf, headerCanvas, marginXMm, topMarginMm, pageWidthMm, headerHeightMm);
                 }
             });
 
@@ -2838,36 +2864,45 @@ const CommonReportView2 = ({
     return (
         <div className="max-w-4xl mx-auto text-black font-sans" style={{ fontFamily: DEFAULT_FONT_FAMILY }}>
             {!hidePrintButton && (
-                <div className="print:hidden mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="print:hidden mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <div>
                         <p className="text-sm font-medium text-black">{totalReports} tests found</p>
                         <p className="text-xs text-black">{selectedCount} selected</p>
                     </div>
-                    <button
-                        onClick={printReports}
-                        // The report itself no longer waits on the Health Snapshot, so hold
-                        // just the print button until it lands -- otherwise a PDF captured in
-                        // that window would bake in the trend card's inline loading state.
-                        disabled={printing || selectedCount === 0 || healthSnapshotLoading}
-                        className="inline-flex items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        {printing ? (
-                            <>
-                                <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 105 7.75l-1.5-.87A6 6 0 114 12z"></path>
-                                </svg>
-                                Generating...
-                            </>
-                        ) : (
-                            <>
-                                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                </svg>
-                                Print Selected
-                            </>
-                        )}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                        {/* Applies to every selected report in the PDF. */}
+                        <PrintTypeSelect
+                            value={printType}
+                            onChange={setPrintType}
+                            options={PRINT_TYPE_OPTIONS}
+                            disabled={printing}
+                        />
+                        <button
+                            onClick={printReports}
+                            // The report itself no longer waits on the Health Snapshot, so hold
+                            // just the print button until it lands -- otherwise a PDF captured in
+                            // that window would bake in the trend card's inline loading state.
+                            disabled={printing || selectedCount === 0 || healthSnapshotLoading}
+                            className="inline-flex w-full sm:w-auto items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {printing ? (
+                                <>
+                                    <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 105 7.75l-1.5-.87A6 6 0 114 12z"></path>
+                                    </svg>
+                                    Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print Selected
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -2913,41 +2948,53 @@ const CommonReportView2 = ({
             )}
 
             {/* Fluid on screen (shrinks with the viewport); the PDF pipeline clones the
-                shell into an off-screen 210mm container, so print output is unaffected. */}
+                shell into an off-screen container of its own, so print output is unaffected.
+                On letterhead the padding previews the stock's pre-printed bands -- the same
+                blank space the invoice preview shows. */}
             <div
                 ref={reportRef}
                 className="bg-white p-3 sm:p-6"
                 style={{
                     width: "100%",
-                    maxWidth: "210mm",
+                    maxWidth: `${A4_WIDTH_MM}mm`,
                     margin: "0 auto",
                     boxSizing: "border-box",
+                    ...(isLetterhead && {
+                        paddingTop: LETTERHEAD_MARGINS.top,
+                        paddingBottom: LETTERHEAD_MARGINS.bottom,
+                        paddingLeft: LETTERHEAD_MARGINS.left,
+                        paddingRight: LETTERHEAD_MARGINS.right,
+                    }),
                 }}
             >
                 <section data-report-shell className="flex flex-col">
-                    {/* ================= HEADER ================= */}
+                    {/* ================= HEADER =================
+                        On letterhead the stock already carries the logo/name/address, so only
+                        the patient card below is drawn (and repeated on every PDF page). */}
                     <div className="bg-white" data-print-block data-print-role="header">
-                        <div className="flex flex-row items-start mb-2">
-                            <div className="flex flex-row items-center">
-                                <img
-                                    src="/report/image%201.png"
-                                    alt="Lab Logo"
-                                    className="w-20 h-12 object-contain mr-3 flex-shrink-0"
-                                    crossOrigin="anonymous"
-                                    data-print-logo="true"
-                                />
-                                <div
-                                    className="flex flex-col justify-center pl-4"
-                                    style={{ borderLeft: `1px solid ${REPORT_COLORS.neutral100}` }}
-                                >
-                                    <h1 className="text-base font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>{currentLab?.name}</h1>
-                                    <p className="text-[9px] leading-tight w-44 mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>
-                                        {[currentLab?.address, currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
-                                        {currentLab?.labPhone && ` PHONE: ${currentLab.labPhone}`}
-                                    </p>
+                        {showLabHeader && (
+                            <div className="flex flex-row items-start mb-2">
+                                <div className="flex flex-row items-center">
+                                    <img
+                                        src="/report/image%201.png"
+                                        alt="Lab Logo"
+                                        className="w-20 h-12 object-contain mr-3 flex-shrink-0"
+                                        crossOrigin="anonymous"
+                                        data-print-logo="true"
+                                    />
+                                    <div
+                                        className="flex flex-col justify-center pl-4"
+                                        style={{ borderLeft: `1px solid ${REPORT_COLORS.neutral100}` }}
+                                    >
+                                        <h1 className="text-base font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>{currentLab?.name}</h1>
+                                        <p className="text-[9px] leading-tight w-44 mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>
+                                            {[currentLab?.address, currentLab?.city, currentLab?.state].filter(Boolean).join(', ')}
+                                            {currentLab?.labPhone && ` PHONE: ${currentLab.labPhone}`}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Patient Details Card */}
                         {/*

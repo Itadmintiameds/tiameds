@@ -17,15 +17,28 @@ import { FaFileInvoiceDollar, FaFilePdf, FaPrint, FaSignature } from 'react-icon
 import Loader from '../common/Loader';
 import { MdDownloading } from "react-icons/md";
 import Image from 'next/image';
-
-const A4_WIDTH = 210; // mm
+import PrintTypeSelect from '@/components/PrintTypeSelect';
+import { usePrintType } from '@/hooks/usePrintType';
+import {
+  A4_HEIGHT_MM,
+  A4_WIDTH_MM,
+  LETTERHEAD_MARGINS,
+  LETTERHEAD_MARGINS_MM,
+  LETTERHEAD_OPTION,
+  PDF_IMAGE_OFFSET_MM,
+  PDF_IMAGE_WIDTH_MM,
+  PLAIN_OPTION,
+  PRINT_TYPE_OPTIONS,
+  SAFE_BUDGET_MM,
+} from '@/utils/printType';
+import type { PrintType, PrintTypeOption } from '@/utils/printType';
 
 // ---- Page geometry, in mm of the 210mm-wide virtual page that generatePDF() renders
 // and rasterises. Every value below was measured from a real headless-Chrome render of
 // this exact markup (not estimated), then rounded up slightly as a safety margin.
 // Pagination is driven by these so a page holds as much as physically fits and no more
 // — a small invoice stays on one page, a large one splits only where it genuinely must.
-const LETTERHEAD_PAGE_PADDING_MM = 76;       // 56 top + 20 bottom (see LETTERHEAD_MARGINS)
+const LETTERHEAD_PAGE_PADDING_MM = LETTERHEAD_MARGINS_MM.top + LETTERHEAD_MARGINS_MM.bottom; // 56 top + 20 bottom
 const PLAIN_PAGE_PADDING_MM = 10.6;          // 20px top + 20px bottom
 const HEADER_PATIENT_MM = 56;                // invoice-no box + patient/visit/reference box.
                                              // Covers both header variants: letterhead
@@ -53,15 +66,6 @@ const TEST_NAME_CHARS_PER_LINE = 48;    // "Test Name" column of the 5-column te
 const PACKAGE_NAME_CHARS_PER_LINE = 45; // "Package Name" column of the 4-column table
 const TXN_REMARK_CHARS_PER_LINE = 12;   // "Remarks" column is narrow — 10 columns share the width
 
-// A page's rendered height must stay under this or the export clips. generatePDF()
-// draws each page with addImage(..., 10, 10, A4_WIDTH - 20, ...), i.e. scaled by 190/210
-// and offset 10mm down, so a virtual height H lands at real 10 + H*(19/21). Staying
-// under this keeps content both on the physical page (needs H <= 317.2) and clear of
-// the letterhead's pre-printed bottom band, which starts 20mm up from the page edge
-// (needs H <= 315). The gap below 315 is deliberate headroom for text that wraps a
-// line more than the estimates above predict.
-const SAFE_BUDGET_MM = 308;
-
 // Plain hex values (not Tailwind color-* classes) on purpose: Tailwind v4 generates
 // its color palette via oklch()/color-mix(), which html2canvas cannot parse and will
 // throw ("unsupported color function oklch") mid-PDF-capture, producing a blank page.
@@ -75,16 +79,8 @@ const INVOICE_COLORS = {
   gray300: '#D1D5DB',
 };
 
-// Measured off the CURE+ Hospitals pre-printed letterhead stock (A4): the purple
-// header band runs ~56mm from the top edge, the footer band starts ~20mm from the
-// bottom edge, and the white printable area is inset ~16mm from the left/right edges
-// of the purple frame. Content on "Letterhead" print types must stay inside that box.
-const LETTERHEAD_MARGINS = {
-  top: '56mm',
-  bottom: '20mm',
-  left: '16mm',
-  right: '16mm',
-};
+// Letterhead margins, SAFE_BUDGET_MM and the page placement live in @/utils/printType so the
+// lab report prints into the same box. Plain paper keeps its own invoice-specific padding.
 const PLAIN_PAGE_PADDING = '20px';
 
 // The invoice header logo used to be this static file, hardcoded. It now prefers the
@@ -95,7 +91,13 @@ const FALLBACK_LAB_LOGO_SRC = '/CUREPLUS HOSPITALS (1).png';
 
 type PatientWithVisit = Patient;
 
-type PrintType = 'letterhead' | 'plain' | 'letterhead-dept' | 'plain-dept';
+type InvoicePrintType = PrintType | 'letterhead-dept' | 'plain-dept';
+
+const INVOICE_PRINT_TYPE_OPTIONS: PrintTypeOption<InvoicePrintType>[] = [
+  ...PRINT_TYPE_OPTIONS,
+  { value: 'letterhead-dept', label: `${LETTERHEAD_OPTION.label} (Department-wise)` },
+  { value: 'plain-dept', label: `${PLAIN_OPTION.label} (Department-wise)` },
+];
 
 interface InvoicePageData {
   tests: TestList[];
@@ -133,8 +135,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [printMode, setPrintMode] = useState<'all' | 'per-transaction' | 'no-transaction'>('no-transaction');
-  const [printType, setPrintType] = useState<PrintType>('plain');
-  const isLetterhead = printType === 'letterhead' || printType === 'letterhead-dept';
+  const { printType, setPrintType, isLetterhead, showLabHeader } = usePrintType<InvoicePrintType>();
   const isDepartmentWise = printType === 'letterhead-dept' || printType === 'plain-dept';
   const invoiceRef = useRef<HTMLDivElement>(null);
 
@@ -483,10 +484,15 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
     return (
       <div
         key={`page-${pageNumber}${transaction ? `-txn-${transaction.id}` : ''}`}
-        className="mb-6 font-sans"
+        className="mb-6 font-sans @container"
         style={{
-          width: '210mm',
-          minHeight: '297mm',
+          // Fluid up to a real A4 width so the on-screen preview shrinks with the modal
+          // instead of forcing a horizontal scrollbar. The PDF export mounts this page in a
+          // container that is exactly A4_WIDTH_MM wide, where 100% resolves to the same A4
+          // width this used to hardcode, so the exported page is unchanged.
+          width: '100%',
+          maxWidth: `${A4_WIDTH_MM}mm`,
+          minHeight: `${A4_HEIGHT_MM}mm`,
           paddingTop: isLetterhead ? LETTERHEAD_MARGINS.top : PLAIN_PAGE_PADDING,
           paddingBottom: isLetterhead ? LETTERHEAD_MARGINS.bottom : PLAIN_PAGE_PADDING,
           paddingLeft: isLetterhead ? LETTERHEAD_MARGINS.left : PLAIN_PAGE_PADDING,
@@ -496,16 +502,9 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         }}
       >
         {/* Header Section - Compact */}
-        <div className="flex justify-between items-start mb-4 border-b pb-2" style={{ borderColor: c.gray600 }}>
-          {isLetterhead ? (
-            // Letterhead mode: physical stationery already has the lab's branding
-            // pre-printed in the top ~56mm band, so leave that space empty instead of
-            // drawing over it. The page's own top padding (above) reserves the space;
-            // this empty node just keeps the flex row's two-item split intact so the
-            // invoice no./date box on the right stays right-aligned.
-            <div />
-          ) : (
-            <div className="flex items-center gap-3">
+        <div className="flex justify-between items-start mb-4 border-b pb-2 @max-lg:flex-wrap @max-lg:gap-2" style={{ borderColor: c.gray600 }}>
+          {showLabHeader ? (
+            <div className="flex items-center gap-3 min-w-0">
               <div>
                 <Image src={currentLab?.labLogo || currentLab?.logo || FALLBACK_LAB_LOGO_SRC}
                   alt="Lab Logo" width={70} height={44}
@@ -514,7 +513,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                   quality={100}
                 />
               </div>
-              <div>
+              <div className="min-w-0 break-words">
                 <h1 className="text-lg font-bold uppercase tracking-tight leading-tight" style={{ color: c.black }}>{currentLab?.name || 'DIAGNOSTIC CENTER'}</h1>
                 <p className="text-xs leading-tight" style={{ color: c.black }}>{currentLab?.address || ''}</p>
                 {(currentLab?.city || currentLab?.state) && (
@@ -527,6 +526,13 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
                 )}
               </div>
             </div>
+          ) : (
+            // Letterhead mode: physical stationery already has the lab's branding
+            // pre-printed in the top ~56mm band, so leave that space empty instead of
+            // drawing over it. The page's own top padding (above) reserves the space;
+            // this empty node just keeps the flex row's two-item split intact so the
+            // invoice no./date box on the right stays right-aligned.
+            <div />
           )}
           <div className="text-right border px-3 py-1.5" style={{ borderColor: c.gray600, backgroundColor: c.white }}>
             <p className="text-xs font-bold mb-0.5" style={{ color: c.black }}>INVOICE</p>
@@ -537,7 +543,9 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
         {/* Patient & Visit Info Section - Ultra Compact */}
         <div className="mb-4 border p-2" style={{ borderColor: c.gray600 }}>
-          <div className="grid grid-cols-3 gap-3 text-xs">
+          {/* Collapses by the page's own width (container query), not the viewport's, so the
+              exported A4 page always keeps three columns however small the screen is. */}
+          <div className="grid grid-cols-1 @lg:grid-cols-3 gap-3 text-xs break-words">
             <div>
               <p className="font-semibold mb-1 border-b pb-0.5" style={{ color: c.black, borderColor: c.gray400 }}>Patient</p>
               <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Name:</span> {patient?.firstName || ''} {patient?.lastName || ''}</p>
@@ -566,37 +574,41 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
             <h2 className="text-xs font-bold mb-1.5 border-b pb-0.5 uppercase" style={{ color: c.black, borderColor: c.gray600 }}>
               Tests Conducted{departmentName ? ` — Department: ${departmentName}` : ''}
             </h2>
-            <table className="w-full border-collapse border text-xs" style={{ borderColor: c.gray600 }}>
-              <thead>
-                <tr style={{ backgroundColor: c.white }}>
-                  <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Test Name</th>
-                  <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Category</th>
-                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Price</th>
-                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Discount</th>
-                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageTests.map((test, idx) => {
-                  const discountInfo = getTestDiscount(test.id);
-                  const originalPrice = discountInfo ? discountInfo.finalPrice + discountInfo.discountAmount : test.price;
-                  const finalAmount = discountInfo ? discountInfo.finalPrice : test.price;
-                  return (
-                    <tr key={`test-${idx}`} style={{ backgroundColor: c.white }}>
-                      <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{test.name}</td>
-                      <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{test.category || 'General'}</td>
-                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{originalPrice.toFixed(2)}</td>
-                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>
-                        {discountInfo && discountInfo.discountAmount > 0 ? `-₹${discountInfo.discountAmount.toFixed(2)}` : '₹0.00'}
-                      </td>
-                      <td className="p-1.5 text-right border font-semibold leading-tight" style={{ borderColor: c.gray400, color: c.black }}>
-                        ₹{finalAmount.toFixed(2)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            {/* Scrolls on its own, and only when the page itself is narrow; at A4 width this
+                wrapper is a plain block so the exported page is untouched. */}
+            <div className="@max-lg:overflow-x-auto">
+              <table className="w-full border-collapse border text-xs" style={{ borderColor: c.gray600 }}>
+                <thead>
+                  <tr style={{ backgroundColor: c.white }}>
+                    <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Test Name</th>
+                    <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Category</th>
+                    <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Price</th>
+                    <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Discount</th>
+                    <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageTests.map((test, idx) => {
+                    const discountInfo = getTestDiscount(test.id);
+                    const originalPrice = discountInfo ? discountInfo.finalPrice + discountInfo.discountAmount : test.price;
+                    const finalAmount = discountInfo ? discountInfo.finalPrice : test.price;
+                    return (
+                      <tr key={`test-${idx}`} style={{ backgroundColor: c.white }}>
+                        <td className="p-1.5 border leading-tight break-words" style={{ borderColor: c.gray400, color: c.black }}>{test.name}</td>
+                        <td className="p-1.5 border leading-tight break-words" style={{ borderColor: c.gray400, color: c.black }}>{test.category || 'General'}</td>
+                        <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{originalPrice.toFixed(2)}</td>
+                        <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>
+                          {discountInfo && discountInfo.discountAmount > 0 ? `-₹${discountInfo.discountAmount.toFixed(2)}` : '₹0.00'}
+                        </td>
+                        <td className="p-1.5 text-right border font-semibold leading-tight" style={{ borderColor: c.gray400, color: c.black }}>
+                          ₹{finalAmount.toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -604,48 +616,50 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         {page.packages.length > 0 && (
           <div className="mb-4">
             <h2 className="text-xs font-bold mb-1.5 border-b pb-0.5 uppercase" style={{ color: c.black, borderColor: c.gray600 }}>Health Packages</h2>
-            <table className="w-full border-collapse border text-xs" style={{ borderColor: c.gray600 }}>
-              <thead>
-                <tr style={{ backgroundColor: c.white }}>
-                  <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Package Name</th>
-                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Price</th>
-                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Discount</th>
-                  <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {page.packages.map((pkg, idx) => {
-                  const grossPrice = pkg.tests?.reduce((sum, t) => sum + t.price, 0) ?? pkg.price;
-                  const discountAmount = (grossPrice * pkg.discount) / 100;
-                  return (
-                  <React.Fragment key={`pkg-${idx}`}>
-                    <tr style={{ backgroundColor: c.white }}>
-                      <td className="p-1.5 border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>{pkg.packageName}</td>
-                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{grossPrice.toFixed(2)}</td>
-                      <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>-₹{discountAmount.toFixed(2)}</td>
-                      <td className="p-1.5 text-right border font-semibold leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{(grossPrice - discountAmount).toFixed(2)}</td>
-                    </tr>
-                    {pkg.tests && pkg.tests.length > 0 && (
+            <div className="@max-lg:overflow-x-auto">
+              <table className="w-full border-collapse border text-xs" style={{ borderColor: c.gray600 }}>
+                <thead>
+                  <tr style={{ backgroundColor: c.white }}>
+                    <th className="text-left p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Package Name</th>
+                    <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Price</th>
+                    <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Discount</th>
+                    <th className="text-right p-1.5 font-semibold border" style={{ borderColor: c.gray600, color: c.black }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {page.packages.map((pkg, idx) => {
+                    const grossPrice = pkg.tests?.reduce((sum, t) => sum + t.price, 0) ?? pkg.price;
+                    const discountAmount = (grossPrice * pkg.discount) / 100;
+                    return (
+                    <React.Fragment key={`pkg-${idx}`}>
                       <tr style={{ backgroundColor: c.white }}>
-                        <td colSpan={4} className="p-1.5 border" style={{ borderColor: c.gray400 }}>
-                          <div className="pl-1">
-                            <p className="text-xs font-semibold mb-0.5" style={{ color: c.black }}>Includes:</p>
-                            <div className="grid grid-cols-3 gap-0.5">
-                              {pkg.tests.map((test, testIdx) => (
-                                <div key={testIdx} className="text-xs p-0.5 border leading-tight" style={{ backgroundColor: c.white, borderColor: c.gray300, color: c.black }}>
-                                  {test.name}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </td>
+                        <td className="p-1.5 border leading-tight break-words" style={{ borderColor: c.gray400, color: c.black }}>{pkg.packageName}</td>
+                        <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{grossPrice.toFixed(2)}</td>
+                        <td className="p-1.5 text-right border leading-tight" style={{ borderColor: c.gray400, color: c.black }}>-₹{discountAmount.toFixed(2)}</td>
+                        <td className="p-1.5 text-right border font-semibold leading-tight" style={{ borderColor: c.gray400, color: c.black }}>₹{(grossPrice - discountAmount).toFixed(2)}</td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+                      {pkg.tests && pkg.tests.length > 0 && (
+                        <tr style={{ backgroundColor: c.white }}>
+                          <td colSpan={4} className="p-1.5 border" style={{ borderColor: c.gray400 }}>
+                            <div className="pl-1">
+                              <p className="text-xs font-semibold mb-0.5" style={{ color: c.black }}>Includes:</p>
+                              <div className="grid grid-cols-3 gap-0.5">
+                                {pkg.tests.map((test, testIdx) => (
+                                  <div key={testIdx} className="text-xs p-0.5 border leading-tight break-words" style={{ backgroundColor: c.white, borderColor: c.gray300, color: c.black }}>
+                                    {test.name}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -809,7 +823,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         const tempDiv = document.createElement('div');
         tempDiv.style.position = 'absolute';
         tempDiv.style.left = '-9999px';
-        tempDiv.style.width = '210mm';
+        tempDiv.style.width = `${A4_WIDTH_MM}mm`;
         document.body.appendChild(tempDiv);
 
         await new Promise<void>((resolve) => {
@@ -825,10 +839,10 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
               });
 
               const imgData = canvas.toDataURL('image/png');
-              const imgWidth = A4_WIDTH - 20;
+              const imgWidth = PDF_IMAGE_WIDTH_MM;
               const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-              pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+              pdf.addImage(imgData, 'PNG', PDF_IMAGE_OFFSET_MM, PDF_IMAGE_OFFSET_MM, imgWidth, imgHeight);
 
               document.body.removeChild(tempDiv);
               resolve();
@@ -908,36 +922,29 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
 
   return (
     <>
-      <div className="max-w-4xl mx-auto">
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 print:hidden gap-4">
+      <div className="w-full max-w-4xl mx-auto">
+        {/* Action Buttons. Wraps instead of overflowing: the title keeps its full width on its
+            own row and the controls drop below it whenever they don't fit beside it. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 mb-4 print:hidden">
           <div className="text-sm text-black flex items-center gap-2">
-            <FaFileInvoiceDollar />
+            <FaFileInvoiceDollar className="shrink-0" />
             <span>Invoice for Visit Code: {patient?.visit?.visitCode || patient?.visit?.visitId || 'N/A'}</span>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <div className="flex gap-3 items-center">
-              <label className="text-sm font-medium whitespace-nowrap">Print Type:</label>
-              <select
-                value={printType}
-                onChange={(e) => setPrintType(e.target.value as PrintType)}
-                className="border rounded px-2 py-1 text-sm min-w-[220px]"
-                disabled={isGeneratingPDF}
-              >
-                <option value="letterhead">Print on Letterhead</option>
-                <option value="plain">Print on Plain Paper</option>
-                <option value="letterhead-dept">Print on Letterhead (Department-wise)</option>
-                <option value="plain-dept">Print on Plain Paper (Department-wise)</option>
-              </select>
-            </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3 w-full sm:w-auto">
+            <PrintTypeSelect
+              value={printType}
+              onChange={setPrintType}
+              options={INVOICE_PRINT_TYPE_OPTIONS}
+              disabled={isGeneratingPDF}
+            />
 
-            <div className="flex gap-3 items-center">
+            <div className="flex gap-3 items-center w-full sm:w-auto">
               <label className="text-sm font-medium whitespace-nowrap">Print Mode:</label>
               <select
                 value={printMode}
                 onChange={(e) => setPrintMode(e.target.value as "all" | "per-transaction" | "no-transaction")}
-                className="border rounded px-2 py-1 text-sm min-w-[150px]"
+                className="border rounded px-2 py-1 text-sm min-w-0 flex-1 sm:flex-none sm:min-w-[150px]"
                 disabled={isGeneratingPDF}
               >
                 <option value="all">All Transactions</option>
@@ -946,11 +953,11 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
               </select>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
               <button
                 onClick={handlePrint}
                 disabled={isGeneratingPDF || isLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center gap-2 disabled:opacity-50 flex-1 sm:flex-none"
               >
                 {isGeneratingPDF ? (
                   <MdDownloading className="animate-spin" />
@@ -962,7 +969,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
               <button
                 onClick={handleDownloadPDF}
                 disabled={isGeneratingPDF || isLoading}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center justify-center gap-2 disabled:opacity-50 flex-1 sm:flex-none"
               >
                 <FaFilePdf />
                 PDF

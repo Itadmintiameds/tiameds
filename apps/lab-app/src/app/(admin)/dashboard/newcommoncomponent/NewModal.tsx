@@ -13,6 +13,13 @@ interface NewModalProps {
     footer?: React.ReactNode;
     modalClassName?: string;
     modalHeightClassName?: string;
+    // Inline style for the modal panel, for sizing a Tailwind max-w-* class can't express
+    // (e.g. `min(95vw, 56rem)`). Applied last, so it wins over the width classes above.
+    modalStyle?: React.CSSProperties;
+    // Extra classes for the scrolling body. The body is overflow-y-auto, which the CSS
+    // overflow rules turn into overflow-x:auto as well, so a modal whose content must never
+    // scroll sideways opts in with "overflow-x-hidden" here.
+    bodyClassName?: string;
 }
 
 const NewModal = ({
@@ -23,6 +30,8 @@ const NewModal = ({
     footer,
     modalClassName,
     modalHeightClassName,
+    modalStyle,
+    bodyClassName,
 }: NewModalProps) => {
     return (
         <AnimatePresence>
@@ -81,6 +90,7 @@ const NewModal = ({
               ${modalHeightClassName || "max-h-[85vh]"}
               ${modalClassName || "max-w-2xl"}
             `}
+                        style={modalStyle}
                     >
                         {/* Header */}
                         {title && (
@@ -126,7 +136,7 @@ const NewModal = ({
                         )}
 
                         {/* Body */}
-                        <div className="flex-1 overflow-y-auto p-5">
+                        <div className={`flex-1 overflow-y-auto p-5 ${bodyClassName || ""}`}>
                             {children}
                         </div>
 

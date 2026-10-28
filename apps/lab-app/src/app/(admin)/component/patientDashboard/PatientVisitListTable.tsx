@@ -823,6 +823,8 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
         onClose={() => setViewPatientModal(false)}
         title="Invoice Details"
         modalClassName="max-w-4xl"
+        modalStyle={{ width: 'min(95vw, 56rem)', maxWidth: '100%', boxSizing: 'border-box' }}
+        bodyClassName="overflow-x-hidden"
       >
         {patientDetails && <PatientDetailsViewComponent patient={patientDetails} />}
       </NewModal>
