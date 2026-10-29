@@ -1,151 +1,149 @@
 'use client';
 
 import React from 'react';
-import { FaPen } from 'react-icons/fa';
+import { FaBuilding, FaClipboardCheck, FaFlask, FaShieldAlt, FaUserCircle } from 'react-icons/fa';
+import { UploadedDocument } from '@/types/onboarding/onboarding';
 import { ALL_SERVICES } from '../_lib/constants';
 import { effectiveGstin, effectiveLabAddress, effectivePan } from '../_lib/form';
 import { CheckboxField } from './fields';
+import { Card } from './Layout';
 import { StepProps } from './Steps';
 
 interface ReviewStepProps extends StepProps {
-  termsRead: boolean;
   onEdit: (step: number) => void;
   onOpenTerms: () => void;
 }
 
-const Row = ({ label, value, wide }: { label: string; value?: string | null; wide?: boolean }) => (
-  <div className={wide ? 'md:col-span-2' : undefined}>
-    <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</dt>
-    <dd className="mt-0.5 break-words text-sm font-medium text-gray-900">{value?.trim() ? value : '—'}</dd>
+const Row = ({ label, value, file }: { label: string; value?: string | null; file?: boolean }) => (
+  <div className="min-w-0">
+    <dt className="text-[11px] text-gray-500">{label}</dt>
+    <dd
+      className={`mt-0.5 wrap-break-word text-xs font-medium ${file && value?.trim() ? 'text-secondary-700' : 'text-gray-900'}`}
+    >
+      {value?.trim() ? value : '-'}
+    </dd>
   </div>
 );
 
 const ReviewCard = ({
+  icon,
   title,
   step,
   onEdit,
   children,
 }: {
+  icon: React.ReactNode;
   title: string;
   step: number;
   onEdit: (step: number) => void;
   children: React.ReactNode;
 }) => (
-  <section className="rounded-xl border border-gray-200 bg-white">
-    <header className="flex items-center justify-between gap-3 rounded-t-xl border-b border-gray-200 bg-primary-100/50 px-5 py-3">
-      <h3 className="text-sm font-semibold text-primary-900">{title}</h3>
+  <Card
+    icon={icon}
+    title={title}
+    action={
       <button
         type="button"
         onClick={() => onEdit(step)}
         aria-label={`Edit ${title}`}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-primary-300 bg-white px-3 py-1.5 text-xs font-semibold text-primary-700 transition-colors hover:bg-primary-700 hover:text-white"
+        className="text-xs font-medium text-secondary-700 hover:text-secondary-900 hover:underline"
       >
-        <FaPen className="text-[10px]" />
         Edit
       </button>
-    </header>
-    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 px-5 py-4 md:grid-cols-2">{children}</dl>
-  </section>
+    }
+  >
+    <dl className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">{children}</dl>
+  </Card>
 );
 
-const formatAddress = (a: {
-  addressLine1: string;
-  addressLine2: string;
-  city: string;
-  district: string;
-  state: string;
-  country: string;
-  pinCode: string;
-}) =>
-  [a.addressLine1, a.addressLine2, a.city, a.district, `${a.state} - ${a.pinCode}`, a.country]
-    .filter((part) => part && part.trim() && !part.startsWith(' -'))
-    .join(', ');
-
 const formatDate = (iso: string) =>
-  iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+  iso ? new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
 
-export const ReviewStep = ({ form, errors, update, termsRead, onEdit, onOpenTerms }: ReviewStepProps) => {
+export const ReviewStep = ({ form, errors, update, onEdit, onOpenTerms }: ReviewStepProps) => {
   const { superAdmin: s, organization: o, laboratory: l, compliance: c, consent } = form;
-  const labAddress = effectiveLabAddress(form);
+  const a = effectiveLabAddress(form);
   const services = l.services.includes(ALL_SERVICES) ? 'All services' : l.services.join(', ');
   const wasteYes = c.biomedicalWasteGenerated === 'YES';
-  const file = (f: File | null) => f?.name ?? '';
+  const file = (f: UploadedDocument | null) => f?.name ?? '';
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-primary-900">Review &amp; Submit</h2>
-        <p className="text-sm text-gray-500">
-          Check every section carefully. Use <span className="font-medium text-primary-700">Edit</span> on a section to
-          change it — you will come straight back here afterwards.
-        </p>
-      </div>
-
-      <ReviewCard title="Super Admin Information" step={1} onEdit={onEdit}>
-        <Row label="Username" value={s.username} />
-        <Row label="Email Address" value={s.email} />
+    <>
+      <ReviewCard icon={<FaUserCircle />} title="Super Admin Information" step={1} onEdit={onEdit}>
         <Row label="First Name" value={s.firstName} />
         <Row label="Last Name" value={s.lastName} />
+        <Row label="Username" value={s.username} />
+        <Row label="Email Address" value={s.email} />
         <Row label="Mobile Number" value={s.phone} />
         <Row label="Password" value="••••••••" />
       </ReviewCard>
 
-      <ReviewCard title="Organization Information" step={2} onEdit={onEdit}>
-        <Row label="Organization Name" value={o.name} wide />
+      <ReviewCard icon={<FaBuilding />} title="Organization Information" step={2} onEdit={onEdit}>
+        <Row label="Organization Name" value={o.name} />
         <Row label="Organization Type" value={o.type} />
-        <Row label="Contact Number" value={o.phone} />
-        <Row label="Organization Email" value={o.email} wide />
-        <Row label="Address" value={formatAddress(o)} wide />
+        <Row label="Organization Email" value={o.email} />
+        <Row label="Organization Mobile / Contact Number" value={o.phone} />
+        <Row label="Address Line 1" value={o.addressLine1} />
+        <Row label="Address Line 2" value={o.addressLine2} />
+        <Row label="Country" value={o.country} />
+        <Row label="State / Union Territory" value={o.state} />
+        <Row label="District" value={o.district} />
+        <Row label="City / Town" value={o.city} />
+        <Row label="PIN Code" value={o.pinCode} />
         <Row label="PAN" value={o.pan} />
         <Row label="GSTIN" value={o.gstin} />
+        <Row label="Organization GSTIN Certificate" value={file(o.gstinCertificate)} file />
       </ReviewCard>
 
-      <ReviewCard title="First Laboratory Information" step={3} onEdit={onEdit}>
-        <Row label="Laboratory Name" value={l.name} wide />
+      <ReviewCard icon={<FaFlask />} title="First Laboratory Information" step={3} onEdit={onEdit}>
+        <Row label="Laboratory Name" value={l.name} />
         <Row label="Laboratory Type" value={l.type} />
-        <Row label="Contact Number" value={l.phone} />
-        <Row label="Laboratory Email" value={l.email} wide />
-        <Row label="Services" value={services} wide />
-        <Row
-          label={l.sameAsOrganizationAddress ? 'Address (same as organization)' : 'Address'}
-          value={formatAddress(labAddress)}
-          wide
-        />
+        <Row label="Laboratory Services" value={services} />
+        <Row label="Address Line 1" value={a.addressLine1} />
+        <Row label="Address Line 2" value={a.addressLine2} />
+        <Row label="Country" value={a.country} />
+        <Row label="State / Union Territory" value={a.state} />
+        <Row label="District" value={a.district} />
+        <Row label="City / Town" value={a.city} />
+        <Row label="PIN Code" value={a.pinCode} />
+        <Row label="Laboratory Contact Number" value={l.phone} />
+        <Row label="Laboratory Email" value={l.email} />
       </ReviewCard>
 
-      <ReviewCard title="Compliance Details" step={4} onEdit={onEdit}>
-        <Row label="Establishment Registration No." value={c.establishmentRegistrationNumber} />
+      <ReviewCard icon={<FaShieldAlt />} title="All Compliance Details" step={4} onEdit={onEdit}>
+        <Row label="Establishment Registration Number" value={c.establishmentRegistrationNumber} />
         <Row label="Issuing Authority" value={c.issuingAuthority} />
         <Row label="Issuing Date" value={formatDate(c.issuingDate)} />
         <Row label="Expiry Date" value={formatDate(c.expiryDate)} />
-        <Row label="Registration Certificate" value={file(c.establishmentCertificate)} wide />
+        <Row label="Establishment Registration Certificate" value={file(c.establishmentCertificate)} file />
         <Row label="PAN" value={effectivePan(form)} />
         <Row label="GSTIN" value={effectiveGstin(form)} />
-        <Row label="GSTIN Certificate" value={file(c.gstinCertificate)} wide />
+        <Row label="Laboratory GSTIN Certificate" value={file(c.gstinCertificate)} file />
         <Row label="Biomedical Waste Generated" value={wasteYes ? 'Yes' : c.biomedicalWasteGenerated ? 'No' : ''} />
         {wasteYes && (
           <>
-            <Row label="Waste Authorization No." value={c.biomedicalWasteAuthorizationNumber} />
-            <Row label="Waste Authorization Certificate" value={file(c.biomedicalWasteCertificate)} wide />
+            <Row label="Biomedical Waste Authorization Number" value={c.biomedicalWasteAuthorizationNumber} />
+            <Row label="Biomedical Waste Authorization Certificate" value={file(c.biomedicalWasteCertificate)} file />
           </>
         )}
-        <Row label="NABL Accreditation No." value={c.nablAccreditationNumber} />
-        <Row label="NABL Certificate" value={file(c.nablCertificate)} />
+        <Row label="NABL Accreditation Number" value={c.nablAccreditationNumber} />
+        <Row label="NABL Accreditation Certificate" value={file(c.nablCertificate)} file />
       </ReviewCard>
 
-      <section className="space-y-4 rounded-xl border border-primary-200 bg-primary-100/40 p-5">
-        <CheckboxField
-          checked={consent.authorizedToRegister}
-          onChange={(checked) => update('consent', { authorizedToRegister: checked })}
-          error={errors['consent.authorizedToRegister']}
-        >
-          I confirm that I am authorized to register this organization and laboratory.
-        </CheckboxField>
-
-        <div className="space-y-2">
+      <Card
+        icon={<FaClipboardCheck />}
+        title="Authorization & Terms"
+        description="Both confirmations are required to submit your registration."
+      >
+        <div className="space-y-3 rounded-md bg-secondary-50 p-4">
+          <CheckboxField
+            checked={consent.authorizedToRegister}
+            onChange={(checked) => update('consent', { authorizedToRegister: checked })}
+            error={errors['consent.authorizedToRegister']}
+          >
+            I confirm that I am authorized to register this organization and laboratory.
+          </CheckboxField>
           <CheckboxField
             checked={consent.termsAccepted}
-            disabled={!termsRead}
             onChange={(checked) => update('consent', { termsAccepted: checked })}
             error={errors['consent.termsAccepted']}
           >
@@ -156,19 +154,15 @@ export const ReviewStep = ({ form, errors, update, termsRead, onEdit, onOpenTerm
                 e.preventDefault();
                 onOpenTerms();
               }}
-              className="font-semibold text-primary-700 underline underline-offset-2 hover:text-primary-900"
+              className="font-medium text-secondary-700 hover:underline"
             >
               Terms &amp; Conditions
             </button>{' '}
-            and acknowledge the Privacy Notice.
+            and acknowledge the{' '}
+            <span className="font-medium text-secondary-700">Privacy Notice</span>.
           </CheckboxField>
-          {!termsRead && (
-            <p className="pl-7 text-xs text-gray-500">
-              Open and read the Terms &amp; Conditions to enable this checkbox.
-            </p>
-          )}
         </div>
-      </section>
-    </div>
+      </Card>
+    </>
   );
 };

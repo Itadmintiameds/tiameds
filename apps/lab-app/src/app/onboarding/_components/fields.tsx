@@ -1,15 +1,26 @@
 'use client';
 
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { FaCheck, FaChevronDown, FaFileUpload, FaTimes } from 'react-icons/fa';
+import { toast } from 'react-toastify';
+import { FaCheck, FaFolderOpen, FaSort, FaSpinner, FaTimes } from 'react-icons/fa';
+import { uploadOnboardingDocument } from '@/../services/onboardingService';
+import { OnboardingDocumentType, UploadedDocument } from '@/types/onboarding/onboarding';
 import { ACCEPTED_FILE_TYPES } from '../_lib/constants';
+import { validateUploadFile } from '../_lib/form';
 
-export const inputClass = (error?: string) =>
-  `w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 ${
+export const inputClass = (error?: string, hasIcon = false) =>
+  `h-10 w-full rounded-md border bg-white text-[13px] text-gray-900 placeholder-gray-400 transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 ${
+    hasIcon ? 'pl-9 pr-3' : 'px-3'
+  } ${
     error
       ? 'border-warning-500 focus:border-warning-500 focus:ring-warning-200'
-      : 'border-gray-300 focus:border-primary-600 focus:ring-primary-200'
+      : 'border-gray-300 focus:border-secondary-700 focus:ring-secondary-200'
   }`;
+
+/** Leading icon rendered inside an input / select. */
+const LeadingIcon = ({ icon }: { icon: React.ReactNode }) => (
+  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-gray-500">{icon}</span>
+);
 
 interface FieldProps {
   label: string;
@@ -19,7 +30,7 @@ interface FieldProps {
   hint?: string;
   htmlFor?: string;
   className?: string;
-  /** Rendered on the right of the label row (e.g. a "same as" checkbox). */
+  /** Rendered below the control (e.g. a "same as" checkbox). */
   action?: React.ReactNode;
   children: React.ReactNode;
 }
@@ -36,21 +47,19 @@ export const Field = ({
   children,
 }: FieldProps) => (
   <div className={className}>
-    <div className="mb-1.5 flex items-center justify-between gap-3">
-      <label htmlFor={htmlFor} className="flex items-center gap-1 text-sm font-medium text-gray-700">
-        {label}
-        {required && <span className="text-warning-500">*</span>}
-        {optional && <span className="text-xs font-normal text-gray-400">(optional)</span>}
-      </label>
-      {action}
-    </div>
+    <label htmlFor={htmlFor} className="mb-1.5 flex items-center gap-1 font-heading text-[13px] font-medium text-gray-800">
+      {label}
+      {required && <span className="text-warning-500">*</span>}
+      {optional && <span className="text-xs font-normal text-gray-500">(Optional)</span>}
+    </label>
     {children}
-    {hint && !error && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
+    {hint && !error && <p className="mt-1 text-[11px] text-gray-500">{hint}</p>}
     {error && (
       <p data-field-error className="mt-1 text-xs font-medium text-warning-600">
         {error}
       </p>
     )}
+    {action && <div className="mt-2">{action}</div>}
   </div>
 );
 
@@ -65,6 +74,7 @@ type InputProps = Omit<FieldProps, 'children' | 'htmlFor'> & {
   autoComplete?: string;
   min?: string;
   max?: string;
+  icon?: React.ReactNode;
   trailing?: React.ReactNode;
 };
 
@@ -79,6 +89,7 @@ export const TextField = ({
   autoComplete,
   min,
   max,
+  icon,
   trailing,
   ...field
 }: InputProps) => {
@@ -86,6 +97,7 @@ export const TextField = ({
   return (
     <Field {...field} htmlFor={id}>
       <div className="relative">
+        {icon && <LeadingIcon icon={icon} />}
         <input
           id={id}
           type={type}
@@ -99,7 +111,7 @@ export const TextField = ({
           min={min}
           max={max}
           aria-invalid={!!field.error}
-          className={`${inputClass(field.error)} ${trailing ? 'pr-10' : ''}`}
+          className={`${inputClass(field.error, !!icon)} ${trailing ? 'pr-10' : ''}`}
         />
         {trailing && <div className="absolute inset-y-0 right-0 flex items-center pr-3">{trailing}</div>}
       </div>
@@ -113,27 +125,40 @@ type SelectProps = Omit<FieldProps, 'children' | 'htmlFor'> & {
   options: string[];
   placeholder?: string;
   disabled?: boolean;
+  icon?: React.ReactNode;
 };
 
-export const SelectField = ({ value, onChange, options, placeholder = 'Select', disabled, ...field }: SelectProps) => {
+export const SelectField = ({
+  value,
+  onChange,
+  options,
+  placeholder = 'Select',
+  disabled,
+  icon,
+  ...field
+}: SelectProps) => {
   const id = useId();
   return (
     <Field {...field} htmlFor={id}>
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        aria-invalid={!!field.error}
-        className={inputClass(field.error)}
-      >
-        <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      <div className="relative">
+        {icon && <LeadingIcon icon={icon} />}
+        <select
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          aria-invalid={!!field.error}
+          className={`${inputClass(field.error, !!icon)} appearance-none pr-8 ${value ? '' : 'text-gray-400'}`}
+        >
+          <option value="">{placeholder}</option>
+          {options.map((option) => (
+            <option key={option} value={option} className="text-gray-900">
+              {option}
+            </option>
+          ))}
+        </select>
+        <FaSort className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500" />
+      </div>
     </Field>
   );
 };
@@ -143,16 +168,18 @@ type MultiSelectProps = Omit<FieldProps, 'children' | 'htmlFor'> & {
   options: string[];
   onToggle: (option: string) => void;
   placeholder?: string;
-  /** Option that stands for "everything"; shown as the summary when selected. */
+  icon?: React.ReactNode;
+  /** Option that stands for "everything"; it is not shown as a chip. */
   allOption?: string;
 };
 
-/** Dropdown whose options are checkboxes (checkbox before the label). */
+/** Dropdown whose options are checkboxes; chosen values are listed as removable chips below. */
 export const MultiSelectField = ({
   selected,
   options,
   onToggle,
   placeholder = 'Select',
+  icon,
   allOption,
   ...field
 }: MultiSelectProps) => {
@@ -174,13 +201,7 @@ export const MultiSelectField = ({
     };
   }, [open]);
 
-  const summary = !selected.length
-    ? placeholder
-    : allOption && selected.includes(allOption)
-      ? 'All services'
-      : selected.length <= 2
-        ? selected.join(', ')
-        : `${selected.length} selected`;
+  const chips = selected.filter((option) => option !== allOption);
 
   return (
     <Field {...field} htmlFor={id}>
@@ -191,31 +212,32 @@ export const MultiSelectField = ({
           aria-haspopup="listbox"
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
-          className={`${inputClass(field.error)} flex items-center justify-between gap-2 text-left`}
+          className={`${inputClass(field.error, !!icon)} flex items-center justify-between gap-2 text-left`}
         >
-          <span className={`truncate ${selected.length ? 'text-gray-900' : 'text-gray-400'}`}>{summary}</span>
-          <FaChevronDown className={`shrink-0 text-xs text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+          {icon && <LeadingIcon icon={icon} />}
+          <span className="truncate text-gray-400">{placeholder}</span>
+          <FaSort className="shrink-0 text-xs text-gray-500" />
         </button>
         {open && (
           <ul
             role="listbox"
             aria-multiselectable
-            className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+            className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg"
           >
             {options.map((option) => {
               const checked = selected.includes(option);
               return (
                 <li key={option} role="option" aria-selected={checked}>
                   <label
-                    className={`flex cursor-pointer items-center gap-3 px-3.5 py-2 text-sm hover:bg-primary-100/60 ${
-                      option === allOption ? 'border-b border-gray-100 font-semibold text-primary-900' : 'text-gray-700'
+                    className={`flex cursor-pointer items-center gap-3 px-3 py-2 text-[13px] hover:bg-secondary-50 ${
+                      option === allOption ? 'border-b border-gray-100 font-semibold text-secondary-900' : 'text-gray-700'
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => onToggle(option)}
-                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 accent-primary-700"
+                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 accent-secondary-700"
                     />
                     {option}
                   </label>
@@ -225,6 +247,26 @@ export const MultiSelectField = ({
           </ul>
         )}
       </div>
+      {chips.length > 0 && (
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {chips.map((chip) => (
+            <li
+              key={chip}
+              className="inline-flex items-center gap-1.5 rounded bg-pneutral-300 px-2.5 py-1 text-xs font-medium text-pneutral-900"
+            >
+              {chip}
+              <button
+                type="button"
+                onClick={() => onToggle(chip)}
+                aria-label={`Remove ${chip}`}
+                className="text-pneutral-800 hover:text-warning-600"
+              >
+                <FaTimes className="text-[10px]" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </Field>
   );
 };
@@ -241,16 +283,16 @@ export const CheckboxField = ({ checked, onChange, disabled, error, children }: 
   const id = useId();
   return (
     <div>
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-2.5">
         <input
           id={id}
           type="checkbox"
           checked={checked}
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
-          className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 accent-primary-700 disabled:cursor-not-allowed"
+          className="h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 accent-secondary-700 disabled:cursor-not-allowed"
         />
-        <label htmlFor={id} className={`text-sm ${disabled ? 'text-gray-400' : 'text-gray-700'}`}>
+        <label htmlFor={id} className={`text-xs ${disabled ? 'text-gray-400' : 'text-gray-700'}`}>
           {children}
         </label>
       </div>
@@ -264,13 +306,40 @@ export const CheckboxField = ({ checked, onChange, disabled, error, children }: 
 };
 
 type FileProps = Omit<FieldProps, 'children' | 'htmlFor'> & {
-  file: File | null;
-  onChange: (file: File | null) => void;
+  /** Backend part name the file is uploaded under. */
+  docType: OnboardingDocumentType;
+  value: UploadedDocument | null;
+  onChange: (doc: UploadedDocument | null) => void;
 };
 
-export const FileField = ({ file, onChange, ...field }: FileProps) => {
+/**
+ * Dashed drop zone; click to browse or drag a file onto it. The file is uploaded as soon as it is
+ * chosen and only the returned link is kept in the form.
+ */
+export const FileField = ({ docType, value, onChange, ...field }: FileProps) => {
   const ref = useRef<HTMLInputElement>(null);
   const id = useId();
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (file: File | null | undefined) => {
+    if (!file || uploading) return;
+    const invalid = validateUploadFile(file, field.label);
+    if (invalid) {
+      toast.error(invalid, { autoClose: 5000 });
+      return;
+    }
+    setUploading(true);
+    try {
+      const url = await uploadOnboardingDocument(docType, file);
+      onChange({ name: file.name, url });
+      toast.success(`${field.label} uploaded successfully`, { autoClose: 3000 });
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to upload document.', { autoClose: 5000 });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <Field {...field} htmlFor={id}>
@@ -281,16 +350,20 @@ export const FileField = ({ file, onChange, ...field }: FileProps) => {
         accept={ACCEPTED_FILE_TYPES}
         className="sr-only"
         onChange={(e) => {
-          onChange(e.target.files?.[0] ?? null);
+          handleFile(e.target.files?.[0]);
           e.target.value = '';
         }}
       />
-      {file ? (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-primary-200 bg-primary-100/50 px-3.5 py-2.5">
-          <span className="flex min-w-0 items-center gap-2 text-sm text-primary-900">
+      {uploading ? (
+        <div className="flex items-center justify-center gap-2 rounded-md border border-secondary-200 bg-secondary-50 px-3 py-6 text-[11px] font-medium text-gray-700">
+          <FaSpinner className="animate-spin text-secondary-700" /> Uploading...
+        </div>
+      ) : value ? (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-secondary-200 bg-secondary-50 px-3 py-3">
+          <span className="flex min-w-0 items-center gap-2 text-[13px] text-secondary-900">
             <FaCheck className="shrink-0 text-success-700" />
-            <span className="truncate">{file.name}</span>
-            <span className="shrink-0 text-xs text-gray-500">{Math.max(1, Math.round(file.size / 1024))} KB</span>
+            <span className="truncate">{value.name}</span>
+            <span className="shrink-0 text-xs text-gray-500">Uploaded</span>
           </span>
           <button
             type="button"
@@ -305,39 +378,33 @@ export const FileField = ({ file, onChange, ...field }: FileProps) => {
         <button
           type="button"
           onClick={() => ref.current?.click()}
-          className={`flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3.5 py-3 text-sm font-medium transition-colors ${
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            handleFile(e.dataTransfer.files?.[0]);
+          }}
+          className={`flex w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed px-3 py-6 text-center transition-colors ${
             field.error
-              ? 'border-warning-500 text-warning-600 hover:bg-warning-50'
-              : 'border-primary-300 text-primary-700 hover:bg-primary-100/60'
+              ? 'border-warning-500 bg-warning-50/40'
+              : dragging
+                ? 'border-secondary-700 bg-secondary-100'
+                : 'border-secondary-300 bg-secondary-50 hover:bg-secondary-100'
           }`}
         >
-          <FaFileUpload className="shrink-0" />
-          <span>
-            Choose file{' '}
-            <span className="font-normal opacity-80">(PDF, JPG or PNG, max 1 MB)</span>
-          </span>
+          <FaFolderOpen className="text-3xl text-danger-500" />
+          <span className="text-[11px] font-medium text-gray-700">Choose a file or drag &amp; drop it here</span>
+          <span className="text-[10px] text-gray-500">Maximum file size 1 MB</span>
         </button>
       )}
     </Field>
   );
 };
 
-interface SectionProps {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}
-
-export const FormSection = ({ title, description, children }: SectionProps) => (
-  <section className="space-y-4">
-    <div className="border-b border-gray-200 pb-2">
-      <h3 className="text-base font-semibold text-primary-900">{title}</h3>
-      {description && <p className="text-sm text-gray-500">{description}</p>}
-    </div>
-    {children}
-  </section>
-);
-
 export const Grid = ({ children }: { children: React.ReactNode }) => (
-  <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">{children}</div>
+  <div className="grid grid-cols-1 gap-x-4 gap-y-4 md:grid-cols-2">{children}</div>
 );

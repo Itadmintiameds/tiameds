@@ -1,10 +1,11 @@
 import {
   AddressFields,
-  OnboardingFiles,
   OnboardingFormState,
+  UploadedDocument,
   OnboardingRequestDTO,
 } from '@/types/onboarding/onboarding';
-import { MAX_FILE_SIZE, STATE_CODES, TERMS_VERSION } from './constants';
+import { parsePhoneNumberFromString } from 'libphonenumber-js/max';
+import { ALL_SERVICES, MAX_FILE_SIZE, STATE_CODES, TERMS_VERSION } from './constants';
 
 export type FormErrors = Record<string, string>;
 
@@ -36,6 +37,7 @@ export const initialFormState: OnboardingFormState = {
     pinCode: '',
     pan: '',
     gstin: '',
+    gstinCertificate: null,
   },
   laboratory: {
     name: '',
@@ -126,8 +128,24 @@ const validatePersonName = (value: string, label: string): string | null =>
   maxLen(value, label, 50) ??
   (NAME_RE.test(value) ? null : `${label} can only contain letters, spaces, hyphens, apostrophes and periods`);
 
+/** True only for a real Indian mobile number (rejects e.g. 1111111111, landlines, toll-free). */
+export const validateIndianMobile = (input: string): { valid: boolean; e164?: string } => {
+  const phone = parsePhoneNumberFromString(input, 'IN');
+  if (!phone || phone.country !== 'IN' || !phone.isValid()) return { valid: false };
+
+  const type = phone.getType();
+  if (type !== 'MOBILE' && type !== 'FIXED_LINE_OR_MOBILE') return { valid: false };
+
+  return { valid: true, e164: phone.number };
+};
+
 const validatePhone = (value: string, label: string): string | null =>
-  required(value, label) ?? (/^\d{10}$/.test(value) ? null : `${label} must be exactly 10 digits`);
+  required(value, label) ??
+  (/^\d{10}$/.test(value)
+    ? validateIndianMobile(value).valid
+      ? null
+      : `Enter a valid ${label.toLowerCase()}`
+    : `${label} must be exactly 10 digits`);
 
 const validateEmail = (value: string, label: string): string | null =>
   required(value, label) ?? (EMAIL_RE.test(value) ? null : 'Please enter a valid email address');
@@ -152,7 +170,7 @@ const validatePan = (value: string): string | null =>
   value && !PAN_RE.test(value) ? 'Enter a valid PAN (e.g. ABCDE1234F)' : null;
 
 const validateGstin = (value: string, pan: string): string | null => {
-  if (!value) return null;
+  if (!value) return 'GSTIN is required';
   if (!GSTIN_RE.test(value)) return 'Enter a valid 15-character GSTIN (e.g. 22ABCDE1234F1Z5)';
   if (!STATE_CODES[value.slice(0, 2)]) return 'GSTIN has an invalid state code';
   if (pan && value.slice(2, 12) !== pan) return 'GSTIN does not match the PAN provided';
@@ -162,12 +180,16 @@ const validateGstin = (value: string, pan: string): string | null => {
 const validatePin = (value: string): string | null =>
   required(value, 'PIN code') ?? (PIN_RE.test(value) ? null : 'PIN code must be 6 digits and cannot start with 0');
 
-const validateFile = (file: File | null, label: string, isRequired: boolean): string | null => {
-  if (!file) return isRequired ? `${label} is required` : null;
+/** Checked before a file is uploaded (mirrors the backend's 1 MB / PDF, PNG, JPEG rule). */
+export const validateUploadFile = (file: File, label: string): string | null => {
   if (file.size > MAX_FILE_SIZE) return `${label} must be smaller than 1 MB`;
   if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) return `${label} must be a PDF, JPG or PNG file`;
   return null;
 };
+
+// A certificate counts as provided only once it has been uploaded and we hold its URL.
+const validateDocument = (doc: UploadedDocument | null, label: string, isRequired: boolean): string | null =>
+  !doc && isRequired ? `${label} is required` : null;
 
 const validateAddress = (prefix: string, a: AddressFields, errors: FormErrors) => {
   const checks: [string, string | null][] = [
@@ -219,6 +241,7 @@ export const validateStep = (step: number, form: OnboardingFormState): FormError
     validateAddress('organization', o, errors);
     set('organization.pan', validatePan(o.pan));
     set('organization.gstin', validateGstin(o.gstin, PAN_RE.test(o.pan) ? o.pan : ''));
+    set('organization.gstinCertificate', validateDocument(o.gstinCertificate, 'Organization GSTIN certificate', true));
   }
 
   if (step === 3) {
@@ -253,12 +276,11 @@ export const validateStep = (step: number, form: OnboardingFormState): FormError
             ? 'The registration certificate has expired'
             : null
     );
-    set('compliance.establishmentCertificate', validateFile(c.establishmentCertificate, 'Registration certificate', true));
+    set('compliance.establishmentCertificate', validateDocument(c.establishmentCertificate, 'Registration certificate', true));
 
     if (!c.panSameAsOrganization) set('compliance.pan', validatePan(c.pan));
     if (!c.gstinSameAsOrganization) set('compliance.gstin', validateGstin(c.gstin, PAN_RE.test(pan) ? pan : ''));
-    // Spec lists the GSTIN certificate as mandatory even though GSTIN is optional.
-    set('compliance.gstinCertificate', validateFile(c.gstinCertificate, 'GSTIN certificate', true));
+    set('compliance.gstinCertificate', validateDocument(c.gstinCertificate, 'Laboratory GSTIN certificate', true));
 
     set('compliance.biomedicalWasteGenerated', c.biomedicalWasteGenerated ? null : 'Select Yes or No');
     if (c.biomedicalWasteGenerated === 'YES') {
@@ -268,12 +290,12 @@ export const validateStep = (step: number, form: OnboardingFormState): FormError
       );
       set(
         'compliance.biomedicalWasteCertificate',
-        validateFile(c.biomedicalWasteCertificate, 'Authorization certificate', true)
+        validateDocument(c.biomedicalWasteCertificate, 'Authorization certificate', true)
       );
     }
 
     set('compliance.nablAccreditationNumber', text(c.nablAccreditationNumber, 'NABL accreditation number', 25));
-    set('compliance.nablCertificate', validateFile(c.nablCertificate, 'NABL certificate', true));
+    set('compliance.nablCertificate', validateDocument(c.nablCertificate, 'NABL certificate', true));
   }
 
   if (step === REVIEW_STEP) {
@@ -281,7 +303,7 @@ export const validateStep = (step: number, form: OnboardingFormState): FormError
       errors['consent.authorizedToRegister'] = 'You must confirm you are authorized to register';
     }
     if (!form.consent.termsAccepted) {
-      errors['consent.termsAccepted'] = 'You must read and accept the Terms & Conditions';
+      errors['consent.termsAccepted'] = 'You must agree to the Terms & Conditions';
     }
   }
 
@@ -294,20 +316,25 @@ export const validateStep = (step: number, form: OnboardingFormState): FormError
 
 const optional = (value: string): string | undefined => (value.trim() ? value.trim() : undefined);
 
-export const buildPayload = (
-  form: OnboardingFormState
-): { data: OnboardingRequestDTO; files: OnboardingFiles } => {
+export const buildPayload = (form: OnboardingFormState): OnboardingRequestDTO => {
   const { superAdmin: s, organization: o, laboratory: l, compliance: c, consent } = form;
   const labAddress = effectiveLabAddress(form);
 
-  const data: OnboardingRequestDTO = {
+  return {
     token: form.token,
     email: s.email,
     username: s.username,
     password: s.password,
     firstName: s.firstName.trim(),
     lastName: s.lastName.trim(),
+    confirmPassword: s.confirmPassword,
     phone: s.phone,
+    // The form has no personal address; the backend requires one, so use the organization's.
+    address: [o.addressLine1, o.addressLine2].map((v) => v.trim()).filter(Boolean).join(', '),
+    city: o.city.trim(),
+    state: o.state,
+    zip: o.pinCode,
+    country: o.country,
     organization: {
       name: o.name.trim(),
       type: o.type,
@@ -322,52 +349,56 @@ export const buildPayload = (
       pinCode: o.pinCode,
       pan: optional(o.pan),
       gstin: optional(o.gstin),
+      gstinCertificate: o.gstinCertificate?.url,
     },
     lab: {
       name: l.name.trim(),
       labType: l.type,
-      services: l.services,
-      addressLine1: labAddress.addressLine1.trim(),
-      addressLine2: optional(labAddress.addressLine2),
-      country: labAddress.country,
-      state: labAddress.state,
-      district: labAddress.district.trim(),
+      // Required by the backend; the form has no description field. The column is varchar(255),
+      // so a long service list (e.g. "All") is summarised and the result is capped.
+      description: `${l.type} laboratory offering ${
+        l.services.includes(ALL_SERVICES) ? 'all services' : l.services.join(', ')
+      }`.slice(0, 255),
+      address: labAddress.addressLine1.trim(),
       city: labAddress.city.trim(),
-      pinCode: labAddress.pinCode,
+      state: labAddress.state,
+      labZip: labAddress.pinCode,
+      labCountry: labAddress.country,
       labPhone: l.phone,
       labEmail: l.email,
       directorName: `${s.firstName} ${s.lastName}`.trim(),
       directorEmail: s.email,
       directorPhone: s.phone,
-      labAccreditation: c.nablAccreditationNumber,
-    },
-    compliance: {
+      dataPrivacyAgreement: consent.termsAccepted,
+
+      labServices: l.services,
+      sameAsOrganizationAddress: l.sameAsOrganizationAddress,
+      labAddressLine2: optional(labAddress.addressLine2),
+      labDistrict: optional(labAddress.district),
+
+      licenseNumber: c.establishmentRegistrationNumber.trim(),
       establishmentRegistrationNumber: c.establishmentRegistrationNumber.trim(),
       issuingAuthority: c.issuingAuthority.trim(),
       issuingDate: c.issuingDate,
       expiryDate: c.expiryDate,
-      pan: optional(effectivePan(form)),
-      gstin: optional(effectiveGstin(form)),
+      establishmentRegistrationCertificate: c.establishmentCertificate?.url,
+
+      labPan: optional(effectivePan(form)),
+      labPanSameAsOrganization: c.panSameAsOrganization,
+      labGstin: optional(effectiveGstin(form)),
+      labGstinSameAsOrganization: c.gstinSameAsOrganization,
+      gstinCertificate: c.gstinCertificate?.url,
+
       biomedicalWasteGenerated: c.biomedicalWasteGenerated === 'YES',
       biomedicalWasteAuthorizationNumber:
         c.biomedicalWasteGenerated === 'YES' ? optional(c.biomedicalWasteAuthorizationNumber) : undefined,
-      nablAccreditationNumber: c.nablAccreditationNumber.trim(),
+      biomedicalWasteAuthorizationCertificate:
+        c.biomedicalWasteGenerated === 'YES' ? c.biomedicalWasteCertificate?.url : undefined,
+      labAccreditation: c.nablAccreditationNumber.trim(),
+      nablAccreditationCertificate: c.nablCertificate?.url,
     },
-    consent: {
-      authorizedToRegister: consent.authorizedToRegister,
-      termsAccepted: consent.termsAccepted,
-      termsVersion: TERMS_VERSION,
-      termsAcceptedAt: new Date().toISOString(),
-    },
+    registrationAuthorizationAccepted: consent.authorizedToRegister,
+    termsAccepted: consent.termsAccepted,
+    termsVersion: TERMS_VERSION,
   };
-
-  const files: OnboardingFiles = {
-    establishmentCertificate: c.establishmentCertificate as File,
-    gstinCertificate: c.gstinCertificate as File,
-    nablCertificate: c.nablCertificate ?? undefined,
-    biomedicalWasteCertificate:
-      c.biomedicalWasteGenerated === 'YES' ? (c.biomedicalWasteCertificate ?? undefined) : undefined,
-  };
-
-  return { data, files };
 };

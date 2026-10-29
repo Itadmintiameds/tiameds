@@ -46,6 +46,20 @@ export interface SuperAdminForm {
   confirmPassword: string;
 }
 
+/** A document already uploaded to /public/onboarding/documents; only its URL is sent on submit. */
+export interface UploadedDocument {
+  name: string;
+  url: string;
+}
+
+/** Multipart part names accepted by /public/onboarding/documents. */
+export type OnboardingDocumentType =
+  | 'organizationGstinCertificate'
+  | 'gstinCertificate'
+  | 'establishmentRegistrationCertificate'
+  | 'biomedicalWasteAuthorizationCertificate'
+  | 'nablAccreditationCertificate';
+
 export interface OrganizationForm extends AddressFields {
   name: string;
   type: string;
@@ -53,6 +67,7 @@ export interface OrganizationForm extends AddressFields {
   phone: string;
   pan: string;
   gstin: string;
+  gstinCertificate: UploadedDocument | null;
 }
 
 export interface LaboratoryForm extends AddressFields {
@@ -69,17 +84,17 @@ export interface ComplianceForm {
   issuingAuthority: string;
   issuingDate: string;
   expiryDate: string;
-  establishmentCertificate: File | null;
+  establishmentCertificate: UploadedDocument | null;
   panSameAsOrganization: boolean;
   pan: string;
   gstinSameAsOrganization: boolean;
   gstin: string;
-  gstinCertificate: File | null;
+  gstinCertificate: UploadedDocument | null;
   biomedicalWasteGenerated: '' | 'YES' | 'NO';
   biomedicalWasteAuthorizationNumber: string;
-  biomedicalWasteCertificate: File | null;
+  biomedicalWasteCertificate: UploadedDocument | null;
   nablAccreditationNumber: string;
-  nablCertificate: File | null;
+  nablCertificate: UploadedDocument | null;
 }
 
 export interface ConsentForm {
@@ -101,17 +116,25 @@ export interface OnboardingFormState {
 // ---------------------------------------------------------------------------
 
 /**
- * JSON part of the registration request. Certificates are sent as separate
- * multipart file parts (see `OnboardingFiles`).
+ * JSON body for POST /public/onboarding/complete (mirrors the backend
+ * OnboardingRequestDTO). Certificates are uploaded beforehand; their URLs go in the *Certificate fields.
  */
 export interface OnboardingRequestDTO {
   token: string;
+
+  // Super admin (user account). The address is required by the backend.
   email: string;
   username: string;
   password: string;
+  confirmPassword: string;
   firstName: string;
   lastName: string;
   phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
 
   organization: {
     name: string;
@@ -127,64 +150,73 @@ export interface OnboardingRequestDTO {
     pinCode: string;
     pan?: string;
     gstin?: string;
+    gstinCertificate?: string;
   };
 
   lab: {
     name: string;
     labType: string;
-    services: string[];
-    addressLine1: string;
-    addressLine2?: string;
-    country: string;
-    state: string;
-    district: string;
+    description: string;
+    address: string;
     city: string;
-    pinCode: string;
+    state: string;
+    labZip: string;
+    labCountry: string;
     labPhone: string;
     labEmail: string;
-    // Legacy keys still populated from the super admin / compliance data
     directorName: string;
     directorEmail: string;
     directorPhone: string;
-    labAccreditation: string;
-  };
+    dataPrivacyAgreement: boolean;
 
-  compliance: {
+    labServices: string[];
+    sameAsOrganizationAddress: boolean;
+    labAddressLine2?: string;
+    labDistrict?: string;
+
+    licenseNumber: string;
     establishmentRegistrationNumber: string;
     issuingAuthority: string;
     issuingDate: string;
     expiryDate: string;
-    pan?: string;
-    gstin?: string;
+    establishmentRegistrationCertificate?: string;
+
+    labPan?: string;
+    labPanSameAsOrganization: boolean;
+    labGstin?: string;
+    labGstinSameAsOrganization: boolean;
+    gstinCertificate?: string;
+
     biomedicalWasteGenerated: boolean;
     biomedicalWasteAuthorizationNumber?: string;
-    nablAccreditationNumber: string;
+    biomedicalWasteAuthorizationCertificate?: string;
+    labAccreditation: string;
+    nablAccreditationCertificate?: string;
   };
 
-  consent: {
-    authorizedToRegister: boolean;
-    termsAccepted: boolean;
-    termsVersion: string;
-    termsAcceptedAt: string;
-  };
+  registrationAuthorizationAccepted: boolean;
+  termsAccepted: boolean;
+  termsVersion: string;
 }
 
-export interface OnboardingFiles {
-  establishmentCertificate: File;
-  gstinCertificate: File;
-  biomedicalWasteCertificate?: File;
-  nablCertificate?: File;
+/** Response of POST /public/onboarding/documents: uploaded part name -> file URL. */
+export interface DocumentUploadResponse {
+  status: string;
+  message: string;
+  data: Partial<Record<OnboardingDocumentType, string>> | null;
 }
 
 export interface OnboardingResponseDTO {
   status: string;
   message: string;
   data: {
+    message: string;
     userId: number;
     username: string;
     email: string;
     labId: number;
     labName: string;
     accountActive: boolean;
+    labApprovalStatus: string;
   };
 }

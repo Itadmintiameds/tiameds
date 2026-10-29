@@ -5,8 +5,9 @@ import {
   VerificationResponseDTO,
   VerificationErrorResponse,
   OnboardingRequestDTO,
-  OnboardingFiles,
   OnboardingResponseDTO,
+  OnboardingDocumentType,
+  DocumentUploadResponse,
 } from '@/types/onboarding/onboarding';
 
 // Request verification email
@@ -56,24 +57,37 @@ export const verifyEmailToken = async (
   }
 };
 
-// Complete onboarding.
-// Sent as multipart/form-data: the JSON payload goes in the `data` part and each
-// certificate is its own file part (the backend must accept this shape).
-export const completeOnboarding = async (
-  data: OnboardingRequestDTO,
-  files: OnboardingFiles
-): Promise<OnboardingResponseDTO> => {
+// Upload one certificate before onboarding is submitted. The lab does not exist yet, so the
+// backend stores the file and returns its URL, which is sent later in /complete.
+export const uploadOnboardingDocument = async (
+  type: OnboardingDocumentType,
+  file: File
+): Promise<string> => {
   try {
     const body = new FormData();
-    body.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }));
-    Object.entries(files).forEach(([key, file]) => {
-      if (file) body.append(key, file);
+    body.append(type, file);
+    const response = await api.post<DocumentUploadResponse>('/public/onboarding/documents', body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
+    const url = response.data.data?.[type];
+    if (!url) throw new Error('Upload did not return a file link. Please try again.');
+    return url;
+  } catch (error: any) {
+    if (error.response?.status === 429) {
+      throw new Error('Too many uploads. Please try again later.');
+    }
+    throw new Error(error.response?.data?.message || error.message || 'Failed to upload document.');
+  }
+};
 
+// Complete onboarding (JSON). Certificates are referenced by the URLs from uploadOnboardingDocument.
+export const completeOnboarding = async (
+  data: OnboardingRequestDTO
+): Promise<OnboardingResponseDTO> => {
+  try {
     const response = await api.post<OnboardingResponseDTO>(
       '/public/onboarding/complete',
-      body,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
+      data
     );
     return response.data;
   } catch (error: any) {

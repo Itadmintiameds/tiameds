@@ -155,7 +155,9 @@ const LoginPage: React.FC = () => {
           
           toast.error(message, { autoClose: 5000 });
         } else {
-          toast.error('Login failed. Please try again.', { autoClose: 2000 });
+          // authService.login rethrows the backend message (e.g. "Your application is under review...")
+          const isApprovalMessage = /application/i.test(message);
+          toast.error(message || 'Login failed. Please try again.', { autoClose: isApprovalMessage ? 6000 : 2000 });
         }
       } else {
         toast.error('Login failed. Please try again.', { autoClose: 2000 });

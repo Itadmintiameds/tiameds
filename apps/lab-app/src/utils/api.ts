@@ -129,8 +129,12 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const isAuthError = status === 401 || status === 403;
 
+    // A rejected login (wrong password, or 403 "application under review") is not an expired
+    // session: skip the refresh so the caller gets the backend's own message.
+    const isLoginRequest = originalRequest.url?.includes('/auth/login');
+
     // Only attempt refresh for 401/403 errors and if we haven't already retried
-    if (isAuthError && !originalRequest._retry) {
+    if (isAuthError && !isLoginRequest && !originalRequest._retry) {
       // If this is a refresh request that failed, we're truly logged out
       if (originalRequest.url?.includes('/auth/refresh')) {
         handleTokenExpiration();

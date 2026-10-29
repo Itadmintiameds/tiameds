@@ -4,11 +4,12 @@ import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-toastify';
-import { FaArrowLeft, FaArrowRight, FaCheckCircle, FaFlask, FaSpinner } from 'react-icons/fa';
+import { FaCheck, FaRegClock, FaSpinner } from 'react-icons/fa';
 import { completeOnboarding } from '@/../services/onboardingService';
 import { OnboardingFormState, OnboardingResponseDTO } from '@/types/onboarding/onboarding';
 import { FormErrors, REVIEW_STEP, STEP_COUNT, buildPayload, initialFormState, validateStep } from './_lib/form';
 import { ComplianceStep, LaboratoryStep, OrganizationStep, Section, SuperAdminStep } from './_components/Steps';
+import { PageBanner, SidePanel } from './_components/Layout';
 import { ReviewStep } from './_components/ReviewStep';
 import { Stepper, STEPS } from './_components/Stepper';
 import { TermsModal } from './_components/TermsModal';
@@ -25,7 +26,6 @@ const OnboardingContent = () => {
   const [completed, setCompleted] = useState<number[]>([]);
   // True while a single step is being edited from the review page: "Save" returns to review.
   const [editingFromReview, setEditingFromReview] = useState(false);
-  const [termsRead, setTermsRead] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [errorScrollTick, setErrorScrollTick] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,7 +108,7 @@ const OnboardingContent = () => {
   };
 
   const handleSubmit = async () => {
-    if (!termsRead || !form.consent.termsAccepted || !form.consent.authorizedToRegister) {
+    if (!form.consent.termsAccepted || !form.consent.authorizedToRegister) {
       showErrors(validateStep(REVIEW_STEP, form));
       return;
     }
@@ -127,8 +127,7 @@ const OnboardingContent = () => {
 
     setIsSubmitting(true);
     try {
-      const { data, files } = buildPayload(form);
-      const response = await completeOnboarding(data, files);
+      const response = await completeOnboarding(buildPayload(form));
       if (response.status === 'success') {
         setSubmitted(response.data);
         topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -142,63 +141,118 @@ const OnboardingContent = () => {
   };
 
   const stepProps = { form, errors, update };
-  const canSubmit = form.consent.authorizedToRegister && form.consent.termsAccepted && termsRead;
+  const canSubmit = form.consent.authorizedToRegister && form.consent.termsAccepted;
 
   if (submitted) {
+    const allSteps = STEPS.map((s) => s.number);
+    const next = [
+      { title: 'Registration submitted', text: 'Your details have reached TiaMeds.', state: 'done' },
+      { title: 'TiaMeds Admin review', text: 'Your registration is verified. Additional information may be requested.', state: 'active' },
+      { title: 'Approval and access', text: 'Laboratory operational access is provided only after approval.', state: 'pending' },
+    ] as const;
+
     return (
-      <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-white to-primary-100/60 px-4 py-12">
-        <div className="w-full max-w-lg rounded-2xl bg-white p-8 text-center shadow-xl">
-          <span className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-success-50 text-4xl text-success-700">
-            <FaCheckCircle />
-          </span>
-          <h1 className="mb-2 text-2xl font-bold text-primary-900">Registration Submitted</h1>
-          <p className="mb-1 text-gray-600">
-            <strong>{submitted.labName}</strong> has been registered for verification.
+      <div className="min-h-screen bg-secondary-50 px-4 py-8">
+        <div className="mx-auto max-w-5xl space-y-4">
+          <PageBanner
+            icon={<FaCheck />}
+            title="You're all set"
+            description="Your registration is now with TiaMeds Admin for verification."
+            pill={`${STEP_COUNT} of ${STEP_COUNT} complete`}
+          />
+          <Stepper current={0} furthest={STEP_COUNT} completed={allSteps} />
+
+          <div className="rounded-2xl bg-white px-4 py-10 text-center shadow-sm sm:px-8">
+            <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-secondary-50">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success-50 text-2xl text-success-700">
+                <FaCheck />
+              </span>
+            </span>
+            <h2 className="mt-5 font-heading text-xl font-semibold text-gray-900">Registration Submitted</h2>
+            <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-gray-500">
+              Your organization and first laboratory registration has been submitted. All new registrations are subject
+              to verification and approval by TiaMeds Admin.
+            </p>
+            <span className="mt-4 inline-block rounded-full border border-danger-500 bg-danger-50 px-4 py-1 text-xs font-medium text-danger-700">
+              Pending Approval
+            </span>
+
+            <div className="mt-8 rounded-xl bg-secondary-50 px-4 py-6">
+              <h3 className="mb-5 font-heading text-sm font-semibold text-gray-900">What happens next</h3>
+              <ol className="grid grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-0">
+                {next.map((item, index) => (
+                  <li key={item.title} className="flex flex-col items-center">
+                    <span className="flex w-full items-center">
+                      {index > 0 ? (
+                        <span className={`h-0.5 flex-1 ${item.state === 'pending' ? 'bg-gray-200' : 'bg-success-700'}`} />
+                      ) : (
+                        <span className="flex-1" />
+                      )}
+                      <span
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold ${
+                          item.state === 'done'
+                            ? 'border-success-700 bg-success-50 text-success-800'
+                            : item.state === 'active'
+                              ? 'border-secondary-700 bg-secondary-700 text-white'
+                              : 'border-gray-300 bg-white text-gray-500'
+                        }`}
+                      >
+                        {item.state === 'done' ? <FaCheck className="text-[10px]" /> : item.state === 'active' ? <FaRegClock className="text-[10px]" /> : index + 1}
+                      </span>
+                      {index < next.length - 1 ? (
+                        <span className={`h-0.5 flex-1 ${item.state === 'done' ? 'bg-success-700' : 'bg-gray-200'}`} />
+                      ) : (
+                        <span className="flex-1" />
+                      )}
+                    </span>
+                    <p
+                      className={`mt-2 font-heading text-xs font-semibold ${item.state === 'pending' ? 'text-gray-500' : 'text-gray-900'}`}
+                    >
+                      {item.title}
+                    </p>
+                    <p className="mt-1 max-w-56 px-2 text-[11px] leading-snug text-gray-500">{item.text}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+
+          <p className="text-center text-xs text-gray-600">
+            <Link href="/user-login" className="font-medium text-secondary-700 hover:underline">
+              Go to Login
+            </Link>
           </p>
-          <p className="mb-6 text-sm text-gray-500">
-            TiaMeds Admin will review your details and documents. Laboratory access is enabled only after approval, and
-            we may contact you for additional information.
-          </p>
-          <Link
-            href="/user-login"
-            className="inline-flex items-center justify-center rounded-lg bg-primary-700 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-800"
-          >
-            Go to Login
-          </Link>
         </div>
       </div>
     );
   }
 
   const isLast = step === REVIEW_STEP;
-  const nextLabel = editingFromReview ? 'Save & Return to Review' : step === REVIEW_STEP - 1 ? 'Review' : 'Next';
+  const meta = STEPS[step - 1];
+  const BannerIcon = meta.icon;
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-white via-primary-100/30 to-secondary-50 px-4 py-8 sm:py-12">
-      <div className="mx-auto max-w-4xl">
-        <div ref={topRef} className="mb-6 flex items-center gap-4 scroll-mt-6">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-700 text-xl text-white shadow-md">
-            <FaFlask />
-          </span>
-          <div>
-            <h1 className="text-2xl font-bold text-primary-900 sm:text-3xl">Register your Laboratory</h1>
-            <p className="text-sm text-gray-600">
-              Step {step} of {STEP_COUNT} · {STEPS[step - 1].title}
-            </p>
-          </div>
+    <div className="min-h-screen bg-secondary-50 px-4 py-4 sm:py-6">
+      <div className="mx-auto max-w-5xl space-y-4">
+        <div ref={topRef} className="scroll-mt-4 space-y-4">
+          <PageBanner
+            icon={<BannerIcon />}
+            title={meta.bannerTitle}
+            description={meta.bannerText}
+            pill={`Step ${step} of ${STEP_COUNT}`}
+          />
+          <Stepper current={step} furthest={furthest} completed={completed} onNavigate={handleEdit} />
         </div>
 
-        <div className="overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-primary-200/60">
-          <div className="border-b border-gray-100 bg-gray-50/60 px-4 py-5 sm:px-8">
-            <Stepper current={step} furthest={furthest} completed={completed} onNavigate={handleEdit} />
+        {editingFromReview && (
+          <div className="rounded-md bg-secondary-100 px-4 py-2.5 text-xs text-secondary-900">
+            Editing <strong>{meta.title}</strong> — continue to go back to the review page.
           </div>
+        )}
 
-          {editingFromReview && (
-            <div className="border-b border-primary-200 bg-primary-100/60 px-4 py-2.5 text-sm text-primary-900 sm:px-8">
-              Editing <strong>{STEPS[step - 1].title}</strong> — save to go back to the review page.
-            </div>
-          )}
+        <h2 className="pt-2 font-heading text-sm font-semibold text-gray-900">{meta.title}</h2>
 
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_14.5rem]">
           <form
             noValidate
             onSubmit={(e) => {
@@ -206,76 +260,60 @@ const OnboardingContent = () => {
               if (isLast) handleSubmit();
               else handleNext();
             }}
-            className="px-4 py-6 sm:px-8 sm:py-8"
+            className="space-y-4"
           >
             {step === 1 && <SuperAdminStep {...stepProps} />}
             {step === 2 && <OrganizationStep {...stepProps} />}
             {step === 3 && <LaboratoryStep {...stepProps} />}
             {step === 4 && <ComplianceStep {...stepProps} />}
-            {step === 5 && (
-              <ReviewStep {...stepProps} termsRead={termsRead} onEdit={handleEdit} onOpenTerms={() => setShowTerms(true)} />
-            )}
+            {step === 5 && <ReviewStep {...stepProps} onEdit={handleEdit} onOpenTerms={() => setShowTerms(true)} />}
 
-            <div className="mt-8 flex items-center justify-between gap-3 border-t border-gray-100 pt-6">
-              {!editingFromReview && step > 1 ? (
+            <div className="flex items-center justify-between gap-3 pb-6 pt-2">
+              {isLast ? (
+                <button
+                  type="button"
+                  onClick={() => handleEdit(1)}
+                  className="rounded-md border border-secondary-700 bg-white px-5 py-2 text-xs font-semibold text-secondary-700 transition-colors hover:bg-secondary-50"
+                >
+                  Edit Information
+                </button>
+              ) : !editingFromReview && step > 1 ? (
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  className="rounded-md border border-secondary-700 bg-white px-6 py-2 text-xs font-semibold text-secondary-700 transition-colors hover:bg-secondary-50"
                 >
-                  <FaArrowLeft /> Previous
+                  Back
                 </button>
               ) : (
                 <span />
               )}
 
-              {isLast ? (
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !canSubmit}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary-700 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-800 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:shadow-none"
-                >
-                  {isSubmitting ? (
+              <button
+                type="submit"
+                disabled={isLast && (isSubmitting || !canSubmit)}
+                className="inline-flex items-center gap-2 rounded-md bg-primary-800 px-6 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-900 disabled:cursor-not-allowed disabled:bg-gray-300"
+              >
+                {isLast ? (
+                  isSubmitting ? (
                     <>
                       <FaSpinner className="animate-spin" /> Submitting...
                     </>
                   ) : (
-                    <>
-                      Submit Registration <FaCheckCircle />
-                    </>
-                  )}
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary-700 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-800"
-                >
-                  {nextLabel} <FaArrowRight />
-                </button>
-              )}
+                    'Submit Registration'
+                  )
+                ) : (
+                  'Continue'
+                )}
+              </button>
             </div>
           </form>
-        </div>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
-          Already have an account?{' '}
-          <Link href="/user-login" className="font-medium text-primary-700 hover:text-primary-900">
-            Sign in
-          </Link>
-        </p>
+          <SidePanel tip={meta.tip} listTitle={meta.listTitle} items={meta.list} />
+        </div>
       </div>
 
-      {showTerms && (
-        <TermsModal
-          alreadyRead={termsRead}
-          onClose={() => setShowTerms(false)}
-          onAccept={() => {
-            setTermsRead(true);
-            update('consent', { termsAccepted: true });
-            setShowTerms(false);
-          }}
-        />
-      )}
+      {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
     </div>
   );
 };
@@ -283,8 +321,8 @@ const OnboardingContent = () => {
 const OnboardingPage = () => (
   <Suspense
     fallback={
-      <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-white to-primary-100/60">
-        <FaSpinner className="animate-spin text-5xl text-primary-700" />
+      <div className="flex min-h-screen items-center justify-center bg-secondary-50">
+        <FaSpinner className="animate-spin text-5xl text-secondary-700" />
       </div>
     }
   >
