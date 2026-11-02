@@ -4,7 +4,7 @@ import { CogIcon,
    HomeIcon,
     // ShoppingCartIcon,
     UserGroupIcon, UsersIcon } from "@heroicons/react/24/outline";
-import { ClipboardListIcon, FlaskConical } from "lucide-react";
+import { ClipboardListIcon, FlaskConical, UserIcon } from "lucide-react";
 import { FaPeriscope } from "react-icons/fa";
 import { FaUserDoctor } from "react-icons/fa6";
 import { PiPackageFill } from "react-icons/pi";
@@ -106,9 +106,9 @@ const baseNavigation: BaseNavigationItem[] = [
     icon: CogIcon,
     allowedRoles: ["SUPERADMIN", "ADMIN"],
     children: [
-      // { name: "Profile", href: "/dashboard/profile", icon: UserIcon },
+      { name: "Profile", href: "/dashboard/profile", icon: UserIcon, allowedRoles: ["SUPERADMIN"] },
       // { name: "Preferences", href: "#", icon: ClipboardListIcon },
-      { name: "Lab", href: "/dashboard/lab", icon: FlaskConical },
+      { name: "Lab", href: "/dashboard/lab", icon: FlaskConical, allowedRoles: ["SUPERADMIN"] },
       // { name:"Report Settings", href: "/dashboard/reportsettings", icon: DocumentTextIcon},
     ],
   },

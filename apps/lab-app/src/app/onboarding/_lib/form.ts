@@ -113,13 +113,13 @@ const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 const PIN_RE = /^[1-9][0-9]{5}$/;
 const NAME_RE = /^[a-zA-Z\s'.-]+$/;
 
-const required = (value: string, label: string): string | null =>
+export const required = (value: string, label: string): string | null =>
   value.trim() ? null : `${label} is required`;
 
-const maxLen = (value: string, label: string, max: number): string | null =>
+export const maxLen = (value: string, label: string, max: number): string | null =>
   value.length > max ? `${label} must not exceed ${max} characters` : null;
 
-const text = (value: string, label: string, max: number): string | null =>
+export const text = (value: string, label: string, max: number): string | null =>
   required(value, label) ?? maxLen(value, label, max);
 
 const validatePersonName = (value: string, label: string): string | null =>
@@ -139,7 +139,7 @@ export const validateIndianMobile = (input: string): { valid: boolean; e164?: st
   return { valid: true, e164: phone.number };
 };
 
-const validatePhone = (value: string, label: string): string | null =>
+export const validatePhone = (value: string, label: string): string | null =>
   required(value, label) ??
   (/^\d{10}$/.test(value)
     ? validateIndianMobile(value).valid
@@ -147,7 +147,7 @@ const validatePhone = (value: string, label: string): string | null =>
       : `Enter a valid ${label.toLowerCase()}`
     : `${label} must be exactly 10 digits`);
 
-const validateEmail = (value: string, label: string): string | null =>
+export const validateEmail = (value: string, label: string): string | null =>
   required(value, label) ?? (EMAIL_RE.test(value) ? null : 'Please enter a valid email address');
 
 const validatePassword = (value: string): string | null => {
@@ -166,10 +166,10 @@ const validateUsername = (value: string): string | null =>
   maxLen(value, 'Username', 30) ??
   (/^[a-zA-Z0-9]+$/.test(value) ? null : 'Username can only contain letters and numbers');
 
-const validatePan = (value: string): string | null =>
+export const validatePan = (value: string): string | null =>
   value && !PAN_RE.test(value) ? 'Enter a valid PAN (e.g. ABCDE1234F)' : null;
 
-const validateGstin = (value: string, pan: string): string | null => {
+export const validateGstin = (value: string, pan: string): string | null => {
   if (!value) return 'GSTIN is required';
   if (!GSTIN_RE.test(value)) return 'Enter a valid 15-character GSTIN (e.g. 22ABCDE1234F1Z5)';
   if (!STATE_CODES[value.slice(0, 2)]) return 'GSTIN has an invalid state code';
@@ -177,7 +177,7 @@ const validateGstin = (value: string, pan: string): string | null => {
   return null;
 };
 
-const validatePin = (value: string): string | null =>
+export const validatePin = (value: string): string | null =>
   required(value, 'PIN code') ?? (PIN_RE.test(value) ? null : 'PIN code must be 6 digits and cannot start with 0');
 
 /** Checked before a file is uploaded (mirrors the backend's 1 MB / PDF, PNG, JPEG rule). */

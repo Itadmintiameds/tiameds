@@ -386,7 +386,7 @@ export const LaboratoryStep = ({ form, errors, update }: StepProps) => {
 
   return (
     <>
-      <Card icon={<FaFlask />} title="Laboratory Details" description="Basic details about your first laboratory.">
+      <Card icon={<FaFlask />} title="Laboratory Details" description="Basic details about your laboratory.">
         <Grid>
           <TextField
             label="Laboratory Name"
