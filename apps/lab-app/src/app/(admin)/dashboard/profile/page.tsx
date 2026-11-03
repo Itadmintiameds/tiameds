@@ -373,7 +373,7 @@ const ProfilePage = () => {
 
     return (
         <div className="w-full p-4 bg-secondary-50 min-h-screen">
-            <div className="w-full max-w-7xl mx-auto flex flex-col gap-4">
+            <div className="w-full  mx-auto flex flex-col gap-4">
                 {/* Header */}
                 <section className="bg-base-white rounded-lg p-6 shadow-xsm flex flex-col sm:flex-row sm:items-center gap-5">
                     <div className="w-20 h-20 shrink-0 rounded-full bg-secondary-600 text-pneutral-50 font-heading text-h4 flex items-center justify-center">

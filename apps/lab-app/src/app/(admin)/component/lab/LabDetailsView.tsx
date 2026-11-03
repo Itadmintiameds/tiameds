@@ -14,7 +14,7 @@ import {
     maxLen,
     text,
     validateEmail,
-    validateGstin,
+    // validateGstin,
     validatePan,
     validatePhone,
     validatePin,
@@ -29,11 +29,36 @@ const CERTIFICATES: { type: string; label: string }[] = [
 ];
 const ESTABLISHMENT = 'establishmentRegistrationCertificate';
 const WASTE_CERT = 'biomedicalWasteAuthorizationCertificate';
+const GSTIN_CERT = 'gstinCertificate';
+const NABL_CERT = 'nablAccreditationCertificate';
+
+const ADDRESS_KEYS = ['address', 'labAddressLine2', 'labCountry', 'state', 'labDistrict', 'city', 'labZip'];
+
+// Changing one of these values makes the matching certificate mandatory (it goes to the admin for approval).
+const CERT_TRIGGERS: Record<string, string> = {
+    ...Object.fromEntries(ADDRESS_KEYS.map(k => [k, GSTIN_CERT])),
+    establishmentRegistrationNumber: ESTABLISHMENT,
+    issuingAuthority: ESTABLISHMENT,
+    issuingDate: ESTABLISHMENT,
+    expiryDate: ESTABLISHMENT,
+    labAccreditation: NABL_CERT,
+    biomedicalWasteAuthorizationNumber: WASTE_CERT,
+};
+
+const CERT_REASONS: Record<string, string> = {
+    [GSTIN_CERT]: 'You changed the address, so the GSTIN certificate must be uploaded.',
+    [ESTABLISHMENT]: 'You changed the establishment registration details, so the certificate must be uploaded.',
+    [NABL_CERT]: 'You changed the NABL accreditation number, so the certificate must be uploaded.',
+    [WASTE_CERT]: 'You changed the biomedical waste authorization number, so the certificate must be uploaded.',
+};
+
+const toDateInput = (value?: string | null) => (value ? value.slice(0, 10) : '');
 
 interface FieldDef {
     key: string;
     label: string;
     required?: boolean;
+    locked?: boolean; // shown but cannot be changed
     options?: string[];
     maxLength?: number;
     digits?: number; // digits only, up to this length
@@ -45,8 +70,8 @@ const digitsOnly = (v: string, max: number) => v.replace(/\D/g, '').slice(0, max
 
 // Same fields, mandatory/optional split and validation as the laboratory steps of the onboarding.
 const LAB_FIELDS: FieldDef[] = [
-    { key: 'name', label: 'Laboratory Name', required: true, maxLength: 100, check: v => text(v, 'Laboratory name', 100) },
-    { key: 'labType', label: 'Laboratory Type', required: true, options: LAB_TYPES },
+    { key: 'name', label: 'Laboratory Name', required: true, locked: true, maxLength: 100 },
+    { key: 'labType', label: 'Laboratory Type', required: true, locked: true, options: LAB_TYPES },
     { key: 'labPhone', label: 'Laboratory Contact Number', required: true, digits: 10, check: v => validatePhone(v, 'Laboratory contact number') },
     { key: 'labEmail', label: 'Laboratory Email', required: true, maxLength: 100, check: v => validateEmail(v, 'Laboratory email') },
     { key: 'address', label: 'Address Line 1', required: true, maxLength: 100, check: v => text(v, 'Address line 1', 100) },
@@ -59,10 +84,10 @@ const LAB_FIELDS: FieldDef[] = [
 ];
 
 const COMPLIANCE_FIELDS: FieldDef[] = [
-    { key: 'establishmentRegistrationNumber', label: 'Establishment Registration Number', required: true, maxLength: 50, check: v => text(v, 'Registration number', 50) },
-    { key: 'issuingAuthority', label: 'Issuing Authority', required: true, maxLength: 25, check: v => text(v, 'Issuing authority', 25) },
+    { key: 'establishmentRegistrationNumber', label: 'Establishment Registration No.', required: true, maxLength: 50, check: v => text(v, 'Registration number', 50) },
+    { key: 'issuingAuthority', label: 'Issuing Authority (Establishment Registration No.)', required: true, maxLength: 25, check: v => text(v, 'Issuing authority', 25) },
     { key: 'labPan', label: 'PAN', maxLength: 10, check: v => validatePan(v) },
-    { key: 'labGstin', label: 'GSTIN', required: true, maxLength: 15, check: (v, all) => validateGstin(v, /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(all.labPan ?? '') ? all.labPan : '') },
+    { key: 'labGstin', label: 'GSTIN', required: true, locked: true, maxLength: 15 },
     { key: 'labAccreditation', label: 'NABL Accreditation Number', required: true, maxLength: 25, check: v => text(v, 'NABL accreditation number', 25) },
 ];
 
@@ -218,6 +243,7 @@ const LabDetailsView = ({ labId, onChanged }: Props) => {
     const [certFiles, setCertFiles] = useState<Record<string, File | null>>({});
     const [issuingDate, setIssuingDate] = useState('');
     const [expiryDate, setExpiryDate] = useState('');
+    const today = new Date().toISOString().slice(0, 10);
 
     const load = useCallback(async () => {
         try {
@@ -259,6 +285,25 @@ const LabDetailsView = ({ labId, onChanged }: Props) => {
     // Onboarding asks Yes / No for biomedical waste; the authorization number only matters for Yes
     const wasteOn = wasteGenerated === true;
 
+    const currentValue = (key: string) =>
+        key === 'issuingDate' ? toDateInput(d?.issuingDate)
+        : key === 'expiryDate' ? toDateInput(d?.expiryDate)
+        : detail(key).trim();
+    const editedValue = (key: string) =>
+        key === 'issuingDate' ? issuingDate
+        : key === 'expiryDate' ? expiryDate
+        : (form[key] ?? '').trim();
+    const isChanged = (key: string) => isEditing && editedValue(key) !== currentValue(key);
+
+    // Certificates that must be uploaded because a value they prove was changed
+    const requiredCerts = new Set<string>();
+    for (const [key, cert] of Object.entries(CERT_TRIGGERS)) {
+        if (cert === WASTE_CERT && !wasteOn) continue;
+        if (isChanged(key)) requiredCerts.add(cert);
+    }
+    // A replacement waiting for approval locks the values it proves until the admin reviews it
+    const isLocked = (key: string) => !!CERT_TRIGGERS[key] && pendingTypes.has(CERT_TRIGGERS[key]);
+
     const toggleService = (service: string) => {
         if (service === ALL_SERVICES) {
             setServices(services.includes(ALL_SERVICES) ? [] : [ALL_SERVICES, ...LAB_SERVICES]);
@@ -279,8 +324,8 @@ const LabDetailsView = ({ labId, onChanged }: Props) => {
         setServices(d?.labServices ?? []);
         setWasteGenerated(d?.biomedicalWasteGenerated ?? null);
         setCertFiles({});
-        setIssuingDate('');
-        setExpiryDate('');
+        setIssuingDate(toDateInput(d?.issuingDate));
+        setExpiryDate(toDateInput(d?.expiryDate));
         setErrors({});
         setIsEditing(true);
     };
@@ -302,6 +347,7 @@ const LabDetailsView = ({ labId, onChanged }: Props) => {
         const payload: Record<string, unknown> = {};
 
         for (const f of ALL_FIELDS) {
+            if (f.locked || isLocked(f.key)) continue;
             const next = (form[f.key] ?? '').trim();
             const current = detail(f.key).trim();
             if (f.required && !next && current) {
@@ -321,7 +367,8 @@ const LabDetailsView = ({ labId, onChanged }: Props) => {
             payload.labServices = services;
         }
 
-        if (wasteGenerated !== null && wasteGenerated !== !!d?.biomedicalWasteGenerated) payload.biomedicalWasteGenerated = wasteGenerated;
+        if (wasteGenerated === null) nextErrors.biomedicalWasteGenerated = 'Select Yes or No';
+        else if (wasteGenerated !== !!d?.biomedicalWasteGenerated) payload.biomedicalWasteGenerated = wasteGenerated;
         const wasteNumber = (form.biomedicalWasteAuthorizationNumber ?? '').trim();
         if (wasteOn) {
             const err = text(wasteNumber, 'Authorization number', 25);
@@ -332,8 +379,21 @@ const LabDetailsView = ({ labId, onChanged }: Props) => {
         }
 
         const certs = Object.entries(certFiles).filter(([, f]) => f) as [string, File][];
-        if (certFiles[ESTABLISHMENT] && issuingDate && expiryDate && expiryDate <= issuingDate) {
-            nextErrors.expiryDate = 'Expiry date must be after the issuing date';
+
+        // Dates are the establishment certificate's validity, so they are saved together with it
+        if (!isLocked('issuingDate')) {
+            if (!issuingDate && currentValue('issuingDate')) nextErrors.issuingDate = 'Issuing date cannot be left empty';
+            else if (issuingDate > today) nextErrors.issuingDate = 'Issuing date cannot be in the future';
+            if (!expiryDate && currentValue('expiryDate')) nextErrors.expiryDate = 'Expiry date cannot be left empty';
+            else if (issuingDate && expiryDate && expiryDate <= issuingDate) nextErrors.expiryDate = 'Expiry date must be after the issuing date';
+            else if (expiryDate && expiryDate < today && isChanged('expiryDate')) nextErrors.expiryDate = 'Expiry date cannot be in the past';
+        }
+
+        for (const type of Array.from(requiredCerts)) {
+            if (!certFiles[type]) {
+                const label = CERTIFICATES.find(c => c.type === type)?.label ?? 'Certificate';
+                nextErrors[`cert.${type}`] = `Upload the ${label} to save these changes`;
+            }
         }
 
         setErrors(nextErrors);
@@ -358,8 +418,7 @@ const LabDetailsView = ({ labId, onChanged }: Props) => {
                     type,
                     file,
                     issuingDate: type === ESTABLISHMENT ? issuingDate || undefined : undefined,
-                    expiryDate: type === ESTABLISHMENT ? expiryDate || undefined : undefined,
-                });
+                    expiryDate: type === ESTABLISHMENT ? expiryDate || undefined : undefined,                });
             }
             toast.success(certs.length ? 'Saved. New certificates will take effect once the admin approves them.' : 'Lab updated successfully');
         } catch (err) {
@@ -441,7 +500,14 @@ const LabDetailsView = ({ labId, onChanged }: Props) => {
                         <SectionTitle>Laboratory Information</SectionTitle>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {LAB_FIELDS.map(f => (
-                                <Input key={f.key} def={f} value={form[f.key] ?? ''} error={errors[f.key]} onChange={v => setValue(f, v)} />
+                                <Input
+                                    key={f.key}
+                                    def={f}
+                                    value={form[f.key] ?? ''}
+                                    error={errors[f.key]}
+                                    disabled={f.locked || isLocked(f.key)}
+                                    onChange={v => setValue(f, v)}
+                                />
                             ))}
                             <div className="sm:col-span-2 lg:col-span-3">
                                 <MultiSelectField
@@ -461,7 +527,14 @@ const LabDetailsView = ({ labId, onChanged }: Props) => {
                             <SectionTitle>Compliance Details</SectionTitle>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {COMPLIANCE_FIELDS.map(f => (
-                                    <Input key={f.key} def={f} value={form[f.key] ?? ''} error={errors[f.key]} onChange={v => setValue(f, v)} />
+                                    <Input
+                                        key={f.key}
+                                        def={f}
+                                        value={form[f.key] ?? ''}
+                                        error={errors[f.key]}
+                                        disabled={f.locked || isLocked(f.key)}
+                                        onChange={v => setValue(f, v)}
+                                    />
                                 ))}
                                 <label className="flex flex-col gap-1">
                                     <span className="font-heading text-label-l2 text-pneutral-700">
@@ -469,28 +542,66 @@ const LabDetailsView = ({ labId, onChanged }: Props) => {
                                     </span>
                                     <select
                                         value={wasteGenerated === null ? '' : wasteGenerated ? 'YES' : 'NO'}
-                                        onChange={e => setWasteGenerated(e.target.value === '' ? null : e.target.value === 'YES')}
-                                        className={inputClass}
+                                        onChange={e => {
+                                            setWasteGenerated(e.target.value === '' ? null : e.target.value === 'YES');
+                                            setErrors(p => ({ ...p, biomedicalWasteGenerated: '' }));
+                                        }}
+                                        className={`${inputClass} ${errors.biomedicalWasteGenerated ? 'border-warning-500' : ''}`}
                                     >
                                         <option value="">Select</option>
                                         <option value="YES">Yes</option>
                                         <option value="NO">No</option>
                                     </select>
+                                    {errors.biomedicalWasteGenerated && (
+                                        <span data-field-error className="text-p2 font-medium text-warning-600">{errors.biomedicalWasteGenerated}</span>
+                                    )}
                                 </label>
                                 {wasteOn && (
                                     <Input
                                         def={{ key: 'biomedicalWasteAuthorizationNumber', label: 'Biomedical Waste Authorization Number', required: true, maxLength: 25 }}
                                         value={form.biomedicalWasteAuthorizationNumber ?? ''}
                                         error={errors.biomedicalWasteAuthorizationNumber}
+                                        disabled={isLocked('biomedicalWasteAuthorizationNumber')}
                                         onChange={v => {
                                             setForm(p => ({ ...p, biomedicalWasteAuthorizationNumber: v }));
                                             setErrors(p => ({ ...p, biomedicalWasteAuthorizationNumber: '' }));
                                         }}
                                     />
                                 )}
-                                {/* Dates belong to the establishment certificate and only change with an approved replacement */}
-                                <Input def={{ key: 'issuingDate', label: 'Issuing Date', required: true }} value={formatDate(d?.issuingDate)} disabled onChange={() => undefined} />
-                                <Input def={{ key: 'expiryDate', label: 'Expiry Date', required: true }} value={formatDate(d?.expiryDate)} disabled onChange={() => undefined} />
+                                <label className="flex flex-col gap-1">
+                                    <span className="font-heading text-label-l2 text-pneutral-700">
+                                        Issuing Date (Establishment Registration No.) <span className="text-warning-500">*</span>
+                                    </span>
+                                    <input
+                                        type="date"
+                                        max={today}
+                                        value={issuingDate}
+                                        disabled={isLocked('issuingDate')}
+                                        onChange={e => {
+                                            setIssuingDate(e.target.value);
+                                            setErrors(p => ({ ...p, issuingDate: '' }));
+                                        }}
+                                        className={`${inputClass} ${isLocked('issuingDate') ? disabledClass : ''} ${errors.issuingDate ? 'border-warning-500' : ''}`}
+                                    />
+                                    {errors.issuingDate && <span data-field-error className="text-p2 font-medium text-warning-600">{errors.issuingDate}</span>}
+                                </label>
+                                <label className="flex flex-col gap-1">
+                                    <span className="font-heading text-label-l2 text-pneutral-700">
+                                        Expiry Date (Establishment Registration No.) <span className="text-warning-500">*</span>
+                                    </span>
+                                    <input
+                                        type="date"
+                                        min={issuingDate || undefined}
+                                        value={expiryDate}
+                                        disabled={isLocked('expiryDate')}
+                                        onChange={e => {
+                                            setExpiryDate(e.target.value);
+                                            setErrors(p => ({ ...p, expiryDate: '' }));
+                                        }}
+                                        className={`${inputClass} ${isLocked('expiryDate') ? disabledClass : ''} ${errors.expiryDate ? 'border-warning-500' : ''}`}
+                                    />
+                                    {errors.expiryDate && <span data-field-error className="text-p2 font-medium text-warning-600">{errors.expiryDate}</span>}
+                                </label>
                             </div>
                         </div>
 
@@ -510,31 +621,18 @@ const LabDetailsView = ({ labId, onChanged }: Props) => {
                                         <div key={type} className="flex flex-col gap-3">
                                             <CertificateDropzone
                                                 label={documents[type] ? `Replace ${label}` : `Upload ${label}`}
+                                                required={requiredCerts.has(type)}
+                                                error={errors[`cert.${type}`]}
                                                 value={certFiles[type] ?? null}
-                                                onChange={file => setCertFiles(p => ({ ...p, [type]: file }))}
+                                                onChange={file => {
+                                                    setCertFiles(p => ({ ...p, [type]: file }));
+                                                    setErrors(p => ({ ...p, [`cert.${type}`]: '' }));
+                                                }}
                                             />
-                                            {type === ESTABLISHMENT && certFiles[type] && (
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <label className="flex flex-col gap-1">
-                                                        <span className="font-heading text-label-l2 text-pneutral-700">Issuing Date</span>
-                                                        <input type="date" value={issuingDate} onChange={e => setIssuingDate(e.target.value)} className={inputClass} />
-                                                    </label>
-                                                    <label className="flex flex-col gap-1">
-                                                        <span className="font-heading text-label-l2 text-pneutral-700">Expiry Date</span>
-                                                        <input
-                                                            type="date"
-                                                            value={expiryDate}
-                                                            onChange={e => {
-                                                                setExpiryDate(e.target.value);
-                                                                setErrors(p => ({ ...p, expiryDate: '' }));
-                                                            }}
-                                                            className={inputClass}
-                                                        />
-                                                        {errors.expiryDate && (
-                                                            <span data-field-error className="text-p2 font-medium text-warning-600">{errors.expiryDate}</span>
-                                                        )}
-                                                    </label>
-                                                </div>
+                                            {requiredCerts.has(type) && !certFiles[type] && (
+                                                <p className="text-p2 text-warning-600">
+                                                    {CERT_REASONS[type]} It goes to the admin for approval and the current one stays active until then.
+                                                </p>
                                             )}
                                         </div>
                                     );
@@ -561,10 +659,10 @@ const LabDetailsView = ({ labId, onChanged }: Props) => {
                         <div className="mt-8">
                             <SectionTitle>Compliance Details</SectionTitle>
                             <Grid>
-                                <Field label="Establishment Registration Number" value={d?.establishmentRegistrationNumber} />
-                                <Field label="Issuing Authority" value={d?.issuingAuthority} />
-                                <Field label="Issuing Date" value={formatDate(d?.issuingDate)} />
-                                <Field label="Expiry Date" value={formatDate(d?.expiryDate)} />
+                                <Field label="Establishment Registration No." value={d?.establishmentRegistrationNumber} />
+                                <Field label="Issuing Authority (Establishment Registration No.)" value={d?.issuingAuthority} />
+                                <Field label="Issuing Date (Establishment Registration No.)" value={formatDate(d?.issuingDate)} />
+                                <Field label="Expiry Date (Establishment Registration No.)" value={formatDate(d?.expiryDate)} />
                                 <Field label="PAN" value={d?.labPan} />
                                 <Field label="GSTIN" value={d?.labGstin} />
                                 <Field label="NABL Accreditation Number" value={d?.labAccreditation} />
