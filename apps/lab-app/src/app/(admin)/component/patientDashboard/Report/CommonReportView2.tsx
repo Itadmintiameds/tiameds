@@ -933,7 +933,14 @@ const CommonReportView2 = ({
     const [healthSnapshotFetched, setHealthSnapshotFetched] = useState(false);
     // Drives both the OpenAI call and the card: a partially completed order gets no
     // request and no section at all, in every place this view is opened from.
-    const showAiInsights = useMemo(() => areAllTestsCompleted(patientData), [patientData]);
+    // Radiology-only orders get neither: the observation reasons over lab values, and an
+    // imaging report has none.
+    const showAiInsights = useMemo(
+        () =>
+            areAllTestsCompleted(patientData) &&
+            !(reportsData.length > 0 && reportsData.every((r) => isRadiologyTest(r.testName, r.testCategory))),
+        [patientData, reportsData]
+    );
     const sortedReports = useMemo(() => {
         const copy = [...reportsData];
         copy.sort((a, b) => {
@@ -2748,14 +2755,8 @@ const CommonReportView2 = ({
                                     {radiologyReport.signatories.map((doctor) => (
                                         <div key={doctor.doctorId}>
                                             <p className="text-xs font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>{doctor.doctorName}</p>
-                                            {doctor.qualification && (
-                                                <p className="text-[10px] leading-normal mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>{doctor.qualification}</p>
-                                            )}
                                             {doctor.designation && (
                                                 <p className="text-[10px] leading-normal mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>{doctor.designation}</p>
-                                            )}
-                                            {doctor.licenseNumber && (
-                                                <p className="text-[10px] leading-normal mt-0.5" style={{ color: REPORT_COLORS.neutral600 }}>Reg. No. {doctor.licenseNumber}</p>
                                             )}
                                         </div>
                                     ))}
@@ -3312,12 +3313,14 @@ const CommonReportView2 = ({
                         </div> */}
 
                         <div className="w-full flex items-end justify-around text-center pb-1">
+                            {/* The technician and pathologist sign the lab results; imaging reports carry their own doctors under each report */}
+                            {(hasNonRadiologyReports || !hasRadiologyReports) && (
                             <div className="flex flex-col items-center pb-4">
                                 <div className="h-8" />
                                 <p className="text-[10px] font-bold leading-normal" style={{ color: REPORT_COLORS.neutral900 }}>Lab Technician</p>
                             </div>
+                            )}
 
-                            {/* The pathologist signs the lab results; imaging reports carry their own doctors under each report */}
                             {(hasNonRadiologyReports || !hasRadiologyReports) && (
                             <div className="flex flex-col items-center">
                                 {/* <h3 className="text-xs font-bold uppercase" style={{ color: REPORT_COLORS.secondary800 }}>Lab Approval</h3> */}

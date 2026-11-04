@@ -153,7 +153,7 @@ const Page = () => {
 
   const columns = [
     {
-      header: "#",
+      header: "SI No.",
       accessor: "index",
       render: (row: ParameterMaster) => (
         <p className="text-p3 text-pneutral-600">{parameters.findIndex(p => p.parameterId === row.parameterId) + 1}</p>
