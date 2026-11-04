@@ -93,6 +93,9 @@ const RequestVerificationPage = () => {
         }
         setBlockMessage(errorMessage);
         toast.error(errorMessage, { autoClose: 8000, position: 'top-center' });
+      } else if (axiosError.response?.status === 409) {
+        // Email already registered: backend did not send a verification link.
+        setValidationError('This email is already registered. Please use another Email-Id instead.');
       } else {
         toast.error(errorMessage, { autoClose: 5000, position: 'top-center' });
       }
@@ -131,6 +134,8 @@ const RequestVerificationPage = () => {
         }
         setBlockMessage(errorMessage);
         toast.error(errorMessage, { autoClose: 8000, position: 'top-center' });
+      } else if (axiosError.response?.status === 409) {
+        toast.error('This email is already registered. Please sign in instead.', { autoClose: 5000, position: 'top-center' });
       } else {
         toast.error(errorMessage, { autoClose: 5000, position: 'top-center' });
       }
