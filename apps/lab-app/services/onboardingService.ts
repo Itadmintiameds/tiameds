@@ -22,7 +22,8 @@ export const requestVerificationEmail = async (
     return response.data;
   } catch (error: any) {
     const message = error.response?.data?.message || 'An error occurred while requesting verification email.';
-    throw new Error(message);
+    // Keep the HTTP status so the page can tell "email already registered" (409) apart from other failures.
+    throw Object.assign(new Error(message), { response: { status: error.response?.status } });
   }
 };
 
@@ -38,7 +39,7 @@ export const resendVerificationEmail = async (
     return response.data;
   } catch (error: any) {
     const message = error.response?.data?.message || 'An error occurred while resending verification email.';
-    throw new Error(message);
+    throw Object.assign(new Error(message), { response: { status: error.response?.status } });
   }
 };
 
