@@ -32,9 +32,16 @@ const VerifyEmailContent = () => {
           const redirectUrl = new URL(response.redirectUrl);
           const onboardingToken = redirectUrl.searchParams.get('token') || token;
           
-          // Redirect to onboarding form with token
+          // Keep token/email out of the URL: hand them over via sessionStorage
+          try {
+            sessionStorage.setItem('onboarding_token', onboardingToken);
+            sessionStorage.setItem('onboarding_email', response.email);
+          } catch {
+            // storage unavailable (e.g. private mode)
+          }
+
           setTimeout(() => {
-            router.push(`/onboarding?token=${encodeURIComponent(onboardingToken)}&email=${encodeURIComponent(response.email)}`);
+            router.replace('/onboarding');
           }, 2000);
         } else {
           setStatus('error');

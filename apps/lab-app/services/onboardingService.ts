@@ -3,7 +3,7 @@ import {
   EmailRequestDTO,
   EmailRequestResponse,
   VerificationResponseDTO,
-  VerificationErrorResponse,
+  // VerificationErrorResponse,
   OnboardingRequestDTO,
   OnboardingResponseDTO,
   OnboardingDocumentType,
@@ -53,7 +53,7 @@ export const verifyEmailToken = async (
     );
     return response.data;
   } catch (error: any) {
-    const message = error.response?.data?.message || 'Invalid or expired verification token.';
+    const message = error.response?.data?.message || 'This verification link has expired. Please request a new verification email.';
     throw new Error(message);
   }
 };
@@ -92,7 +92,11 @@ export const completeOnboarding = async (
     );
     return response.data;
   } catch (error: any) {
-    const message = error.response?.data?.message || 'An error occurred while completing onboarding.';
+    const message: string = error.response?.data?.message || 'An error occurred while completing onboarding.';
+    // /complete returns 400 for several validation errors, so the expired token is told apart by its message.
+    if (/invalid or expired verification token/i.test(message)) {
+      throw new Error('This verification link has expired. Please request a new verification email.');
+    }
     throw new Error(message);
   }
 };

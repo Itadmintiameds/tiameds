@@ -32,8 +32,26 @@ const OnboardingContent = () => {
   const [submitted, setSubmitted] = useState<OnboardingResponseDTO['data'] | null>(null);
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    const email = searchParams.get('email');
+    let token = searchParams.get('token');
+    let email = searchParams.get('email');
+
+    // Legacy links carry token/email in the URL: move them to sessionStorage and clean the URL
+    if (token && email) {
+      try {
+        sessionStorage.setItem('onboarding_token', token);
+        sessionStorage.setItem('onboarding_email', email);
+      } catch {
+        // storage unavailable
+      }
+      router.replace('/onboarding');
+    } else if (!token && !email) {
+      try {
+        token = sessionStorage.getItem('onboarding_token');
+        email = sessionStorage.getItem('onboarding_email');
+      } catch {
+        // storage unavailable
+      }
+    }
 
     if (token && email) {
       setForm((prev) => ({
@@ -153,7 +171,7 @@ const OnboardingContent = () => {
 
     return (
       <div className="min-h-screen bg-secondary-50 px-4 py-8">
-        <div className="mx-auto max-w-5xl space-y-4">
+        <div className="mx-auto max-w-7xl space-y-4">
           <PageBanner
             icon={<FaCheck />}
             title="You're all set"
@@ -233,7 +251,7 @@ const OnboardingContent = () => {
 
   return (
     <div className="min-h-screen bg-secondary-50 px-4 py-4 sm:py-6">
-      <div className="mx-auto max-w-5xl space-y-4">
+      <div className="mx-auto max-w-8xl space-y-4">
         <div ref={topRef} className="scroll-mt-4 space-y-4">
           <PageBanner
             icon={<BannerIcon />}

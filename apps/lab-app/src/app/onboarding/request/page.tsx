@@ -158,7 +158,7 @@ const RequestVerificationPage = () => {
             We&apos;ve sent a verification link to <strong>{email}</strong>
           </p>
           <p className="text-sm text-gray-500 mb-6">
-            Click the link in the email to continue with your lab registration. The link will expire in 15 minutes.
+            Click the link in the email to continue with your lab registration. The link will expire in 30 minutes.
           </p>
           <div className="space-y-3">
             <button
@@ -268,7 +268,7 @@ const RequestVerificationPage = () => {
         <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
             <strong>Note:</strong> You can request up to 3 verification emails per hour. 
-            The verification link expires in 15 minutes.
+            The verification link expires in 30 minutes.
           </p>
         </div>
       </div>
