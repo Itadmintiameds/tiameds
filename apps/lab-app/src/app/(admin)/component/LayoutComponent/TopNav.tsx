@@ -3,6 +3,7 @@ import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
 import Button from "../common/Button";
 import CurrentTime from "../common/CurrentTime";
 import { handleLogout } from "@/utils/auth";
+import NotificationBell, { AppNotification } from "./NotificationBell";
 
 interface User {
   firstName: string;
@@ -30,9 +31,21 @@ interface TopNavProps {
   handleChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
   // Opens the sidebar drawer on small screens (where it is off-canvas by default).
   onMenuToggle?: () => void;
+  notifications?: AppNotification[];
+  onNotificationClick?: (notification: AppNotification) => void;
+  onMarkAllNotificationsRead?: () => void;
 }
 
-const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange, onMenuToggle }) => {
+const TopNav: React.FC<TopNavProps> = ({
+  user,
+  labs,
+  currentLab,
+  handleChange,
+  onMenuToggle,
+  notifications,
+  onNotificationClick,
+  onMarkAllNotificationsRead,
+}) => {
 
   return (
     <nav className="flex items-center justify-between py-4 px-6 border-b border-gray-200 bg-white shadow-sm">
@@ -136,6 +149,13 @@ const TopNav: React.FC<TopNavProps> = ({ user, labs, currentLab, handleChange, o
             )}
           </div>
         )}
+
+        {/* Notifications */}
+        <NotificationBell
+          notifications={notifications}
+          onSelect={onNotificationClick}
+          onMarkAllRead={onMarkAllNotificationsRead}
+        />
 
         {/* Logout Button */}
         <Button

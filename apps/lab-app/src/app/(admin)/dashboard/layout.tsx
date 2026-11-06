@@ -7,6 +7,9 @@ import { toast } from "react-toastify";
 import { useAuth } from "@/hooks/useAuth";
 import SideBar from "../component/LayoutComponent/SideBar";
 import TopNav from "../component/LayoutComponent/TopNav";
+import ApprovalReviewModal from "../component/LayoutComponent/ApprovalReviewModal";
+import { useNotificationCenter } from "../component/LayoutComponent/useNotificationCenter";
+import type { AppNotification } from "../component/LayoutComponent/notificationTypes";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,6 +21,22 @@ const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const { labs, setLabs, currentLab, setCurrentLab, refreshlab } = useLabs();
   const router = useRouter();
+  // UI-only notifications + approvals (mock data). TODO: swap for the API when it is ready.
+  const {
+    notifications,
+    markRead,
+    markAllRead,
+    getApproval,
+    canReview,
+    decideApproval,
+  } = useNotificationCenter(user ?? null);
+  const [reviewApprovalId, setReviewApprovalId] = useState<string | null>(null);
+  const reviewApproval = getApproval(reviewApprovalId ?? undefined);
+
+  const handleNotificationClick = (n: AppNotification) => {
+    markRead(n.id);
+    if (n.approvalId) setReviewApprovalId(n.approvalId);
+  };
 
   // Keyboard shortcut handler for sidebar toggle (Ctrl + B)
   useEffect(() => {
@@ -114,6 +133,19 @@ const Layout = ({ children }: LayoutProps) => {
             currentLab={currentLab}
             handleChange={handleChange}
             onMenuToggle={() => setIsOpen(!isOpen)}
+            notifications={notifications}
+            onNotificationClick={handleNotificationClick}
+            onMarkAllNotificationsRead={markAllRead}
+          />
+        )}
+
+        {reviewApproval && (
+          <ApprovalReviewModal
+            key={reviewApproval.id}
+            approval={reviewApproval}
+            canDecide={canReview(reviewApproval)}
+            onDecide={decideApproval}
+            onClose={() => setReviewApprovalId(null)}
           />
         )}
 
