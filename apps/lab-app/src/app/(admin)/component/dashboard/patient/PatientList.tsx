@@ -1,5 +1,6 @@
 // import { deletePatient, getPatient, updatePatient } from '@/../services/patientServices';
 import { getPatient, updatePatient } from '@/../services/patientServices';
+import { isPendingApproval } from '@/../services/notificationServices';
 import Model from '@/app/(admin)/component/common/Model';
 import Pagination from '@/app/(admin)/component/common/Pagination';
 import UpdatePatient from '@/app/(admin)/component/dashboard/patient/UpdatePatient';
@@ -60,7 +61,11 @@ const PatientList: React.FC = () => {
     try {
       if (updatePatientDetails.id !== undefined) {
         const response = await updatePatient(currentLab.id, updatePatientDetails.id, updatedPatient);
-        if (response.status === 'success') {
+        if (isPendingApproval(response)) {
+          // Non-admin edit: not applied yet, it is waiting for an admin to approve.
+          toast.info(response.message || 'Your changes were sent to the admin for approval.');
+          setIsUpdating(false);
+        } else if (response.status === 'success') {
           toast.success('Patient updated successfully!', { autoClose: 2000 });
           setPatients((prev) =>
             prev.map((p) => (p.id === updatedPatient.id ? updatedPatient : p))

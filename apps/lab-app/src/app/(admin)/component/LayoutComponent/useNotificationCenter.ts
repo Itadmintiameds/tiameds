@@ -1,159 +1,147 @@
-import { useCallback, useMemo, useState } from "react";
-import { getMockApprovals, getMockNotifications } from "./mockNotifications";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  APPROVER_ROLE,
+  ApiNotification,
+  getLabNotifications,
+  getMyRequests,
+} from "../../../../../services/notificationServices";
+import {
   AppNotification,
-  ApprovalDetail,
-  ApprovalRequest,
+  NOTIFICATION_POLL_MS,
   NOTIFICATION_RETENTION_DAYS,
-  UserRole,
+  REVIEWER_ROLES,
 } from "./notificationTypes";
 
 interface CenterUser {
-  firstName: string;
-  lastName: string;
+  email: string;
   roles: string[];
 }
 
+const seenKey = (email: string, labId: number) => `notification-seen:${email}:${labId}`;
+
+const loadSeen = (key: string): Set<number> => {
+  try {
+    const raw = localStorage.getItem(key);
+    return new Set(raw ? (JSON.parse(raw) as number[]) : []);
+  } catch {
+    return new Set();
+  }
+};
+
+const saveSeen = (key: string, seen: Set<number>) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(Array.from(seen)));
+  } catch {
+    /* storage unavailable: unread state just won't survive a refresh */
+  }
+};
+
+/** The moment that matters for a request: when it was decided, else when it was raised. */
+const effectiveDate = (n: ApiNotification) => n.reviewedAt ?? n.createdAt;
+
 /**
- * UI-only notification + approval state (mock data, nothing is persisted).
- * Replace the useState initialisers and the mutators with API calls once the backend is ready.
+ * Notifications from the backend.
+ *  - ADMIN / SUPERADMIN: every request of the lab. PENDING ones are unread (they need a decision).
+ *  - Everyone else: the requests they raised. Once decided (approved / rejected) a request is unread
+ *    until they open it. The backend has no read flag, so "seen" is kept in localStorage.
+ * Only the last NOTIFICATION_RETENTION_DAYS days are shown; unread first, newest on top.
  */
-export const useNotificationCenter = (user: CenterUser | null) => {
-  const [allNotifications, setAllNotifications] = useState(getMockNotifications);
-  const [approvals, setApprovals] = useState(getMockApprovals);
+export const useNotificationCenter = (user: CenterUser | null, labId: number | undefined) => {
+  const [items, setItems] = useState<ApiNotification[]>([]);
+  const [seen, setSeen] = useState<Set<number>>(new Set());
 
+  const email = user?.email ?? "";
   const roleKey = (user?.roles ?? []).join(",");
-  const roles = useMemo(() => (roleKey ? (roleKey.split(",") as UserRole[]) : []), [roleKey]);
-  const fullName = user ? `${user.firstName} ${user.lastName}` : "";
+  const isReviewer = useMemo(
+    () => roleKey.split(",").some((r) => REVIEWER_ROLES.includes(r.toUpperCase())),
+    [roleKey]
+  );
 
-  // Each user only sees notifications targeted at one of their roles from the last
-  // NOTIFICATION_RETENTION_DAYS days. Unread ones come first, newest on top.
-  const notifications = useMemo(() => {
+  const refresh = useCallback(async () => {
+    if (!labId || !email) return;
+    try {
+      const data = isReviewer ? await getLabNotifications(labId) : await getMyRequests(labId);
+      setItems(data);
+    } catch {
+      // Keep whatever we already have; the next poll will try again.
+    }
+  }, [labId, email, isReviewer]);
+
+  // Load on mount / when the lab or user changes, then poll.
+  useEffect(() => {
+    setItems([]);
+    if (!labId || !email) return;
+    setSeen(loadSeen(seenKey(email, labId)));
+    refresh();
+    const timer = setInterval(refresh, NOTIFICATION_POLL_MS);
+    return () => clearInterval(timer);
+  }, [labId, email, refresh]);
+
+  const notifications: AppNotification[] = useMemo(() => {
     const cutoff = Date.now() - NOTIFICATION_RETENTION_DAYS * 24 * 60 * 60 * 1000;
-    return allNotifications
-      .filter(
-        (n) =>
-          new Date(n.createdAt).getTime() >= cutoff &&
-          n.recipientRoles.some((r) => roles.includes(r))
-      )
+
+    return items
+      .filter((n) => new Date(effectiveDate(n)).getTime() >= cutoff)
+      .map((n): AppNotification => {
+        const decided = n.status !== "PENDING";
+        const read = isReviewer ? decided : !decided || seen.has(n.id);
+
+        let message: string;
+        if (n.status === "PENDING") {
+          message = isReviewer ? n.message ?? "" : "Waiting for admin approval.";
+        } else if (n.status === "APPROVED") {
+          message = `Approved by ${n.reviewedByUsername ?? "an admin"}${
+            n.approvalReason ? `. Comment: ${n.approvalReason}` : "."
+          }`;
+        } else {
+          message = `Rejected by ${n.reviewedByUsername ?? "an admin"}${
+            n.rejectionReason ? `. Comment: ${n.rejectionReason}` : "."
+          }`;
+        }
+
+        return {
+          id: n.id,
+          title: n.title,
+          message,
+          type: n.status === "PENDING" ? "approval" : n.status === "APPROVED" ? "approved" : "rejected",
+          createdAt: effectiveDate(n),
+          read,
+          requestId: n.id,
+        };
+      })
       .sort(
         (a, b) =>
           // Unread first, then newest first within each group.
           Number(a.read) - Number(b.read) ||
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-  }, [allNotifications, roles]);
+  }, [items, seen, isReviewer]);
 
-  const markRead = useCallback((id: AppNotification["id"]) => {
-    setAllNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-  }, []);
+  /** Remember that the requester has looked at a decided request. */
+  const markSeen = useCallback(
+    (ids: number[]) => {
+      if (!labId || !email || ids.length === 0) return;
+      setSeen((prev) => {
+        if (ids.every((id) => prev.has(id))) return prev;
+        const next = new Set(prev);
+        ids.forEach((id) => next.add(id));
+        saveSeen(seenKey(email, labId), next);
+        return next;
+      });
+    },
+    [labId, email]
+  );
 
   const markAllRead = useCallback(() => {
-    setAllNotifications((prev) =>
-      prev.map((n) => (n.recipientRoles.some((r) => roles.includes(r)) ? { ...n, read: true } : n))
-    );
-  }, [roles]);
-
-  const getApproval = useCallback(
-    (id: string | undefined) => approvals.find((a) => a.id === id) ?? null,
-    [approvals]
-  );
-
-  /** True when the current user is the one who has to review this request. */
-  const canReview = useCallback(
-    (a: ApprovalRequest) => a.status === "pending" && roles.includes(a.approverRole),
-    [roles]
-  );
-
-  /** Approve / reject a request; the requester's role gets a notification with the outcome. */
-  const decideApproval = useCallback(
-    (id: string, decision: "approved" | "rejected", comment: string) => {
-      const target = approvals.find((a) => a.id === id);
-      if (!target || target.status !== "pending") return;
-
-      const now = new Date().toISOString();
-      const trimmed = comment.trim();
-
-      setApprovals((prev) =>
-        prev.map((a) =>
-          a.id === id
-            ? { ...a, status: decision, decidedAt: now, decidedBy: fullName, decisionComment: trimmed }
-            : a
-        )
-      );
-
-      setAllNotifications((prev) => [
-        {
-          id: `n-${Date.now()}`,
-          title: decision === "approved" ? "Request approved" : "Request rejected",
-          message:
-            `Your request "${target.title}" was ${decision} by ${fullName}.` +
-            (trimmed ? ` Reason: ${trimmed}` : ""),
-          type: decision,
-          createdAt: now,
-          read: false,
-          recipientRoles: [target.requestedBy.role],
-          approvalId: id,
-        },
-        // The request notification is handled, so clear its unread state.
-        ...prev.map((n) =>
-          n.approvalId === id && n.type === "approval" ? { ...n, read: true } : n
-        ),
-      ]);
-    },
-    [approvals, fullName]
-  );
-
-  /**
-   * Send a new approval request up the chain (Desk/Technician -> Admin, Admin -> Super Admin).
-   * Returns null when the user has nobody above them (e.g. Super Admin).
-   */
-  const submitApprovalRequest = useCallback(
-    (title: string, details: ApprovalDetail[]) => {
-      const requesterRole = (["ADMIN", "TECHNICIAN", "DESKROLE"] as UserRole[]).find((r) =>
-        roles.includes(r)
-      );
-      const approverRole = requesterRole && APPROVER_ROLE[requesterRole];
-      if (!requesterRole || !approverRole) return null;
-
-      const now = new Date().toISOString();
-      const id = `ap-${Date.now()}`;
-      const request: ApprovalRequest = {
-        id,
-        title,
-        details,
-        requestedBy: { name: fullName, role: requesterRole },
-        approverRole,
-        status: "pending",
-        requestedAt: now,
-      };
-      setApprovals((prev) => [request, ...prev]);
-      setAllNotifications((prev) => [
-        {
-          id: `n-${Date.now()}`,
-          title: "Approval requested",
-          message: `${fullName} is asking approval: ${title}.`,
-          type: "approval",
-          createdAt: now,
-          read: false,
-          recipientRoles: [approverRole],
-          approvalId: id,
-        },
-        ...prev,
-      ]);
-      return request;
-    },
-    [roles, fullName]
-  );
+    // Reviewers' unread items are pending requests: they only clear once someone decides.
+    if (isReviewer) return;
+    markSeen(items.filter((n) => n.status !== "PENDING").map((n) => n.id));
+  }, [isReviewer, items, markSeen]);
 
   return {
     notifications,
-    markRead,
+    isReviewer,
+    refresh,
+    markSeen,
     markAllRead,
-    getApproval,
-    canReview,
-    decideApproval,
-    submitApprovalRequest,
   };
 };

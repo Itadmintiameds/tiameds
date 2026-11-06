@@ -3,6 +3,7 @@ import { getDoctor } from '@/../services/doctorServices';
 import { getInsurance } from '@/../services/insuranceService';
 import { getPackage } from '@/../services/packageServices';
 import { updatePatientDetails } from '@/../services/patientServices';
+import { isPendingApproval } from '@/../services/notificationServices';
 import { getTests } from '@/../services/testService';
 import { useLabs } from '@/context/LabContext';
 import { EditPatientSchema } from '@/schema/editPatientSchema';
@@ -710,7 +711,11 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
       };
 
       const response = await updatePatientDetails(currentLab.id, patientData);
-      if (response.status === 'success') {
+      if (isPendingApproval(response)) {
+        // Non-admin edit: nothing was changed yet, it is waiting for an admin (response.data is the request, not a patient).
+        toast.info(response.message || 'Your changes were sent to the admin for approval.');
+        setEditPatientDetailsModal(false);
+      } else if (response.status === 'success') {
         toast.success('Patient updated successfully');
         setPatientDetails(response.data);
         setUpdatePatientListVist(!updatePatientListVist);

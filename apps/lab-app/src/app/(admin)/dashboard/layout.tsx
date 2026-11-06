@@ -21,21 +21,17 @@ const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const { labs, setLabs, currentLab, setCurrentLab, refreshlab } = useLabs();
   const router = useRouter();
-  // UI-only notifications + approvals (mock data). TODO: swap for the API when it is ready.
-  const {
-    notifications,
-    markRead,
-    markAllRead,
-    getApproval,
-    canReview,
-    decideApproval,
-  } = useNotificationCenter(user ?? null);
-  const [reviewApprovalId, setReviewApprovalId] = useState<string | null>(null);
-  const reviewApproval = getApproval(reviewApprovalId ?? undefined);
+  // Notifications / approval requests of the current lab (backend: /notifications/lab/{labId}).
+  const { notifications, isReviewer, refresh, markSeen, markAllRead } = useNotificationCenter(
+    user ?? null,
+    currentLab?.id
+  );
+  const [reviewRequestId, setReviewRequestId] = useState<number | null>(null);
 
   const handleNotificationClick = (n: AppNotification) => {
-    markRead(n.id);
-    if (n.approvalId) setReviewApprovalId(n.approvalId);
+    if (n.requestId === undefined) return;
+    markSeen([n.requestId]);
+    setReviewRequestId(n.requestId);
   };
 
   // Keyboard shortcut handler for sidebar toggle (Ctrl + B)
@@ -135,17 +131,19 @@ const Layout = ({ children }: LayoutProps) => {
             onMenuToggle={() => setIsOpen(!isOpen)}
             notifications={notifications}
             onNotificationClick={handleNotificationClick}
-            onMarkAllNotificationsRead={markAllRead}
+            onMarkAllNotificationsRead={isReviewer ? undefined : markAllRead}
+            onNotificationsOpen={refresh}
           />
         )}
 
-        {reviewApproval && (
+        {reviewRequestId !== null && currentLab?.id && (
           <ApprovalReviewModal
-            key={reviewApproval.id}
-            approval={reviewApproval}
-            canDecide={canReview(reviewApproval)}
-            onDecide={decideApproval}
-            onClose={() => setReviewApprovalId(null)}
+            key={reviewRequestId}
+            labId={currentLab.id}
+            requestId={reviewRequestId}
+            isReviewer={isReviewer}
+            onDecided={refresh}
+            onClose={() => setReviewRequestId(null)}
           />
         )}
 

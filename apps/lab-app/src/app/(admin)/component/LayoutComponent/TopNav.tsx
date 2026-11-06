@@ -34,6 +34,8 @@ interface TopNavProps {
   notifications?: AppNotification[];
   onNotificationClick?: (notification: AppNotification) => void;
   onMarkAllNotificationsRead?: () => void;
+  /** Called each time the bell is opened, so the list can be refreshed. */
+  onNotificationsOpen?: () => void;
 }
 
 const TopNav: React.FC<TopNavProps> = ({
@@ -45,6 +47,7 @@ const TopNav: React.FC<TopNavProps> = ({
   notifications,
   onNotificationClick,
   onMarkAllNotificationsRead,
+  onNotificationsOpen,
 }) => {
 
   return (
@@ -155,6 +158,7 @@ const TopNav: React.FC<TopNavProps> = ({
           notifications={notifications}
           onSelect={onNotificationClick}
           onMarkAllRead={onMarkAllNotificationsRead}
+          onOpen={onNotificationsOpen}
         />
 
         {/* Logout Button */}

@@ -19,6 +19,8 @@ interface NotificationBellProps {
   /** Called when a notification is clicked (e.g. to open the approval pop-up). */
   onSelect?: (notification: AppNotification) => void;
   onMarkAllRead?: () => void;
+  /** Called each time the dropdown opens (refresh the list). */
+  onOpen?: () => void;
 }
 
 // Colors come from the global theme tokens in globals.css.
@@ -44,6 +46,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
   notifications = [],
   onSelect,
   onMarkAllRead,
+  onOpen,
 }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -68,7 +71,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     <div className="relative" ref={ref}>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!open) onOpen?.();
+          setOpen((o) => !o);
+        }}
         className="relative p-2 rounded-md text-pneutral-700 hover:bg-pneutral-100 transition-colors"
         aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
         aria-haspopup="true"
@@ -113,7 +119,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                       onClick={() => {
                         onSelect?.(n);
                         // Approval items open a pop-up, so get the dropdown out of the way.
-                        if (n.approvalId) setOpen(false);
+                        if (n.requestId !== undefined) setOpen(false);
                       }}
                       className={`w-full text-left flex gap-3 px-4 py-3 hover:bg-pneutral-50 transition-colors ${
                         n.read ? "" : "bg-primary-100/40"
@@ -139,7 +145,11 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                             <span className="h-2 w-2 shrink-0 rounded-full bg-primary-600" />
                           )}
                         </span>
-                        <span className="block text-p2 text-pneutral-600 mt-0.5 line-clamp-2">
+                        <span
+                          className={`block text-p2 text-pneutral-600 mt-0.5 break-words ${
+                            n.type === "approved" || n.type === "rejected" ? "" : "line-clamp-2"
+                          }`}
+                        >
                           {n.message}
                         </span>
                         <span className="block text-p2 text-pneutral-400 mt-1">
