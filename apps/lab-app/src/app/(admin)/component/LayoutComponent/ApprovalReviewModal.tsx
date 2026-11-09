@@ -37,6 +37,7 @@ const statusStyle: Record<NotificationStatus, { label: string; cls: string; icon
   PENDING: { label: "Pending", cls: "bg-danger-50 text-danger-800", icon: <FiClock className="h-3.5 w-3.5" /> },
   APPROVED: { label: "Approved", cls: "bg-success-50 text-success-800", icon: <FiCheckCircle className="h-3.5 w-3.5" /> },
   REJECTED: { label: "Rejected", cls: "bg-warning-50 text-warning-700", icon: <FiXCircle className="h-3.5 w-3.5" /> },
+  ACKNOWLEDGED: { label: "Acknowledged", cls: "bg-success-50 text-success-800", icon: <FiCheckCircle className="h-3.5 w-3.5" /> },
 };
 
 interface ChangeRow {

@@ -1,7 +1,8 @@
 import api from '@/utils/api';
 
 // Mirrors the backend NotificationDTO (tiameds.notification.dto.NotificationDTO).
-export type NotificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type NotificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ACKNOWLEDGED';
+export type ApiNotificationType = 'PATIENT_EDIT_REQUEST' | 'VISIT_CANCELLED';
 
 /** Latest visit of the patient (backend VisitDTO; visitCode is only present if the backend sends it). */
 export interface VisitSnapshot {
@@ -30,7 +31,7 @@ export interface PatientSnapshot {
 export interface ApiNotification {
   id: number;
   labId: number;
-  type: 'PATIENT_EDIT_REQUEST';
+  type: ApiNotificationType;
   entityType?: string;
   entityId?: number;
   visitId?: number;
@@ -134,6 +135,21 @@ export const rejectNotification = async (
     return response.data.data;
   } catch (error: any) {
     throw new Error(errorMessage(error, 'Failed to reject the request.'));
+  }
+};
+
+/** Admin: marks an information-only alert (e.g. VISIT_CANCELLED) as seen. */
+export const acknowledgeNotification = async (
+  labId: number,
+  notificationId: number
+): Promise<ApiNotification> => {
+  try {
+    const response = await api.put<ApiEnvelope<ApiNotification>>(
+      `notifications/lab/${labId}/${notificationId}/acknowledge`
+    );
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(errorMessage(error, 'Failed to acknowledge the alert.'));
   }
 };
 

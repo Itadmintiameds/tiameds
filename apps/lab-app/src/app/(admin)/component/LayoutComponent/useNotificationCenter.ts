@@ -81,7 +81,20 @@ export const useNotificationCenter = (user: CenterUser | null, labId: number | u
 
     return items
       .filter((n) => new Date(effectiveDate(n)).getTime() >= cutoff)
+      // Visit-cancelled alerts are for admins only; the user who cancelled doesn't need one.
+      .filter((n) => isReviewer || n.type !== "VISIT_CANCELLED")
       .map((n): AppNotification => {
+        if (n.type === "VISIT_CANCELLED") {
+          return {
+            id: n.id,
+            title: n.title,
+            message: n.message ?? "A visit was cancelled.",
+            type: "alert",
+            createdAt: n.createdAt,
+            read: n.status !== "PENDING",
+            alertId: n.id,
+          };
+        }
         const decided = n.status !== "PENDING";
         const read = isReviewer ? decided : !decided || seen.has(n.id);
 
@@ -140,6 +153,7 @@ export const useNotificationCenter = (user: CenterUser | null, labId: number | u
   return {
     notifications,
     isReviewer,
+    items,
     refresh,
     markSeen,
     markAllRead,

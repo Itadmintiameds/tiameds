@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import SideBar from "../component/LayoutComponent/SideBar";
 import TopNav from "../component/LayoutComponent/TopNav";
 import ApprovalReviewModal from "../component/LayoutComponent/ApprovalReviewModal";
+import VisitCancelledModal from "../component/LayoutComponent/VisitCancelledModal";
 import { useNotificationCenter } from "../component/LayoutComponent/useNotificationCenter";
 import type { AppNotification } from "../component/LayoutComponent/notificationTypes";
 
@@ -22,13 +23,20 @@ const Layout = ({ children }: LayoutProps) => {
   const { labs, setLabs, currentLab, setCurrentLab, refreshlab } = useLabs();
   const router = useRouter();
   // Notifications / approval requests of the current lab (backend: /notifications/lab/{labId}).
-  const { notifications, isReviewer, refresh, markSeen, markAllRead } = useNotificationCenter(
+  const { notifications, items, isReviewer, refresh, markSeen, markAllRead } = useNotificationCenter(
     user ?? null,
     currentLab?.id
   );
   const [reviewRequestId, setReviewRequestId] = useState<number | null>(null);
+  const [alertId, setAlertId] = useState<number | null>(null);
+  const openAlert = alertId !== null ? items.find((i) => i.id === alertId) : undefined;
 
   const handleNotificationClick = (n: AppNotification) => {
+    if (n.alertId !== undefined) {
+      // Information-only alert (visit cancelled): open details; the admin acknowledges from there.
+      setAlertId(n.alertId);
+      return;
+    }
     if (n.requestId === undefined) return;
     markSeen([n.requestId]);
     setReviewRequestId(n.requestId);
@@ -144,6 +152,16 @@ const Layout = ({ children }: LayoutProps) => {
             isReviewer={isReviewer}
             onDecided={refresh}
             onClose={() => setReviewRequestId(null)}
+          />
+        )}
+
+        {openAlert && currentLab?.id && (
+          <VisitCancelledModal
+            key={openAlert.id}
+            labId={currentLab.id}
+            alert={openAlert}
+            onAcknowledged={refresh}
+            onClose={() => setAlertId(null)}
           />
         )}
 

@@ -119,7 +119,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                       onClick={() => {
                         onSelect?.(n);
                         // Approval items open a pop-up, so get the dropdown out of the way.
-                        if (n.requestId !== undefined) setOpen(false);
+                        if (n.requestId !== undefined || n.alertId !== undefined) setOpen(false);
                       }}
                       className={`w-full text-left flex gap-3 px-4 py-3 hover:bg-pneutral-50 transition-colors ${
                         n.read ? "" : "bg-primary-100/40"
@@ -147,7 +147,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                         </span>
                         <span
                           className={`block text-p2 text-pneutral-600 mt-0.5 break-words ${
-                            n.type === "approved" || n.type === "rejected" ? "" : "line-clamp-2"
+                            n.type === "approved" || n.type === "rejected" || n.type === "alert" ? "" : "line-clamp-2"
                           }`}
                         >
                           {n.message}
@@ -157,6 +157,11 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                           {n.type === "approval" && !n.read && (
                             <span className="ml-2 font-semibold text-primary-700">
                               Tap to review
+                            </span>
+                          )}
+                          {n.alertId !== undefined && (
+                            <span className="ml-2 font-semibold text-primary-700">
+                              {n.read ? "View details" : "Tap for details"}
                             </span>
                           )}
                         </span>

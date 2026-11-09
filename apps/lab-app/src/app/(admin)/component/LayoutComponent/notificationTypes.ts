@@ -16,6 +16,8 @@ export interface AppNotification {
   read: boolean;
   /** Backend notification id; set for patient-edit requests, opens the review pop-up. */
   requestId?: number;
+  /** Backend notification id of an information-only alert (e.g. visit cancelled); clicking acknowledges it. */
+  alertId?: number;
 }
 
 /** Notifications older than this many days are not shown. */
