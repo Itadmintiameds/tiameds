@@ -370,7 +370,7 @@ const TestReferancePoints = () => {
           : formData.ageMax,
       };
 
-      await updateTestReferanceRange(
+      const held = await updateTestReferanceRange(
         currentLab.id, 
         editRecord.testReferenceCode, 
         dataToUpdate
@@ -378,7 +378,8 @@ const TestReferancePoints = () => {
       
       await fetchReferencePoints(currentPage, ITEMS_PER_PAGE);
       
-      toast.success("Test reference range updated successfully.");
+      if (held) toast.info("Sent for approval. The changes are applied once approved.");
+      else toast.success("Test reference range updated successfully.");
       setEditModalOpen(false);
     } catch (error) {
       toast.error((error as Error).message || "Failed to update test reference range");
@@ -417,10 +418,11 @@ const TestReferancePoints = () => {
 
     try {
       setIsDeleting(true);
-      await deleteTestReferanceRange(currentLab.id, testReferenceCode);
+      const held = await deleteTestReferanceRange(currentLab.id, testReferenceCode);
       setDeleteTarget(null);
       await fetchReferencePoints(currentPage, ITEMS_PER_PAGE);
-      toast.success("Test reference range deleted successfully.", { autoClose: 2000 });
+      if (held) toast.info("Sent for approval. It is deleted once approved.", { autoClose: 3000 });
+      else toast.success("Test reference range deleted successfully.", { autoClose: 2000 });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "An unexpected error occurred while deleting the test reference range.";
       toast.error(message, { autoClose: 2000 });
@@ -449,10 +451,11 @@ const TestReferancePoints = () => {
         ...newReferanceRecord,
         gender: newReferanceRecord.gender === "B" ? "MF" : newReferanceRecord.gender,
       };
-      await addTestReferanceRange(currentLab.id.toString(), dataToAdd);
+      const held = await addTestReferanceRange(currentLab.id.toString(), dataToAdd);
       await fetchReferencePoints(currentPage, ITEMS_PER_PAGE);
       
-      toast.success("Test reference range added successfully.", { autoClose: 2000 });
+      if (held) toast.info("Sent for approval. It is added once approved.", { autoClose: 3000 });
+      else toast.success("Test reference range added successfully.", { autoClose: 2000 });
       setAddModalOpen(false);
       setNewReferanceRecord({ ageMin: 0 } as TestReferancePoint);
     } catch (error) {
@@ -482,10 +485,11 @@ const TestReferancePoints = () => {
         ...existingTestReferanceRecord,
         gender: existingTestReferanceRecord.gender === "B" ? "MF" : existingTestReferanceRecord.gender,
       };
-      await addTestReferanceRange(currentLab.id.toString(), dataToAdd);
+      const held = await addTestReferanceRange(currentLab.id.toString(), dataToAdd);
       await fetchReferencePoints(currentPage, ITEMS_PER_PAGE);
       
-      toast.success("Test reference range added successfully.", { autoClose: 2000 });
+      if (held) toast.info("Sent for approval. It is added once approved.", { autoClose: 3000 });
+      else toast.success("Test reference range added successfully.", { autoClose: 2000 });
       setExistingModalOpen(false);
       setExistingTestReferanceRecord({ gender: "F" } as TestReferancePoint);
     } catch (error) {

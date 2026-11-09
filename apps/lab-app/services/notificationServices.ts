@@ -2,7 +2,30 @@ import api from '@/utils/api';
 
 // Mirrors the backend NotificationDTO (tiameds.notification.dto.NotificationDTO).
 export type NotificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ACKNOWLEDGED';
-export type ApiNotificationType = 'PATIENT_EDIT_REQUEST' | 'VISIT_CANCELLED';
+export type ApiNotificationType =
+  | 'PATIENT_EDIT_REQUEST'
+  | 'VISIT_CANCELLED'
+  | 'TEST_CHANGED'
+  | 'TEST_REFERENCE_CHANGED'
+  | 'TEST_CHANGE_REQUEST'
+  | 'TEST_REFERENCE_CHANGE_REQUEST';
+
+/** Test / test reference changes held for approval (nothing is applied until someone approves). */
+export const isCatalogRequestType = (type?: string): boolean =>
+  type === 'TEST_CHANGE_REQUEST' || type === 'TEST_REFERENCE_CHANGE_REQUEST';
+
+/** What a held test / test reference change contains (backend CatalogChangePayload). */
+export interface CatalogChange {
+  /** ADD, UPDATE, DELETE or DELETE_ALL */
+  operation: 'ADD' | 'UPDATE' | 'DELETE' | 'DELETE_ALL' | string;
+  entityId?: number | null;
+  /** The request body: a TestDTO or a TestReferenceDTO (absent for DELETE / DELETE_ALL). */
+  body?: Record<string, unknown> | null;
+}
+
+/** Information-only alerts: nothing to approve, they are just acknowledged. */
+export const isAlertType = (type?: string): boolean =>
+  type === 'VISIT_CANCELLED' || type === 'TEST_CHANGED' || type === 'TEST_REFERENCE_CHANGED';
 
 /** Latest visit of the patient (backend VisitDTO; visitCode is only present if the backend sends it). */
 export interface VisitSnapshot {
@@ -38,6 +61,8 @@ export interface ApiNotification {
   visitCode?: string;
   title: string;
   message?: string;
+  /** 'SUPERADMIN' when the alert is reserved for super admins (an ADMIN changed something). */
+  targetRole?: string;
   status: NotificationStatus;
   requestedByUserId?: number;
   requestedByUsername?: string;
@@ -51,6 +76,9 @@ export interface ApiNotification {
   currentPatient?: PatientSnapshot;
   proposedPatient?: PatientSnapshot;
   changedFields?: string[];
+  // Detail endpoint only, for TEST_CHANGE_REQUEST / TEST_REFERENCE_CHANGE_REQUEST
+  proposedChange?: CatalogChange;
+  currentValue?: Record<string, unknown> | null;
 }
 
 interface ApiEnvelope<T> {
@@ -74,6 +102,74 @@ export const getLabNotifications = async (
     return response.data.data;
   } catch (error: any) {
     throw new Error(errorMessage(error, 'Failed to fetch notifications.'));
+  }
+};
+
+/** Super admin: alerts raised because an ADMIN changed tests / test references, across all labs. */
+export const getSuperAdminNotifications = async (): Promise<ApiNotification[]> => {
+  try {
+    const response = await api.get<ApiEnvelope<ApiNotification[]>>('notifications/super-admin');
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(errorMessage(error, 'Failed to fetch notifications.'));
+  }
+};
+
+/** Super admin: detail of a request of any lab. */
+export const getSuperAdminNotificationDetail = async (
+  notificationId: number
+): Promise<ApiNotification> => {
+  try {
+    const response = await api.get<ApiEnvelope<ApiNotification>>(
+      `notifications/super-admin/${notificationId}`
+    );
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(errorMessage(error, 'Failed to load the request.'));
+  }
+};
+
+/** Super admin: applies the held change and marks it APPROVED. A reason is required. */
+export const approveAsSuperAdmin = async (
+  notificationId: number,
+  reason: string
+): Promise<ApiNotification> => {
+  try {
+    const response = await api.put<ApiEnvelope<ApiNotification>>(
+      `notifications/super-admin/${notificationId}/approve`,
+      { reason }
+    );
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(errorMessage(error, 'Failed to approve the request.'));
+  }
+};
+
+/** Super admin: nothing is applied; the reason is shown to the requester. */
+export const rejectAsSuperAdmin = async (
+  notificationId: number,
+  reason: string
+): Promise<ApiNotification> => {
+  try {
+    const response = await api.put<ApiEnvelope<ApiNotification>>(
+      `notifications/super-admin/${notificationId}/reject`,
+      { reason }
+    );
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(errorMessage(error, 'Failed to reject the request.'));
+  }
+};
+
+/** Super admin: acknowledge an alert of any lab. */
+export const acknowledgeAsSuperAdmin = async (notificationId: number): Promise<ApiNotification> => {
+  try {
+    const response = await api.put<ApiEnvelope<ApiNotification>>(
+      `notifications/super-admin/${notificationId}/acknowledge`
+    );
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(errorMessage(error, 'Failed to acknowledge the alert.'));
   }
 };
 

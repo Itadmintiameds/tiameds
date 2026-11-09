@@ -7,8 +7,11 @@ import { toast } from "react-toastify";
 import { useAuth } from "@/hooks/useAuth";
 import SideBar from "../component/LayoutComponent/SideBar";
 import TopNav from "../component/LayoutComponent/TopNav";
+import CatalogChangeReviewModal from "../component/LayoutComponent/CatalogChangeReviewModal";
 import ApprovalReviewModal from "../component/LayoutComponent/ApprovalReviewModal";
+import ChangeAlertModal from "../component/LayoutComponent/ChangeAlertModal";
 import VisitCancelledModal from "../component/LayoutComponent/VisitCancelledModal";
+import { isCatalogRequestType } from "../../../../services/notificationServices";
 import { useNotificationCenter } from "../component/LayoutComponent/useNotificationCenter";
 import type { AppNotification } from "../component/LayoutComponent/notificationTypes";
 
@@ -23,12 +26,13 @@ const Layout = ({ children }: LayoutProps) => {
   const { labs, setLabs, currentLab, setCurrentLab, refreshlab } = useLabs();
   const router = useRouter();
   // Notifications / approval requests of the current lab (backend: /notifications/lab/{labId}).
-  const { notifications, items, isReviewer, refresh, markSeen, markAllRead } = useNotificationCenter(
+  const { notifications, items, isReviewer, isSuperAdmin, canReview, refresh, markSeen, markAllRead } = useNotificationCenter(
     user ?? null,
     currentLab?.id
   );
   const [reviewRequestId, setReviewRequestId] = useState<number | null>(null);
   const [alertId, setAlertId] = useState<number | null>(null);
+  const reviewItem = reviewRequestId !== null ? items.find((i) => i.id === reviewRequestId) : undefined;
   const openAlert = alertId !== null ? items.find((i) => i.id === alertId) : undefined;
 
   const handleNotificationClick = (n: AppNotification) => {
@@ -139,12 +143,24 @@ const Layout = ({ children }: LayoutProps) => {
             onMenuToggle={() => setIsOpen(!isOpen)}
             notifications={notifications}
             onNotificationClick={handleNotificationClick}
-            onMarkAllNotificationsRead={isReviewer ? undefined : markAllRead}
+            onMarkAllNotificationsRead={isReviewer || isSuperAdmin ? undefined : markAllRead}
             onNotificationsOpen={refresh}
           />
         )}
 
-        {reviewRequestId !== null && currentLab?.id && (
+        {reviewRequestId !== null && reviewItem && isCatalogRequestType(reviewItem.type) && (
+          <CatalogChangeReviewModal
+            key={reviewRequestId}
+            labId={reviewItem.labId}
+            labName={labs?.find((l: { id: number; name: string }) => l.id === reviewItem.labId)?.name}
+            requestId={reviewRequestId}
+            asSuperAdmin={reviewItem.targetRole === "SUPERADMIN" && isSuperAdmin}
+            canDecide={canReview(reviewItem)}
+            onDecided={refresh}
+            onClose={() => setReviewRequestId(null)}
+          />
+        )}
+        {reviewRequestId !== null && currentLab?.id && !(reviewItem && isCatalogRequestType(reviewItem.type)) && (
           <ApprovalReviewModal
             key={reviewRequestId}
             labId={currentLab.id}
@@ -155,11 +171,21 @@ const Layout = ({ children }: LayoutProps) => {
           />
         )}
 
-        {openAlert && currentLab?.id && (
+        {openAlert && openAlert.type === "VISIT_CANCELLED" && currentLab?.id && (
           <VisitCancelledModal
             key={openAlert.id}
             labId={currentLab.id}
             alert={openAlert}
+            onAcknowledged={refresh}
+            onClose={() => setAlertId(null)}
+          />
+        )}
+        {openAlert && openAlert.type !== "VISIT_CANCELLED" && (
+          <ChangeAlertModal
+            key={openAlert.id}
+            alert={openAlert}
+            labName={labs?.find((l: { id: number; name: string }) => l.id === openAlert.labId)?.name}
+            isSuperAdmin={isSuperAdmin}
             onAcknowledged={refresh}
             onClose={() => setAlertId(null)}
           />

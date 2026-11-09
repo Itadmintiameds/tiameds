@@ -90,9 +90,10 @@ export const getTestsPaginated = async (
 };
 
 //activate a previously deactivated test
-export const activateTest = async (testId: string, labId: string): Promise<void> => {
+export const activateTest = async (testId: string, labId: string): Promise<boolean> => {
   try {
-    await api.put(`/admin/lab/${labId}/activate/${testId}`);
+    const res = await api.put(`/admin/lab/${labId}/activate/${testId}`);
+    return res.status === 202; // true: only sent for approval, not applied yet
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while activating test.';
 
@@ -107,9 +108,11 @@ export const activateTest = async (testId: string, labId: string): Promise<void>
 };
 
 //deactivate test (soft delete)
-export const deleteTest = async (testId: string, labId: string): Promise<void> => {
+/** Resolves to true when the change was only sent for approval (HTTP 202), false when it was applied. */
+export const deleteTest = async (testId: string, labId: string): Promise<boolean> => {
   try {
-    await api.delete(`/admin/lab/${labId}/remove/${testId}`);
+    const res = await api.delete(`/admin/lab/${labId}/remove/${testId}`);
+    return res.status === 202;
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while deleting test.';
 
@@ -124,9 +127,10 @@ export const deleteTest = async (testId: string, labId: string): Promise<void> =
 };
 
 //add test 
-export const addTest = async (labId: string, test: TestList): Promise<void> => {
+export const addTest = async (labId: string, test: TestList): Promise<boolean> => {
   try {
-    await api.post(`/admin/lab/${labId}/add`, test);
+    const res = await api.post(`/admin/lab/${labId}/add`, test);
+    return res.status === 202;
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while adding test.';
 
@@ -241,9 +245,10 @@ export const getTestById = async (labId: string, testId: Number, visitId?: numbe
 };
 
 // /lab/3/update/2
-export const updateTest = async (labId: string, testId: string, test: TestList): Promise<void> => {
+export const updateTest = async (labId: string, testId: string, test: TestList): Promise<boolean> => {
   try {
-    await api.put(`/admin/lab/${labId}/update/${testId}`, test);
+    const res = await api.put(`/admin/lab/${labId}/update/${testId}`, test);
+    return res.status === 202;
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while updating test details.';
 
@@ -333,7 +338,7 @@ export const getTestReferences = async (
   }
 };
 
-export const updateTestReferanceRange = async (labId: number, testReferenceCode: string, testref: TestReferancePoint): Promise<void> => {
+export const updateTestReferanceRange = async (labId: number, testReferenceCode: string, testref: TestReferancePoint): Promise<boolean> => {
   try {
     // Use new /update endpoint with testReferenceCode in body (no ID in URL)
     // Exclude labId from testref to ensure we use the passed labId parameter
@@ -343,7 +348,8 @@ export const updateTestReferanceRange = async (labId: number, testReferenceCode:
       labId: labId.toString(), // Ensure labId is always set from the parameter as string
       testReferenceCode: testReferenceCode,
     };
-    await api.put(`lab/test-reference/update`, requestBody);
+    const res = await api.put(`lab/test-reference/update`, requestBody);
+    return res.status === 202; // true: only sent for approval, not applied yet
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while updating test referance range.';
 
@@ -357,14 +363,15 @@ export const updateTestReferanceRange = async (labId: number, testReferenceCode:
   }
 }
 
-export const deleteTestReferanceRange = async (labId: number, testReferenceCode: string) => {
+export const deleteTestReferanceRange = async (labId: number, testReferenceCode: string): Promise<boolean> => {
   try {
     // Send labId and testReferenceCode in request body, matching backend API
     const requestBody = {
       labId: labId,
       testReferenceCode: testReferenceCode
     };
-    await api.delete(`lab/test-reference/delete`, { data: requestBody });
+    const res = await api.delete(`lab/test-reference/delete`, { data: requestBody });
+    return res.status === 202; // true: only sent for approval, not applied yet
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while deleting test referance range.';
 
@@ -378,14 +385,15 @@ export const deleteTestReferanceRange = async (labId: number, testReferenceCode:
   }
 }
 
-export const addTestReferanceRange = async (labId: string, testref: TestReferancePoint): Promise<void> => {
+export const addTestReferanceRange = async (labId: string, testref: TestReferancePoint): Promise<boolean> => {
   try {
     // Include labId in the request body instead of URL
     const requestBody = {
       ...testref,
       labId: labId
     };
-    await api.post(`lab/test-reference/add`, requestBody);
+    const res = await api.post(`lab/test-reference/add`, requestBody);
+    return res.status === 202; // true: only sent for approval, not applied yet
   } catch (error: unknown) {
     let errorMessage = 'An error occurred while adding test referance range.';
 

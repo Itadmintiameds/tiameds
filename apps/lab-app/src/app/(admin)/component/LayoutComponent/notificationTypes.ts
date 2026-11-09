@@ -26,5 +26,12 @@ export const NOTIFICATION_RETENTION_DAYS = 30;
 /** How often the bell re-checks the backend. */
 export const NOTIFICATION_POLL_MS = 60_000;
 
-/** Roles that review requests (backend: ADMIN or SUPERADMIN who is a member of the lab). */
-export const REVIEWER_ROLES = ["ADMIN", "SUPERADMIN"];
+/**
+ * Only the lab ADMIN receives approval requests and cancel alerts (and can approve / reject / acknowledge).
+ * SUPERADMIN and TECHNICIAN don't see other people's notifications; everyone else only sees
+ * the requests they raised themselves.
+ */
+export const REVIEWER_ROLES = ["ADMIN"];
+
+/** Roles that receive alerts about changes made by an ADMIN (tests / test references), across all labs. */
+export const SUPER_ADMIN_ROLES = ["SUPERADMIN"];
