@@ -10,6 +10,7 @@ import {
   approveNotification,
   getNotificationDetail,
   getSuperAdminNotificationDetail,
+  isUserRequestType,
   rejectAsSuperAdmin,
   rejectNotification,
 } from "../../../../../services/notificationServices";
@@ -52,6 +53,9 @@ const OPERATION: Record<string, string> = {
   DELETE: "Disable",
   ACTIVATE: "Enable",
   DELETE_ALL: "Delete all",
+  CREATE_USER: "Create",
+  ADD_MEMBER: "Add to lab",
+  UPDATE_USER: "Update",
 };
 
 /** Fields that are bookkeeping, not something a reviewer needs to judge. */
@@ -67,7 +71,7 @@ const show = (key: string, value: unknown): string => {
   if (typeof value === "boolean") {
     return /active|enabled|enable/i.test(key) ? (value ? "Enabled" : "Disabled") : value ? "Yes" : "No";
   }
-  if (Array.isArray(value)) return value.length ? value.map((v) => (typeof v === "object" ? JSON.stringify(v) : String(v))).join(", ") : "—";
+  if (Array.isArray(value)) return value.length ? [...value].sort().map((v) => (typeof v === "object" ? JSON.stringify(v) : String(v))).join(", ") : "—";
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 };
@@ -79,12 +83,38 @@ interface Row {
 }
 
 /**
+ * A user update is described by the backend in `message` (NotificationService.describeUserChange):
+ *   "<admin> requested to update user <name>: email 'a' -> 'b'; enabled true -> false; roles [A] -> [B]"
+ * Only the fields that change are listed, so the table is built straight from that text.
+ */
+const USER_CHANGE =
+  /(username|email|first name|last name|phone|city) '([\s\S]*?)' -> '([\s\S]*?)'(?=; (?:username|email|first name|last name|phone|city|enabled|roles)\b|$)|(enabled) (true|false) -> (true|false)|(roles) \[([^\]]*)\] -> \[([^\]]*)\]/g;
+
+const parseUserChanges = (message?: string): Row[] => {
+  const start = message?.indexOf("requested to update user ") ?? -1;
+  if (!message || start < 0) return [];
+  const colon = message.indexOf(": ", start);
+  if (colon < 0) return [];
+  const blank = (v: string) => (v === "" || v === "null" ? "—" : v);
+  const rows: Row[] = [];
+  for (const m of Array.from(message.slice(colon + 2).matchAll(USER_CHANGE))) {
+    if (m[1]) rows.push({ field: humanize(m[1]), current: blank(m[2]), requested: blank(m[3]) });
+    else if (m[4]) {
+      const label = (v: string) => (v === "true" ? "Enabled" : "Disabled");
+      rows.push({ field: "Status", current: label(m[5]), requested: label(m[6]) });
+    } else if (m[7]) rows.push({ field: "Roles", current: blank(m[8].trim()), requested: blank(m[9].trim()) });
+  }
+  return rows;
+};
+
+/**
  * Field-by-field view of what was asked for:
  *  - UPDATE of a test: only fields that differ from the current test (backend sends currentValue).
  *  - ADD / UPDATE without a known current value: every field that was sent.
  *  - DELETE of a test: the current values being removed.
  */
 const buildRows = (d: ApiNotification): Row[] => {
+  if (d.type === "USER_UPDATE_REQUEST") return parseUserChanges(d.message);
   const change = d.proposedChange;
   if (!change) return [];
   const body = (change.body ?? {}) as Record<string, unknown>;
@@ -212,7 +242,8 @@ const CatalogChangeReviewModal: React.FC<CatalogChangeReviewModalProps> = ({
   const status = detail ? statusStyle[detail.status] : null;
   const change = detail?.proposedChange;
   const rows = detail ? buildRows(detail) : [];
-  const isTest = detail?.type === "TEST_CHANGE_REQUEST";
+  const isUser = isUserRequestType(detail?.type);
+  const noun = isUser ? "user" : detail?.type === "TEST_CHANGE_REQUEST" ? "test" : "test reference";
   const target = detail?.proposedChange?.body as Record<string, unknown> | undefined;
   const currentName = (detail?.currentValue as Record<string, unknown> | null | undefined)?.name;
   const subject =
@@ -220,6 +251,8 @@ const CatalogChangeReviewModal: React.FC<CatalogChangeReviewModalProps> = ({
     (typeof target?.name === "string" && target.name) ||
     (typeof target?.testName === "string" && target.testName) ||
     (typeof target?.testReferenceCode === "string" && target.testReferenceCode) ||
+    (typeof target?.username === "string" && target.username) ||
+    (isUser ? detail?.title.replace(/^[^:]*:\s*/, "") : "") ||
     "";
 
   return (
@@ -253,7 +286,7 @@ const CatalogChangeReviewModal: React.FC<CatalogChangeReviewModalProps> = ({
                     <Td>
                       <span className="font-semibold">
                         {OPERATION[change?.operation ?? ""] ?? change?.operation ?? "Change"}{" "}
-                        {isTest ? "test" : "test reference"}
+                        {noun}
                       </span>
                       {subject && <span className="block text-pneutral-700">{subject}</span>}
                     </Td>
@@ -336,7 +369,9 @@ const CatalogChangeReviewModal: React.FC<CatalogChangeReviewModalProps> = ({
                     {rows.length === 0 && (
                       <tr>
                         <td colSpan={3} className="px-3 py-3 text-left text-pneutral-500">
-                          No field-level details are available for this request.
+                          {isUser && detail.message
+                            ? detail.message
+                            : "No field-level details are available for this request."}
                         </td>
                       </tr>
                     )}

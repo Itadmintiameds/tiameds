@@ -107,8 +107,9 @@ const UpdateUserPassword = ({ member, setShowUpdatePassword }: UpdateUserPasswor
                 formData.confirmPassword
             );
             
-            if (response.error) {
-                toast.error(response.error);
+            // The backend answers { status: "error", message } on failure (e.g. 403 for an admin).
+            if (!response || response.status !== 'success') {
+                toast.error(response?.message || response?.error || 'Failed to update password');
                 return;
             }
             

@@ -8,16 +8,25 @@ export type ApiNotificationType =
   | 'TEST_CHANGED'
   | 'TEST_REFERENCE_CHANGED'
   | 'TEST_CHANGE_REQUEST'
-  | 'TEST_REFERENCE_CHANGE_REQUEST';
+  | 'TEST_REFERENCE_CHANGE_REQUEST'
+  | 'USER_ADD_REQUEST'
+  | 'USER_UPDATE_REQUEST';
 
-/** Test / test reference changes held for approval (nothing is applied until someone approves). */
+/** User create / add-member / update requests an ADMIN raised; a super admin decides them. */
+export const isUserRequestType = (type?: string): boolean =>
+  type === 'USER_ADD_REQUEST' || type === 'USER_UPDATE_REQUEST';
+
+/**
+ * Test / test reference / user changes held for approval (nothing is applied until someone approves).
+ * They share one review pop-up because the backend sends them all as a CatalogChange payload.
+ */
 export const isCatalogRequestType = (type?: string): boolean =>
-  type === 'TEST_CHANGE_REQUEST' || type === 'TEST_REFERENCE_CHANGE_REQUEST';
+  type === 'TEST_CHANGE_REQUEST' || type === 'TEST_REFERENCE_CHANGE_REQUEST' || isUserRequestType(type);
 
 /** What a held test / test reference change contains (backend CatalogChangePayload). */
 export interface CatalogChange {
-  /** ADD, UPDATE, DELETE or DELETE_ALL */
-  operation: 'ADD' | 'UPDATE' | 'DELETE' | 'DELETE_ALL' | string;
+  /** ADD, UPDATE, DELETE, DELETE_ALL; for users CREATE_USER, ADD_MEMBER or UPDATE_USER */
+  operation: 'ADD' | 'UPDATE' | 'DELETE' | 'DELETE_ALL' | 'CREATE_USER' | 'ADD_MEMBER' | 'UPDATE_USER' | string;
   entityId?: number | null;
   /** The request body: a TestDTO or a TestReferenceDTO (absent for DELETE / DELETE_ALL). */
   body?: Record<string, unknown> | null;
@@ -255,3 +264,11 @@ export const acknowledgeNotification = async (
  */
 export const isPendingApproval = (response: any): boolean =>
   response?.data?.type === 'PATIENT_EDIT_REQUEST' && response?.data?.status === 'PENDING';
+
+
+/**
+ * An ADMIN's user create / update / add-member call is not applied: the backend answers 202 with the
+ * PENDING request as `data` (instead of the user). Callers use this to tell the two cases apart.
+ */
+export const isUserRequestPending = (response: any): boolean =>
+  isUserRequestType(response?.data?.type) && response?.data?.status === 'PENDING';
