@@ -10,7 +10,9 @@ export type ApiNotificationType =
   | 'TEST_CHANGE_REQUEST'
   | 'TEST_REFERENCE_CHANGE_REQUEST'
   | 'USER_ADD_REQUEST'
-  | 'USER_UPDATE_REQUEST';
+  | 'USER_UPDATE_REQUEST'
+  | 'REPORT_UPDATED' // an ADMIN edited a completed report -> super admins
+  | 'REPORT_COMPLETED'; // results were saved, report is ready -> desk users
 
 /** User create / add-member / update requests an ADMIN raised; a super admin decides them. */
 export const isUserRequestType = (type?: string): boolean =>
@@ -34,7 +36,11 @@ export interface CatalogChange {
 
 /** Information-only alerts: nothing to approve, they are just acknowledged. */
 export const isAlertType = (type?: string): boolean =>
-  type === 'VISIT_CANCELLED' || type === 'TEST_CHANGED' || type === 'TEST_REFERENCE_CHANGED';
+  type === 'VISIT_CANCELLED' ||
+  type === 'TEST_CHANGED' ||
+  type === 'TEST_REFERENCE_CHANGED' ||
+  type === 'REPORT_UPDATED' ||
+  type === 'REPORT_COMPLETED';
 
 /** Latest visit of the patient (backend VisitDTO; visitCode is only present if the backend sends it). */
 export interface VisitSnapshot {
@@ -81,6 +87,10 @@ export interface ApiNotification {
   rejectionReason?: string;
   approvalReason?: string;
   createdAt: string;
+  // REPORT_UPDATED only
+  labName?: string;
+  patientName?: string;
+  reportId?: number;
   // Detail endpoint only
   currentPatient?: PatientSnapshot;
   proposedPatient?: PatientSnapshot;
@@ -175,6 +185,31 @@ export const acknowledgeAsSuperAdmin = async (notificationId: number): Promise<A
   try {
     const response = await api.put<ApiEnvelope<ApiNotification>>(
       `notifications/super-admin/${notificationId}/acknowledge`
+    );
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(errorMessage(error, 'Failed to acknowledge the alert.'));
+  }
+};
+
+/** Desk: "report completed" alerts of the lab (DESKROLE members only). */
+export const getDeskNotifications = async (labId: number): Promise<ApiNotification[]> => {
+  try {
+    const response = await api.get<ApiEnvelope<ApiNotification[]>>(`notifications/lab/${labId}/desk`);
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(errorMessage(error, 'Failed to fetch notifications.'));
+  }
+};
+
+/** Desk: the report was printed / seen; removes the alert from the pending count. */
+export const acknowledgeAsDesk = async (
+  labId: number,
+  notificationId: number
+): Promise<ApiNotification> => {
+  try {
+    const response = await api.put<ApiEnvelope<ApiNotification>>(
+      `notifications/lab/${labId}/desk/${notificationId}/acknowledge`
     );
     return response.data.data;
   } catch (error: any) {

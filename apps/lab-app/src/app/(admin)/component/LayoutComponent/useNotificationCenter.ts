@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ApiNotification,
+  getDeskNotifications,
   getLabNotifications,
   getMyRequests,
   getSuperAdminNotifications,
@@ -8,6 +9,7 @@ import {
 } from "../../../../../services/notificationServices";
 import {
   AppNotification,
+  DESK_ROLES,
   NOTIFICATION_POLL_MS,
   NOTIFICATION_RETENTION_DAYS,
   REVIEWER_ROLES,
@@ -66,6 +68,11 @@ export const useNotificationCenter = (user: CenterUser | null, labId: number | u
     [roleKey]
   );
 
+  const isDesk = useMemo(
+    () => roleKey.split(",").some((r) => DESK_ROLES.includes(r.toUpperCase())),
+    [roleKey]
+  );
+
   const refresh = useCallback(async () => {
     if (!email) return;
     try {
@@ -76,6 +83,14 @@ export const useNotificationCenter = (user: CenterUser | null, labId: number | u
       if (isSuperAdmin) add(await getSuperAdminNotifications());
       if (labId) {
         if (isReviewer) add(await getLabNotifications(labId));
+        // Desk users get "report completed" alerts (their own endpoint; failures must not hide the rest).
+        if (isDesk) {
+          try {
+            add(await getDeskNotifications(labId));
+          } catch {
+            /* next poll will retry */
+          }
+        }
         // Everyone (admins too, for their own test changes) sees the decision on what they raised.
         if (!isSuperAdmin || isReviewer) {
           const own = await getMyRequests(labId);
@@ -88,7 +103,7 @@ export const useNotificationCenter = (user: CenterUser | null, labId: number | u
     } catch {
       // Keep whatever we already have; the next poll will try again.
     }
-  }, [labId, email, isReviewer, isSuperAdmin]);
+  }, [labId, email, isReviewer, isSuperAdmin, isDesk]);
 
   // Load on mount / when the lab or user changes, then poll.
   useEffect(() => {
@@ -121,7 +136,9 @@ export const useNotificationCenter = (user: CenterUser | null, labId: number | u
         // Alerts (visit cancelled, test changed, ...): admins get those meant for them, super admins
         // the ones about an ADMIN's changes. The user who made the change doesn't get one.
         if (isAlertType(n.type)) {
-          return n.targetRole === "SUPERADMIN" ? isSuperAdmin : isReviewer || isSuperAdmin;
+          if (n.targetRole === "SUPERADMIN") return isSuperAdmin;
+          if (n.targetRole === "DESKROLE") return isDesk; // report completed: desk only
+          return isReviewer || isSuperAdmin;
         }
         return canReview(n) || mineIds.has(n.id);
       })
@@ -171,7 +188,7 @@ export const useNotificationCenter = (user: CenterUser | null, labId: number | u
           Number(a.read) - Number(b.read) ||
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-  }, [items, seen, mineIds, canReview, isReviewer, isSuperAdmin]);
+  }, [items, seen, mineIds, canReview, isReviewer, isSuperAdmin, isDesk]);
 
   /** Remember that the requester has looked at a decided request. */
   const markSeen = useCallback(
@@ -198,6 +215,7 @@ export const useNotificationCenter = (user: CenterUser | null, labId: number | u
     isReviewer,
     items,
     isSuperAdmin,
+    isDesk,
     canReview,
     refresh,
     markSeen,

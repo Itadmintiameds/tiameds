@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { useEffect, useRef, useState } from "react";
 import {
   ApiNotification,
   acknowledgeNotification,
@@ -48,9 +47,6 @@ const VisitCancelledModal: React.FC<VisitCancelledModalProps> = ({
   onAcknowledged,
   onClose,
 }) => {
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [details, setDetails] = useState<any>(null);
 
@@ -81,19 +77,14 @@ const VisitCancelledModal: React.FC<VisitCancelledModalProps> = ({
     { label: "Cancelled on", value: formatDate(alert.createdAt) || "—" },
   ];
 
-  const acknowledge = async () => {
-    setSubmitting(true);
-    try {
-      await acknowledgeNotification(labId, alert.id);
-      toast.success("Alert acknowledged");
-      onAcknowledged();
-      onClose();
-    } catch (e) {
-      setError((e as Error).message);
-      onAcknowledged(); // e.g. already acknowledged elsewhere: refresh the list behind us
-      setSubmitting(false);
-    }
-  };
+  // Opening the alert acknowledges it (no button): mark it seen once, then refresh the bell.
+  const sent = useRef(false);
+  useEffect(() => {
+    if (!pending || sent.current) return;
+    sent.current = true;
+    acknowledgeNotification(labId, alert.id).catch(() => {}).finally(onAcknowledged);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const footer = (
     <div className="flex justify-end gap-2">
@@ -104,16 +95,6 @@ const VisitCancelledModal: React.FC<VisitCancelledModalProps> = ({
       >
         Close
       </button>
-      {pending && (
-        <button
-          type="button"
-          disabled={submitting}
-          onClick={acknowledge}
-          className="px-4 py-2 rounded-md text-p3 font-semibold text-base-white bg-primary-700 hover:bg-primary-800 transition-colors disabled:opacity-50"
-        >
-          {submitting ? "Please wait…" : "Acknowledge"}
-        </button>
-      )}
     </div>
   );
 
@@ -155,11 +136,6 @@ const VisitCancelledModal: React.FC<VisitCancelledModalProps> = ({
             </tbody>
           </table>
         </div>
-        {error && (
-          <p role="alert" className="text-p2 text-warning-600">
-            {error}
-          </p>
-        )}
       </div>
     </NewModal>
   );

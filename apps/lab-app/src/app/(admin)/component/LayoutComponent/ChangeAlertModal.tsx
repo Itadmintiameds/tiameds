@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { toast } from "react-toastify";
+import { useEffect, useRef } from "react";
 import {
   ApiNotification,
+  acknowledgeAsDesk,
   acknowledgeAsSuperAdmin,
   acknowledgeNotification,
 } from "../../../../../services/notificationServices";
@@ -34,6 +34,8 @@ const formatDate = (iso?: string) =>
 const KIND: Record<string, string> = {
   TEST_CHANGED: "Test (price list)",
   TEST_REFERENCE_CHANGED: "Test reference",
+  REPORT_UPDATED: "Report",
+  REPORT_COMPLETED: "Report",
 };
 
 /**
@@ -58,38 +60,53 @@ const ChangeAlertModal: React.FC<ChangeAlertModalProps> = ({
   onAcknowledged,
   onClose,
 }) => {
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
   const pending = alert.status === "PENDING";
   const { action, subject } = parseMessage(alert.message, alert.requestedByUsername);
 
-  const rows: { label: string; value: string }[] = [
-    { label: "Lab", value: labName || `Lab #${alert.labId}` },
-    { label: "Type", value: KIND[alert.type] ?? alert.type },
-    { label: "Change", value: action ? action.charAt(0).toUpperCase() + action.slice(1) : alert.title },
-    { label: "Test", value: subject || "—" },
-    { label: "Changed by", value: alert.requestedByUsername || "—" },
-    { label: "Changed on", value: formatDate(alert.createdAt) || "—" },
-  ];
+  const isReportCompleted = alert.type === "REPORT_COMPLETED";
+  const isReportUpdated = alert.type === "REPORT_UPDATED";
 
-  const acknowledge = async () => {
-    setSubmitting(true);
-    try {
-      if (isSuperAdmin && alert.targetRole === "SUPERADMIN") {
-        await acknowledgeAsSuperAdmin(alert.id);
-      } else {
-        await acknowledgeNotification(alert.labId, alert.id);
-      }
-      toast.success("Alert acknowledged");
-      onAcknowledged();
-      onClose();
-    } catch (e) {
-      setError((e as Error).message);
-      onAcknowledged(); // e.g. already acknowledged elsewhere: refresh the list behind us
-      setSubmitting(false);
-    }
-  };
+  const rows: { label: string; value: string }[] = isReportCompleted
+    ? [
+        // Backend text: "Report of <patient> (visit <code>) is completed. Please take the print."
+        { label: "Lab", value: labName || `Lab #${alert.labId}` },
+        { label: "Visit code", value: alert.visitCode || "—" },
+        { label: "Details", value: alert.message || alert.title },
+        { label: "Results saved by", value: alert.requestedByUsername || "—" },
+        { label: "Completed on", value: formatDate(alert.createdAt) || "—" },
+      ]
+    : isReportUpdated
+    ? [
+        // Backend text: "<user> updated report <reportId>"
+        { label: "Lab", value: alert.labName || labName || `Lab #${alert.labId}` },
+        { label: "Patient", value: alert.patientName || "—" },
+        { label: "Visit code", value: alert.visitCode || "—" },
+        { label: "Report ID", value: alert.reportId ? String(alert.reportId) : "—" },
+        { label: "Updated by", value: alert.requestedByUsername || "—" },
+        { label: "Updated on", value: formatDate(alert.createdAt) || "—" },
+      ]
+    : [
+        { label: "Lab", value: labName || `Lab #${alert.labId}` },
+        { label: "Type", value: KIND[alert.type] ?? alert.type },
+        { label: "Change", value: action ? action.charAt(0).toUpperCase() + action.slice(1) : alert.title },
+        { label: "Test", value: subject || "—" },
+        { label: "Changed by", value: alert.requestedByUsername || "—" },
+        { label: "Changed on", value: formatDate(alert.createdAt) || "—" },
+      ];
+
+  // Opening the alert is what acknowledges it (no button): mark it seen once, then refresh the bell.
+  const sent = useRef(false);
+  useEffect(() => {
+    if (!pending || sent.current) return;
+    sent.current = true;
+    const call = isReportCompleted
+      ? acknowledgeAsDesk(alert.labId, alert.id)
+      : isSuperAdmin && alert.targetRole === "SUPERADMIN"
+      ? acknowledgeAsSuperAdmin(alert.id)
+      : acknowledgeNotification(alert.labId, alert.id);
+    call.catch(() => {}).finally(onAcknowledged); // e.g. already acknowledged elsewhere: just refresh
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const footer = (
     <div className="flex justify-end gap-2">
@@ -100,16 +117,6 @@ const ChangeAlertModal: React.FC<ChangeAlertModalProps> = ({
       >
         Close
       </button>
-      {pending && (
-        <button
-          type="button"
-          disabled={submitting}
-          onClick={acknowledge}
-          className="px-4 py-2 rounded-md text-p3 font-semibold text-base-white bg-primary-700 hover:bg-primary-800 transition-colors disabled:opacity-50"
-        >
-          {submitting ? "Please wait…" : "Acknowledge"}
-        </button>
-      )}
     </div>
   );
 
@@ -141,13 +148,12 @@ const ChangeAlertModal: React.FC<ChangeAlertModalProps> = ({
           </table>
         </div>
         <p className="text-p2 text-pneutral-500">
-          This change has already been applied. Acknowledging only marks the alert as seen.
+          {isReportCompleted
+            ? "The report is ready. Please take the print."
+            : isReportUpdated
+            ? "The report has already been updated."
+            : "This change has already been applied."}
         </p>
-        {error && (
-          <p role="alert" className="text-p2 text-warning-600">
-            {error}
-          </p>
-        )}
       </div>
     </NewModal>
   );

@@ -35,3 +35,6 @@ export const REVIEWER_ROLES = ["ADMIN"];
 
 /** Roles that receive alerts about changes made by an ADMIN (tests / test references), across all labs. */
 export const SUPER_ADMIN_ROLES = ["SUPERADMIN"];
+
+/** Roles that receive "report completed" alerts when a technician saves results. */
+export const DESK_ROLES = ["DESKROLE"];

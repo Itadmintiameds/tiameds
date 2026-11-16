@@ -34,10 +34,10 @@ enum BillStatus {
   CANCELLED = 'CANCELLED',
 }
 
-const BILL_STATUS_LABELS: Record<BillStatus, string> = {
+const BILL_STATUS_LABELS: Partial<Record<BillStatus, string>> = {
   [BillStatus.PAID]: 'Paid',
   [BillStatus.DUE]: 'Due',
-  [BillStatus.PARTIALLY_PAID]: 'Partially Paid',
+  // [BillStatus.PARTIALLY_PAID]: 'Partially Paid',
   [BillStatus.CANCELLED]: 'Cancelled',
 };
 
@@ -675,7 +675,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
                 >
                   <option value="">All Bill</option>
                   {Object.values(BillStatus).map((bs) => (
-                    (bs === BillStatus.CANCELLED && !canAccessCancelledFilter) ? null : (
+                    (!BILL_STATUS_LABELS[bs] || (bs === BillStatus.CANCELLED && !canAccessCancelledFilter)) ? null : (
                       <option key={bs} value={bs}>{BILL_STATUS_LABELS[bs]}</option>
                     )
                   ))}
