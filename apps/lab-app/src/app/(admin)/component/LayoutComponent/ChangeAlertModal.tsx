@@ -36,6 +36,17 @@ const KIND: Record<string, string> = {
   TEST_REFERENCE_CHANGED: "Test reference",
   REPORT_UPDATED: "Report",
   REPORT_COMPLETED: "Report",
+  VISIT_SAMPLE_CHANGED: "Sample",
+  DISCOUNT_APPLIED: "Discount",
+};
+
+const money = (v?: number | null) => (v === null || v === undefined ? "—" : String(v));
+
+const patientLabel = (alert: ApiNotification) => {
+  const p = alert.patientDetails;
+  const name = p?.name || alert.patientName;
+  if (!name) return "—";
+  return p?.patientId ? `${name} (ID ${p.patientId})` : name;
 };
 
 /**
@@ -65,8 +76,37 @@ const ChangeAlertModal: React.FC<ChangeAlertModalProps> = ({
 
   const isReportCompleted = alert.type === "REPORT_COMPLETED";
   const isReportUpdated = alert.type === "REPORT_UPDATED";
+  const isSampleChanged = alert.type === "VISIT_SAMPLE_CHANGED";
+  const isDiscount = alert.type === "DISCOUNT_APPLIED";
+  const d = alert.discountDetails;
+  const testDiscounts = d?.testDiscounts ?? [];
 
-  const rows: { label: string; value: string }[] = isReportCompleted
+  const rows: { label: string; value: string }[] = isSampleChanged
+    ? [
+        // Backend text: "<user> updated|deleted sample(s) [..] after results were entered for patient ..."
+        { label: "Lab", value: alert.labName || labName || `Lab #${alert.labId}` },
+        { label: "Patient", value: patientLabel(alert) },
+        { label: "Visit code", value: alert.visitCode || "—" },
+        { label: "Action", value: alert.sampleAction === "DELETED" ? "Deleted" : "Updated" },
+        { label: "Samples", value: alert.samples?.length ? alert.samples.join(", ") : "—" },
+        { label: alert.sampleAction === "DELETED" ? "Deleted by" : "Updated by", value: alert.requestedByUsername || "—" },
+        { label: "On", value: formatDate(alert.createdAt) || "—" },
+      ]
+    : isDiscount
+    ? [
+        // Backend text: "<user> applied a discount: bill discount .. for patient .."
+        { label: "Lab", value: alert.labName || labName || `Lab #${alert.labId}` },
+        { label: "Patient", value: patientLabel(alert) },
+        { label: "Visit code", value: alert.visitCode || "—" },
+        { label: "Billing code", value: d?.billingCode || "—" },
+        { label: "Total amount", value: money(d?.totalAmount) },
+        { label: "Bill discount", value: money(d?.discountAmount) },
+        { label: "Discount reason", value: d?.discountReason || "—" },
+        { label: "Net amount", value: money(d?.netAmount) },
+        { label: "Applied by", value: alert.requestedByUsername || "—" },
+        { label: "On", value: formatDate(alert.createdAt) || "—" },
+      ]
+    : isReportCompleted
     ? [
         // Backend text: "Report of <patient> (visit <code>) is completed. Please take the print."
         { label: "Lab", value: labName || `Lab #${alert.labId}` },
@@ -147,8 +187,36 @@ const ChangeAlertModal: React.FC<ChangeAlertModalProps> = ({
             </tbody>
           </table>
         </div>
+        {isDiscount && testDiscounts.length > 0 && (
+          <div className="overflow-hidden rounded-md border border-pneutral-200">
+            <table className="w-full text-p3">
+              <thead className="bg-pneutral-50 text-left text-pneutral-700">
+                <tr>
+                  <th className="px-3 py-2 font-semibold">Test</th>
+                  <th className="px-3 py-2 font-semibold">Discount</th>
+                  <th className="px-3 py-2 font-semibold">%</th>
+                  <th className="px-3 py-2 font-semibold">Final price</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-pneutral-100">
+                {testDiscounts.map((t, i) => (
+                  <tr key={t.testId ?? i}>
+                    <td className="px-3 py-2 break-words">{t.testName || `Test #${t.testId ?? "—"}`}</td>
+                    <td className="px-3 py-2">{money(t.discountAmount)}</td>
+                    <td className="px-3 py-2">{money(t.discountPercent)}</td>
+                    <td className="px-3 py-2">{money(t.finalPrice)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
         <p className="text-p2 text-pneutral-500">
-          {isReportCompleted
+          {isSampleChanged
+            ? "The sample change has already been applied after the results were entered."
+            : isDiscount
+            ? "The discount has already been applied."
+            : isReportCompleted
             ? "The report is ready. Please take the print."
             : isReportUpdated
             ? "The report has already been updated."

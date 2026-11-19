@@ -12,7 +12,9 @@ export type ApiNotificationType =
   | 'USER_ADD_REQUEST'
   | 'USER_UPDATE_REQUEST'
   | 'REPORT_UPDATED' // an ADMIN edited a completed report -> super admins
-  | 'REPORT_COMPLETED'; // results were saved, report is ready -> desk users
+  | 'REPORT_COMPLETED' // results were saved, report is ready -> desk users
+  | 'VISIT_SAMPLE_CHANGED' // desk / technician updated or deleted samples after results were entered -> admins
+  | 'DISCOUNT_APPLIED'; // desk / technician applied or changed a discount -> admins
 
 /** User create / add-member / update requests an ADMIN raised; a super admin decides them. */
 export const isUserRequestType = (type?: string): boolean =>
@@ -40,7 +42,39 @@ export const isAlertType = (type?: string): boolean =>
   type === 'TEST_CHANGED' ||
   type === 'TEST_REFERENCE_CHANGED' ||
   type === 'REPORT_UPDATED' ||
-  type === 'REPORT_COMPLETED';
+  type === 'REPORT_COMPLETED' ||
+  type === 'VISIT_SAMPLE_CHANGED' ||
+  type === 'DISCOUNT_APPLIED';
+
+/** Patient details sent with VISIT_SAMPLE_CHANGED / DISCOUNT_APPLIED (backend patientDetails()). */
+export interface AlertPatientDetails {
+  patientId?: number | string | null;
+  name?: string | null;
+  gender?: string | null;
+  age?: string | number | null;
+  dateOfBirth?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}
+
+/** One test-level discount of a DISCOUNT_APPLIED alert. */
+export interface TestDiscountDetails {
+  testId?: number | null;
+  testName?: string | null;
+  discountAmount?: number | null;
+  discountPercent?: number | null;
+  finalPrice?: number | null;
+}
+
+/** Bill and discount details of a DISCOUNT_APPLIED alert. */
+export interface DiscountDetails {
+  billingCode?: string | null;
+  totalAmount?: number | null;
+  discountAmount?: number | null;
+  discountReason?: string | null;
+  netAmount?: number | null;
+  testDiscounts?: TestDiscountDetails[];
+}
 
 /** Latest visit of the patient (backend VisitDTO; visitCode is only present if the backend sends it). */
 export interface VisitSnapshot {
@@ -91,6 +125,13 @@ export interface ApiNotification {
   labName?: string;
   patientName?: string;
   reportId?: number;
+  // VISIT_SAMPLE_CHANGED only
+  sampleAction?: 'UPDATED' | 'DELETED' | string;
+  samples?: string[];
+  // VISIT_SAMPLE_CHANGED and DISCOUNT_APPLIED
+  patientDetails?: AlertPatientDetails | null;
+  // DISCOUNT_APPLIED only
+  discountDetails?: DiscountDetails | null;
   // Detail endpoint only
   currentPatient?: PatientSnapshot;
   proposedPatient?: PatientSnapshot;
