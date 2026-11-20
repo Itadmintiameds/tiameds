@@ -469,7 +469,7 @@ const [expandedSections, setExpandedSections] = useState<{
       {/* Header */}
       <div className="mb-5">
         <h1 className="text-2xl font-semibold text-pneutral-900">
-          Pending Samples_Status
+          Pending Samples Status
         </h1>
         <p className="mt-1 text-sm text-pneutral-500">
           Manage and track pending patient Samples
