@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  FiAlertTriangle,
+  FiAlertTriangle, 
   FiBell,
   FiCheck,
   FiCheckCircle,
@@ -32,7 +32,7 @@ const typeStyles: Record<NotificationType, { icon: React.ReactNode; bg: string }
   approval: { icon: <FiClipboard className="h-4 w-4 text-primary-700" />, bg: "bg-primary-100" },
   approved: { icon: <FiCheckCircle className="h-4 w-4 text-success-700" />, bg: "bg-success-50" },
   rejected: { icon: <FiXCircle className="h-4 w-4 text-warning-600" />, bg: "bg-warning-50" },
-};
+}; 
 
 const timeAgo = (iso: string) => {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
