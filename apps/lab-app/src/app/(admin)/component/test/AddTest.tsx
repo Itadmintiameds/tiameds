@@ -91,10 +91,11 @@ const AddTest = ({ closeModal, updateList, setUpdateList }: AddTestProps) => {
       };
       if (currentLab) {
         setIsLoading(true);
-        await addTest(currentLab.id.toString(), testListData);
+        const held = await addTest(currentLab.id.toString(), testListData);
         setUpdateList(!updateList);
         setIsLoading(false);
-        toast.success('Test added successfully!', { autoClose: 2000 });
+        if (held) toast.info('Sent for approval. The test is added once it is approved.', { autoClose: 3000 });
+        else toast.success('Test added successfully!', { autoClose: 2000 });
         setFormData({ category: '', name: '', price: undefined });
         closeModal();
       } else {

@@ -76,8 +76,9 @@ const TestEditComponent = ({ updateList, setUpdateList, closeModal, test }: Test
                 price: Number(formData.price) || 0 // Convert string to number when submitting
             };
             updateTest(currentLab.id.toString(), test?.id.toString() || '', updatedData)
-                .then(() => {
-                    toast.success("Test updated successfully");
+                .then((held) => {
+                    if (held) toast.info("Sent for approval. The changes are applied once approved.");
+                    else toast.success("Test updated successfully");
                     setUpdateList(!updateList);
                     closeModal();
                 })

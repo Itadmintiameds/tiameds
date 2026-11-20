@@ -5,6 +5,7 @@ import Modal from "@/app/(admin)/component/common/Model";
 import Pagination from "@/app/(admin)/component/common/Pagination";
 import TableComponent from "@/app/(admin)/component/common/TableComponent";
 import { useLabs } from "@/context/LabContext";
+import { useAuth } from "@/hooks/useAuth";
 import React, { useEffect, useState } from "react";
 import { FaEdit, FaSearch, FaUserPlus, FaTimes, FaUser as FaUserIcon } from "react-icons/fa";
 import { FiUserPlus } from "react-icons/fi";
@@ -12,6 +13,7 @@ import { RiShieldUserFill } from "react-icons/ri";
 import { TbLockPassword } from "react-icons/tb";
 import Select, { MultiValue } from 'react-select';
 import { toast } from "react-toastify";
+import { isUserRequestPending } from "../../../../../../services/notificationServices";
 import { createMember, getMembersOfLab, updateMember } from "../../../../../../services/technicianServices";
 import UpdateUserPassword from "./UpdateUserPassword";
 
@@ -104,6 +106,9 @@ const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentMemberId, setCurrentMemberId] = useState<string | null>(null);
     const { currentLab } = useLabs();
+    const { user } = useAuth();
+    // Only a super admin may reset another user's password; admins are not authorised to.
+    const canResetPassword = !!user?.roles?.some((r: string) => r.toUpperCase() === "SUPERADMIN");
     const [formData, setFormData] = useState<FormData>(initialFormState);
     const [members, setMembers] = useState<Member[]>([]);
     const [selectedRoles, setSelectedRoles] = useState<Option[]>([]);
@@ -332,7 +337,11 @@ const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
                     updatePayload
                 );
 
-                if (response?.data) {
+                if (isUserRequestPending(response)) {
+                    // An admin's change waits for a super admin; nothing was changed yet.
+                    toast.info(response.message || "Update sent to a super admin for approval.");
+                    handleCancel();
+                } else if (response?.data) {
                     setMembers(prevMembers =>
                         prevMembers.map(member =>
                             member.id === currentMemberId ? { ...member, ...response.data } : member
@@ -352,7 +361,11 @@ const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
                     isVerified: true,
                 });
 
-                if (response?.data) {
+                if (isUserRequestPending(response)) {
+                    toast.info(response.message || "User creation sent to a super admin for approval.");
+                    setFormData(initialFormState);
+                    setSelectedRoles([]);
+                } else if (response?.data) {
                     setMembers(prevMembers => [response.data, ...prevMembers]);
                     setRefreshMembers(prev => !prev);
                     toast.success("Member added successfully.");
@@ -512,9 +525,14 @@ const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
                                 <FaEdit className="h-4 w-4" />
                             </button>
                                 <button
-                                    onClick={() => handleUpdatePassword(member)}
-                                className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
-                                    title="Update Password"
+                                    onClick={() => canResetPassword && handleUpdatePassword(member)}
+                                    disabled={!canResetPassword}
+                                    className={`p-1.5 rounded-md transition-colors ${
+                                        canResetPassword
+                                            ? "text-red-600 hover:text-red-800 hover:bg-red-50"
+                                            : "text-gray-400 cursor-not-allowed"
+                                    }`}
+                                    title={canResetPassword ? "Update Password" : "Only a super admin can update a user's password"}
                                 >
                                 <TbLockPassword className="h-4 w-4" />
                                 </button>

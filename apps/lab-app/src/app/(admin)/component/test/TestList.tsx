@@ -138,14 +138,16 @@ const TestLists = () => {
     const isDisabling = status === 'active';
     try {
       setIsDeleting(true);
+      let held = false;
       if (isDisabling) {
-        await deleteTest(deleteTarget.id.toString(), currentLab.id.toString());
+        held = await deleteTest(deleteTarget.id.toString(), currentLab.id.toString());
       } else {
-        await activateTest(deleteTarget.id.toString(), currentLab.id.toString());
+        held = await activateTest(deleteTarget.id.toString(), currentLab.id.toString());
       }
       setDeleteTarget(null);
       setUpdateList(!updateList);
-      toast.success(`Test ${isDisabling ? 'disabled' : 'enabled'} successfully`);
+      if (held) toast.info(`Sent for approval. The test is ${isDisabling ? 'disabled' : 'enabled'} once it is approved.`);
+      else toast.success(`Test ${isDisabling ? 'disabled' : 'enabled'} successfully`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : `Failed to ${isDisabling ? 'disable' : 'enable'} test`);
     } finally {

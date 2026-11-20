@@ -34,10 +34,10 @@ enum BillStatus {
   CANCELLED = 'CANCELLED',
 }
 
-const BILL_STATUS_LABELS: Record<BillStatus, string> = {
+const BILL_STATUS_LABELS: Partial<Record<BillStatus, string>> = {
   [BillStatus.PAID]: 'Paid',
   [BillStatus.DUE]: 'Due',
-  [BillStatus.PARTIALLY_PAID]: 'Partially Paid',
+  // [BillStatus.PARTIALLY_PAID]: 'Partially Paid',
   [BillStatus.CANCELLED]: 'Cancelled',
 };
 
@@ -165,6 +165,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
       setPatientList(response.data);
       setTotalPages(response.totalPages);
       setTotalElements(response.totalElements);
+      return response.data as Patient[];
     } catch (error: unknown) {
       toast.error((error as Error).message || 'An error occurred while fetching visits', {
         autoClose: 2000,
@@ -250,8 +251,12 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
     setViewReportModal(true);
   };
 
-  const handleEditpatientDetails = (visit: Patient) => () => {
-    setEditPatientDetails(visit);
+  // The list may be stale (e.g. an admin approved an edit request after it was loaded), so reload the
+  // visit before opening the editor and fall back to the row we already have if that fails.
+  const handleEditpatientDetails = (visit: Patient) => async () => {
+    const fresh = await fetchVisits(currentPage);
+    const latest = fresh?.find((p) => p?.visit?.visitId === visit?.visit?.visitId);
+    setEditPatientDetails(latest ?? visit);
     setEditPatientDetailsModal(true);
   };
 
@@ -670,7 +675,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
                 >
                   <option value="">All Bill</option>
                   {Object.values(BillStatus).map((bs) => (
-                    (bs === BillStatus.CANCELLED && !canAccessCancelledFilter) ? null : (
+                    (!BILL_STATUS_LABELS[bs] || (bs === BillStatus.CANCELLED && !canAccessCancelledFilter)) ? null : (
                       <option key={bs} value={bs}>{BILL_STATUS_LABELS[bs]}</option>
                     )
                   ))}
