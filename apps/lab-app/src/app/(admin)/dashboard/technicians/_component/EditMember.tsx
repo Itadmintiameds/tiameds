@@ -113,7 +113,7 @@ const EditMember: React.FC<EditMemberProps> = ({ updateMember }) => {
                         className="w-full p-2.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         onChange={handleChange}
                     >
-                        <option value="admin">Admin</option>
+                        <option value="admin">Admin/Manager</option>
                         <option value="technician">Technician</option>
                     </select>
                 </div>

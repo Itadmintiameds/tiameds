@@ -3,6 +3,7 @@ import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
 import Button from "../common/Button";
 import CurrentTime from "../common/CurrentTime";
 import { handleLogout } from "@/utils/auth";
+import { getRoleLabel } from "@/utils/roleLabels";
 import NotificationBell, { AppNotification } from "./NotificationBell";
 
 interface User {
@@ -83,7 +84,7 @@ const TopNav: React.FC<TopNavProps> = ({
                 <button className="flex items-center space-x-1 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-md px-2 py-0.5 border border-blue-100 hover:from-blue-100 hover:to-cyan-100 transition-colors">
                   <FiUser className="h-3.5 w-3.5 text-blue-600" />
                   <span className="text-blue-700 font-medium">
-                    {user.roles[0]} +{user.roles.length - 1}
+                    {getRoleLabel(user.roles[0])} +{user.roles.length - 1}
                   </span>
                   <FiChevronDown className="h-3 w-3 text-blue-500" />
                 </button>
@@ -94,7 +95,7 @@ const TopNav: React.FC<TopNavProps> = ({
                   </div>
                   {user.roles.map((role, index) => (
                     <div key={index} className="px-3 py-2 text-xs text-gray-700 hover:bg-blue-50">
-                      {role}
+                      {getRoleLabel(role)}
                     </div>
                   ))}
                 </div>
@@ -103,7 +104,7 @@ const TopNav: React.FC<TopNavProps> = ({
               <div className="flex items-center space-x-1 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-md px-2 py-0.5 border border-blue-100">
                 <FiUser className="h-3.5 w-3.5 text-blue-600" />
                 <span className="text-blue-700 font-medium">
-                  {user.roles[0]}
+                  {getRoleLabel(user.roles[0])}
                 </span>
               </div>
             )}

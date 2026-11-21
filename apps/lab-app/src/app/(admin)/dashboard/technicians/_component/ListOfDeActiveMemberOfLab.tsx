@@ -2,6 +2,7 @@ import Loader from '@/app/(admin)/component/common/Loader';
 import Pagination from '@/app/(admin)/component/common/Pagination';
 import TableComponent from '@/app/(admin)/component/common/TableComponent';
 import { useLabs } from '@/context/LabContext';
+import { getRoleLabel } from '@/utils/roleLabels';
 import React, { useEffect, useState } from 'react';
 import { getMembersOfLab } from '../../../../../../services/technicianServices';
 
@@ -104,7 +105,7 @@ const ListOfDeActiveMemberOfLab = () => {
                             key={index}
                             className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
                         >
-                            {role}
+                            {getRoleLabel(role)}
                         </span>
                     ))}
                 </div>

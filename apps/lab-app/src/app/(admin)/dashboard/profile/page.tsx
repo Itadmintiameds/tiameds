@@ -12,6 +12,7 @@ import {
     ProfileUpdatePayload,
 } from '@/types/profile';
 import Loader from '../../component/common/Loader';
+import { getRoleLabel } from '@/utils/roleLabels';
 import CertificateDropzone from './CertificateDropzone';
 import { ORG_FIELDS, asText, inputClass } from './profileFields';
 import { COUNTRIES, STATES } from '@/app/onboarding/_lib/constants';
@@ -390,7 +391,7 @@ const ProfilePage = () => {
                             </span>
                             {user.roles.map(role => (
                                 <Badge key={role} className="bg-secondary-100 text-secondary-800">
-                                    {role}
+                                    {getRoleLabel(role)}
                                 </Badge>
                             ))}
                         </div>

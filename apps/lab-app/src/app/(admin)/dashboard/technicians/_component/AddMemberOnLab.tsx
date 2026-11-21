@@ -16,6 +16,7 @@ import { toast } from "react-toastify";
 import { isUserRequestPending } from "../../../../../../services/notificationServices";
 import { createMember, getMembersOfLab, updateMember } from "../../../../../../services/technicianServices";
 import UpdateUserPassword from "./UpdateUserPassword";
+import { getRoleLabel } from "@/utils/roleLabels";
 
 export const memberSchema = z.object({
     username: z.string()
@@ -122,9 +123,9 @@ const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
     const [itemsPerPage] = useState(5);
 
     const roleOptions: Option[] = [
-        { value: 'ADMIN', label: 'Admin' },
-        { value: 'TECHNICIAN', label: 'Technician' },
-        { value: 'DESKROLE', label: 'Desk Role' },
+        { value: 'ADMIN', label: getRoleLabel('ADMIN') },
+        { value: 'TECHNICIAN', label: getRoleLabel('TECHNICIAN') },
+        { value: 'DESKROLE', label: getRoleLabel('DESKROLE') },
     ];
 
     useEffect(() => {
@@ -480,7 +481,7 @@ const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
                             key={role}
                             className="px-2 py-1 text-xs rounded-full bg-indigo-100 text-indigo-800 font-medium"
                         >
-                            {role}
+                            {getRoleLabel(role)}
                         </span>
                     ))}
                 </div>

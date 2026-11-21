@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { AlertCircle, ArrowLeft, HelpCircle, Lock, Shield, ShieldAlert } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { getRoleLabel } from '@/utils/roleLabels';
 
 const Unauthorised = ({
   allowedRoles = [],
@@ -16,10 +17,10 @@ const Unauthorised = ({
 }) => {
   const getAccessMessage = () => {
     if (notallowedRoles.length > 0 && currentRoles?.some(role => notallowedRoles.includes(role))) {
-      return `Your current access level (${currentRoles.join(', ')}) is explicitly restricted from this resource due to security policies.`;
+      return `Your current access level (${currentRoles.map(getRoleLabel).join(', ')}) is explicitly restricted from this resource due to security policies.`;
     }
     if (allowedRoles.length > 0) {
-      return `Elevated privileges required: ${allowedRoles.join(', ')}`;
+      return `Elevated privileges required: ${allowedRoles.map(getRoleLabel).join(', ')}`;
     }
     return "Your current permissions don't allow access to this resource.";
   };
@@ -236,7 +237,7 @@ const Unauthorised = ({
                         whileHover={{ scale: 1.05 }}
                         className="px-3 py-1.5 bg-pneutral-100 text-pneutral-700 text-label-l2 font-heading font-medium rounded-xxsm"
                       >
-                        {role}
+                        {getRoleLabel(role)}
                       </motion.span>
                     ))}
                   </div>
@@ -255,7 +256,7 @@ const Unauthorised = ({
                         whileHover={{ scale: 1.05 }}
                         className={`px-3 py-1.5 ${colors.bg} ${colors.text} text-label-l2 font-heading font-medium rounded-xxsm`}
                       >
-                        {role}
+                        {getRoleLabel(role)}
                       </motion.span>
                     ))}
                   </div>
