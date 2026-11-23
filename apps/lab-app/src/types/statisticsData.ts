@@ -154,8 +154,19 @@ export interface PackageRow {
     cardRevenue: number;
 }
 
+// One row of DetailedBilling.byLab (backend only fills it when no lab filter is applied).
+export interface BillingByLabRow {
+    labId: number;
+    labName: string;
+    totalBillings: number;
+    netBilled: number;
+    paid: number;
+    due: number;
+}
+
 export interface DetailedBilling {
     summary: BillingSummary;
+    byLab?: BillingByLabRow[];
     testsSummary: TestsSummary;
     testCategories: TestCategoryRow[];
     packageSummary: PackageSummaryTotals;

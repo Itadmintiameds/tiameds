@@ -559,7 +559,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
             <div>
               <p className="font-semibold mb-1 border-b pb-0.5" style={{ color: c.black, borderColor: c.gray400 }}>Patient</p>
               <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Name:</span> {patient?.firstName || ''} {patient?.lastName || ''}</p>
-              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Age/Sex:</span> {formatAgeForDisplay(patient?.dateOfBirth || '')} / {patient?.gender || 'N/A'}</p>
+              <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Age/Sex:</span> {formatAgeForDisplay(patient?.dateOfBirth, patient?.age)} / {patient?.gender || 'N/A'}</p>
               <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Contact:</span> {patient?.phone || 'N/A'}</p>
               <p className="leading-tight" style={{ color: c.black }}><span className="font-medium">Code:</span> {patient?.patientCode || 'N/A'}</p>
             </div>
@@ -1333,7 +1333,7 @@ export default PatientDetailsViewComponent;
 //             <div>
 //               <p className="font-semibold text-black mb-1 border-b border-gray-400 pb-0.5">Patient</p>
 //               <p className="text-black leading-tight"><span className="font-medium">Name:</span> {patient?.firstName || ''} {patient?.lastName || ''}</p>
-//               <p className="text-black leading-tight"><span className="font-medium">Age/Sex:</span> {formatAgeForDisplay(patient?.dateOfBirth || '')} / {patient?.gender || 'N/A'}</p>
+//               <p className="text-black leading-tight"><span className="font-medium">Age/Sex:</span> {formatAgeForDisplay(patient?.dateOfBirth, patient?.age)} / {patient?.gender || 'N/A'}</p>
 //               <p className="text-black leading-tight"><span className="font-medium">Contact:</span> {patient?.phone || 'N/A'}</p>
 //               <p className="text-black leading-tight"><span className="font-medium">Code:</span> {patient?.patientCode || 'N/A'}</p>
 //             </div>

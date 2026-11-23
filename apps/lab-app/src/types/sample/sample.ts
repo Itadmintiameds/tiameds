@@ -97,6 +97,7 @@ export interface PatientData {
   }>;
   packageIds: number[];
   dateOfBirth?: string;
+  age?: string;
   visitType?: string; // Optional field for visit type
   doctorId?: number; // Optional field for doctor ID
   doctorName?: string; // Optional field for doctor name

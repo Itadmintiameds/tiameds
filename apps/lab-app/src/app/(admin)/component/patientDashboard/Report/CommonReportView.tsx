@@ -609,7 +609,7 @@ const CommonReportView = ({ visitId, patientData, doctorName, hidePrintButton = 
                                                         <div className="space-y-1">
                                                             <div className="flex items-center">
                                                                 <span className="font-medium text-black w-20 text-left">AGE/SEX:</span>
-                                                                <span className="font-bold text-black ml-2">{formatAgeForDisplay(patientData?.dateOfBirth || '')} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
+                                                                <span className="font-bold text-black ml-2">{formatAgeForDisplay(patientData?.dateOfBirth, patientData?.age)} / {patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}</span>
                                                             </div>
                                                             <div className="flex items-center">
                                                                 <span className="font-medium text-black w-20 text-left">DATE OF REPORT:</span>

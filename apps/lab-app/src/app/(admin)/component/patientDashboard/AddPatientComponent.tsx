@@ -606,9 +606,9 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
         toast.error('Please enter the city.');
         return;
       }
-      if (!newPatient.dateOfBirth) {
+      if (!newPatient.dateOfBirth && !newPatient.age?.trim()) {
         setForceFormValidation(true);
-        toast.error('Please enter the date of birth.');
+        toast.error('Please enter the age or date of birth.');
         return;
       }
       setForceFormValidation(false);
@@ -805,6 +805,8 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
 
       const patientData = {
         ...patientToValidate,
+        // Backend dateOfBirth is a nullable LocalDate: "N/A" would fail parsing, so send null
+        dateOfBirth: (patientToValidate.dateOfBirth || null) as unknown as string,
         visit: {
           ...newPatient.visit,
           testIds: individualTestIds, // Only individual test IDs

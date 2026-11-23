@@ -59,6 +59,7 @@ import {
 } from "@/types/statisticsData";
 import Loader from "../../common/Loader";
 import CardDownloadButton from "./CardDownloadButton";
+import BillingSummaryDetailsModal from "./BillingSummaryDetailsModal";
 import { splitTestNames } from "@/lib/stats/gridReportCsv";
 import {
   buildBillingSummaryCsv,
@@ -484,6 +485,7 @@ const SuperAdminStats = () => {
     endDate: dayjs().format("YYYY-MM-DD"),
   });
 
+  const [billingDetailsOpen, setBillingDetailsOpen] = useState(false);
   const [billingFilter, setBillingFilter] = useState<DateFilterType>("currentFY");
   const [billingCustomRange, setBillingCustomRange] = useState<DateRange>({
     startDate: dayjs().subtract(7, "days").format("YYYY-MM-DD"),
@@ -2130,6 +2132,27 @@ const SuperAdminStats = () => {
               </div>
             )}
           </div>
+          {!detailedBillingLoading && !detailedBillingError && (
+            <div className="flex justify-center px-2 pb-2">
+              <button
+                type="button"
+                onClick={() => setBillingDetailsOpen(true)}
+                className="text-p3 font-medium text-secondary-700 hover:underline"
+              >
+                Click here to view details
+              </button>
+            </div>
+          )}
+          <BillingSummaryDetailsModal
+            open={billingDetailsOpen}
+            onClose={() => setBillingDetailsOpen(false)}
+            labId={labIdParam}
+            labName={selectedLabName}
+            initialFilter={billingFilter}
+            initialCustomRange={billingCustomRange}
+            resolveRange={getDateRange}
+            fyLabel={getShortFYLabel(dayjs())}
+          />
         </div>
 
         {/* Top Referring Doctors - 34% */}

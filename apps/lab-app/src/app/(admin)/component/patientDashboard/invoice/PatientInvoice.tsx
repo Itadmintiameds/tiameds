@@ -17,6 +17,7 @@ interface PatientDetails {
     lastName: string;
     city: string;
     dateOfBirth: string;
+    age?: string;
     gender: string;
     visitDetailDto: {
       visitId: number;
@@ -195,7 +196,7 @@ const PatientInvoice = ({ viewPatientDetails }: PatientDetails) => {
                 {viewPatientDetails?.firstName} {viewPatientDetails?.lastName}
               </p>
               <p>
-                <span className="text-gray-600">Age/Gender:</span> {calculateAge(viewPatientDetails?.dateOfBirth)} / {viewPatientDetails?.gender}
+                <span className="text-gray-600">Age/Gender:</span> {calculateAge(viewPatientDetails?.dateOfBirth, viewPatientDetails?.age)} / {viewPatientDetails?.gender}
               </p>
               <p><span className="text-gray-600">City:</span> {viewPatientDetails?.city || 'N/A'}</p>
             </div>

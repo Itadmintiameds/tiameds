@@ -7,7 +7,6 @@ import {
   formatDate,
   parseDateInput,
   formatToISODate,
-  calculateDOB,
   calculateAgeDetails,
   validateAgeField,
   validateDOB
@@ -220,16 +219,19 @@ const PatientForm: React.FC<PatientFormProps> = ({
       } as React.ChangeEvent<HTMLInputElement>;
       handleChange(dobEvent);
 
-      const ageEvent = {
-        target: {
-          name: 'age',
-          value: ''
-        }
-      } as React.ChangeEvent<HTMLInputElement>;
-      handleChange(ageEvent);
+      // Age was derived from the DOB only if a DOB existed; keep a manually typed age
+      if (newPatient.dateOfBirth) {
+        const ageEvent = {
+          target: {
+            name: 'age',
+            value: ''
+          }
+        } as React.ChangeEvent<HTMLInputElement>;
+        handleChange(ageEvent);
+      }
       return;
     }
-    
+
     const cleanedValue = value.replace(/[^0-9/]/g, '');
 
     let formattedValue = cleanedValue;
@@ -256,13 +258,15 @@ const PatientForm: React.FC<PatientFormProps> = ({
       } as React.ChangeEvent<HTMLInputElement>;
       handleChange(dobEvent);
 
-      const ageEvent = {
-        target: {
-          name: 'age',
-          value: ''
-        }
-      } as React.ChangeEvent<HTMLInputElement>;
-      handleChange(ageEvent);
+      if (newPatient.dateOfBirth) {
+        const ageEvent = {
+          target: {
+            name: 'age',
+            value: ''
+          }
+        } as React.ChangeEvent<HTMLInputElement>;
+        handleChange(ageEvent);
+      }
       return;
     }
 
@@ -399,33 +403,15 @@ const PatientForm: React.FC<PatientFormProps> = ({
       setAgeInputMode('manual');
       setLastChanged('age');
 
-      if (newAgeDetails.years || newAgeDetails.months || newAgeDetails.days) {
-        const dob = calculateDOB(newAgeDetails.years, newAgeDetails.months, newAgeDetails.days);
-        if (dob) {
-          const dobEvent = {
-            target: {
-              name: 'dateOfBirth',
-              value: dob
-            }
-          } as React.ChangeEvent<HTMLInputElement>;
-          handleChange(dobEvent);
-          setDobInput(formatDate(dob));
+      // Age entered manually: only update the age string.
+      // Date of birth is NOT auto-populated from age (it is left empty and sent as null).
+      const ageParts: string[] = [];
+      if (newAgeDetails.years) ageParts.push(`${newAgeDetails.years} year${newAgeDetails.years !== '1' ? 's' : ''}`);
+      if (newAgeDetails.months) ageParts.push(`${newAgeDetails.months} month${newAgeDetails.months !== '1' ? 's' : ''}`);
+      if (newAgeDetails.days) ageParts.push(`${newAgeDetails.days} day${newAgeDetails.days !== '1' ? 's' : ''}`);
 
-          const ageParts = [];
-          if (newAgeDetails.years) ageParts.push(`${newAgeDetails.years} year${newAgeDetails.years !== '1' ? 's' : ''}`);
-          if (newAgeDetails.months) ageParts.push(`${newAgeDetails.months} month${newAgeDetails.months !== '1' ? 's' : ''}`);
-          if (newAgeDetails.days) ageParts.push(`${newAgeDetails.days} day${newAgeDetails.days !== '1' ? 's' : ''}`);
-
-          const ageString = ageParts.join(' ');
-          const ageEvent = {
-            target: {
-              name: 'age',
-              value: ageString
-            }
-          } as React.ChangeEvent<HTMLInputElement>;
-          handleChange(ageEvent);
-        }
-      } else {
+      // Any previously entered DOB no longer matches the manually typed age, so clear it
+      if (newPatient.dateOfBirth) {
         const dobEvent = {
           target: {
             name: 'dateOfBirth',
@@ -433,17 +419,16 @@ const PatientForm: React.FC<PatientFormProps> = ({
           }
         } as React.ChangeEvent<HTMLInputElement>;
         handleChange(dobEvent);
-
-        const ageEvent = {
-          target: {
-            name: 'age',
-            value: ''
-          }
-        } as React.ChangeEvent<HTMLInputElement>;
-        handleChange(ageEvent);
-        
         setDobInput('');
       }
+
+      const ageEvent = {
+        target: {
+          name: 'age',
+          value: ageParts.join(' ')
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      handleChange(ageEvent);
     };
 
   const handlePrefixChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -693,7 +678,7 @@ const PatientForm: React.FC<PatientFormProps> = ({
           {/* Row 2 — DOB | Age */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <p className="text-xs text-gray-500 sm:col-span-2 -mb-2">
-              Fill in either one — entering the date of birth calculates the age, and entering the age calculates the date of birth.
+              Date of birth is optional — entering it calculates the age. If you enter the age directly, the date of birth stays empty.
             </p>
             <div>
               <label className="text-sm font-medium text-gray-600 mb-1.5 block">

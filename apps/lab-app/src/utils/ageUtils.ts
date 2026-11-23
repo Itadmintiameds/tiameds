@@ -17,9 +17,12 @@ export const formatAgeString = (ageString: string): string => {
 };
 
 // Calculate age from date of birth (returns formatted string with full words)
-export const calculateAge = (dob: string): string => {
-  if (!dob) return '';
-  
+// If no DOB is available, falls back to the stored age string (entered manually at registration)
+export const calculateAge = (dob?: string | null, fallbackAge?: string | null): string => {
+  if (!dob) {
+    return fallbackAge && fallbackAge !== 'null' ? formatAgeString(fallbackAge) : '';
+  }
+
   const birthDate = new Date(dob);
   const today = new Date();
   
@@ -277,10 +280,21 @@ export const calculateAgeObject = (dob: string) => {
 };
 
 // Format age for display with intelligent unit selection
-export const formatAgeForDisplay = (dob: string): string => {
-  if (!dob) return 'N/A';
-  
-  const age = calculateAgeObject(dob);
+// If no DOB is available, uses the stored age string (entered manually at registration)
+export const formatAgeForDisplay = (dob?: string | null, fallbackAge?: string | null): string => {
+  let age: { years: number; months: number; days: number };
+  if (dob) {
+    age = calculateAgeObject(dob);
+  } else if (fallbackAge && fallbackAge !== 'null' && fallbackAge.trim()) {
+    const parsed = parseAgeString(fallbackAge);
+    age = {
+      years: parseInt(parsed.years, 10) || 0,
+      months: parseInt(parsed.months, 10) || 0,
+      days: parseInt(parsed.days, 10) || 0,
+    };
+  } else {
+    return 'N/A';
+  }
   
   // If years > 0, show years only
   if (age.years > 0) {
@@ -331,7 +345,8 @@ export const validateAgeField = (field: 'years' | 'months' | 'days', value: stri
 
 // Validate date of birth
 export const validateDOB = (dob: string, dobInput: string) => {
-  if (!dob) return 'Date of birth is required';
+  // Date of birth is optional (age can be entered instead)
+  if (!dob) return '';
 
   const date = parseDateInput(dobInput);
   if (!date) return 'Invalid date format (DD/MM/YYYY)';

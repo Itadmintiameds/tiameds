@@ -1426,7 +1426,7 @@ const CommonReportView2 = ({
                 body: JSON.stringify({
                     patient: {
                         name: patientData?.patientname,
-                        age: formatAgeForDisplay(patientData?.dateOfBirth || ""),
+                        age: formatAgeForDisplay(patientData?.dateOfBirth, patientData?.age),
                         gender: patientData?.gender,
                     },
                     testFindings: aiTestFindings,
@@ -3015,7 +3015,7 @@ const CommonReportView2 = ({
                                     {[
                                         [
                                             { icon: "/report/user.png", label: "Patient Name", value: patientData?.patientname || 'N/A', noWrap: false },
-                                            { icon: "/report/users.png", label: "Age / Sex", value: `${formatAgeForDisplay(patientData?.dateOfBirth || '')} / ${patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}`, noWrap: true },
+                                            { icon: "/report/users.png", label: "Age / Sex", value: `${formatAgeForDisplay(patientData?.dateOfBirth, patientData?.age)} / ${patientData?.gender ? patientData.gender.slice(0, 1).toUpperCase() : 'N/A'}`, noWrap: true },
                                             { icon: "/report/id-card.png", label: "Patient No.", value: primaryReport?.patientCode || "N/A", noWrap: true },
                                             { icon: "/report/clipboard-check.png", label: "Patient Type", value: patientData?.visitType || "N/A", noWrap: true },
                                         ],

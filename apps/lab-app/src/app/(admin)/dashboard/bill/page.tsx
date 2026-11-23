@@ -269,7 +269,7 @@ const Page = () => {
       }),
       patient: {
         name: `${patientDetails?.firstName || ''} ${patientDetails?.lastName || ''}`,
-        age: parseInt(calculateAge(patientDetails?.dateOfBirth || '')) || 0,
+        age: parseInt(calculateAge(patientDetails?.dateOfBirth, patientDetails?.age)) || 0,
         email: patientDetails?.email || 'N/A',
         phone: patientDetails?.phone || 'N/A',
         address: `${patientDetails?.address || 'N/A'}, ${patientDetails?.city || 'N/A'}, ${patientDetails?.state || 'N/A'}, ${patientDetails?.zip || 'N/A'}`,
@@ -367,7 +367,7 @@ const Page = () => {
             <CalendarIcon size={24} className="text-yellow-600" />
             <div>
               <p className="text-xs font-semibold text-gray-600">Age</p>
-              <p className="text-sm font-medium text-gray-900">{calculateAge(patientDetails?.dateOfBirth || '')}</p>
+              <p className="text-sm font-medium text-gray-900">{calculateAge(patientDetails?.dateOfBirth, patientDetails?.age)}</p>
             </div>
           </div>
 
