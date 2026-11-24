@@ -57,7 +57,13 @@ export const EditPatientSchema = z.object({
   firstName: z.string().min(2, { message: "First name must have at least 2 characters" }).min(2).max(50),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits" }).max(10, { message: "Phone number must be at most 10 digits" }),
   city: z.string().min(2).max(50),
-  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date of birth must be in YYYY-MM-DD format" }),
+  // DOB is optional: patients may only have an age, in which case it is null/empty
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date of birth must be in YYYY-MM-DD format" })
+    .or(z.literal(''))
+    .nullable()
+    .optional(),
   visit: z.object({
     visitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Visit date must be in YYYY-MM-DD format" }),
     visitType: z.string().transform((val) => val.toLowerCase()), // Normalize to lowercase
