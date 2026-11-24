@@ -221,7 +221,7 @@ const getRevenueBuckets = (
       // first/last day so no data from the neighbouring months leaks into the chart.
       const monthStart = dayjs().subtract(1, 'month').startOf('month');
       const monthEnd = monthStart.endOf('month');
-      let weekStart = monthStart.startOf('week');
+      let weekStart = monthStart.startOf('week'); 
       let i = 0;
       while (!weekStart.isAfter(monthEnd)) {
         const weekEnd = weekStart.add(6, 'day').endOf('day');
