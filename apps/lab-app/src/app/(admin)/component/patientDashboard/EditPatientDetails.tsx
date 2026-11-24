@@ -679,6 +679,8 @@ const EditPatientDetails = ({ setEditPatientDetailsModal, editPatientDetails, se
 
       const patientData = {
         ...editedPatient,
+        // Backend dateOfBirth is a nullable LocalDate: send null instead of ''
+        dateOfBirth: (editedPatient.dateOfBirth || null) as unknown as string,
         visit: {
           ...editedPatient.visit,
           //  doctorId: editedPatient.visit.doctorId || null,
