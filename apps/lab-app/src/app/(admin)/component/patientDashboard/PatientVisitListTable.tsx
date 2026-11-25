@@ -86,7 +86,7 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
   const isAdmin = roles.includes('ADMIN');
   const isSuperAdmin = roles.includes('SUPERADMIN');
   const isDeskRole = roles.includes('DESKROLE');
-  const canAccessCancelledFilter = isAdmin || isSuperAdmin;
+  const canAccessCancelledFilter = isAdmin || isSuperAdmin || isDeskRole;
 
   const [patientList, setPatientList] = useState<Patient[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(0); // 0-based, matches backend
