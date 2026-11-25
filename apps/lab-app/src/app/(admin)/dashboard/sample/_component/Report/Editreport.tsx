@@ -24,6 +24,7 @@ import NewModal from "../../../newcommoncomponent/NewModal";
 import { FaChevronDown } from "react-icons/fa";
 import { createPortal } from "react-dom";
 import { getPointLabel } from "@/utils/referencePointLabel";
+import { requestWhatsAppReport } from "@/lib/whatsapp/whatsappReportBus";
 
 export interface Patient {
   visitId: number;
@@ -926,6 +927,8 @@ matchedItems.forEach((reportItem, pointIndex) => {
       refreshReports();
       setShowModal(false);
       toast.success('Report updated successfully');
+      // Edited report: send the updated version on WhatsApp if the bill is fully paid
+      requestWhatsAppReport(editPatient.visitId, 'report-edited');
     } catch (error) {
       toast.error('Failed to update report');
     } finally {

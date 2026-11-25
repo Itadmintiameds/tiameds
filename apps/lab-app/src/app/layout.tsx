@@ -7,6 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { LabProvider } from '@/context/LabContext';
 import TokenExpirationHandler from '@/components/TokenExpirationHandler';
 import IdleLogoutHandler from '@/components/IdleLogoutHandler';
+import WhatsAppReportDispatcher from '@/components/WhatsAppReportDispatcher';
 
 const notoSans = Noto_Sans({
   subsets: ["latin"],
@@ -63,6 +64,7 @@ export default function RootLayout({
 >
           <TokenExpirationHandler />
           <IdleLogoutHandler />
+          <WhatsAppReportDispatcher />
           {children}
           {/* <ToastContainer /> */}
           <ToastContainer

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import type { MutableRefObject } from "react";
+import type { ReportPdfExporter } from "@/lib/whatsapp/whatsappReportBus";
 import { useLabs } from "@/context/LabContext";
 import { getAiClinicalObservation, getReportData } from "../../../../../../services/reportServices";
 import { getPatientByVisitIdAndVisitDetails } from "../../../../../../services/patientServices";
@@ -15,6 +17,9 @@ interface CommonReportViewWrapperProps {
     patientData: PatientData;
     doctorName?: string;
     hidePrintButton?: boolean;
+    // Lets the WhatsApp dispatcher pull the report PDF out of an off-screen render (new-format
+    // reports only -- see CommonReportView2).
+    pdfExportRef?: MutableRefObject<ReportPdfExporter | null>;
 }
 
 interface ApiReport {
@@ -106,7 +111,7 @@ const lookupPatientId = async (labId: number, visitId: number): Promise<number |
 };
 
 const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
-    const { visitId, patientData, ...restProps } = props;
+    const { visitId, patientData, pdfExportRef, ...restProps } = props;
     const { currentLab } = useLabs();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>();
@@ -251,6 +256,7 @@ const CommonReportViewWrapper = (props: CommonReportViewWrapperProps) => {
                 reportsData={reports}
                 storedObservation={storedObservation}
                 radiologyReports={radiologyReports}
+                pdfExportRef={pdfExportRef}
             />
         );
     }
