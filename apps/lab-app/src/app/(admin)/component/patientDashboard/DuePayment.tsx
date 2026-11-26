@@ -16,7 +16,7 @@ import { FiCheck, FiX, FiInfo } from 'react-icons/fi';
 import { makePartialPayment } from '@/../services/patientServices';
 import { useLabs } from '@/context/LabContext';
 import Decimal from 'decimal.js';
-import { requestWhatsAppReport } from '@/lib/whatsapp/whatsappReportBus';
+import { requestWhatsAppBill, requestWhatsAppReport } from '@/lib/whatsapp/whatsappReportBus';
 
 
 
@@ -209,9 +209,12 @@ const DuePayment: React.FC<DuePaymentProps> = ({ patient, onClose, onPaymentSucc
       setPaymentSuccess(true);
 
       // Payment taken after reports were already generated: once the bill is fully settled, send all
-      // reports on WhatsApp. The dispatcher re-checks the bill itself, so a partial payment is a no-op.
+      // reports -- and then the bill itself -- on WhatsApp. The dispatcher re-checks the bill itself,
+      // so a partial payment is a no-op. (The backend allows one WhatsApp message per visit per minute,
+      // so the second of the two is held back by the dispatcher and follows about a minute later.)
       if (payload.paymentStatus === PaymentStatus.PAID) {
         requestWhatsAppReport(patient?.visit?.visitId, 'payment-completed');
+        requestWhatsAppBill(patient?.visit?.visitId, 'payment-completed');
       }
 
       if (onPaymentSuccess) {

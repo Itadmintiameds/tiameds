@@ -435,8 +435,27 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
           );
         }
 
-        const totalTests = row.visit.testResult.length;
-        const completedTests = row.visit.testResult.filter(tr => tr.reportStatus === 'Completed').length;
+        // When a test is removed via Edit, the backend keeps its testResult row (soft-cancelled, and
+        // the response doesn't expose that status). Count only results for tests still on the visit.
+        // testIds holds individual tests only, so this is reliable just when no packages are involved;
+        // with packages we can't map package tests here, so keep the unfiltered list.
+        const activeTestIds = row.visit.testIds ?? [];
+        const hasPackages = (row.visit.packageIds?.length ?? 0) > 0;
+        const countedResults =
+          !hasPackages && activeTestIds.length > 0
+            ? row.visit.testResult.filter(tr => activeTestIds.includes(tr.testId))
+            : row.visit.testResult;
+
+        const totalTests = countedResults.length;
+        const completedTests = countedResults.filter(tr => tr.reportStatus === 'Completed').length;
+
+        if (totalTests === 0) {
+          return (
+            <span className="inline-flex items-center rounded-full bg-pneutral-100 px-3 py-1 text-p2 font-medium text-pneutral-700">
+              No Results
+            </span>
+          );
+        }
 
         if (completedTests === totalTests) {
           // If there's only 1 test and it's completed, show "Completed"

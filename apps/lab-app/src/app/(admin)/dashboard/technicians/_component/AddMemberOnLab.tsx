@@ -111,6 +111,8 @@ const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
     // Only a super admin may reset another user's password; admins are not authorised to.
     const canResetPassword = !!user?.roles?.some((r: string) => r.toUpperCase() === "SUPERADMIN");
     const [formData, setFormData] = useState<FormData>(initialFormState);
+    // Snapshot of the member as loaded into the edit form; used to detect real changes.
+    const [originalFormData, setOriginalFormData] = useState<FormData | null>(null);
     const [members, setMembers] = useState<Member[]>([]);
     const [selectedRoles, setSelectedRoles] = useState<Option[]>([]);
     const [refreshMembers, setRefreshMembers] = useState(false);
@@ -390,7 +392,7 @@ const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
             memberRoles.includes(option.value)
         );
 
-        setFormData({
+        const editData: FormData = {
             username: member.username,
             firstName: member.firstName,
             lastName: member.lastName,
@@ -400,7 +402,9 @@ const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
             roles: memberRoles,
             password: "", // Don't include password in edit mode
             enabled: member.enabled ?? true,
-        });
+        };
+        setFormData(editData);
+        setOriginalFormData(editData);
         setSelectedRoles(selected);
         setIsEditing(true);
         setCurrentMemberId(member.id);
@@ -408,12 +412,25 @@ const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
 
     const handleCancel = () => {
         setFormData(initialFormState);
+        setOriginalFormData(null);
         setSelectedRoles([]);
         setIsEditing(false);
         setCurrentMemberId(null);
         setErrors({});
         setTouched({});
     };
+
+    // In edit mode, "Update Member" stays disabled until something differs from the loaded member.
+    const hasChanges = !isEditing || !originalFormData || (
+        formData.username !== originalFormData.username ||
+        formData.firstName !== originalFormData.firstName ||
+        formData.lastName !== originalFormData.lastName ||
+        formData.phone !== originalFormData.phone ||
+        formData.email !== originalFormData.email ||
+        formData.city !== originalFormData.city ||
+        (formData.enabled ?? true) !== (originalFormData.enabled ?? true) ||
+        [...formData.roles].sort().join(",") !== [...originalFormData.roles].sort().join(",")
+    );
 
     const handleUpdatePassword = (member: Member) => {
         setMemberToUpdate(member);
@@ -875,7 +892,8 @@ const AddMemberOnLab = ({ closeModal }: AddMemberOnLabProps = {}) => {
                                     <div className="flex gap-3 pt-3">
                                         <button
                                             type="submit"
-                                            disabled={loading}
+                                            disabled={loading || !hasChanges}
+                                            title={isEditing && !hasChanges ? "Make a change to enable update" : undefined}
                                             className="flex-1 px-4 py-2.5 text-sm font-medium text-white rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                             style={{
                                                 background: `linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)`

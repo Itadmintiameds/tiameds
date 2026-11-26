@@ -12,7 +12,9 @@ import { formatAgeForDisplay } from '@/utils/ageUtils';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf'
 import React, { useEffect, useRef, useState } from 'react';
+import type { MutableRefObject } from 'react';
 import { createRoot } from 'react-dom/client';
+import type { ReportPdfExporter } from '@/lib/whatsapp/whatsappReportBus';
 import { FaFileInvoiceDollar, FaFilePdf, FaPrint, FaSignature } from 'react-icons/fa';
 import Loader from '../common/Loader';
 import { MdDownloading } from "react-icons/md";
@@ -135,7 +137,13 @@ const packageHeightMm = (pkg: Packages): number => {
     + (testCount > 0 ? PACKAGE_INCLUDES_MM + Math.ceil(testCount / 3) * PACKAGE_CHIP_ROW_MM : 0);
 };
 
-const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit }) => {
+interface PatientDetailsViewComponentProps {
+  patient: PatientWithVisit;
+  // Set by the WhatsApp dispatcher (off-screen render) to receive the invoice PDF builder.
+  pdfExportRef?: MutableRefObject<ReportPdfExporter | null>;
+}
+
+const PatientDetailsViewComponent = ({ patient, pdfExportRef }: PatientDetailsViewComponentProps) => {
   const { currentLab } = useLabs();
   const [tests, setTests] = useState<TestList[]>([]);
   const [doctor, setDoctor] = useState<Doctor>();
@@ -790,13 +798,11 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
     );
   };
 
-  const generatePDF = async (action: 'print' | 'download', specificTransaction?: BillingTransaction) => {
-    if (!invoiceRef.current) return;
-
-    setIsGeneratingPDF(true);
-    setError(null);
-
-    try {
+  // Rasterises the invoice into a jsPDF document. Shared by the Print / PDF buttons and the WhatsApp
+  // dispatcher, so the bill a patient gets on WhatsApp is exactly the one the counter prints.
+  // `strict` (WhatsApp) throws if any page fails to render; the buttons keep their lenient behaviour of
+  // skipping a failed page.
+  const buildInvoicePdf = async (specificTransaction?: BillingTransaction, strict = false): Promise<jsPDF> => {
       const pages = generateInvoicePages();
       const transactions = patient?.visit?.billing?.transactions || [];
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -826,6 +832,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
       };
 
       const pagesToRender = renderPages();
+      if (strict && pagesToRender.length === 0) throw new Error('Invoice has nothing to render');
 
       for (let i = 0; i < pagesToRender.length; i++) {
         if (i > 0) pdf.addPage();
@@ -836,7 +843,7 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
         tempDiv.style.width = `${A4_WIDTH_MM}mm`;
         document.body.appendChild(tempDiv);
 
-        await new Promise<void>((resolve) => {
+        await new Promise<void>((resolve, reject) => {
           const root = createRoot(tempDiv);
           root.render(pagesToRender[i]);
 
@@ -870,11 +877,25 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
               // Handle page generation error
               console.error('PDF page generation failed:', err);
               document.body.removeChild(tempDiv);
-              resolve();
+              // a silently blank page must never reach a patient
+              if (strict) reject(err);
+              else resolve();
             }
           }, 500);
         });
       }
+
+      return pdf;
+  };
+
+  const generatePDF = async (action: 'print' | 'download', specificTransaction?: BillingTransaction) => {
+    if (!invoiceRef.current) return;
+
+    setIsGeneratingPDF(true);
+    setError(null);
+
+    try {
+      const pdf = await buildInvoicePdf(specificTransaction);
 
       if (action === 'print') {
         const pdfBlob = pdf.output('blob');
@@ -896,6 +917,22 @@ const PatientDetailsViewComponent = ({ patient }: { patient: PatientWithVisit })
       setIsGeneratingPDF(false);
     }
   };
+
+  // Hand the PDF builder to the WhatsApp dispatcher when it renders this view off-screen. Re-assigned
+  // after every render so `build` always closes over the loaded tests / packages / doctor.
+  useEffect(() => {
+    if (!pdfExportRef) return;
+    pdfExportRef.current = {
+      build: async () => (await buildInvoicePdf(undefined, true)).output('blob'),
+      isReady: () => !isLoading && !isGeneratingPDF && !!invoiceRef.current,
+    };
+  });
+  useEffect(() => {
+    if (!pdfExportRef) return;
+    return () => {
+      pdfExportRef.current = null;
+    };
+  }, [pdfExportRef]);
 
   const handlePrint = async () => {
     await generatePDF('print');
