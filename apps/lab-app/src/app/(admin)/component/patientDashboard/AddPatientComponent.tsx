@@ -21,6 +21,7 @@ import PatientTestPackage from './component/PatientTestPackage';
 import PatientVisit from './component/PatientVisit';
 import { Gender, DiscountReason } from '@/types/patient/patient';
 import useAuthStore from '@/context/userStore';
+import { requestWhatsAppBill } from '@/lib/whatsapp/whatsappReportBus';
 
 
 interface AddPatientComponentProps {
@@ -832,6 +833,9 @@ const AddPatientComponent = ({ setAddPatientModal, setAddUpdatePatientListVist, 
 
       if (response.status === 'success') {
         toast.success('Patient added successfully.', { autoClose: 2000, position: 'top-right' });
+        // Bill settled in full at the counter: send it to the patient on WhatsApp. The dispatcher
+        // re-fetches the bill and sends only if it really is fully paid, so a part payment is a no-op.
+        requestWhatsAppBill(response.data?.visit?.visitId, 'visit-registered');
         handleClearPatient();
         setAddUpdatePatientListVist(!addUpdatePatientListVist);
         setAddPatientModal(false);

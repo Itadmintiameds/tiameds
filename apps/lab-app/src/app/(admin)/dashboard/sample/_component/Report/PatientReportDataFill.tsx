@@ -24,6 +24,7 @@ import NewModal from "../../../newcommoncomponent/NewModal";
 import { FaChevronDown } from "react-icons/fa";
 import { createPortal } from "react-dom";
 import { getPointLabel } from "@/utils/referencePointLabel";
+import { requestWhatsAppReport } from "@/lib/whatsapp/whatsappReportBus";
 
 // Interfaces
 export interface Patient {
@@ -806,6 +807,8 @@ else if (hasApiDropdown || ["DROPDOWN", "DROPDOWN-POSITIVE/NEGATIVE", "DROPDOWN-
           }
         }
         toast.success('Report submitted successfully!');
+        // Sends the report on WhatsApp if the visit's bill is fully paid (checked by the dispatcher)
+        requestWhatsAppReport(selectedPatient.visitId, 'report-saved');
         setUpdateCollectionTable(prev => !prev);
         setShowModal(false);
       } else {

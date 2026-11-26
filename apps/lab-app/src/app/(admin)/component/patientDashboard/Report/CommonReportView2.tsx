@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, MutableRefObject } from "react";
+import type { ReportPdfExporter } from "@/lib/whatsapp/whatsappReportBus";
 //import Image from "next/image";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -868,7 +869,12 @@ interface CommonReportView2Props {
     storedObservation?: AiClinicalObservation | null;
     // Radiology reports saved for this visit (signing doctors, findings, impression)
     radiologyReports?: RadiologyReport[];
+    // Set by the WhatsApp dispatcher (off-screen render) to receive the PDF builder.
+    pdfExportRef?: MutableRefObject<ReportPdfExporter | null>;
 }
+
+// An error whose message is meant for the user (as opposed to an unexpected failure).
+class PdfUserError extends Error {}
 
 // AI Clinical Observations are only worth generating on a finished order: a partially
 // completed visit would burn an OpenAI call on data that is about to change, and the
@@ -895,6 +901,7 @@ const CommonReportView2 = ({
     reportsData,
     storedObservation,
     radiologyReports,
+    pdfExportRef,
 }: CommonReportView2Props) => {
     const { currentLab } = useLabs();
     const reportRef = useRef<HTMLDivElement>(null);
@@ -1986,13 +1993,14 @@ const CommonReportView2 = ({
         return packed.nodes.length > 0 ? packed.nodes : [tableWrapper.cloneNode(true) as HTMLElement];
     };
 
-    const printReports = async () => {
+    // Builds the report PDF and returns it. Shared by the Print button (opens it in a tab) and the
+    // WhatsApp dispatcher (uploads it), so both always produce exactly the same document.
+    // Throws PdfUserError for problems worth telling the user about; anything else is unexpected.
+    const generatePdfBlob = async (): Promise<Blob> => {
         if (!reportRef.current || selectedReportIds.length === 0) {
-            toast.error("Select at least one report to print");
-            return;
+            throw new PdfUserError("Select at least one report to print");
         }
 
-        setPrinting(true);
         const { layoutWidthMm, marginXMm, pageWidthMm, topMarginMm, bottomMarginMm } = printGeometry;
         let tempContainer: HTMLDivElement | null = null;
         try {
@@ -2007,8 +2015,7 @@ const CommonReportView2 = ({
             const sections = shell ? [shell] : [];
 
             if (sections.length === 0) {
-                toast.error("Selected reports are unavailable for printing");
-                return;
+                throw new PdfUserError("Selected reports are unavailable for printing");
             }
 
             const renderScale = Math.max(2, Math.min((window.devicePixelRatio || 1) * 1.5, 3));
@@ -2361,19 +2368,48 @@ const CommonReportView2 = ({
                 }
             });
 
-            const pdfBlob = pdf.output("blob");
-            const pdfUrl = URL.createObjectURL(pdfBlob);
-            window.open(pdfUrl, "_blank");
-        } catch (error) {
-            console.error("PDF generation error:", error);
-            toast.error("Failed to generate PDF");
+            return pdf.output("blob");
         } finally {
             if (tempContainer && document.body.contains(tempContainer)) {
                 document.body.removeChild(tempContainer);
             }
+        }
+    };
+
+    const printReports = async () => {
+        if (!reportRef.current || selectedReportIds.length === 0) {
+            toast.error("Select at least one report to print");
+            return;
+        }
+
+        setPrinting(true);
+        try {
+            const pdfBlob = await generatePdfBlob();
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            window.open(pdfUrl, "_blank");
+        } catch (error) {
+            console.error("PDF generation error:", error);
+            toast.error(error instanceof PdfUserError ? error.message : "Failed to generate PDF");
+        } finally {
             setPrinting(false);
         }
     };
+
+    // Hand the PDF builder to the WhatsApp dispatcher when it renders this view off-screen. Re-assigned
+    // after every render so `build` always closes over the current selection and layout.
+    useEffect(() => {
+        if (!pdfExportRef) return;
+        pdfExportRef.current = {
+            build: generatePdfBlob,
+            isReady: () => selectedReportIds.length > 0 && !printing && !healthSnapshotLoading && !aiInsightsLoading,
+        };
+    });
+    useEffect(() => {
+        if (!pdfExportRef) return;
+        return () => {
+            pdfExportRef.current = null;
+        };
+    }, [pdfExportRef]);
 
     if (!Array.isArray(reportsData) || reportsData.length === 0) {
         return (
