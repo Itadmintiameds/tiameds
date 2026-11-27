@@ -159,7 +159,8 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
         page,
         PAGE_SIZE,
         searchTerm,
-        statusFilter
+        // Backend stores cancelled visits as "CANCELLED" and matches status exactly
+        statusFilter === VisitStatus.CANCELLED ? 'CANCELLED' : statusFilter
       );
 
       setPatientList(response.data);
@@ -197,11 +198,6 @@ const PatientVisitListTable: React.FC<PatientVisitListTableProps> = ({ onAddPati
     let isValid = true;
 
     if (!visit?.visit) return false;
-
-    // Hide cancelled data for deskrole users
-    if (isDeskRole && visit?.visit?.visitStatus?.toUpperCase() === 'CANCELLED') {
-      return false;
-    }
 
     if (billStatusFilter && getBillStatus(visit) !== billStatusFilter) {
       isValid = false;
